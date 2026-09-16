@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "io.github.ar_nasir_afmco.twa",
+    "sha256_cert_fingerprints": ["E7:E2:C7:C2:84:BE:20:1D:99:25:49:C3:25:4B:43:35:78:0B:2F:54:A4:9A:3A:88:71:28:30:3A:A1:5D:25:15"]
+  }
+}]
