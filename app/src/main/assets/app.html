@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>سجل صيانة الدبابات</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14433F">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<script>
+if ("serviceWorker" in navigator) { window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); }); }
+</script>
 <style>
 :root{
   --paper:#F4F1EA; --card:#FFFFFF; --ink:#17262C; --ink2:#51646D; --ink3:#8B959B;
