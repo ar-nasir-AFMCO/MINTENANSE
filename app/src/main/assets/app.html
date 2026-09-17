@@ -375,17 +375,6 @@ details[open] > summary{margin-bottom:10px}
       <div id="devicesWrap"></div>
     </div>
 
-    <h2 class="sec">الحفظ التلقائي إلى ملف</h2>
-    <div class="panel">
-      <p style="margin:0 0 12px;color:var(--ink2)">اربط ملف نسخة احتياطية مرة واحدة، وبعدها يُحدَّث وحده بعد كل تغيير دون سؤالك عن الإذن في كل مرة.</p>
-      <div class="bar" style="margin:0">
-        <button class="btn" id="btnBkLink">ربط ملف النسخة</button>
-        <button class="btn ghost" id="btnBkNow">احفظ الآن</button>
-        <button class="btn ghost" id="btnBkUnlink">فك الارتباط</button>
-      </div>
-      <div class="mini-note" id="bkStatus"></div>
-    </div>
-
     <h2 class="sec">نسخة احتياطية يدوية</h2>
     <div class="panel">
       <div class="bar" style="margin:0">
@@ -407,7 +396,7 @@ details[open] > summary{margin-bottom:10px}
 
     <h2 class="sec">استيراد الدبابات</h2>
     <div class="panel">
-      <p style="margin:0 0 12px;color:var(--ink2)">احفظ جدول الدبابات من إكسل بصيغة CSV وارفعه. الأعمدة المقروءة: رقم اللوحة، رقم الهيكل، الموديل، السنة، المشروع، المدينة، العداد.</p>
+      <p style="margin:0 0 12px;color:var(--ink2)">الاستيراد **يدمج فقط**: يُحدّث بيانات الدبابات المسجّلة، ولا يضيف دباباً جديداً ولا يحذف شيئاً. تُعرض التغييرات للمراجعة قبل التطبيق. الأعمدة المقروءة: رقم اللوحة، رقم الهيكل، الموديل، السنة، المشروع، المدينة، العداد.</p>
       <div class="bar" style="margin:0">
         <button class="btn" id="btnImportBikes">رفع ملف CSV</button>
         <button class="btn ghost" id="btnTemplate">تنزيل نموذج فارغ</button>
@@ -425,6 +414,7 @@ details[open] > summary{margin-bottom:10px}
         <input type="text" id="stRef" placeholder="رقم الفاتورة" style="width:150px">
         <input type="number" id="stPct" value="10" min="1" max="90" title="نسبة الإنذار %" style="width:100px">
         <button class="btn amber" id="btnStAdd">إضافة وارد</button>
+        <button class="btn ghost" id="btnInvoice">رفع فاتورة</button>
       </div>
       <datalist id="stList"></datalist>
       <div class="bar" style="margin:10px 0 0">
@@ -454,7 +444,6 @@ details[open] > summary{margin-bottom:10px}
       <label class="f"><span>اسم الجهة الظاهر في الترويسة</span><input type="text" id="setOrg"></label>
       <label class="f"><span>المشاريع — كل مشروع في سطر</span><textarea id="setProjects"></textarea></label>
       <label class="f"><span>الورش — كل ورشة في سطر، ولكل واحدة مخزونها المستقل</span><textarea id="setSites"></textarea></label>
-      <label class="f"><span>ورشة هذا الجهاز — تُختار تلقائياً في أوامر الصيانة</span><select id="setDeviceSite"></select></label>
       <label class="f"><span>قطع الدباب — كل سطر: اسم المجموعة ثم نقطتان ثم القطع مفصولة بفاصلة</span><textarea id="setCatalog" style="min-height:150px"></textarea></label>
       <label class="f"><span>كلمة مرور صفحة البيانات والحذف</span><input type="text" id="setPin" autocomplete="off"></label>
       <button class="btn" id="btnSaveSettings">حفظ الإعدادات</button>
@@ -635,7 +624,6 @@ function save(quiet){
   try{ localStorage.setItem(LS_DATA, JSON.stringify(db)); }
   catch(e){ alert('تعذّر الحفظ: مساحة المتصفح ممتلئة. نزّل نسخة احتياطية ثم امسح صوراً قديمة.'); return false; }
   if(!quiet && bc) try{ bc.postMessage({t:'sync', from:tabId}) }catch(e){}
-  bkSchedule();
   sySchedule();
   return true;
 }
@@ -747,7 +735,7 @@ function go(s){
   scr=s;
   $$('.screen').forEach(function(el){ el.classList.toggle('on', el.id==='scr-'+s) });
   $$('#navTop button, #navBottom button').forEach(function(b){ b.classList.toggle('on', b.dataset.scr===s) });
-  $('#fab').classList.toggle('hide', s==='data');
+  $('#fab').classList.toggle('hide', s==='data' || !canEdit());
   window.scrollTo(0,0);
   render();
 }
@@ -762,6 +750,11 @@ function render(){
   var nb=$('#navBadge');
   nb.textContent=openCount; nb.classList.toggle('hide', openCount===0);
   gateCheck(); syDot();
+  var nb2=$('#btnNewOrder'); if(nb2) nb2.classList.toggle('hide', !canEdit());
+  var nbk=$('#btnNewBike'); if(nbk) nbk.classList.toggle('hide', !isAdminDevice());
+  $$('#navTop button, #navBottom button').forEach(function(b){
+    if(b.dataset.scr==='data') b.classList.toggle('hide', !canData());
+  });
   if(scr==='dash') renderDash();
   else if(scr==='orders') renderOrders();
   else if(scr==='data') renderData();
@@ -919,8 +912,8 @@ function typesChart(){
 /* ---------------- المخزون ---------------- */
 function sites(){ return db.settings.sites||[] }
 function deviceSite(){
-  var v=localStorage.getItem('dbb_site')||'';
-  if(v && sites().indexOf(v)>=0) return v;
+  var d=devRec();
+  if(d && d.site && sites().indexOf(d.site)>=0) return d.site;
   return sites()[0]||'';
 }
 function stockId(site,name){ return 'st_'+norm(site)+'_'+norm(name) }
@@ -980,21 +973,24 @@ function renderStock(){
     db.stock.forEach(function(it){ names[it.name]=1 });
     dl.innerHTML=Object.keys(names).map(function(n){ return '<option value="'+esc(n)+'"></option>' }).join('');
   }
+  var allowed = canAllSites()? sites() : [deviceSite()];
   var sel=$('#stSite'), selF=$('#stSiteFilter');
-  if(sel && sel.options.length!==sites().length){
-    sel.innerHTML=sites().map(function(x){ return '<option value="'+esc(x)+'">'+esc(x)+'</option>' }).join('');
-    sel.value=deviceSite();
+  var key=allowed.join('|')+'@'+deviceSite();
+  if(sel && sel.dataset.set!==key){
+    sel.innerHTML=allowed.map(function(x){ return '<option value="'+esc(x)+'">'+esc(x)+'</option>' }).join('');
+    sel.dataset.set=key;
+    sel.value= allowed.indexOf(deviceSite())>=0? deviceSite() : allowed[0];
   }
-  if(selF && selF.options.length!==sites().length+1){
-    var curF=selF.value;
-    selF.innerHTML='<option value="all">كل الورش</option>'+
-      sites().map(function(x){ return '<option value="'+esc(x)+'">'+esc(x)+'</option>' }).join('');
-    if(curF) selF.value=curF;
+  if(selF && selF.dataset.set!==allowed.join('|')){
+    selF.innerHTML=(canAllSites()? '<option value="all">كل الورش</option>':'')+
+      allowed.map(function(x){ return '<option value="'+esc(x)+'">'+esc(x)+'</option>' }).join('');
+    selF.dataset.set=allowed.join('|');
   }
   var q=($('#stSearch')&&$('#stSearch').value||'').trim(), f=($('#stFilter')&&$('#stFilter').value)||'all';
   var fs=(selF&&selF.value)||'all';
   var list=db.stock.filter(function(it){
     var st=stockState(it);
+    if(!canAllSites() && it.site!==deviceSite()) return false;
     if(fs!=='all' && it.site!==fs) return false;
     if(f==='low' && st==='كافٍ') return false;
     if(f==='out' && st!=='نفدت' && st!=='عجز') return false;
@@ -1047,6 +1043,7 @@ function renderMoves(){
     }).join('')+'</tbody></table></div>';
 }
 function stockAdd(){
+  if(!canStock()){ denied(); return }
   var name=($('#stName').value||'').trim(), qty=num($('#stQty').value), ref=($('#stRef').value||'').trim();
   var pct=num($('#stPct').value)||10, site=($('#stSite')&&$('#stSite').value)||deviceSite();
   if(!site){ toast('أضف ورشة واحدة على الأقل من الإعدادات'); return }
@@ -1059,7 +1056,67 @@ function stockAdd(){
   $('#stName').value=''; $('#stQty').value=''; $('#stRef').value='';
   renderData(); toast('أُضيف الوارد — الرصيد '+num(it.qty));
 }
+function importInvoice(){
+  if(!canStock()){ denied(); return }
+  var inp=document.createElement('input'); inp.type='file'; inp.accept='.csv,text/csv';
+  inp.onchange=function(){
+    var f=inp.files&&inp.files[0]; if(!f) return;
+    var fr=new FileReader();
+    fr.onload=function(){
+      var rows=parseCSV(String(fr.result));
+      if(rows.length<2){ toast('الملف فارغ أو غير صالح'); return }
+      var head=rows[0].map(function(h){
+        var x=String(h||'').trim();
+        if(/قطعة|الصنف|البند|part|item/i.test(x)) return 'name';
+        if(/كمية|العدد|qty|quantity/i.test(x)) return 'qty';
+        if(/فاتورة|invoice|رقم الفاتورة/i.test(x)) return 'ref';
+        if(/ورشة|site|workshop/i.test(x)) return 'site';
+        return null;
+      });
+      if(head.indexOf('name')<0 || head.indexOf('qty')<0){ toast('الملف يحتاج عمودَي القطعة والكمية'); return }
+      var target=($('#stSite')&&$('#stSite').value)||deviceSite();
+      var items=[], bad=[];
+      rows.slice(1).forEach(function(r,i){
+        var rec={}; head.forEach(function(k,j){ if(k) rec[k]=String(r[j]==null?'':r[j]).trim() });
+        var nm=(rec.name||'').trim(), q=num(normId(rec.qty));
+        var st=(rec.site && sites().indexOf(rec.site)>=0)? rec.site : target;
+        if(!canAllSites() && st!==deviceSite()){ bad.push('سطر '+(i+2)+': ورشة خارج صلاحيتك'); return }
+        if(!nm || q<=0){ bad.push('سطر '+(i+2)+': بيانات ناقصة'); return }
+        var cur=stockFind(nm, st);
+        items.push({ name:nm, qty:q, site:st, ref:(rec.ref||'').trim(), now:cur?num(cur.qty):0 });
+      });
+      var body='<div class="sumline" style="margin:0 0 10px">'+
+          '<span class="tag t-done">'+items.length+' بند</span>'+
+          (bad.length? '<span class="tag t-red">'+bad.length+' سطر متجاوَز</span>':'')+
+        '</div>'+
+        (items.length? '<div class="tbl-wrap scroll-y"><table class="dt plain"><thead><tr>'+
+          '<th>الورشة</th><th>القطعة</th><th>الوارد</th><th>الرصيد الحالي</th><th>بعد الإدخال</th><th>الفاتورة</th>'+
+          '</tr></thead><tbody>'+items.map(function(x){
+            return '<tr><td>'+esc(x.site)+'</td><td class="plate">'+esc(x.name)+'</td>'+
+              '<td class="mono" style="font-weight:650">+'+x.qty+'</td>'+
+              '<td class="mono">'+x.now+'</td><td class="mono">'+(x.now+x.qty)+'</td>'+
+              '<td class="mono">'+esc(x.ref||'—')+'</td></tr>';
+          }).join('')+'</tbody></table></div>' : '<div class="empty">لا بنود صالحة.</div>')+
+        (bad.length? '<div class="mini-note">'+esc(bad.slice(0,10).join(' — '))+'</div>':'');
+      modal('مراجعة فاتورة المخزون', body,
+        '<button class="btn ghost" id="mCancel">إلغاء</button>'+
+        (items.length? '<button class="btn amber" id="invOk">اعتمد الإدخال</button>':''));
+      $('#mCancel').onclick=closeModal;
+      if(items.length) $('#invOk').onclick=function(){
+        items.forEach(function(x){
+          var it=stockMove(x.name, x.qty, 'وارد', x.ref? ('فاتورة '+x.ref):'فاتورة', '', x.site);
+          if(it && !it.minPct) it.minPct=10;
+        });
+        logEv('stock','اعتماد فاتورة: '+items.length+' بند وارد'+(items[0].ref?' — فاتورة '+items[0].ref:''));
+        save(); closeModal(); renderData(); toast('اعتُمد '+items.length+' بند');
+      };
+    };
+    fr.readAsText(f,'utf-8');
+  };
+  inp.click();
+}
 function stockAdjust(id){
+  if(!canStock()){ denied(); return }
   var it=db.stock.filter(function(x){ return x.id===id })[0]; if(!it) return;
   modal('جرد: '+it.name+' — '+(it.site||''),
     '<div class="mini-note">الرصيد الحالي في النظام: <b class="num">'+num(it.qty)+'</b></div>'+
@@ -1079,6 +1136,7 @@ function stockAdjust(id){
   };
 }
 function stockDelete(id){
+  if(!canStock()){ denied(); return }
   var it=db.stock.filter(function(x){ return x.id===id })[0]; if(!it) return;
   guard(function(){
     confirmBox('حذف قطعة من المخزون','تبقى حركتها السابقة في السجل، ولن تُخصم مستقبلاً حتى تُضاف من جديد.','حذف',function(){
@@ -1090,6 +1148,7 @@ function stockDelete(id){
 }
 
 function stockTransfer(id){
+  if(!canStock()){ denied(); return }
   var it=db.stock.filter(function(x){ return x.id===id })[0]; if(!it) return;
   var others=sites().filter(function(x){ return x!==it.site });
   if(!others.length){ toast('لا توجد ورشة أخرى للنقل إليها'); return }
@@ -1166,7 +1225,7 @@ function renderDevices(){
   });
   if(!list.length){ w.innerHTML='<div class="empty">لا توجد أجهزة مسجّلة بعد.</div>'; return }
   w.innerHTML='<div class="tbl-wrap"><table class="dt plain"><thead><tr>'+
-    '<th>الجهاز</th><th>الموقع</th><th>الحالة</th><th>الدور</th><th>آخر تحديث</th><th></th>'+
+    '<th>الجهاز</th><th>الموقع</th><th>الحالة</th><th>الصلاحية والورشة</th><th>آخر تحديث</th><th></th>'+
     '</tr></thead><tbody>'+list.map(function(d){
       var c= d.status==='مأذون'?'t-done': d.status==='مرفوض'?'t-red':'t-open';
       return '<tr'+(d.id===me?' class="s-done"':'')+'>'+
@@ -1174,12 +1233,14 @@ function renderDevices(){
           '<div class="no">'+esc(String(d.id).slice(-6))+'</div></td>'+
         '<td>'+esc(d.site||'—')+'</td>'+
         '<td><span class="tag '+c+'">'+esc(d.status)+'</span></td>'+
-        '<td>'+(d.role==='admin'?'<span class="tag t-shop">إدارة</span>':'مستخدم')+'</td>'+
+        '<td><span class="tag '+(d.role==='admin'?'t-shop':(d.role==='viewer'?'t-plain':'t-done'))+'">'+esc(ROLES[d.role]||d.role)+'</span>'+
+          '<div class="no">'+esc(d.site||'كل الورش')+'</div></td>'+
         '<td class="mono">'+fmtDT(d.updatedAt||d.requestedAt)+'</td>'+
         '<td style="white-space:nowrap">'+
-          (admin && d.id!==me
-            ? (d.status!=='مأذون'? '<button class="btn amber sm" data-devok="'+esc(d.id)+'">أذن</button> ':'')+
-              (d.status!=='مرفوض'? '<button class="btn ghost sm" data-devno="'+esc(d.id)+'">إيقاف</button>':'')
+          (admin
+            ? (d.id!==me && d.status!=='مأذون'? '<button class="btn amber sm" data-devok="'+esc(d.id)+'">أذن</button> ':'')+
+              (d.id!==me && d.status!=='مرفوض'? '<button class="btn ghost sm" data-devno="'+esc(d.id)+'">إيقاف</button> ':'')+
+              '<button class="btn ghost sm" data-devedit="'+esc(d.id)+'">تعديل</button>'
             : '')+
         '</td></tr>';
     }).join('')+'</tbody></table></div>'+
@@ -1189,15 +1250,12 @@ function renderData(){
   $('#setOrg').value=db.settings.org||'';
   $('#setProjects').value=(db.settings.projects||[]).join('\n');
   $('#setSites').value=(db.settings.sites||[]).join('\n');
-  var ds=$('#setDeviceSite');
-  if(ds){ ds.innerHTML=sites().map(function(x){ return '<option value="'+esc(x)+'">'+esc(x)+'</option>' }).join('');
-    ds.value=deviceSite(); }
+
   $('#setPin').value=db.settings.pass||'';
   $('#setCatalog').value=catalogToText(db.settings.catalog);
   var ab=$('#appBuild');
   if(ab) ab.textContent='إصدار الملف: '+APP_BUILD+
     (window.DabbabatApp? ' · يعمل داخل تطبيق أندرويد' : ' · يعمل في المتصفح');
-  bkStatus();
   renderDevices();
   var dn=$('#devSyncNote'); if(dn) dn.textContent= syErr? ('المزامنة متوقفة: '+syErr) : (syLast? ('آخر مزامنة '+fmtDT(syLast)):'');
   renderStock();
@@ -1395,6 +1453,7 @@ function openOrder(id, presetBike, prefill){
   });
   if(!isNew){
     $('#mDel').onclick=function(){
+      if(!canDelete()){ denied(); return }
       guard(function(){
         confirmBox('حذف أمر الصيانة','سيبقى أثر الحذف في السجل مع اسمك ووقت التنفيذ.','حذف نهائي',function(){
           usedParts(o).forEach(function(n){ stockMove(n, 1, 'إرجاع', '#'+o.no, 'حذف الأمر', o.site) });
@@ -1502,6 +1561,7 @@ function shrink(file, cb){
   fr.readAsDataURL(file);
 }
 function saveOrder(o, isNew){
+  if(!canEdit()){ denied(); return }
   var bikeId=$('#fBike').value;
   if(!bikeId){ toast('اختر الدباب أولاً'); return }
   var desc=($('#fDesc').value||'').trim();
@@ -1765,6 +1825,7 @@ function mapHeader(h){
   return null;
 }
 function importBikes(){
+  if(!isAdminDevice()){ denied(); return }
   var inp=document.createElement('input'); inp.type='file'; inp.accept='.csv,text/csv';
   inp.onchange=function(){
     var f=inp.files&&inp.files[0]; if(!f) return;
@@ -1774,30 +1835,51 @@ function importBikes(){
       if(rows.length<2){ toast('الملف فارغ أو غير صالح'); return }
       var head=rows[0].map(mapHeader);
       if(head.indexOf('plate')<0){ toast('لم يُعثر على عمود رقم اللوحة'); return }
-      var added=0, updated=0, skipped=[];
+      var changes=[], unknown=[], same=0;
       rows.slice(1).forEach(function(r,idx){
         var rec={}; head.forEach(function(k,i){ if(k) rec[k]=String(r[i]==null?'':r[i]).trim() });
         if(rec.odo) rec.odo=normId(rec.odo);
-        var plate=(rec.plate||'').trim();
-        if(!plate){ skipped.push('سطر '+(idx+2)+': بدون رقم لوحة'); return }
-        var ex=db.bikes.filter(function(b){ return (b.plate||'').trim()===plate })[0];
-        if(ex){
-          Object.keys(rec).forEach(function(k){ if(rec[k]) ex[k]=rec[k] });
-          ex.updatedAt=nowISO(); updated++;
-        } else {
-          db.bikes.push({ id:uid('b'), plate:plate, chassis:rec.chassis||'', model:rec.model||'',
-            year:rec.year||'', project:rec.project||'', city:rec.city||'',
-            odo:rec.odo||'', notes:'', retired:false,
-            createdAt:nowISO(), updatedAt:nowISO() });
-          added++;
-        }
+        var plate=(rec.plate||'').trim(); if(!plate) return;
+        var ex=db.bikes.filter(function(b){ return norm(b.plate)===norm(plate) })[0];
+        if(!ex){ unknown.push(plate); return }
+        var diff=[];
+        ['chassis','model','year','project','city','odo'].forEach(function(k){
+          if(rec[k] && String(rec[k])!==String(ex[k]||'')) diff.push({k:k, from:ex[k]||'—', to:rec[k]});
+        });
+        if(!diff.length){ same++; return }
+        changes.push({id:ex.id, plate:ex.plate, diff:diff});
       });
-      logEv('data','استيراد أسطول من ملف: '+added+' جديدة، '+updated+' محدّثة، '+skipped.length+' متجاوَزة');
-      save(); render();
-      $('#importReport').innerHTML='<div class="panel" style="margin-top:12px;border-color:#B7DFC9;background:var(--green-s)">'+
-        '<b>تم الاستيراد</b><div class="num">أُضيفت: '+added+' · حُدّثت: '+updated+' · تجاوُز: '+skipped.length+'</div>'+
-        (skipped.length? '<div class="mini-note">'+esc(skipped.slice(0,12).join(' — '))+'</div>':'')+'</div>';
-      toast('تم الاستيراد');
+      var names={chassis:'رقم الهيكل',model:'الموديل',year:'السنة',project:'المشروع',city:'المدينة',odo:'العداد'};
+      var body='<div class="sumline" style="margin:0 0 10px">'+
+        '<span class="tag t-shop">'+changes.length+' دباب سيُحدَّث</span>'+
+        '<span class="tag t-plain">'+same+' بلا تغيير</span>'+
+        (unknown.length? '<span class="tag t-red">'+unknown.length+' لوحة غير مسجّلة — تُتجاهل</span>':'')+
+        '</div>'+
+        '<div class="mini-note">الاستيراد يدمج فقط: يُحدّث القائم، ولا يضيف دباباً جديداً ولا يحذف شيئاً.</div>'+
+        (changes.length? '<div class="tbl-wrap scroll-y" style="margin-top:10px"><table class="dt plain"><thead><tr>'+
+          '<th>اللوحة</th><th>الحقل</th><th>الحالي</th><th>الجديد</th></tr></thead><tbody>'+
+          changes.slice(0,80).map(function(c){
+            return c.diff.map(function(d,i){
+              return '<tr>'+(i===0?'<td class="plate" rowspan="'+c.diff.length+'">'+esc(c.plate)+'</td>':'')+
+                '<td>'+esc(names[d.k]||d.k)+'</td><td class="mono">'+esc(d.from)+'</td>'+
+                '<td class="mono" style="font-weight:650">'+esc(d.to)+'</td></tr>';
+            }).join('');
+          }).join('')+'</tbody></table></div>' : '<div class="empty" style="margin-top:10px">لا تغييرات لتطبيقها.</div>')+
+        (unknown.length? '<div class="mini-note" style="margin-top:8px">لوحات غير مسجّلة: '+esc(unknown.slice(0,15).join('، '))+(unknown.length>15?' …':'')+'</div>':'');
+      modal('مراجعة الاستيراد قبل التطبيق', body,
+        '<button class="btn ghost" id="mCancel">إلغاء</button>'+
+        (changes.length? '<button class="btn amber" id="impOk">طبّق '+changes.length+' تحديثاً</button>':''));
+      $('#mCancel').onclick=closeModal;
+      if(changes.length) $('#impOk').onclick=function(){
+        var n=0;
+        changes.forEach(function(c){
+          var b=db.bikes.filter(function(x){ return x.id===c.id })[0]; if(!b) return;
+          c.diff.forEach(function(d){ b[d.k]=d.to });
+          b.updatedAt=nowISO(); n++;
+        });
+        logEv('data','استيراد بالدمج: تحديث '+n+' دباب، تجاهل '+unknown.length+' لوحة غير مسجّلة');
+        save(); closeModal(); render(); toast('حُدِّث '+n+' دباب');
+      };
     };
     fr.readAsText(f,'utf-8');
   };
@@ -1831,13 +1913,22 @@ function devRec(){
   for(var i=0;i<db.devices.length;i++) if(db.devices[i].id===devId()) return db.devices[i];
   return null;
 }
-function isAdminDevice(){ var d=devRec(); return !!(d && d.role==='admin') }
+var ROLES={ admin:'إداري', supervisor:'مشرف', mechanic:'مكانيكي', viewer:'متابعة' };
+function myRole(){ var d=devRec(); return (d&&d.role)||'viewer' }
+function mySite(){ var d=devRec(); return (d&&d.site)|| (sites()[0]||'') }
+function isAdminDevice(){ return myRole()==='admin' }
+function canEdit(){ var r=myRole(); return r==='admin'||r==='supervisor'||r==='mechanic' }
+function canDelete(){ var r=myRole(); return r==='admin'||r==='supervisor' }
+function canStock(){ var r=myRole(); return r==='admin'||r==='supervisor' }
+function canData(){ var r=myRole(); return r==='admin'||r==='supervisor' }
+function canAllSites(){ return myRole()==='admin' }
+function denied(){ toast('صلاحيتك ('+ (ROLES[myRole()]||'متابعة') +') لا تسمح بهذا الإجراء') }
 function isApproved(){ var d=devRec(); return !!(d && (d.status==='مأذون' || d.role==='admin')) }
 
 function devRegister(name, site){
   var d=devRec();
   if(!d){
-    d={ id:devId(), name:name||'جهاز', site:site||'', status:'بانتظار الإذن', role:'user',
+    d={ id:devId(), name:name||'جهاز', site:site||(sites()[0]||''), status:'بانتظار الإذن', role:'viewer',
         requestedAt:nowISO(), updatedAt:nowISO() };
     db.devices.push(d);
     logEv('device','طلب دخول جديد من جهاز: '+d.name+(d.site?' — '+d.site:''), d.id, '', 'بانتظار الإذن');
@@ -1856,12 +1947,38 @@ function devApprove(id, ok){
   for(var i=0;i<db.devices.length;i++) if(db.devices[i].id===id){
     var d=db.devices[i], from=d.status;
     d.status= ok? 'مأذون':'مرفوض';
+    if(ok && (!d.role || d.role==='viewer')) d.role='mechanic';
     d.approvedBy=(user&&user.name)||''; d.approvedAt=nowISO(); d.updatedAt=nowISO();
-    logEv('device',(ok?'الإذن بدخول جهاز ':'رفض جهاز ')+d.name, d.id, from, d.status);
+    logEv('device',(ok?'الإذن بدخول جهاز ':'رفض جهاز ')+d.name+(ok?' بصلاحية '+(ROLES[d.role]||d.role):''), d.id, from, d.status);
     save(); render(); syTick();
     toast(ok? 'أُذن للجهاز':'رُفض الجهاز');
     return;
   }
+}
+function devEdit(id){
+  if(!isAdminDevice()){ denied(); return }
+  var d=null;
+  for(var i=0;i<db.devices.length;i++) if(db.devices[i].id===id) d=db.devices[i];
+  if(!d) return;
+  modal('الجهاز: '+(d.name||''),
+    '<label class="f"><span>اسم الجهاز</span><input type="text" id="dvName" value="'+esc(d.name||'')+'"></label>'+
+    '<label class="f"><span>الورشة — يُقيَّد بها المخزون وأوامره</span><select id="dvSite">'+
+      selOpts(sites(), d.site||'', '— كل الورش —')+'</select></label>'+
+    '<label class="f"><span>الصلاحية</span><select id="dvRole">'+
+      Object.keys(ROLES).map(function(k){
+        return '<option value="'+k+'"'+(d.role===k?' selected':'')+'>'+esc(ROLES[k])+'</option>' }).join('')+
+    '</select></label>'+
+    '<div class="mini-note"><b>إداري:</b> كل شيء وكل الورش والأذونات. <b>مشرف:</b> أوامر ورشته ومخزونها وحذفها. '+
+    '<b>مكانيكي:</b> تسجيل وتعديل أوامر ورشته بلا حذف ولا مخزون. <b>متابعة:</b> قراءة فقط.</div>',
+    '<button class="btn ghost" id="mCancel">إلغاء</button><button class="btn amber" id="dvSave">حفظ</button>');
+  $('#mCancel').onclick=closeModal;
+  $('#dvSave').onclick=function(){
+    var before=d.role+'/'+(d.site||'—');
+    d.name=($('#dvName').value||'').trim()||d.name;
+    d.site=$('#dvSite').value; d.role=$('#dvRole').value; d.updatedAt=nowISO();
+    logEv('device','تعديل جهاز '+d.name+': '+(ROLES[d.role]||d.role)+' — '+(d.site||'كل الورش'), d.id, before, d.role+'/'+(d.site||'—'));
+    save(); closeModal(); render(); syTick(); toast('حُفظت صلاحية الجهاز');
+  };
 }
 function syPayload(){
   var d=devRec();
@@ -1908,79 +2025,6 @@ function syDot(){
 }
 function sySchedule(){ clearTimeout(syDebounce); syDebounce=setTimeout(function(){ syTick() }, 6000) }
 function syStart(){ if(syTimer) clearInterval(syTimer); syTimer=setInterval(function(){ syTick() }, SY_EVERY); syTick(true) }
-
-/* ---------------- ملف نسخة مرتبط: إذن مرة واحدة ثم حفظ تلقائي ---------------- */
-var bkHandle=null, bkNeedsOk=null, bkTimer=null, bkBusy=false;
-function bkSupported(){ return !!window.showSaveFilePicker }
-function bkPayload(){
-  return IDB.all().then(function(photos){
-    return JSON.stringify({ app:'dbb_maint', v:1, exportedAt:nowISO(),
-      by:(user&&user.name)||'', data:db, photos:photos });
-  });
-}
-function bkStatus(msg){
-  var el=$('#bkStatus'); if(!el) return;
-  if(msg){ el.textContent=msg; return }
-  var last=localStorage.getItem('dbb_bk_last')||'';
-  if(bkHandle) el.textContent='مرتبط بالملف: '+(bkHandle.name||'—')+(last?' · آخر حفظ '+fmtDT(last):'');
-  else if(bkNeedsOk) el.textContent='الملف مرتبط، والمتصفح يطلب سماحاً واحداً — اضغط «ربط ملف النسخة» للاستئناف.';
-  else if(!bkSupported()) el.textContent='الربط التلقائي يحتاج كروم أو إيدج على الكمبيوتر. على الجوال استخدم زر تنزيل نسخة احتياطية.';
-  else el.textContent='غير مرتبط — النسخ يدوي بزر التنزيل.';
-}
-function bkLink(){
-  if(bkNeedsOk){
-    bkNeedsOk.requestPermission({mode:'readwrite'}).then(function(p){
-      if(p==='granted'){ bkHandle=bkNeedsOk; bkNeedsOk=null; bkWrite(); bkStatus(); toast('استُؤنف الحفظ التلقائي') }
-      else toast('لم يُسمح بالكتابة في الملف');
-    }).catch(function(){ toast('تعذّر طلب الإذن') });
-    return;
-  }
-  if(!bkSupported()){ toast('هذه الميزة تحتاج كروم أو إيدج على الكمبيوتر'); return }
-  window.showSaveFilePicker({ suggestedName:'نسخة-صيانة-الدبابات.json',
-    types:[{description:'ملف نسخة', accept:{'application/json':['.json']}}] })
-    .then(function(h){
-      bkHandle=h; IDB.put('bk_handle', h);
-      logEv('data','ربط ملف النسخة الاحتياطية: '+(h.name||''));
-      save(); bkWrite(); bkStatus(); toast('تم الربط — الحفظ التلقائي يعمل');
-    }).catch(function(){});
-}
-function bkUnlink(){
-  if(!bkHandle && !bkNeedsOk){ toast('لا يوجد ملف مرتبط'); return }
-  bkHandle=null; bkNeedsOk=null; IDB.del('bk_handle');
-  logEv('data','فك ارتباط ملف النسخة الاحتياطية'); save(); bkStatus(); toast('فُك الارتباط');
-}
-function bkWrite(silent){
-  if(!bkHandle || bkBusy) return;
-  bkBusy=true;
-  bkPayload().then(function(txt){
-    return bkHandle.createWritable().then(function(wr){
-      return wr.write(txt).then(function(){ return wr.close() });
-    });
-  }).then(function(){
-    bkBusy=false;
-    localStorage.setItem('dbb_bk_last', nowISO());
-    bkStatus();
-    if(!silent) toast('حُفظت النسخة في الملف المرتبط');
-  }).catch(function(){
-    bkBusy=false; bkHandle=null;
-    bkStatus('توقف الحفظ التلقائي: تعذّرت الكتابة في الملف. أعد الربط.');
-  });
-}
-function bkSchedule(){
-  if(!bkHandle) return;
-  clearTimeout(bkTimer);
-  bkTimer=setTimeout(function(){ bkWrite(true) }, 4000);
-}
-function bkResume(){
-  if(!bkSupported()) return;
-  IDB.get('bk_handle').then(function(h){
-    if(!h || !h.queryPermission) return;
-    h.queryPermission({mode:'readwrite'}).then(function(p){
-      if(p==='granted'){ bkHandle=h } else { bkNeedsOk=h }
-      bkStatus();
-    }).catch(function(){});
-  }).catch(function(){});
-}
 
 /* ---------------- النسخ الاحتياطية ---------------- */
 function backup(){
@@ -2100,7 +2144,7 @@ function saveSettings(){
   db.settings.projects=($('#setProjects').value||'').split('\n').map(function(s){return s.trim()}).filter(Boolean);
   var ns=($('#setSites').value||'').split('\n').map(function(s){return s.trim()}).filter(Boolean);
   if(ns.length) db.settings.sites=ns;
-  if($('#setDeviceSite') && $('#setDeviceSite').value) localStorage.setItem('dbb_site', $('#setDeviceSite').value);
+
   db.settings.pass=($('#setPin').value||'').trim();
   db.settings.catalog=textToCatalog($('#setCatalog').value);
   logEv('data','تحديث إعدادات النظام');
@@ -2160,6 +2204,7 @@ function init(){
   $('#btnBackup').onclick=backup;
   $('#btnDevSync').onclick=function(){ toast('جارٍ التحديث…'); syTick(true).then? null:null; setTimeout(function(){ render() },1800) };
   $('#btnStAdd').onclick=stockAdd;
+  $('#btnInvoice').onclick=importInvoice;
   $('#stSearch').oninput=renderStock;
   $('#stFilter').onchange=renderStock;
   $('#stSiteFilter').onchange=renderStock;
@@ -2168,10 +2213,6 @@ function init(){
   $('#btnCsvMoves').onclick=csvMoves;
   $('#stName').onkeydown=function(e){ if(e.key==='Enter') $('#stQty').focus() };
   $('#stQty').onkeydown=function(e){ if(e.key==='Enter') stockAdd() };
-  $('#btnBkLink').onclick=bkLink;
-  $('#btnBkNow').onclick=function(){ bkHandle? bkWrite() : toast('اربط ملف النسخة أولاً') };
-  $('#btnBkUnlink').onclick=bkUnlink;
-  bkResume();
   $('#btnRestoreMerge').onclick=function(){ restore('merge') };
   $('#btnImportBikes').onclick=importBikes;
   $('#btnTemplate').onclick=template;
@@ -2195,6 +2236,7 @@ function init(){
 
   document.addEventListener('click', function(e){
     var o=e.target.closest('[data-order]'); if(o){ openOrder(o.dataset.order); return }
+    var ded=e.target.closest('[data-devedit]'); if(ded){ devEdit(ded.dataset.devedit); return }
     var dok=e.target.closest('[data-devok]'); if(dok){ devApprove(dok.dataset.devok, true); return }
     var dno=e.target.closest('[data-devno]'); if(dno){ devApprove(dno.dataset.devno, false); return }
     var sa=e.target.closest('[data-stadj]'); if(sa){ stockAdjust(sa.dataset.stadj); return }
