@@ -500,7 +500,7 @@ details[open] > summary{margin-bottom:10px}
 (function(){
 'use strict';
 
-var APP_BUILD='2026-09-16';
+var APP_BUILD='2026-09-17-r2';
 var LS_DATA='dbb_maint_v1', LS_USER='dbb_maint_user_v1';
 var LIVE=['مفتوح','في الورشة','بانتظار قطع'];
 var AGE_WARN=72, AGE_BAD=168; /* ساعات: 3 أيام / 7 أيام */
@@ -2024,7 +2024,30 @@ function syDot(){
   if(t) t.textContent= syErr? ('المزامنة متوقفة: '+syErr) : (syLast? ('آخر مزامنة '+fmtDT(syLast)) : 'جارٍ الاتصال…');
 }
 function sySchedule(){ clearTimeout(syDebounce); syDebounce=setTimeout(function(){ syTick() }, 6000) }
-function syStart(){ if(syTimer) clearInterval(syTimer); syTimer=setInterval(function(){ syTick() }, SY_EVERY); syTick(true) }
+function syStart(){
+  if(syTimer) clearInterval(syTimer);
+  syTimer=setInterval(function(){ syTick() }, SY_EVERY);
+  syTick(true);
+  setTimeout(checkBuild, 20000);
+  setInterval(checkBuild, 600000);
+}
+/* نشر التحديث: كل جهاز يفحص نسخة الملف على الخادم ويعيد التحميل وحده عند تغيّرها */
+async function checkBuild(){
+  try{
+    var r=await fetch(location.pathname+'?b='+Date.now(), {cache:'no-store'});
+    if(!r.ok) return;
+    var t=await r.text();
+    var m=t.match(/APP_BUILD='([^']+)'/);
+    if(m && m[1] && m[1]!==APP_BUILD){
+      toast('وصل تحديث للنظام — يُطبَّق الآن. بياناتك كما هي.');
+      setTimeout(function(){
+        try{ if(navigator.serviceWorker) navigator.serviceWorker.getRegistrations().then(function(rs){ rs.forEach(function(x){ x.unregister() }) }) }catch(e){}
+        try{ if(window.caches) caches.keys().then(function(ks){ ks.forEach(function(k){ caches.delete(k) }) }) }catch(e){}
+        setTimeout(function(){ location.replace(location.pathname+'?v='+encodeURIComponent(m[1])) }, 600);
+      }, 2500);
+    }
+  }catch(e){}
+}
 
 /* ---------------- النسخ الاحتياطية ---------------- */
 function backup(){
