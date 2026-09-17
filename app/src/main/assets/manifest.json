@@ -1,7 +1,7 @@
 {
   "name": "سجل صيانة الدبابات",
   "short_name": "صيانة الدبابات",
-  "description": "متابعة ميدانية لصيانة الدبابات ومخزون قطع الغيار",
+  "description": "متابعة ميدانية لصيانة الدبابات",
   "id": "dabbabat-maintenance",
   "start_url": "app.html",
   "scope": "./",
@@ -11,8 +11,7 @@
   "background_color": "#14433F",
   "theme_color": "#14433F",
   "icons": [
-    { "src": "https://ui-avatars.com/api/?name=DB&size=192&background=14433F&color=ffffff&bold=true&format=png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "https://ui-avatars.com/api/?name=DB&size=512&background=14433F&color=ffffff&bold=true&format=png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "https://ui-avatars.com/api/?name=DB&size=512&background=14433F&color=ffffff&bold=true&format=png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
   ]
 }
