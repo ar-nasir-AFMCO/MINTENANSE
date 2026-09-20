@@ -1,7 +1,7 @@
 {
   "name": "Afmco Maintenance APP",
   "short_name": "Afmco Maintenance",
-  "description": "متابعة صيانة الأسطول ومخزون قطع الغيار",
+  "description": "Fleet maintenance and spare parts",
   "id": "afmco-maintenance",
   "start_url": "app/src/main/assets/app.html",
   "scope": "./",
@@ -13,7 +13,9 @@
   "background_color": "#14433F",
   "theme_color": "#14433F",
   "icons": [
-    { "src": "app/src/main/assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "app/src/main/assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+    { "src": "https://ui-avatars.com/api/?name=AM&background=14433F&color=ffffff&bold=true&format=png&size=192", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "https://ui-avatars.com/api/?name=AM&background=14433F&color=ffffff&bold=true&format=png&size=512", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "https://ui-avatars.com/api/?name=AM&background=14433F&color=ffffff&bold=true&format=png&size=512", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "app/src/main/assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]
 }
