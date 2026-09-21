@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>منصّة AFMC</title>
+<meta name="theme-color" content="#0f6e6e">
+<style>
+:root{--brand:#0f6e6e;--brand-2:#0b5454;--brand-soft:#e3efed;--sand:#d8b98a;--bg:#f4efe6;--surface:#fffdf8;--surface-2:#f7f2e8;--ink:#1f2a2a;--muted:#5d6b6a;--line:#e4dccb;
+--ok:#1e6b43;--okbg:#e8f4ed;--warn:#9a5b12;--warnbg:#fcf1e2;--bad:#a23a2e;--badbg:#fbeae7;--info:#2c5e8a;--infobg:#e8f0f8;--shadow:0 6px 24px rgba(15,60,60,.08)}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Tahoma,"Segoe UI",system-ui,sans-serif;font-size:14px}
+button,input,select{font:inherit;color:inherit}
+.hide{display:none!important}
+
+/* ---------- top bar ---------- */
+.top{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:10px 18px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.logo{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;flex:none}
+.brand b{font-size:16px;white-space:nowrap}.brand small{display:block;color:var(--muted);font-size:11px}
+.tabs{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:3px;margin-inline-start:auto;overflow-x:auto;max-width:100%}
+.tabs button{border:0;background:none;padding:8px 14px;border-radius:9px;cursor:pointer;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:6px}
+.tabs button.on{background:var(--surface);color:var(--brand);font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.tabs .cnt{background:var(--bad);color:#fff;border-radius:999px;font-size:10px;padding:1px 6px}
+.me{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px}
+.me .av{width:30px;height:30px;border-radius:50%;background:var(--brand-soft);color:var(--brand);display:flex;align-items:center;justify-content:center;font-weight:700}
+.me button{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:6px 10px;cursor:pointer}
+@media (max-width:760px){.tabs{order:3;margin:0;width:100%}.me .who{display:none}.top{gap:10px;padding:10px 12px}}
+
+/* ---------- views ---------- */
+.view{padding:18px;max-width:1400px;margin:0 auto}
+.h{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:4px 0 14px;flex-wrap:wrap}
+.h h2{margin:0;font-size:19px}.h p{margin:3px 0 0;color:var(--muted);font-size:13px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
+.btn{border:0;background:var(--brand);color:#fff;border-radius:10px;padding:9px 14px;cursor:pointer;font-weight:700}
+.btn.ghost{background:var(--surface);color:var(--brand);border:1px solid var(--line)}
+.btn.sm{padding:6px 10px;font-size:12px}
+.btn:disabled{opacity:.55;cursor:default}
+
+/* systems */
+#vSys{max-width:none;padding:0;height:calc(100vh - 58px);display:flex;flex-direction:column}
+.sysbar{display:flex;gap:10px;padding:12px 18px;overflow-x:auto;background:var(--bg);border-bottom:1px solid var(--line);flex:none}
+.sys{flex:none;display:flex;align-items:center;gap:10px;min-width:190px;padding:10px 12px;border:1px solid var(--line);background:var(--surface);border-radius:14px;cursor:pointer;text-align:right}
+.sys:hover{border-color:var(--brand)}
+.sys.on{border-color:var(--brand);box-shadow:0 0 0 2px rgba(15,110,110,.18);background:#fff}
+.sys .ic{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;background:var(--brand-soft);flex:none}
+.sys b{display:block;font-size:14px}.sys small{color:var(--muted);font-size:11px}
+.frames{flex:1;position:relative;background:var(--surface)}
+.frames iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff}
+.pick{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--muted);text-align:center;padding:20px}
+.pick .big{font-size:40px}
+.fbar{margin-inline-start:auto;display:flex;gap:6px;align-items:center;flex:none}
+.fbar a,.fbar button{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--brand);text-decoration:none;cursor:pointer;white-space:nowrap}
+
+/* permissions & integration */
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+.stat{padding:14px 16px}
+.stat .t{display:flex;align-items:center;gap:8px;font-weight:700}
+.stat .t .ic{font-size:18px}
+.stat .n{font-size:26px;font-weight:700;margin:8px 0 2px;color:var(--brand)}
+.stat .s{color:var(--muted);font-size:12px;line-height:1.7}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-inline-end:4px;vertical-align:middle}
+.dot.g{background:#16a34a}.dot.a{background:#f59e0b}.dot.r{background:#dc2626}.dot.x{background:#94a3b8}
+.sec{margin-top:22px}
+.sec h3{margin:0 0 10px;font-size:16px;display:flex;align-items:center;gap:8px}
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px 12px;text-align:right;border-bottom:1px solid #efe8da;vertical-align:top}
+th{font-size:12px;color:var(--muted);font-weight:600;background:var(--surface-2);position:sticky;top:0}
+tr.new td{background:#fdf7ec}
+.tbl{overflow:auto;max-height:70vh;border-radius:16px}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;background:var(--surface-2);border:1px solid var(--line);margin:2px}
+.tag.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.tag[data-p]{cursor:pointer}
+.sub{color:var(--muted);font-size:12px;line-height:1.7}
+select.role{padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.sw{position:relative;display:inline-block;width:40px;height:22px}
+.sw input{opacity:0;width:0;height:0}
+.sw span{position:absolute;inset:0;background:#d6d0c4;border-radius:999px;transition:.2s;cursor:pointer}
+.sw span:before{content:"";position:absolute;width:16px;height:16px;right:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.sw input:checked+span{background:var(--brand)}.sw input:checked+span:before{transform:translateX(-18px)}
+.sw input:disabled+span{opacity:.5;cursor:default}
+.link{display:flex;gap:8px;align-items:center;padding:12px 14px;flex-wrap:wrap}
+.link code{flex:1;min-width:200px;direction:ltr;text-align:left;background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:12px;overflow:auto;white-space:nowrap}
+
+/* review */
+.tiles{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));margin-bottom:14px}
+.tile{padding:12px 14px;cursor:pointer;border:1px solid var(--line);background:var(--surface);border-radius:14px;text-align:right}
+.tile.on{border-color:var(--brand);box-shadow:0 0 0 2px rgba(15,110,110,.15)}
+.tile .n{font-size:22px;font-weight:700}.tile .l{color:var(--muted);font-size:12px}
+.sev{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
+.sev.high{background:var(--badbg);color:var(--bad)}.sev.medium{background:var(--warnbg);color:var(--warn)}.sev.low{background:var(--infobg);color:var(--info)}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.filters input,.filters select{padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.filters input{min-width:220px;flex:1}
+.empty{padding:40px;text-align:center;color:var(--muted)}
+
+/* gate */
+#gate{position:fixed;inset:0;z-index:100;background:linear-gradient(140deg,#0b3b3b,#0f6e6e 60%,#16807f);display:flex;align-items:center;justify-content:center;padding:18px}
+#gate .card{width:min(400px,100%);padding:26px 22px}
+#gate h1{margin:10px 0 4px;font-size:21px}#gate p{margin:0 0 16px;color:var(--muted);font-size:13px;line-height:1.7}
+#gate label{display:block;margin-bottom:11px}#gate label span{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+#gate input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;direction:ltr;text-align:right;background:#fff}
+#gate .btn{width:100%;padding:12px;font-size:15px;margin-top:4px}
+.msg{padding:10px 12px;border-radius:10px;font-size:13px;margin-bottom:12px;line-height:1.7}
+.msg.bad{background:var(--badbg);color:var(--bad)}.msg.ok{background:var(--okbg);color:var(--ok)}.msg.warn{background:var(--warnbg);color:var(--warn)}
+#gate .foot{text-align:center;margin-top:14px;font-size:13px;color:var(--muted)}
+#gate a{color:var(--brand);font-weight:700}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:200;background:#0f3d3e;color:#fff;border-radius:12px;padding:10px 16px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.25);display:none;max-width:90vw}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="card">
+    <div class="logo">A</div>
+    <h1>منصّة AFMC الموحّدة</h1>
+    <p>وثيق · الأسطول · Ninja · Keemart · صيانة الدبابات<br>حساب واحد لكل الأنظمة.</p>
+    <div id="gMsg"></div>
+    <form id="gForm">
+      <label><span>البريد الإلكتروني</span><input id="gEmail" type="email" required autocomplete="username"></label>
+      <label><span>كلمة المرور</span><input id="gPass" type="password" required autocomplete="current-password"></label>
+      <button class="btn" id="gGo" type="submit">دخول</button>
+    </form>
+    <div class="foot">ليس لديك حساب؟ <a href="../register.html">اطلب حساباً</a></div>
+  </div>
+</div>
+
+<header class="top hide" id="top">
+  <div class="brand"><div class="logo">A</div><div><b>منصّة AFMC</b><small>العمليات الموحّدة</small></div></div>
+  <nav class="tabs" id="tabs">
+    <button data-v="vSys" class="on">🗂️ الأنظمة</button>
+    <button data-v="vAdm" data-need="admin">🔐 الصلاحيات والتكامل <span class="cnt hide" id="pendCnt"></span></button>
+    <button data-v="vRev" data-need="review">🔎 مراجعة البيانات <span class="cnt hide" id="revCnt"></span></button>
+  </nav>
+  <div class="me"><div class="av" id="meAv">؟</div><div class="who"><b id="meName"></b><br><span id="meRole"></span></div><button id="logout">خروج</button></div>
+</header>
+
+<!-- ============ الأنظمة ============ -->
+<main id="vSys" class="view hide">
+  <div class="sysbar" id="sysbar"></div>
+  <div class="frames" id="frames">
+    <div class="pick" id="pick"><div class="big">🗂️</div><b>اختر النظام من الأعلى</b><span>كل الأنظمة تعمل على قاعدة بيانات واحدة وبنفس حسابك.</span></div>
+  </div>
+</main>
+
+<!-- ============ الصلاحيات والتكامل ============ -->
+<main id="vAdm" class="view hide">
+  <div class="h"><div><h2>الصلاحيات والتكامل</h2><p>اعتماد الحسابات، الأدوار والمشاريع، وحالة ربط الأنظمة.</p></div>
+    <button class="btn ghost" id="admRefresh">🔄 تحديث</button></div>
+
+  <div class="sec" id="pendSec">
+    <h3>🆕 طلبات التسجيل</h3>
+    <div class="card tbl"><table><thead><tr><th>المتقدّم</th><th>البيانات</th><th>الدور</th><th>المشاريع</th><th></th></tr></thead><tbody id="pendBody"></tbody></table></div>
+  </div>
+
+  <div class="sec">
+    <h3>👥 المستخدمون المعتمدون</h3>
+    <div class="card tbl"><table><thead><tr><th>المستخدم</th><th>الدور</th><th>المشاريع (للمشرف والمتابعة)</th><th>مفعّل</th><th></th></tr></thead><tbody id="usersBody"></tbody></table></div>
+    <div class="sub" style="margin-top:8px">مدير النظام والمدير والمالية يرون كل المشاريع. المشرف والمتابعة يرون المشاريع المحدّدة فقط. الرواتب تظهر للمدير والمالية فقط.</div>
+  </div>
+
+  <div class="sec">
+    <h3>🔗 رابط التسجيل للفريق</h3>
+    <div class="card link"><code id="regLink"></code><button class="btn sm" id="copyReg">نسخ الرابط</button><a class="btn ghost sm" id="openReg" target="_blank">فتح</a></div>
+  </div>
+
+  <div class="sec">
+    <h3>🔌 حالة التكامل</h3>
+    <div class="grid" id="integ"></div>
+  </div>
+</main>
+
+<!-- ============ مراجعة البيانات ============ -->
+<main id="vRev" class="view hide">
+  <div class="h"><div><h2>مراجعة البيانات</h2><p>كل ما يحتاج تصحيحاً في الأنظمة المربوطة — يُحدَّث تلقائياً عند التصحيح.</p></div>
+    <div style="display:flex;gap:8px"><button class="btn ghost" id="revRefresh">🔄 تحديث</button><button class="btn" id="revCsv">⬇️ تصدير CSV</button></div></div>
+  <div class="tiles" id="tiles"></div>
+  <div class="filters">
+    <input id="revQ" placeholder="بحث بالاسم أو الإقامة أو اللوحة…">
+    <select id="revSev"><option value="">كل الأولويات</option><option value="high">عالية</option><option value="medium">متوسطة</option><option value="low">منخفضة</option></select>
+    <select id="revProj"><option value="">كل المشاريع</option></select>
+  </div>
+  <div class="card tbl"><table><thead><tr><th>الأولوية</th><th>النوع</th><th>المرجع</th><th>الاسم</th><th>المشروع</th><th>الملاحظة</th></tr></thead><tbody id="revBody"></tbody></table></div>
+  <div class="sub" id="revFoot" style="margin-top:8px"></div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+(function(){
+  'use strict';
+  var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
+  var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
+  var SKEY = 'wfsb_session';
+  var ROLES = [['admin','مدير النظام'],['manager','مدير'],['finance','مالية'],['supervisor','مشرف'],['maintenance','صيانة'],['viewer','متابعة']];
+  var ROLE_AR = {}; ROLES.forEach(function(r){ ROLE_AR[r[0]] = r[1]; });
+  var JOB_AR = { viewer:'متابعة', supervisor:'مشرف', maintenance:'صيانة', finance:'مالية', manager:'إدارة' };
+  var SYSTEMS = [
+    { id:'watheeq', ic:'👥', name:'وثيق', desc:'الموظفون والعقود والرواتب', src:'watheeq.html', roles:['admin','manager','finance','supervisor','viewer'] },
+    { id:'fleet', ic:'🚗', name:'الأسطول', desc:'المركبات والتسليم والورش', src:'fleet.html', roles:['admin','manager','finance','supervisor','maintenance','viewer'] },
+    { id:'ninja', ic:'🥷', name:'Ninja', desc:'أداء الكباتن والـ SLA', src:'ninja.html', roles:['admin','manager','finance','supervisor','viewer'] },
+    { id:'keemart', ic:'🛵', name:'Keemart', desc:'الحضور والتسوية والفواتير', src:'keemart.html', roles:['admin','manager','finance','supervisor','viewer'] },
+    { id:'dbb', ic:'🔧', name:'صيانة الدبابات', desc:'أوامر الصيانة الميدانية', src:'../', roles:['admin','manager','maintenance','supervisor'], own:true }
+  ];
+  var AREA_AR = { employees:'الموظفون', vehicles:'المركبات', attendance:'الحضور', maintenance:'الصيانة' };
+  var CODE_AR = { no_phone:'بلا جوال', dup_phone:'جوال مكرر', iqama_expired:'إقامة منتهية', iqama_soon:'إقامة قريبة الانتهاء', license_expired:'رخصة منتهية',
+                  no_project:'بلا مشروع', assigned_no_driver:'مسلّمة بلا سائق', workshop_long:'ورشة طويلة', rule:'تعارض قواعد', driver_not_in_hr:'سائق غير موجود في وثيق',
+                  captain_not_in_hr:'كابتن غير مربوط', bike_not_in_fleet:'دباب غير مسجّل' };
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function lsGet(k){ try { var r = localStorage.getItem(k); return r ? JSON.parse(r) : null; } catch(e){ return null; } }
+  function lsSet(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+  var toastT; function toast(m){ var t = $('toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(function(){ t.style.display = 'none'; }, 3500); }
+  function when(iso){ if (!iso) return '—'; var d = new Date(iso); if (isNaN(d)) return esc(iso);
+    var m = Math.round((Date.now() - d) / 60000); if (m < 1) return 'الآن'; if (m < 60) return 'قبل ' + m + ' د'; var h = Math.round(m / 60); if (h < 24) return 'قبل ' + h + ' س';
+    return d.toLocaleDateString('ar-SA', { day:'numeric', month:'short' }); }
+
+  /* ---------------- session ---------------- */
+  var sess = lsGet(SKEY), me = null, refreshing = null;
+  function auth(path, body){
+    return fetch(SB_URL + '/auth/v1/' + path, { method:'POST', headers:{ apikey:SB_KEY, 'Content-Type':'application/json' }, body: JSON.stringify(body) })
+      .then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error(j.error_description || j.msg || j.message || ('HTTP ' + r.status)); return j; }); });
+  }
+  function keep(j){ sess = { access_token:j.access_token, refresh_token:j.refresh_token, expires_at: Date.now() + (j.expires_in || 3600) * 1000, user_id: j.user && j.user.id, email: j.user && j.user.email }; lsSet(SKEY, sess); }
+  function token(){
+    var fresh = lsGet(SKEY); if (fresh && sess && fresh.user_id === sess.user_id && fresh.expires_at > sess.expires_at) sess = fresh;
+    if (!sess) return Promise.reject(new Error('no session'));
+    if (Date.now() < sess.expires_at - 90000) return Promise.resolve(sess.access_token);
+    if (!refreshing) refreshing = auth('token?grant_type=refresh_token', { refresh_token: sess.refresh_token })
+      .then(function(j){ keep(j); refreshing = null; return sess.access_token; })
+      .catch(function(e){ refreshing = null; signOut('انتهت الجلسة — سجّل الدخول مرة أخرى.'); throw e; });
+    return refreshing;
+  }
+  function api(method, path, body, headers){
+    return token().then(function(t){
+      var h = { apikey:SB_KEY, Authorization:'Bearer ' + t, 'Content-Type':'application/json' }; if (headers) for (var k in headers) h[k] = headers[k];
+      return fetch(SB_URL + '/rest/v1/' + path, { method:method, headers:h, body: body == null ? undefined : JSON.stringify(body) });
+    }).then(function(r){ return r.text().then(function(t){ var j = t ? JSON.parse(t) : null; if (!r.ok) throw new Error((j && j.message) || ('HTTP ' + r.status)); return j; }); });
+  }
+  function rpc(fn, a){ return api('POST', 'rpc/' + fn, a || {}); }
+  function arErr(m){
+    if (/invalid login|invalid credentials/i.test(m)) return 'البريد أو كلمة المرور غير صحيحة.';
+    if (/email not confirmed/i.test(m)) return 'البريد غير مؤكَّد — تواصل مع المدير.';
+    return 'تعذّر الدخول: ' + esc(m);
+  }
+  function gateMsg(kind, t){ $('gMsg').innerHTML = t ? '<div class="msg ' + kind + '">' + t + '</div>' : ''; }
+  function signOut(msg){
+    try { if (sess) fetch(SB_URL + '/auth/v1/logout', { method:'POST', headers:{ apikey:SB_KEY, Authorization:'Bearer ' + sess.access_token } }); } catch(e){}
+    sess = null; me = null; try { localStorage.removeItem(SKEY); } catch(e){}
+    $('frames').querySelectorAll('iframe').forEach(function(f){ f.remove(); });
+    $('top').classList.add('hide'); ['vSys','vAdm','vRev'].forEach(function(v){ $(v).classList.add('hide'); });
+    $('gate').classList.remove('hide'); gateMsg(msg ? 'warn' : '', msg || '');
+  }
+  $('gForm').onsubmit = function(e){
+    e.preventDefault(); var b = $('gGo'); b.disabled = true; gateMsg('', '');
+    auth('token?grant_type=password', { email: $('gEmail').value.trim(), password: $('gPass').value })
+      .then(function(j){ keep(j); b.disabled = false; start(); })
+      .catch(function(err){ b.disabled = false; gateMsg('bad', arErr(err.message)); });
+  };
+  $('logout').onclick = function(){ signOut(); };
+  window.addEventListener('storage', function(e){ if (e.key === SKEY && !e.newValue && me) signOut('تم تسجيل الخروج.'); });
+
+  /* ---------------- start ---------------- */
+  function can(need){
+    if (!me) return false;
+    if (need === 'admin') return me.role === 'admin';
+    if (need === 'review') return ['admin','manager','finance'].indexOf(me.role) >= 0;
+    return true;
+  }
+  function start(){
+    rpc('whoami').then(function(w){
+      if (!w) { signOut(); return; }
+      if (!w.approved) { signOut(); gateMsg('warn', 'حسابك (' + esc(w.email) + ') بانتظار موافقة المدير.'); return; }
+      me = w;
+      $('gate').classList.add('hide'); $('top').classList.remove('hide');
+      $('meName').textContent = me.name || me.email; $('meRole').textContent = ROLE_AR[me.role] || me.role;
+      $('meAv').textContent = (me.name || me.email || '؟').trim().charAt(0);
+      document.querySelectorAll('#tabs button').forEach(function(b){ var n = b.getAttribute('data-need'); b.classList.toggle('hide', !!n && !can(n)); });
+      buildSystems(); show(location.hash === '#admin' && can('admin') ? 'vAdm' : location.hash === '#review' && can('review') ? 'vRev' : 'vSys');
+      badges();
+    }).catch(function(e){ if (!sess) return; if (/no session/.test(e.message)) signOut(); else gateMsg('bad', 'تعذّر الاتصال بالقاعدة: ' + esc(e.message)); });
+  }
+  function show(v){
+    ['vSys','vAdm','vRev'].forEach(function(x){ $(x).classList.toggle('hide', x !== v); });
+    document.querySelectorAll('#tabs button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-v') === v); });
+    history.replaceState(null, '', v === 'vAdm' ? '#admin' : v === 'vRev' ? '#review' : '#');
+    if (v === 'vAdm') loadAdmin(); if (v === 'vRev') loadReview();
+  }
+  document.querySelectorAll('#tabs button').forEach(function(b){ b.onclick = function(){ show(b.getAttribute('data-v')); }; });
+  function badges(){
+    if (can('admin')) api('GET', 'profiles?select=id&approved=is.false').then(function(r){ var n = (r || []).length; $('pendCnt').textContent = n; $('pendCnt').classList.toggle('hide', !n); }).catch(function(){});
+    if (can('review')) api('GET', 'v_data_review?select=severity&severity=eq.high').then(function(r){ var n = (r || []).length; $('revCnt').textContent = n; $('revCnt').classList.toggle('hide', !n); }).catch(function(){});
+  }
+  setInterval(function(){ if (me) badges(); }, 120000);
+
+  /* ---------------- systems ---------------- */
+  var current = null;
+  function buildSystems(){
+    var list = SYSTEMS.filter(function(s){ return s.roles.indexOf(me.role) >= 0; });
+    $('sysbar').innerHTML = list.map(function(s){
+      return '<button class="sys" data-s="' + s.id + '"><div class="ic">' + s.ic + '</div><div><b>' + s.name + '</b><small>' + s.desc + '</small></div></button>';
+    }).join('');
+    $('sysbar').querySelectorAll('.sys').forEach(function(b){ b.onclick = function(){ openSys(b.getAttribute('data-s')); }; });
+    var last = null; try { last = localStorage.getItem('afmc_portal_sys'); } catch(e){}
+    if (last && list.some(function(s){ return s.id === last; })) openSys(last);
+  }
+  function openSys(id){
+    var s = SYSTEMS.filter(function(x){ return x.id === id; })[0]; if (!s) return;
+    current = id; try { localStorage.setItem('afmc_portal_sys', id); } catch(e){}
+    $('pick').classList.add('hide');
+    $('sysbar').querySelectorAll('.sys').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-s') === id); });
+    var fr = $('frames'), f = fr.querySelector('iframe[data-s="' + id + '"]');
+    fr.querySelectorAll('iframe').forEach(function(x){ x.classList.toggle('hide', x !== f); });
+    var bar = $('sysbar').querySelector('.fbar'); if (bar) bar.remove();
+    if (!f) { f = document.createElement('iframe'); f.setAttribute('data-s', id); f.src = s.src; f.title = s.name; fr.appendChild(f); }
+    bar = document.createElement('div'); bar.className = 'fbar';
+    bar.innerHTML = '<button title="إعادة تحميل">⟳</button><a href="' + s.src + '" target="_blank" rel="noopener">فتح في نافذة ↗</a>';
+    bar.querySelector('button').onclick = function(){ try { f.contentWindow.location.reload(); } catch(e){ f.src = s.src; } };
+    $('sysbar').appendChild(bar);
+  }
+
+  /* ---------------- permissions & integration ---------------- */
+  var projects = [];
+  function loadAdmin(){
+    $('regLink').textContent = new URL('../register.html', location.href).href; $('openReg').href = $('regLink').textContent;
+    Promise.all([
+      api('GET', 'profiles?select=id,email,full_name,role,approved,created_at,phone,requested&order=created_at.desc'),
+      api('GET', 'profile_projects?select=profile_id,project_code'),
+      api('GET', 'projects?select=code&is_active=is.true&order=code.asc'),
+      rpc('integration_status')
+    ]).then(function(r){
+      var users = r[0] || [], pp = r[1] || []; projects = (r[2] || []).map(function(p){ return p.code; });
+      var byU = {}; pp.forEach(function(x){ (byU[x.profile_id] = byU[x.profile_id] || []).push(x.project_code); });
+      var pend = users.filter(function(u){ return !u.approved; }), ok = users.filter(function(u){ return u.approved; });
+      $('pendSec').classList.toggle('hide', !pend.length);
+      $('pendBody').innerHTML = pend.map(function(u){ return row(u, byU[u.id], true); }).join('');
+      $('usersBody').innerHTML = ok.map(function(u){ return row(u, byU[u.id], false); }).join('') || '<tr><td colspan="5" class="empty">لا يوجد مستخدمون</td></tr>';
+      wireRows(); integ(r[3] || {});
+      $('pendCnt').textContent = pend.length; $('pendCnt').classList.toggle('hide', !pend.length);
+    }).catch(function(e){ toast('تعذّر التحميل: ' + e.message); });
+  }
+  function projTags(sel){ return projects.map(function(p){ return '<span class="tag' + (sel.indexOf(p) >= 0 ? ' on' : '') + '" data-p="' + esc(p) + '">' + esc(p) + '</span>'; }).join(''); }
+  function row(u, mine, isNew){
+    var rq = u.requested || {}, self = sess && u.id === sess.user_id;
+    var role = isNew ? (rq.job && rq.job !== 'manager' ? rq.job : 'viewer') : u.role;
+    var sel = mine || (isNew && rq.project ? [rq.project] : []);
+    var info = [u.phone && ('📱 ' + esc(u.phone)), rq.iqama && ('🪪 ' + esc(rq.iqama)), rq.project && ('📁 ' + esc(rq.project)), rq.job && ('طلب: ' + esc(JOB_AR[rq.job] || rq.job))].filter(Boolean).join(' · ');
+    var who = '<b>' + esc(u.full_name || u.email) + '</b><div class="sub">' + esc(u.email) + ' · ' + when(u.created_at) + '</div>';
+    var roleSel = '<select class="role"' + (self ? ' disabled' : '') + '>' + ROLES.map(function(r){ return '<option value="' + r[0] + '"' + (role === r[0] ? ' selected' : '') + '>' + r[1] + '</option>'; }).join('') + '</select>';
+    if (isNew) return '<tr class="new" data-id="' + u.id + '"><td>' + who + '</td><td class="sub">' + (info || '—') + (rq.note ? '<br>📝 ' + esc(rq.note) : '') + '</td><td>' + roleSel + '</td><td class="pj">' + projTags(sel) + '</td>'
+      + '<td style="white-space:nowrap"><button class="btn sm" data-act="approve">✓ اعتماد</button> <button class="btn ghost sm" data-act="reject">رفض</button></td></tr>';
+    return '<tr data-id="' + u.id + '"><td>' + who + (info ? '<div class="sub">' + info + '</div>' : '') + '</td><td>' + roleSel + '</td><td class="pj">' + projTags(sel) + '</td>'
+      + '<td><label class="sw"><input type="checkbox" class="ap" checked' + (self ? ' disabled' : '') + '><span></span></label></td>'
+      + '<td>' + (self ? '<span class="sub">حسابك</span>' : '<button class="btn sm" data-act="save">حفظ</button>') + '</td></tr>';
+  }
+  function wireRows(){
+    document.querySelectorAll('#vAdm .tag[data-p]').forEach(function(t){ t.onclick = function(){ t.classList.toggle('on'); }; });
+    document.querySelectorAll('#vAdm button[data-act]').forEach(function(b){
+      b.onclick = function(){
+        var tr = b.closest('tr'), id = tr.getAttribute('data-id'), act = b.getAttribute('data-act');
+        var codes = [].map.call(tr.querySelectorAll('.tag.on'), function(t){ return t.getAttribute('data-p'); });
+        var body = { role: tr.querySelector('.role').value };
+        if (act === 'approve') body.approved = true;
+        if (act === 'save') body.approved = tr.querySelector('.ap').checked;
+        if (act === 'reject') { if (!confirm('رفض هذا الطلب؟ سيبقى الحساب موقوفاً.')) return; body = { approved: false, role: 'viewer' }; codes = []; }
+        b.disabled = true;
+        api('PATCH', 'profiles?id=eq.' + id, body, { Prefer:'return=minimal' })
+          .then(function(){ return api('DELETE', 'profile_projects?profile_id=eq.' + id, null, { Prefer:'return=minimal' }); })
+          .then(function(){ return codes.length ? api('POST', 'profile_projects', codes.map(function(c){ return { profile_id:id, project_code:c }; }), { Prefer:'return=minimal' }) : null; })
+          .then(function(){ toast(act === 'approve' ? '✅ تم اعتماد الحساب' : act === 'reject' ? 'تم الرفض' : '✓ حُفظ'); if (act !== 'save') loadAdmin(); else b.disabled = false; })
+          .catch(function(e){ b.disabled = false; toast('تعذّر الحفظ: ' + e.message); });
+      };
+    });
+  }
+  $('admRefresh').onclick = loadAdmin;
+  $('copyReg').onclick = function(){ var t = $('regLink').textContent; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function(){ toast('نُسخ الرابط'); }, function(){ prompt('انسخ الرابط:', t); }); };
+  function health(last, hours){ if (!last) return 'x'; var h = (Date.now() - new Date(last)) / 36e5; return h <= hours ? 'g' : h <= hours * 4 ? 'a' : 'r'; }
+  function integ(s){
+    var w = s.watheeq || {}, f = s.fleet || {}, n = s.ninja || {}, k = s.keemart || {}, m = s.maintenance || {}, a = s.attendance || {}, u = s.users || {}, rv = s.review || {};
+    var cards = [
+      ['👥','وثيق', w.count, 'موظف', 'نشط: ' + (w.active || 0), w.last, 72],
+      ['🚗','الأسطول', f.count, 'مركبة', 'سائقون على مركبات: ' + (f.drivers || 0), f.last, 72],
+      ['🥷','Ninja', n.days, 'يوم مرفوع', 'آخر يوم: ' + (n.latest || '—') + ' · كباتن مربوطون: ' + (n.linked || 0), n.last, 48],
+      ['🛵','Keemart', k.days, 'يوم مرفوع', 'آخر يوم: ' + (k.latest || '—') + ' · مناديب مربوطون: ' + (k.linked || 0), k.last, 48],
+      ['🔧','صيانة الدبابات', m.orders, 'أمر صيانة', 'مفتوحة: ' + (m.open || 0) + ' · أجهزة: ' + (m.devices || 0), m.last, 48],
+      ['🗓️','الحضور الموحّد', a.rows, 'سجل حضور', 'آخر تاريخ: ' + (a.last || '—'), a.last, 72],
+      ['🔐','الحسابات', u.total, 'مستخدم', 'بانتظار الاعتماد: ' + (u.pending || 0), null, 0],
+      ['🔎','مراجعة البيانات', (rv.high || 0) + (rv.medium || 0) + (rv.low || 0), 'ملاحظة', 'عالية: ' + (rv.high || 0) + ' · متوسطة: ' + (rv.medium || 0), null, 0]
+    ];
+    $('integ').innerHTML = cards.map(function(c){
+      var hl = c[6] ? health(c[5], c[6]) : null;
+      return '<div class="card stat"><div class="t"><span class="ic">' + c[0] + '</span>' + c[1] + '</div><div class="n">' + (c[2] == null ? 0 : c[2]) + ' <span class="sub">' + c[3] + '</span></div>'
+        + '<div class="s">' + esc(c[4]) + (hl ? '<br><span class="dot ' + hl + '"></span>آخر نشاط: ' + when(c[5]) : '') + '</div></div>';
+    }).join('');
+  }
+
+  /* ---------------- data review ---------------- */
+  var rev = [], revArea = '';
+  function loadReview(){
+    $('revBody').innerHTML = '<tr><td colspan="6" class="empty">جارٍ التحميل…</td></tr>';
+    api('GET', 'v_data_review?select=area,code,severity,key,name,project,issue&limit=5000').then(function(r){
+      rev = r || []; var projs = {};
+      rev.forEach(function(x){ if (x.project) projs[x.project] = 1; });
+      var cur = $('revProj').value;
+      $('revProj').innerHTML = '<option value="">كل المشاريع</option>' + Object.keys(projs).sort().map(function(p){ return '<option' + (p === cur ? ' selected' : '') + '>' + esc(p) + '</option>'; }).join('');
+      tiles(); renderRev();
+    }).catch(function(e){ $('revBody').innerHTML = '<tr><td colspan="6" class="empty">تعذّر التحميل: ' + esc(e.message) + '</td></tr>'; });
+  }
+  function tiles(){
+    var by = {}; rev.forEach(function(x){ var k = x.area + '|' + x.code; by[k] = by[k] || { area:x.area, code:x.code, sev:x.severity, n:0 }; by[k].n++; });
+    var arr = Object.keys(by).map(function(k){ return by[k]; }).sort(function(a, b){ return ({high:0,medium:1,low:2}[a.sev] - {high:0,medium:1,low:2}[b.sev]) || b.n - a.n; });
+    $('tiles').innerHTML = '<button class="tile' + (revArea ? '' : ' on') + '" data-k=""><div class="n">' + rev.length + '</div><div class="l">كل الملاحظات</div></button>'
+      + arr.map(function(t){ var k = t.area + '|' + t.code; return '<button class="tile' + (revArea === k ? ' on' : '') + '" data-k="' + esc(k) + '"><div class="n">' + t.n + ' <span class="sev ' + t.sev + '">' + ({high:'عالية',medium:'متوسطة',low:'منخفضة'}[t.sev]) + '</span></div><div class="l">' + esc(CODE_AR[t.code] || t.code) + ' — ' + esc(AREA_AR[t.area] || t.area) + '</div></button>'; }).join('');
+    $('tiles').querySelectorAll('.tile').forEach(function(b){ b.onclick = function(){ revArea = b.getAttribute('data-k'); tiles(); renderRev(); }; });
+  }
+  function filtered(){
+    var q = $('revQ').value.trim().toLowerCase(), sv = $('revSev').value, pj = $('revProj').value;
+    return rev.filter(function(x){
+      if (revArea && x.area + '|' + x.code !== revArea) return false;
+      if (sv && x.severity !== sv) return false; if (pj && x.project !== pj) return false;
+      if (q && ((x.key || '') + ' ' + (x.name || '') + ' ' + (x.issue || '')).toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    });
+  }
+  function renderRev(){
+    var f = filtered(), shown = f.slice(0, 600);
+    $('revBody').innerHTML = shown.length ? shown.map(function(x){
+      return '<tr><td><span class="sev ' + x.severity + '">' + ({high:'عالية',medium:'متوسطة',low:'منخفضة'}[x.severity]) + '</span></td><td>' + esc(CODE_AR[x.code] || x.code) + '<div class="sub">' + esc(AREA_AR[x.area] || x.area) + '</div></td>'
+        + '<td style="direction:ltr;text-align:right">' + esc(x.key) + '</td><td>' + esc(x.name || '—') + '</td><td>' + esc(x.project || '—') + '</td><td>' + esc(x.issue) + '</td></tr>';
+    }).join('') : '<tr><td colspan="6" class="empty">✅ لا توجد ملاحظات بهذا التصفية</td></tr>';
+    $('revFoot').textContent = f.length > shown.length ? 'يُعرض أول ' + shown.length + ' من ' + f.length + ' — صدّر CSV للقائمة كاملة.' : f.length + ' ملاحظة';
+  }
+  ['revQ','revSev','revProj'].forEach(function(id){ $(id).oninput = renderRev; });
+  $('revRefresh').onclick = loadReview;
+  $('revCsv').onclick = function(){
+    var f = filtered(), rows = [['الأولوية','النوع','القسم','المرجع','الاسم','المشروع','الملاحظة']].concat(f.map(function(x){
+      return [x.severity, CODE_AR[x.code] || x.code, AREA_AR[x.area] || x.area, x.key, x.name || '', x.project || '', x.issue]; }));
+    var csv = '﻿' + rows.map(function(r){ return r.map(function(c){ return '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"'; }).join(','); }).join('\r\n');
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' }));
+    a.download = 'afmc-data-review-' + new Date().toISOString().slice(0, 10) + '.csv'; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  };
+
+  if (sess) start(); else $('gate').classList.remove('hide');
+})();
+</script>
+</body>
+</html>

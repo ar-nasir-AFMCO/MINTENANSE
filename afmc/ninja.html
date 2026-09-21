@@ -1,0 +1,2298 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+<script id="wf-cloud">window.WF_CLOUD_APP="ninja";
+/* ═══════════════════════════════════════════════════════════════════════
+   wf-cloud — النسخة السحابية لأنظمة AFMC (تُحقن في <head> قبل أي كود)
+   • لا حفظ محلي على الجهاز (ملفات/نسخ/ربط مجلد) — القاعدة الموحّدة هي الحفظ الوحيد
+   • لا واتساب (أزرار، إعدادات، إرسال تلقائي، روابط wa.me)
+   • تبقى كل الوظائف الأخرى كما هي — التصدير إلى Excel يبقى
+   • Ninja و Keemart: مفاتيح تخزين منفصلة لكل نظام (لا تداخل بينهما)
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  var APP = window.WF_CLOUD_APP || '';
+  window.WF_CLOUD = true;
+  var WA = /wa\.me|api\.whatsapp|whatsapp:|web\.whatsapp/i;
+
+  /* ---------- 1) Ninja/Keemart: تخزين منفصل لكل نظام ---------- */
+  if (APP === 'ninja' || APP === 'keemart') {
+    try {
+      var P = Storage.prototype, g = P.getItem, s = P.setItem, r = P.removeItem, pre = APP + '::';
+      var mine = function(k){ return typeof k === 'string' && /^fleet_/.test(k); };
+      P.getItem = function(k){ return g.call(this, this === window.localStorage && mine(k) ? pre + k : k); };
+      P.setItem = function(k, v){ return s.call(this, this === window.localStorage && mine(k) ? pre + k : k, v); };
+      P.removeItem = function(k){ return r.call(this, this === window.localStorage && mine(k) ? pre + k : k); };
+    } catch(e){}
+  }
+
+  /* ---------- 2) منع واتساب وملفات الجهاز على مستوى المتصفح ---------- */
+  try {
+    var _open = window.open;
+    window.open = function(u){ if (WA.test(String(u || ''))) return null; return _open.apply(window, arguments); };
+  } catch(e){}
+  document.addEventListener('click', function(e){
+    var a = e.target && e.target.closest && e.target.closest('a[href]');
+    if (a && WA.test(a.getAttribute('href') || '')) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
+  ['showSaveFilePicker', 'showOpenFilePicker', 'showDirectoryPicker'].forEach(function(f){
+    try { if (window[f]) window[f] = function(){ return Promise.reject(new DOMException('disabled in cloud edition', 'AbortError')); }; } catch(e){}
+  });
+
+  /* ---------- 3) إخفاء الواجهات ---------- */
+  var HIDE = {
+    common: ['#wfiBtn', '.wa-btn', '[onclick*="WhatsApp"]', '[onclick*="openWA"]', '[onclick*="sendWA"]', '[onclick*="downloadHTML"]',
+             '#waFloatMsg', '#waSendModal', '[data-wa]'],
+    watheeq: ['#wx4Pill', '#wx4Link', '#wx4Save', '#wx4Rest', '#wx4Sep1', '#wx4Veh', '#wx4VehBtn',
+              '[onclick*="wx11Wa"]', '[onclick*="wx10Share"]', '[onclick*="wx4"]', '#cloudPill', '#wfsbStale'],
+    fleet: ['#btn-save-now', '[onclick*="saveToFolder"]', '[onclick*="openDataManager"]', '[onclick*="importFromFile"]',
+            '[onclick*="setupSaveFolder"]', '[onclick*="_writeToHandle"]', '[onclick*="openWAConfig"]', '[onclick*="sendDriverWhatsApp"]',
+            '#fsSaveCard', '#fsPick', '#mtWaAll', '#mtWaOne', '#mtWaC', '#waConfigModal', '#save-label'],
+    ninja: ['#wa-panel', '#waPanel', '.wa-panel'], keemart: ['#wa-panel', '#waPanel', '.wa-panel']
+  };
+  var sel = HIDE.common.concat(HIDE[APP] || []).join(',');
+  var st = document.createElement('style'); st.id = 'wf-cloud-css';
+  st.textContent = sel + '{display:none!important}';
+  (document.head || document.documentElement).appendChild(st);
+
+  /* نصوص صريحة لأزرار الحفظ المحلي/واتساب التي تُنشأ بلا معرّف */
+  var TXT = /واتس|whatsapp|حفظ الآن على الجهاز|ربط ملف الحفظ|استرجاع من ملف الجهاز|اربط ملفاً على الجهاز|إدارة البيانات والحفظ|تحميل HTML|إعداد مجلد الحفظ|تغيير الملف|📂 فتح ملف/i;
+  var busy = false, t = null;
+  function sweep(){
+    if (busy) return; busy = true;
+    try {
+      var els = document.querySelectorAll('button, a.btn, .btn, [role="button"], .menu-item, li > a');
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i]; if (el.__wfc) continue;
+        var tx = (el.textContent || '').trim();
+        if (tx && tx.length < 60 && TXT.test(tx)) { el.style.setProperty('display', 'none', 'important'); el.__wfc = 1; }
+      }
+    } catch(e){}
+    busy = false;
+  }
+  function later(){ clearTimeout(t); t = setTimeout(sweep, 250); }
+  function observe(){
+    sweep();
+    try { new MutationObserver(function(){ if (!busy) later(); }).observe(document.body, { childList: true, subtree: true }); } catch(e){}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', observe); else observe();
+
+  /* ---------- 4) تعطيل الدوال (بعد تعريفها) ---------- */
+  var NOOP = {
+    common: ['openWAPanel', 'sendWAMessage', 'triggerAutoSend', 'openWAConfig', 'saveWAConfig', 'sendDriverWhatsApp', 'downloadHTML'],
+    watheeq: ['wx4LinkFile', 'wx4SaveNow', 'wx4Restore', 'wx11Wa', 'wx10ShareFallback'],
+    fleet: ['saveToFolder', 'autoSave', 'setupSaveFolder', 'openDataManager', 'importFromFile', '_writeToHandle', 'idbClearHandle'],
+    ninja: [], keemart: []
+  };
+  function neutralize(){
+    NOOP.common.concat(NOOP[APP] || []).forEach(function(f){
+      try { if (typeof window[f] === 'function' && !window[f].__wfc) { var n = function(){ return Promise.resolve(false); }; n.__wfc = true; window[f] = n; } } catch(e){}
+    });
+    try { if (typeof waDailyTimer !== 'undefined' && waDailyTimer) { clearInterval(waDailyTimer); clearTimeout(waDailyTimer); } } catch(e){}
+  }
+  document.addEventListener('DOMContentLoaded', neutralize);
+  window.addEventListener('load', function(){ neutralize(); setTimeout(neutralize, 1500); });
+})();
+
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ninja Command Center v1.26.0</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#f0f2f7;--surface:#ffffff;--surface2:#f7f9fc;--border:#e4e8f0;
+    --text:#0d1117;--text2:#5a6478;--text3:#9aa3b5;
+    --accent:#2563eb;--accent-soft:#eff4ff;
+    --green:#16a34a;--green-soft:#f0fdf4;
+    --red:#dc2626;--red-soft:#fef2f2;
+    --amber:#d97706;--amber-soft:#fffbeb;
+    --purple:#7c3aed;--purple-soft:#f5f3ff;
+    --card-shadow:0 1px 3px rgba(0,0,0,0.06),0 4px 16px rgba(0,0,0,0.04);
+    --glow:0 0 0 3px rgba(37,99,235,0.12);
+  }
+  [data-theme="dark"] {
+    --bg:#0a0d14;--surface:#111520;--surface2:#161b28;--border:#1e2535;
+    --text:#e8ecf4;--text2:#7d8aa0;--text3:#4a5568;
+    --accent:#3b82f6;--accent-soft:#1e2a4a;
+    --green:#4ade80;--green-soft:#052e16;
+    --red:#f87171;--red-soft:#2d0a0a;
+    --amber:#fbbf24;--amber-soft:#2d1f00;
+    --purple:#a78bfa;--purple-soft:#1e1040;
+    --card-shadow:0 1px 3px rgba(0,0,0,0.4),0 4px 16px rgba(0,0,0,0.3);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--card-shadow);transition:background .3s,border-color .3s;}
+  .card-sm{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.9rem 1.1rem;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
+  .card-sm::before{content:'';position:absolute;inset:0;background:var(--accent);opacity:0;transition:opacity .2s;}
+  .card-sm:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(37,99,235,.12);border-color:var(--accent);}
+  .card-sm:hover::before{opacity:.03;}
+  .tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;}
+  .tag-green{background:var(--green-soft);color:var(--green);}
+  .tag-red{background:var(--red-soft);color:var(--red);}
+  .tag-amber{background:var(--amber-soft);color:var(--amber);}
+  .tag-blue{background:var(--accent-soft);color:var(--accent);}
+  .tag-purple{background:var(--purple-soft);color:var(--purple);}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .2s;font-family:inherit;}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:hover{background:#1d4ed8;transform:translateY(-1px);}
+  .btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border);}
+  .btn-ghost:hover{background:var(--surface2);}
+  .metric-val{font-size:21px;font-weight:700;line-height:1.1;}
+  .metric-label{font-size:10px;color:var(--text3);font-weight:500;margin-bottom:5px;line-height:1.3;}
+  .progress-bar{height:3px;border-radius:99px;background:var(--border);overflow:hidden;margin-top:6px;}
+  .progress-fill{height:100%;border-radius:99px;transition:width .6s ease;}
+  .goal-pct{font-size:9px;color:var(--text3);margin-top:2px;text-align:left;}
+
+  /* ── Trend bubbles ── */
+  .trend-row{display:flex;align-items:flex-end;gap:4px;margin-top:8px;flex-wrap:nowrap;}
+  .t-bub{display:flex;flex-direction:column;align-items:center;gap:2px;}
+  .t-bub-circle{
+    border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-family:'JetBrains Mono',monospace;font-weight:700;color:#fff;
+    line-height:1;transition:transform .18s;flex-shrink:0;
+    border:2px solid rgba(255,255,255,.25);
+  }
+  .t-bub:hover .t-bub-circle{transform:scale(1.14);}
+  .t-bub-date{font-size:8.5px;color:var(--text3);white-space:nowrap;font-family:'JetBrains Mono',monospace;margin-top:1px;}
+
+  /* ── Separator inside card ── */
+  .card-sep{height:1px;background:var(--border);margin:7px 0;}
+
+  #modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:200;align-items:center;justify-content:center;padding:1rem;}
+  .modal-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;width:100%;max-width:900px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.3);overflow:hidden;}
+  .modal-header{padding:1.5rem 2rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+  .modal-body{padding:1.5rem 2rem;overflow-y:auto;flex:1;}
+  .table-wrap table{width:100%;border-collapse:collapse;font-size:13px;}
+  .table-wrap th{padding:10px 14px;text-align:right;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;background:var(--surface2);position:sticky;top:0;}
+  .table-wrap td{padding:12px 14px;border-top:1px solid var(--border);}
+  .table-wrap tr:hover td{background:var(--surface2);}
+
+  .nav-tab{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text3);transition:all .2s;}
+  .nav-tab.active{background:var(--accent-soft);color:var(--accent);}
+  .goal-input{width:60px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;text-align:center;background:var(--surface);color:var(--text);font-family:'JetBrains Mono',monospace;}
+  .goal-input:focus{outline:none;border-color:var(--accent);box-shadow:var(--glow);}
+  .predict-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;}
+  .predict-critical{background:var(--red-soft);color:var(--red);}
+  .predict-warning{background:var(--amber-soft);color:var(--amber);}
+  .predict-good{background:var(--green-soft);color:var(--green);}
+  .leader-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+  .leader-rank{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;}
+  .rank-1{background:#fef08a;color:#713f12;}.rank-2{background:#e2e8f0;color:#334155;}.rank-3{background:#fed7aa;color:#7c2d12;}.rank-n{background:var(--surface2);color:var(--text3);}
+  .avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;background:var(--accent-soft);color:var(--accent);}
+  .pulse{animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+  .section-title{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem;}
+  .wpi-bar{height:6px;border-radius:99px;overflow:hidden;background:var(--border);margin-top:6px;}
+  .wpi-fill{height:100%;border-radius:99px;}
+  .dark-toggle{cursor:pointer;padding:8px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text2);transition:all .2s;font-size:16px;}
+  .dark-toggle:hover{background:var(--surface2);}
+  select{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;outline:none;}
+  select:focus{border-color:var(--accent);}
+  .tabs-row{display:flex;gap:4px;padding:4px;background:var(--surface2);border-radius:10px;border:1px solid var(--border);}
+  .empty-state{text-align:center;padding:3rem 1rem;color:var(--text3);font-size:13px;}
+  ::-webkit-scrollbar{width:4px;height:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px;}
+
+  /* chart series toggle chips */
+  .series-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid transparent;transition:all .18s;user-select:none;}
+  .series-chip.active{border-color:currentColor;}
+  .series-chip.inactive{opacity:.35;}
+  .chip-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+  @media(max-width:768px){.metric-val{font-size:18px;}}
+
+  /* WhatsApp panel */
+  .wa-btn{background:#25D366;color:#fff;border:none;}
+  .wa-btn:hover{background:#1ebe5a;transform:translateY(-1px);}
+  .wa-status-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-left:5px;flex-shrink:0;}
+  .wa-config-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);gap:12px;}
+  .wa-config-row:last-child{border-bottom:none;}
+  .wa-input{flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;background:var(--surface);color:var(--text);font-family:inherit;outline:none;}
+  .wa-input:focus{border-color:#25D366;}
+  .wa-tag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:600;background:#dcfce7;color:#15803d;}
+  [data-theme="dark"] .wa-tag{background:#052e16;color:#4ade80;}
+  .wa-send-row{display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all .18s;}
+  .wa-send-row:hover{background:var(--surface2);border-color:#25D366;}
+  .wa-send-row input[type=checkbox]{accent-color:#25D366;width:15px;height:15px;cursor:pointer;}
+  .wa-log-entry{font-size:11px;padding:6px 0;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:flex-start;}
+  .wa-log-entry:last-child{border-bottom:none;}
+  .wa-log-time{font-family:'JetBrains Mono',monospace;color:var(--text3);white-space:nowrap;font-size:10px;margin-top:1px;}
+
+  /* toast */
+  #wa-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#25D366;color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:999;transition:transform .3s;pointer-events:none;}
+  #wa-toast.show{transform:translateX(-50%) translateY(0);}
+
+  /* ── Captain search (ثابتة عبر كل الصفحات) ── */
+  .cap-search-bar{position:sticky;top:12px;z-index:60;margin-bottom:1.5rem;}
+  .cap-search-wrap{position:relative;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--card-shadow);padding:10px 15px;transition:border-color .2s,box-shadow .2s;}
+  .cap-search-wrap:focus-within{border-color:var(--accent);box-shadow:var(--glow),var(--card-shadow);}
+  .cap-search-icon{font-size:15px;color:var(--text3);flex-shrink:0;line-height:1;}
+  #cap-search-input{flex:1;min-width:0;border:none;background:transparent;outline:none;font-family:inherit;font-size:14px;color:var(--text);font-weight:500;}
+  #cap-search-input::placeholder{color:var(--text3);font-weight:400;}
+  .cap-search-clear{display:none;cursor:pointer;color:var(--text3);font-size:18px;padding:0 4px;line-height:1;border:none;background:none;flex-shrink:0;}
+  .cap-search-clear:hover{color:var(--text);}
+  #cap-search-results{position:absolute;top:calc(100% + 6px);right:0;left:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.18);z-index:70;max-height:340px;overflow-y:auto;display:none;padding:6px;}
+  .cap-search-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;cursor:pointer;transition:background .15s;}
+  .cap-search-row:hover{background:var(--surface2);}
+</style>
+</head>
+<body>
+<div style="max-width:1600px;margin:0 auto;padding:1.5rem;">
+
+<!-- Header -->
+<header class="card" style="padding:1.25rem 1.75rem;margin-bottom:1.5rem;display:flex;flex-wrap:wrap;gap:1rem;justify-content:space-between;align-items:center;">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+      <div style="width:8px;height:8px;border-radius:50%;background:var(--green);" class="pulse"></div>
+      <h1 style="font-size:17px;font-weight:700;">Ninja Command Center</h1>
+      <span class="tag tag-blue">v1.26.0</span>
+    </div>
+    <p style="font-size:11px;color:var(--text3);">نظام تحليل الأداء الإداري — المؤشرات الـ 15 | Ninja SLA Engine</p>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    <button class="dark-toggle" onclick="toggleDark()" id="theme-btn" title="Dark Mode">🌙</button>
+    <button class="btn btn-ghost" onclick="downloadHTML()" title="تحميل الصفحة كـ HTML">💾 تحميل HTML</button>
+    <button class="btn btn-ghost" onclick="openGoals()">🎯 الأهداف</button>
+    <button class="btn btn-ghost" onclick="exportExcel()">📥 تصدير Excel</button>
+    <button class="btn btn-ghost" onclick="exportRedFlags()">🚩 تصدير Red Flags</button>
+    <button class="btn btn-ghost" onclick="exportHoursOrders()">⏱️ تصدير الساعات</button>
+    <button class="btn wa-btn btn" onclick="openWAPanel()" style="position:relative;">
+      <span>💬 واتساب</span>
+      <span class="wa-status-dot" id="wa-dot" style="background:#fff;opacity:.4;"></span>
+    </button>
+    <button class="btn btn-ghost" onclick="clearHistory()" style="color:var(--red);">🗑️ تصفير</button>
+    <label class="btn btn-primary">⬆️ رفع ملف SLA<input type="file" id="fileInput" style="display:none;" accept=".xlsx,.xls" multiple></label>
+  </div>
+</header>
+
+<!-- Captain Search — ثابتة، تظهر في كل الصفحات -->
+<div class="cap-search-bar">
+  <div class="cap-search-wrap">
+    <span class="cap-search-icon">🔍</span>
+    <input id="cap-search-input" type="text" autocomplete="off" spellcheck="false"
+      placeholder="ابحث عن كابتن بالاسم أو المعرف — لعرض كل أيام دوامه"
+      oninput="runCaptainSearch()" onfocus="runCaptainSearch()" onkeydown="capSearchKey(event)">
+    <button class="cap-search-clear" id="cap-search-clear" onclick="clearCaptainSearch()" title="مسح البحث">×</button>
+    <div id="cap-search-results"></div>
+  </div>
+</div>
+
+<!-- Alert Bar -->
+<div id="alert-bar" style="display:none;background:var(--red-soft);border:1px solid var(--red);color:var(--red);border-radius:12px;padding:10px 16px;margin-bottom:1.5rem;font-size:13px;font-weight:600;align-items:center;gap:10px;">
+  <span class="pulse">🚨</span><span id="alert-text"></span>
+</div>
+
+<!-- Chart area — full width, multi-line with toggles -->
+<div class="card" style="padding:1.75rem;margin-bottom:1.5rem;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;flex-wrap:wrap;gap:10px;">
+    <div>
+      <div class="section-title">التوجه الزمني</div>
+      <div style="font-size:15px;font-weight:700;">المقارنة بين المؤشرات</div>
+    </div>
+    <!-- date selectors -->
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span style="font-size:11px;color:var(--text3);">نطاق:</span>
+      <select id="cmp-from" onchange="updateComparison()" style="font-size:11px;padding:5px 8px;">
+        <option value="">— من —</option>
+      </select>
+      <span style="font-size:11px;color:var(--text3);">←</span>
+      <select id="cmp-to" onchange="updateComparison()" style="font-size:11px;padding:5px 8px;">
+        <option value="">— إلى —</option>
+      </select>
+      <span id="cmp-diff" style="font-size:11px;color:var(--text3);"></span>
+    </div>
+  </div>
+
+  <!-- series chips -->
+  <div id="series-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1rem;"></div>
+
+  <div style="height:300px;"><canvas id="performanceChart"></canvas></div>
+
+  <!-- comparison table below chart -->
+  <div id="cmp-table" style="margin-top:1.25rem;display:none;">
+    <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;" id="cmp-label"></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px;" id="cmp-grid"></div>
+  </div>
+</div>
+
+<!-- View Tabs -->
+<div style="display:flex;gap:1rem;margin-bottom:1.25rem;align-items:center;flex-wrap:wrap;">
+  <div class="tabs-row">
+    <div class="nav-tab active" onclick="switchView('metrics')" id="tab-metrics">📊 المؤشرات</div>
+    <div class="nav-tab" onclick="switchView('leaderboard')" id="tab-leaderboard">🏆 Leaderboard</div>
+    <div class="nav-tab" onclick="switchView('predict')" id="tab-predict">🔮 Predictive</div>
+    <div class="nav-tab" onclick="switchView('audit')" id="tab-audit">🚩 Red Flags</div>
+  </div>
+</div>
+
+<!-- View: Metrics -->
+<div id="view-metrics">
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:11px;" id="metrics-grid">
+
+    <div class="card-sm" onclick="openDrillDown('totDlv')">
+      <div class="metric-label">إجمالي الطلبات</div>
+      <div class="metric-val" id="m-totDlv">—</div>
+      <div id="g-totDlv"></div>
+      <div class="trend-row" id="td-totDlv"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('avgDlv')">
+      <div class="metric-label">متوسط الطلبات / كابتن</div>
+      <div class="metric-val" id="m-avgDlv">—</div>
+      <div id="g-avgDlv"></div>
+      <div class="trend-row" id="td-avgDlv"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('active')">
+      <div class="metric-label">الكباتن النشطين</div>
+      <div class="metric-val" id="m-active">—</div>
+      <div id="g-active"></div>
+      <div class="trend-row" id="td-active"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('avgHrs')">
+      <div class="metric-label">متوسط الساعات</div>
+      <div class="metric-val" id="m-avgHrs">—</div>
+      <div id="g-avgHrs"></div>
+      <div class="trend-row" id="td-avgHrs"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('totHrs')">
+      <div class="metric-label">إجمالي الساعات</div>
+      <div class="metric-val" id="m-totHrs">—</div>
+      <div id="g-totHrs"></div>
+      <div class="trend-row" id="td-totHrs"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('delivOT')">
+      <div class="metric-label">التوصيل في الوقت</div>
+      <div class="metric-val" id="m-delivOT">—</div>
+      <div id="g-delivOT"></div>
+      <div class="trend-row" id="td-delivOT"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('pickOT')">
+      <div class="metric-label">الاستلام في الوقت</div>
+      <div class="metric-val" id="m-pickOT">—</div>
+      <div id="g-pickOT"></div>
+      <div class="trend-row" id="td-pickOT"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('attendOT')">
+      <div class="metric-label">الحضور في الوقت</div>
+      <div class="metric-val" id="m-attendOT">—</div>
+      <div id="g-attendOT"></div>
+      <div class="trend-row" id="td-attendOT"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('shiftComp')">
+      <div class="metric-label">الالتزام بالجدول</div>
+      <div class="metric-val" id="m-shiftComp">—</div>
+      <div id="g-shiftComp"></div>
+      <div class="trend-row" id="td-shiftComp"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('cycleOT')">
+      <div class="metric-label">التوصيل والعودة</div>
+      <div class="metric-val" id="m-cycleOT">—</div>
+      <div id="g-cycleOT"></div>
+      <div class="trend-row" id="td-cycleOT"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('returnOT')">
+      <div class="metric-label">العودة للمنطقة</div>
+      <div class="metric-val" id="m-returnOT">—</div>
+      <div id="g-returnOT"></div>
+      <div class="trend-row" id="td-returnOT"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('delayed')">
+      <div class="metric-label">كباتن متأخرين</div>
+      <div class="metric-val" id="m-delayed" style="color:var(--red)">—</div>
+      <div id="g-delayed"></div>
+      <div class="trend-row" id="td-delayed"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('offMin')">
+      <div class="metric-label">متوسط الأوفلاين (دقيقة)</div>
+      <div class="metric-val" id="m-offMin">—</div>
+      <div id="g-offMin"></div>
+      <div class="trend-row" id="td-offMin"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('roamMin')">
+      <div class="metric-label">متوسط التجوال (دقيقة)</div>
+      <div class="metric-val" id="m-roamMin">—</div>
+      <div id="g-roamMin"></div>
+      <div class="trend-row" id="td-roamMin"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('delayMin')">
+      <div class="metric-label">متوسط التأخير (دقيقة)</div>
+      <div class="metric-val" id="m-delayMin">—</div>
+      <div id="g-delayMin"></div>
+      <div class="trend-row" id="td-delayMin"></div>
+    </div>
+
+    <!-- WPI full width -->
+    <div class="card-sm" onclick="openDrillDown('wpi')" style="grid-column:span 2;border:1px solid var(--accent);background:var(--accent-soft);">
+      <div class="metric-label" style="color:var(--accent);">مؤشر الالتزام الشامل — WPI</div>
+      <div class="metric-val" id="m-wpi" style="font-size:32px;color:var(--accent);">—</div>
+      <div id="g-wpi"></div>
+      <div class="trend-row" id="td-wpi"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- View: Leaderboard -->
+<div id="view-leaderboard" style="display:none;">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+    <div class="card" style="padding:1.5rem;">
+      <div class="section-title">🏆 أعلى 10 كباتن — WPI</div>
+      <div id="lb-top"></div>
+    </div>
+    <div class="card" style="padding:1.5rem;">
+      <div class="section-title">⚠️ أدنى 10 كباتن — WPI</div>
+      <div id="lb-bottom"></div>
+    </div>
+  </div>
+</div>
+
+<!-- View: Predictive -->
+<div id="view-predict" style="display:none;">
+  <div class="card" style="padding:1.5rem;margin-bottom:1rem;">
+    <div class="section-title">🔮 التحليل التنبؤي — بناءً على تاريخ الأداء</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:1rem;">يحلل النظام الـ trend لكل كابتن ويتوقع من سيصل للـ red flag في الدورة القادمة</p>
+    <div id="predict-list"></div>
+  </div>
+</div>
+
+<!-- View: Audit -->
+<div id="view-audit" style="display:none;">
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;">
+    <div class="card-sm" onclick="openDrillDown('low_hrs')" style="border-right:3px solid var(--red);">
+      <div class="metric-label">ساعات حرجة</div>
+      <div style="font-size:18px;font-weight:700;color:var(--red);" id="a-low_hrs">0</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;">أقل من 10 ساعات / يوم</div>
+    </div>
+    <div class="card-sm" onclick="openDrillDown('low_ord')" style="border-right:3px solid var(--amber);">
+      <div class="metric-label">إنتاجية ضعيفة</div>
+      <div style="font-size:18px;font-weight:700;color:var(--amber);" id="a-low_ord">0</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;">أقل من 25 طلب</div>
+    </div>
+    <div class="card-sm" onclick="openDrillDown('top_roam')" style="border-right:3px solid var(--purple);">
+      <div class="metric-label">أعلى تجوال</div>
+      <div style="font-size:18px;font-weight:700;color:var(--purple);">Top 5</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;">أعلى استنزاف وقت</div>
+    </div>
+    <div class="card-sm" onclick="openDrillDown('top_delay')" style="border-right:3px solid var(--red);">
+      <div class="metric-label">أعلى تأخير</div>
+      <div style="font-size:18px;font-weight:700;color:var(--red);">Top 5</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;">أعلى دقائق تأخير</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /wrapper -->
+
+<!-- Drill-down Modal -->
+<div id="modal-overlay" onclick="this.style.display='none'">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:4px;">تحليل تفصيلي</div>
+        <h2 style="font-size:18px;font-weight:700;" id="modalTitle">—</h2>
+      </div>
+      <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);padding:4px 8px;border-radius:8px;">&times;</button>
+    </div>
+    <div class="modal-body table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>الكابتن</th><th style="text-align:center;">الطلبات</th><th style="text-align:center;">WPI</th><th style="text-align:center;">الساعات</th><th style="text-align:center;">التأخير (د)</th><th style="text-align:center;">تكرار</th><th style="text-align:center;">الحالة</th></tr></thead>
+        <tbody id="modalBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Goals Modal -->
+<div id="goals-overlay" onclick="this.style.display='none'" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:200;align-items:center;justify-content:center;padding:1rem;">
+  <div class="modal-box" style="max-width:540px;" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div><div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:4px;">تخصيص الأهداف</div><h2 style="font-size:18px;font-weight:700;">🎯 Goal Setting</h2></div>
+      <button onclick="document.getElementById('goals-overlay').style.display='none'" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--text2);margin-bottom:1.25rem;">حدد الهدف لكل مؤشر — الداشبورد يلوّن تلقائي بناءً على المقارنة مع هدفك</p>
+      <div id="goals-form" style="display:flex;flex-direction:column;gap:10px;"></div>
+      <div style="margin-top:1.5rem;display:flex;justify-content:flex-end;gap:8px;">
+        <button class="btn btn-ghost" onclick="document.getElementById('goals-overlay').style.display='none'">إلغاء</button>
+        <button class="btn btn-primary" onclick="saveGoals()">حفظ الأهداف</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Captain Detail Modal — سجل الكابتن يوم بيوم -->
+<div id="captain-overlay" onclick="if(event.target===this)this.style.display='none'" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:210;align-items:center;justify-content:center;padding:1rem;">
+  <div class="modal-box" style="max-width:940px;">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:12px;min-width:0;">
+        <div class="avatar" id="capDetailAvatar" style="width:44px;height:44px;font-size:15px;">—</div>
+        <div style="min-width:0;">
+          <div id="capDetailTitle" style="font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">—</div>
+          <div id="capDetailSub" class="mono" style="font-size:11px;color:var(--text3);">—</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <button class="btn btn-ghost" onclick="exportCaptainHistory()" style="padding:6px 12px;font-size:12px;">📥 تصدير</button>
+        <button onclick="document.getElementById('captain-overlay').style.display='none'" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);line-height:1;padding:0 4px;">&times;</button>
+      </div>
+    </div>
+    <div class="modal-body" id="capDetailBody"></div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════
+   State
+═══════════════════════════════════════════════ */
+let captainsMap = new Map();
+let historyLog  = JSON.parse(localStorage.getItem('fleet_hub_v24')) || {};
+let goals = JSON.parse(localStorage.getItem('fleet_goals_v24')) || {
+  avgDlv:25,delivOT:90,pickOT:90,attendOT:95,
+  shiftComp:95,cycleOT:90,returnOT:90,wpi:80,avgHrs:10
+};
+let myChart = null;
+let currentStats = null;
+
+/* ── metric catalogue ── */
+const metricsInfo = {
+  totDlv:'إجمالي الطلبات',avgHrs:'متوسط الساعات',avgDlv:'متوسط الطلبات',
+  active:'الكباتن النشطين',delivOT:'التوصيل %',pickOT:'الاستلام %',
+  delayed:'المتأخرين',totHrs:'إجمالي الساعات',attendOT:'الحضور %',
+  shiftComp:'الالتزام %',cycleOT:'الدورة %',returnOT:'العودة %',
+  offMin:'الأوفلاين (د)',roamMin:'التجوال (د)',delayMin:'التأخير (د)',wpi:'WPI %'
+};
+const pctKeys = ['delivOT','pickOT','attendOT','shiftComp','cycleOT','returnOT','wpi'];
+const lowerBetterKeys = ['delayed','offMin','roamMin','delayMin'];
+
+/* ── chart series config ──
+   Each series has: key, label, color, yAxis (left/right), visible
+*/
+const SERIES_CFG = [
+  {key:'wpi',      label:'WPI %',      color:'#2563eb', axis:'y1', vis:true},
+  {key:'delivOT',  label:'توصيل %',    color:'#16a34a', axis:'y1', vis:true},
+  {key:'pickOT',   label:'استلام %',   color:'#0891b2', axis:'y1', vis:false},
+  {key:'attendOT', label:'حضور %',     color:'#7c3aed', axis:'y1', vis:false},
+  {key:'shiftComp',label:'التزام %',   color:'#db2777', axis:'y1', vis:false},
+  {key:'avgDlv',   label:'متوسط طلبات',color:'#d97706', axis:'y2', vis:true},
+  {key:'avgHrs',   label:'ساعات',      color:'#ea580c', axis:'y2', vis:false},
+  {key:'delayMin', label:'تأخير (د)',  color:'#dc2626', axis:'y2', vis:false},
+  {key:'delayed',  label:'متأخرين',   color:'#991b1b', axis:'y2', vis:false},
+];
+
+const goalsConfig = [
+  {key:'avgDlv',label:'متوسط الطلبات',unit:'طلب',higher:true},
+  {key:'delivOT',label:'التوصيل في الوقت',unit:'%',higher:true},
+  {key:'pickOT',label:'الاستلام في الوقت',unit:'%',higher:true},
+  {key:'attendOT',label:'الحضور في الوقت',unit:'%',higher:true},
+  {key:'shiftComp',label:'الالتزام بالجدول',unit:'%',higher:true},
+  {key:'cycleOT',label:'الدورة الكاملة',unit:'%',higher:true},
+  {key:'returnOT',label:'العودة للمنطقة',unit:'%',higher:true},
+  {key:'wpi',label:'مؤشر WPI',unit:'%',higher:true},
+  {key:'avgHrs',label:'ساعات العمل اليومية',unit:'ساعة',higher:true},
+];
+
+/* ═══════════════════════════════════════════════
+   Boot
+═══════════════════════════════════════════════ */
+window.onload = () => {
+  const saved = localStorage.getItem('fleet_theme');
+  if(saved==='dark'){document.documentElement.setAttribute('data-theme','dark');document.getElementById('theme-btn').innerText='☀️';}
+  buildSeriesChips();
+  if(Object.keys(historyLog).length>0){
+    const dates=Object.keys(historyLog).sort();
+    const last=historyLog[dates[dates.length-1]];
+    restoreCaptainsFromStats(last);   // يعيد بناء captainsMap + currentStats بعد أي reload
+    refreshDateSelectors();
+    updateUI(last);
+    updateChart();
+    updateTrendDots();
+    updateComparison();
+    updateLeaderboard();
+    updatePredictive();
+    checkAlerts(last);
+  }
+};
+
+/* ═══════════════════════════════════════════════
+   File input
+═══════════════════════════════════════════════ */
+document.getElementById('fileInput').addEventListener('change', async function(e){
+  const files=Array.from(e.target.files);
+  for(const file of files){
+    const m=file.name.match(/(\d{1,2})[\.\-\/](\d{1,2})[\.\-\/](\d{4})/);
+    let fDate=m?`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:new Date().toISOString().split('T')[0];
+    await new Promise(res=>{
+      const reader=new FileReader();
+      reader.onload=evt=>{
+        const wb=XLSX.read(new Uint8Array(evt.target.result),{type:'array'});
+        const json=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+        processData(json,fDate);
+        res();
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  }
+  this.value='';
+});
+
+/* ═══════════════════════════════════════════════
+   Data processing
+═══════════════════════════════════════════════ */
+function parse(v){
+  if(v==null||v==='') return 0;                        // حماية من الفراغ/undefined/null
+  if(typeof v==='string'){
+    v=parseFloat(v.replace('%','').replace(',','.').trim());
+    if(isNaN(v)) return 0;
+  }
+  if(typeof v!=='number'||isNaN(v)) return 0;
+  // القيم الكسرية (0–1] تُعامَل كنِسبة مئوية: 1.0 = 100% (قرار صريح يحسم حالة 1.0)
+  return (v>0&&v<=1?v*100:v)||0;
+}
+
+function calcWPI(c){
+  const e=c.entries||1;                                // حماية من القسمة على صفر
+  const o=c.ord/e,d=c.dl/e,h=c.hrs/e;
+  return (Math.min(o/25,1)*40)+(d*0.4)+(Math.min(h/12,1)*20);
+}
+
+/* ── إعادة بناء captainsMap + currentStats من السجل المحفوظ (يصلح انكسار الميزات بعد أي reload) ── */
+function restoreCaptainsFromStats(stats){
+  captainsMap.clear();
+  if(!stats||!Array.isArray(stats.captains)){currentStats=stats||null;return;}
+  stats.captains.forEach(c=>{
+    // القيم في مصفوفة captains مخزّنة كمتوسطات جاهزة، فنضع entries=1 حتى تعمل الدوال المستهلِكة (c.x/c.entries) بشكل صحيح
+    captainsMap.set(c.id,{
+      id:c.id, name:c.name||c.id, entries:1,
+      ord:Number(c.ord)||0, hrs:Number(c.hrs)||0,
+      dl:Number(c.dl)||0,  pk:Number(c.pk)||0,
+      dly:Number(c.dly)||0, rm:Number(c.rm)||0, off:Number(c.off)||0,
+      rt:0, cy:0, sh:0, at:0                            // حقول تُستخدم فقط أثناء التجميع، غير محفوظة لكل كابتن
+    });
+  });
+  currentStats=stats;
+}
+
+function processData(data,fDate){
+  captainsMap.clear();
+  data.forEach(r=>{
+    const id=r['Captain ID'];if(!id) return;
+    if(!captainsMap.has(id)) captainsMap.set(id,{id,name:r['Captain Name']||id,entries:0,ord:0,hrs:0,pk:0,dl:0,rt:0,cy:0,sh:0,at:0,dly:0,rm:0,off:0});
+    const c=captainsMap.get(id);
+    c.entries++;
+    c.ord+=Number(r['Avg Orders']||0);
+    c.hrs+=Number(r['Avg Working Hours']||0);
+    c.pk+=parse(r['Pickup On-Time %']);
+    c.dl+=parse(r['Delivery On-Time %']);
+    c.rt+=parse(r['Return To Area On-Time %']);
+    c.cy+=parse(r['Delivery & Return On-Time %']);
+    c.sh+=parse(r['Shift Compliance %']);
+    c.at+=parse(r['Attendance On-Time %']);
+    c.dly+=Number(r['Avg Delay (Min)']||0);
+    c.rm+=Number(r['Avg Roaming (Min)']||0);
+    c.off+=Number(r['Avg Offline (Min)']||0);
+  });
+  const caps=Array.from(captainsMap.values());
+  const n=caps.length||1;
+  const stats={
+    totDlv:caps.reduce((a,b)=>a+b.ord,0),
+    avgHrs:caps.reduce((a,b)=>a+(b.hrs/b.entries),0)/n,
+    avgDlv:caps.reduce((a,b)=>a+(b.ord/b.entries),0)/n,
+    active:caps.length,
+    delivOT:caps.reduce((a,b)=>a+(b.dl/b.entries),0)/n,
+    pickOT:caps.reduce((a,b)=>a+(b.pk/b.entries),0)/n,
+    delayed:caps.filter(c=>(c.dly/c.entries)>125).length,
+    totHrs:caps.reduce((a,b)=>a+b.hrs,0),
+    attendOT:caps.reduce((a,b)=>a+(b.at/b.entries),0)/n,
+    shiftComp:caps.reduce((a,b)=>a+(b.sh/b.entries),0)/n,
+    cycleOT:caps.reduce((a,b)=>a+(b.cy/b.entries),0)/n,
+    returnOT:caps.reduce((a,b)=>a+(b.rt/b.entries),0)/n,
+    offMin:caps.reduce((a,b)=>a+(b.off/b.entries),0)/n,
+    roamMin:caps.reduce((a,b)=>a+(b.rm/b.entries),0)/n,
+    delayMin:caps.reduce((a,b)=>a+(b.dly/b.entries),0)/n,
+    wpi:caps.reduce((a,b)=>a+calcWPI(b),0)/n,
+    audits:{
+      low_hrs:caps.filter(c=>(c.hrs/c.entries)<10).map(c=>c.id),
+      low_ord:caps.filter(c=>(c.ord/c.entries)<25).map(c=>c.id),
+      top_roam:[...caps].sort((a,b)=>(b.rm/b.entries)-(a.rm/a.entries)).slice(0,5).map(c=>c.id),
+      top_delay:[...caps].sort((a,b)=>(b.dly/b.entries)-(a.dly/a.entries)).slice(0,5).map(c=>c.id)
+    },
+    captains: caps.map(c=>({
+      id:c.id, name:c.name,
+      ord:(c.ord/c.entries).toFixed(1),
+      hrs:(c.hrs/c.entries).toFixed(1),
+      wpi:calcWPI(c).toFixed(1),
+      dly:(c.dly/c.entries).toFixed(0),
+      rm:(c.rm/c.entries).toFixed(0),
+      off:(c.off/c.entries).toFixed(0),
+      dl:(c.dl/c.entries).toFixed(1),
+      pk:(c.pk/c.entries).toFixed(1)
+    }))
+  };
+  historyLog[fDate]=stats;
+  localStorage.setItem('fleet_hub_v24',JSON.stringify(historyLog));
+  currentStats=stats;
+  refreshDateSelectors();
+  const dates=Object.keys(historyLog).sort();
+  const idx=dates.indexOf(fDate);
+  document.getElementById('cmp-to').value=fDate;
+  if(idx>0) document.getElementById('cmp-from').value=dates[idx-1];
+  updateUI(stats);
+  updateChart();
+  updateTrendDots();
+  updateComparison();
+  updateLeaderboard();
+  updatePredictive();
+  checkAlerts(stats);
+  triggerAutoSend(stats);
+}
+
+/* ═══════════════════════════════════════════════
+   UI update
+═══════════════════════════════════════════════ */
+function fmt(v,pct){return v!=null?(pct?v.toFixed(1)+'%':v.toLocaleString('en-US',{maximumFractionDigits:1})):'—';}
+
+function updateUI(s){
+  Object.keys(metricsInfo).forEach(k=>{
+    const el=document.getElementById('m-'+k);
+    if(el) el.innerText=fmt(s[k],pctKeys.includes(k));
+  });
+
+  // goal bars — only for keys that have a goal
+  goalsConfig.forEach(g=>{
+    const el=document.getElementById('g-'+g.key);
+    if(!el||s[g.key]==null) return;
+    const target=goals[g.key],val=s[g.key];
+    const pct=Math.min((val/target)*100,100);
+    const good=g.higher?val>=target:val<=target;
+    const color=good?'var(--green)':val>target*0.85?'var(--amber)':'var(--red)';
+    el.innerHTML=`<div class="progress-bar" style="margin-top:6px;"><div class="progress-fill" style="width:${pct}%;background:${color};"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:3px;">
+        <span style="font-size:9px;color:${color};font-weight:600;">${good?'✓ محقق':'↗ '+target+g.unit}</span>
+        <span style="font-size:9px;color:var(--text3);">${pct.toFixed(0)}%</span>
+      </div>`;
+  });
+
+  if(s.audits){
+    const lo=document.getElementById('a-low_hrs');
+    const lod=document.getElementById('a-low_ord');
+    if(lo) lo.innerText=s.audits.low_hrs.length;
+    if(lod) lod.innerText=s.audits.low_ord.length;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Trend bubbles inside cards
+═══════════════════════════════════════════════ */
+function shortDate(d){
+  const p=d.split('-');return `${parseInt(p[2])}/${parseInt(p[1])}`;
+}
+function fmtDot(k,v){
+  if(v==null) return '—';
+  if(pctKeys.includes(k)) return v.toFixed(0)+'%';
+  if(k==='totDlv'||k==='totHrs') return v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0);
+  return v.toFixed(1);
+}
+// Sizes: oldest→smallest, newest→largest
+const DOT_SIZES=[20,25,32];
+
+function updateTrendDots(){
+  const allDates=Object.keys(historyLog).sort();
+  const last3=allDates.slice(-3);
+  Object.keys(metricsInfo).forEach(k=>{
+    const el=document.getElementById('td-'+k);
+    if(!el||last3.length===0){if(el) el.innerHTML='';return;}
+    let html='';
+    last3.forEach((date,i)=>{
+      const val=historyLog[date][k];
+      const prevVal=i>0?historyLog[last3[i-1]][k]:null;
+      // offset if fewer than 3 dates
+      const sizeIdx=i+(3-last3.length);
+      const size=DOT_SIZES[sizeIdx];
+      // color logic
+      let color='#2563eb';
+      if(prevVal!=null){
+        const improved=lowerBetterKeys.includes(k)?val<=prevVal:val>=prevVal;
+        color=improved?'#16a34a':'#dc2626';
+      }
+      const displayVal=fmtDot(k,val);
+      const fs=size<=20?8:size<=25?9:10;
+      html+=`<div class="t-bub" title="${date}: ${displayVal}">
+        <div class="t-bub-circle" style="width:${size}px;height:${size}px;background:${color};font-size:${fs}px;">${displayVal}</div>
+        <span class="t-bub-date">${shortDate(date)}</span>
+      </div>`;
+    });
+    el.innerHTML=html;
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   Multi-series chart + chips
+═══════════════════════════════════════════════ */
+function buildSeriesChips(){
+  const wrap=document.getElementById('series-chips');
+  wrap.innerHTML='';
+  SERIES_CFG.forEach((s,i)=>{
+    const chip=document.createElement('span');
+    chip.className='series-chip '+(s.vis?'active':'inactive');
+    chip.style.color=s.color;
+    chip.style.background=s.vis?s.color+'18':'transparent';
+    chip.innerHTML=`<span class="chip-dot" style="background:${s.color};"></span>${s.label}`;
+    chip.onclick=()=>{
+      s.vis=!s.vis;
+      chip.className='series-chip '+(s.vis?'active':'inactive');
+      chip.style.background=s.vis?s.color+'18':'transparent';
+      updateChart();
+    };
+    wrap.appendChild(chip);
+  });
+}
+
+function updateChart(){
+  const dates=Object.keys(historyLog).sort();
+  const ctx=document.getElementById('performanceChart').getContext('2d');
+  if(myChart) myChart.destroy();
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  const gridColor=isDark?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.05)';
+  const textColor=isDark?'#7d8aa0':'#9aa3b5';
+
+  const datasets=SERIES_CFG.filter(s=>s.vis).map(s=>({
+    label:s.label,
+    data:dates.map(d=>historyLog[d]?historyLog[d][s.key]:null),
+    borderColor:s.color,
+    backgroundColor:s.color+'22',
+    borderWidth:2,
+    pointBackgroundColor:s.color,
+    pointRadius:4,
+    tension:0.4,
+    fill:false,
+    yAxisID:s.axis
+  }));
+
+  myChart=new Chart(ctx,{
+    type:'line',
+    data:{labels:dates,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          callbacks:{
+            title:items=>items[0].label,
+            label:item=>`${item.dataset.label}: ${item.formattedValue}`
+          }
+        }
+      },
+      scales:{
+        x:{grid:{color:gridColor},ticks:{color:textColor,font:{size:11}}},
+        y1:{position:'right',grid:{color:gridColor},ticks:{color:textColor,font:{size:11}},title:{display:true,text:'%',color:textColor,font:{size:10}}},
+        y2:{position:'left',grid:{display:false},ticks:{color:textColor,font:{size:11}},title:{display:true,text:'عدد/دقيقة',color:textColor,font:{size:10}}}
+      }
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   Date selectors + comparison table
+═══════════════════════════════════════════════ */
+function refreshDateSelectors(){
+  const dates=Object.keys(historyLog).sort();
+  const fromEl=document.getElementById('cmp-from');
+  const toEl=document.getElementById('cmp-to');
+  const fv=fromEl.value,tv=toEl.value;
+  fromEl.innerHTML='<option value="">— من —</option>'+dates.map(d=>`<option value="${d}"${d===fv?' selected':''}>${d}</option>`).join('');
+  toEl.innerHTML='<option value="">— إلى —</option>'+dates.map(d=>`<option value="${d}"${d===tv?' selected':''}>${d}</option>`).join('');
+  if(!fromEl.value&&!toEl.value&&dates.length>=2){
+    fromEl.value=dates[dates.length-2];
+    toEl.value=dates[dates.length-1];
+  }
+}
+
+function updateComparison(){
+  const fromDate=document.getElementById('cmp-from').value;
+  const toDate=document.getElementById('cmp-to').value;
+  const grid=document.getElementById('cmp-grid');
+  const tbl=document.getElementById('cmp-table');
+  const lbl=document.getElementById('cmp-label');
+  const diff=document.getElementById('cmp-diff');
+
+  if(!fromDate||!toDate||fromDate===toDate){
+    tbl.style.display='none';
+    diff.innerText='';
+    return;
+  }
+  const from=historyLog[fromDate],to=historyLog[toDate];
+  if(!from||!to){tbl.style.display='none';return;}
+
+  diff.innerText=`${fromDate} → ${toDate}`;
+  lbl.innerText=`مقارنة: ${fromDate} ← ${toDate}`;
+  tbl.style.display='block';
+
+  let html='';
+  Object.keys(metricsInfo).forEach(k=>{
+    const d=to[k]-from[k];
+    const isPct=pctKeys.includes(k);
+    const lb=lowerBetterKeys.includes(k);
+    const improved=lb?d<=0:d>=0;
+    const color=improved?'var(--green)':'var(--red)';
+    
+    const sign=d>0?'+':'';
+    html+=`<div style="background:var(--surface2);border-radius:8px;padding:8px 10px;border:1px solid var(--border);">
+      <div style="font-size:10px;color:var(--text3);margin-bottom:3px;">${metricsInfo[k]}</div>
+      <div style="display:flex;align-items:baseline;gap:5px;">
+        <span style="font-size:13px;font-weight:700;">${fmt(to[k],isPct)}</span>
+        <span style="font-size:10px;font-weight:700;color:${color};">${d===0?'—':(d>0?'▲':'▼')+' '+sign+Math.abs(d).toFixed(1)+(isPct?'%':'')}</span>
+      </div>
+      <div style="font-size:9px;color:var(--text3);">كان: ${fmt(from[k],isPct)}</div>
+    </div>`;
+  });
+  grid.innerHTML=html;
+}
+
+/* ═══════════════════════════════════════════════
+   Leaderboard
+═══════════════════════════════════════════════ */
+function updateLeaderboard(){
+  const caps=Array.from(captainsMap.values());
+  if(!caps.length){
+    document.getElementById('lb-top').innerHTML='<div class="empty-state">لا يوجد بيانات</div>';
+    document.getElementById('lb-bottom').innerHTML='<div class="empty-state">لا يوجد بيانات</div>';
+    return;
+  }
+  const sorted=[...caps].sort((a,b)=>calcWPI(b)-calcWPI(a));
+  const renderRow=(c,rank)=>{
+    const wpi=calcWPI(c);
+    const rc=rank===1?'rank-1':rank===2?'rank-2':rank===3?'rank-3':'rank-n';
+    const ini=(c.name||'').split(' ').slice(0,2).map(x=>x[0]||'').join('').toUpperCase()||c.id.slice(0,2);
+    return `<div class="leader-row">
+      <div class="leader-rank ${rc}">${rank}</div>
+      <div class="avatar">${ini}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</div>
+        <div class="mono" style="font-size:10px;color:var(--text3);">${c.id}</div>
+        <div class="wpi-bar"><div class="wpi-fill" style="width:${wpi}%;background:${wpi>=80?'var(--green)':wpi>=60?'var(--amber)':'var(--red)'};"></div></div>
+      </div>
+      <div style="text-align:left;">
+        <div style="font-size:14px;font-weight:700;color:${wpi>=80?'var(--green)':wpi>=60?'var(--amber)':'var(--red)'};">${wpi.toFixed(1)}%</div>
+        <div style="font-size:10px;color:var(--text3);">${(c.ord/c.entries).toFixed(1)} طلب</div>
+      </div>
+    </div>`;
+  };
+  document.getElementById('lb-top').innerHTML=sorted.slice(0,10).map((c,i)=>renderRow(c,i+1)).join('');
+  document.getElementById('lb-bottom').innerHTML=[...sorted].reverse().slice(0,10).map((c,i)=>renderRow(c,sorted.length-i)).join('');
+}
+
+/* ═══════════════════════════════════════════════
+   Predictive
+═══════════════════════════════════════════════ */
+function updatePredictive(){
+  const dates=Object.keys(historyLog).sort();
+  const caps=Array.from(captainsMap.values());
+  const el=document.getElementById('predict-list');
+  if(!caps.length||dates.length<2){el.innerHTML='<div class="empty-state">ارفع ملفين على الأقل</div>';return;}
+  const preds=caps.map(c=>{
+    const wpi=calcWPI(c);
+    let risk='good',reasons=[];
+    if(wpi<60){risk='critical';reasons.push('WPI منخفض جداً');}
+    else if(wpi<75){risk='warning';reasons.push('WPI دون المستهدف');}
+    if((c.dly/c.entries)>150){risk='critical';reasons.push('تأخير مرتفع جداً');}
+    else if((c.dly/c.entries)>125){if(risk==='good') risk='warning';reasons.push('تأخير فوق الحد');}
+    if((c.ord/c.entries)<20){risk='critical';reasons.push('إنتاجية ضعيفة');}
+    return{c,wpi,risk,reasons};
+  });
+  const cr=preds.filter(p=>p.risk==='critical');
+  const wa=preds.filter(p=>p.risk==='warning');
+  const go=preds.filter(p=>p.risk==='good');
+  let html='';
+  if(cr.length){html+=`<div class="section-title" style="color:var(--red);">🔴 Critical — تدخل فوري (${cr.length})</div>`;cr.forEach(p=>html+=renderPredictRow(p,'critical'));}
+  if(wa.length){html+=`<div class="section-title" style="color:var(--amber);margin-top:1.5rem;">🟡 Warning — مراقبة (${wa.length})</div>`;wa.forEach(p=>html+=renderPredictRow(p,'warning'));}
+  if(go.length){html+=`<div class="section-title" style="color:var(--green);margin-top:1.5rem;">🟢 On Track (${go.length})</div><div style="font-size:12px;color:var(--text3);padding:8px 0;">${go.map(p=>p.c.name||p.c.id).join('، ')}</div>`;}
+  el.innerHTML=html;
+}
+function renderPredictRow(p,lv){
+  const cls=lv==='critical'?'predict-critical':lv==='warning'?'predict-warning':'predict-good';
+  const ini=(p.c.name||'').split(' ').slice(0,2).map(x=>x[0]||'').join('').toUpperCase()||p.c.id.slice(0,2);
+  return `<div style="display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:var(--surface2);">
+    <div class="avatar">${ini}</div>
+    <div style="flex:1;"><div style="font-size:13px;font-weight:600;">${p.c.name||p.c.id}</div><div style="font-size:10px;color:var(--text3);">${p.reasons.join(' • ')}</div></div>
+    <div><div class="predict-badge ${cls}">${lv==='critical'?'خطر':'تحذير'}</div><div style="font-size:10px;color:var(--text3);text-align:center;margin-top:4px;">WPI ${p.wpi.toFixed(0)}%</div></div>
+  </div>`;
+}
+
+/* ═══════════════════════════════════════════════
+   Alerts
+═══════════════════════════════════════════════ */
+function checkAlerts(s){
+  const al=[];
+  if(s.delayed>5) al.push(`${s.delayed} كابتن متأخر`);
+  if(s.wpi<70) al.push(`WPI ${s.wpi.toFixed(1)}% — دون الحد`);
+  if(s.audits.low_hrs.length>10) al.push(`${s.audits.low_hrs.length} كابتن بساعات حرجة`);
+  const bar=document.getElementById('alert-bar');
+  if(al.length){document.getElementById('alert-text').innerText=al.join(' | ');bar.style.display='flex';}
+  else bar.style.display='none';
+}
+
+/* ═══════════════════════════════════════════════
+   Drill-down modal
+═══════════════════════════════════════════════ */
+function openDrillDown(type){
+  const body=document.getElementById('modalBody');
+  body.innerHTML='';
+  const caps=Array.from(captainsMap.values());
+  let list=[];
+  if(metricsInfo[type]){
+    list=[...caps].sort((a,b)=>calcWPI(b)-calcWPI(a));
+    document.getElementById('modalTitle').innerText=metricsInfo[type];
+  } else {
+    switch(type){
+      case 'low_hrs':list=caps.filter(c=>(c.hrs/c.entries)<10).sort((a,b)=>(a.hrs/a.entries)-(b.hrs/b.entries));break;
+      case 'low_ord':list=caps.filter(c=>(c.ord/c.entries)<25).sort((a,b)=>(a.ord/a.entries)-(b.ord/b.entries));break;
+      case 'top_roam':list=[...caps].sort((a,b)=>(b.rm/b.entries)-(a.rm/a.entries)).slice(0,10);break;
+      case 'top_delay':list=[...caps].sort((a,b)=>(b.dly/b.entries)-(a.dly/a.entries)).slice(0,10);break;
+    }
+    document.getElementById('modalTitle').innerText='تدقيق: '+type.replace(/_/g,' ');
+  }
+  if(!list.length){body.innerHTML='<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text3);">لا يوجد بيانات</td></tr>';}
+  list.forEach((c,idx)=>{
+    const wpi=calcWPI(c);
+    let freq=0;
+    Object.values(historyLog).forEach(d=>{if(d.audits&&d.audits[type]&&d.audits[type].includes(c.id)) freq++;});
+    const ini=(c.name||'').split(' ').slice(0,2).map(x=>x[0]||'').join('').toUpperCase()||c.id.slice(0,2);
+    body.innerHTML+=`<tr>
+      <td style="color:var(--text3);font-weight:700;font-size:11px;">${idx+1}</td>
+      <td><div style="display:flex;align-items:center;gap:10px;"><div class="avatar" style="width:32px;height:32px;font-size:11px;">${ini}</div><div><div style="font-weight:600;font-size:13px;">${c.name}</div><div class="mono" style="font-size:10px;color:var(--text3);">${c.id}</div></div></div></td>
+      <td style="text-align:center;font-weight:700;">${(c.ord/c.entries).toFixed(1)}</td>
+      <td style="text-align:center;"><span class="tag ${wpi>=80?'tag-green':wpi>=60?'tag-amber':'tag-red'}">${wpi.toFixed(1)}%</span></td>
+      <td style="text-align:center;">${(c.hrs/c.entries).toFixed(1)}</td>
+      <td style="text-align:center;color:${(c.dly/c.entries)>125?'var(--red)':'var(--text)'};font-weight:600;">${(c.dly/c.entries).toFixed(0)}</td>
+      <td style="text-align:center;color:var(--text3);">${freq>0?freq+' أيام':'—'}</td>
+      <td style="text-align:center;">${freq>1?'<span class="pulse" style="font-size:16px;">🚩</span>':freq===1?'<span class="tag tag-amber">جديد</span>':'<span style="color:var(--text3);font-size:11px;">—</span>'}</td>
+    </tr>`;
+  });
+  document.getElementById('modal-overlay').style.display='flex';
+}
+
+/* ═══════════════════════════════════════════════
+   Views
+═══════════════════════════════════════════════ */
+function switchView(v){
+  ['metrics','leaderboard','predict','audit'].forEach(id=>{
+    document.getElementById('view-'+id).style.display=id===v?'block':'none';
+    document.getElementById('tab-'+id).classList.toggle('active',id===v);
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   Goals
+═══════════════════════════════════════════════ */
+function openGoals(){
+  document.getElementById('goals-form').innerHTML=goalsConfig.map(g=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border:1px solid var(--border);border-radius:8px;">
+      <div><div style="font-size:13px;font-weight:600;">${g.label}</div><div style="font-size:11px;color:var(--text3);">${g.higher?'أعلى من':'أقل من'} الهدف</div></div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input class="goal-input" type="number" id="gi-${g.key}" value="${goals[g.key]}">
+        <span style="font-size:11px;color:var(--text3);">${g.unit}</span>
+      </div>
+    </div>`).join('');
+  document.getElementById('goals-overlay').style.display='flex';
+}
+function saveGoals(){
+  goalsConfig.forEach(g=>{const el=document.getElementById('gi-'+g.key);if(el) goals[g.key]=Number(el.value);});
+  localStorage.setItem('fleet_goals_v24',JSON.stringify(goals));
+  document.getElementById('goals-overlay').style.display='none';
+  if(currentStats) updateUI(currentStats);
+}
+
+/* ═══════════════════════════════════════════════
+   Theme
+═══════════════════════════════════════════════ */
+function toggleDark(){
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  document.documentElement.setAttribute('data-theme',isDark?'light':'dark');
+  document.getElementById('theme-btn').innerText=isDark?'🌙':'☀️';
+  localStorage.setItem('fleet_theme',isDark?'light':'dark');
+  updateChart();
+}
+
+/* ═══════════════════════════════════════════════
+   Export — Excel (KPIs)
+═══════════════════════════════════════════════ */
+function exportExcel(){
+  if(!currentStats){alert('ارفع ملف SLA أولاً');return;}
+  const dates=Object.keys(historyLog).sort();
+  const date=dates[dates.length-1]||'N/A';
+  const rows=Object.keys(metricsInfo).map(k=>[metricsInfo[k],currentStats[k]?.toFixed?currentStats[k].toFixed(1):currentStats[k]]);
+  const ws=XLSX.utils.aoa_to_sheet([['المؤشر','القيمة'],...rows]);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'تقرير الأداء');
+  XLSX.writeFile(wb,`fleet_kpi_${date}.xlsx`);
+}
+
+/* ═══════════════════════════════════════════════
+   Export — Red Flags (captain-level audit)
+═══════════════════════════════════════════════ */
+function exportRedFlags(){
+  if(!currentStats||!currentStats.captains){alert('ارفع ملف SLA أولاً');return;}
+  const dates=Object.keys(historyLog).sort();
+  const date=dates[dates.length-1]||'N/A';
+  const caps=currentStats.captains;
+
+  // sheet 1: all captains ranked by WPI
+  const allRows=[
+    ['الكابتن','ID','WPI %','الطلبات','الساعات','التأخير (د)','التجوال (د)','الأوفلاين (د)','التوصيل %','الاستلام %','الحالة'],
+    ...caps.sort((a,b)=>parseFloat(b.wpi)-parseFloat(a.wpi)).map(c=>[
+      c.name, c.id, c.wpi, c.ord, c.hrs, c.dly, c.rm, c.off, c.dl+'%', c.pk+'%',
+      parseFloat(c.wpi)>=80?'ممتاز':parseFloat(c.wpi)>=60?'مقبول':'تحت المستوى'
+    ])
+  ];
+
+  // sheet 2: Red flags only
+  const redRows=[
+    ['نوع المخالفة','الكابتن','ID','القيمة','WPI %'],
+    // low hours
+    ...caps.filter(c=>parseFloat(c.hrs)<10).map(c=>['ساعات حرجة < 10',c.name,c.id,c.hrs+' ساعة',c.wpi]),
+    // low orders
+    ...caps.filter(c=>parseFloat(c.ord)<25).map(c=>['إنتاجية ضعيفة < 25',c.name,c.id,c.ord+' طلب',c.wpi]),
+    // high delay
+    ...caps.filter(c=>parseFloat(c.dly)>125).map(c=>['تأخير مرتفع > 125د',c.name,c.id,c.dly+' دقيقة',c.wpi]),
+    // low wpi
+    ...caps.filter(c=>parseFloat(c.wpi)<60).map(c=>['WPI حرج < 60%',c.name,c.id,c.wpi+'%',c.wpi]),
+  ];
+
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(allRows),'كل الكباتن');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(redRows),'Red Flags');
+  XLSX.writeFile(wb,`fleet_redflags_${date}.xlsx`);
+}
+
+// تصدير الساعات: إجماليات + هدف لكل سائق (أيام الدوام × 12 ساعة) + المتبقي + صفحة بالتواريخ
+function exportHoursOrders(){
+  if(!Object.keys(historyLog).length){ alert('لا توجد بيانات — ارفع ملف SLA أولاً'); return; }
+  const TARGET_PER_DAY = 12;                            // الهدف: 12 ساعة لكل يوم دوام
+  const num = v => parseFloat(v)||0;
+  const r1  = v => Math.round(v*10)/10;                 // رقم بخانة عشرية واحدة
+  const bar = p => { const f=Math.max(0,Math.min(10,Math.round(p/10))); return '█'.repeat(f)+'░'.repeat(10-f); };
+  const dates = Object.keys(historyLog).sort();
+  const captains = [...buildCaptainIndex().values()]
+    .sort((a,b)=>(a.name||a.id).localeCompare(b.name||b.id,'ar'));
+
+  // تجميع بيانات كل كابتن + حساب الهدف والمتبقي
+  const capData = captains.map(c=>{
+    const byDate = {};
+    getCaptainHistory(c.id).forEach(h=>{ byDate[h.date] = h; });
+    const days   = Object.keys(byDate).length;
+    const totHrs = Object.values(byDate).reduce((a,h)=>a+num(h.hrs),0);
+    const totOrd = Object.values(byDate).reduce((a,h)=>a+num(h.ord),0);
+    const target = days * TARGET_PER_DAY;               // الهدف = أيام الدوام × 12
+    const remain = target - totHrs;                     // + متبقّي / − تجاوز
+    const pct    = target>0 ? totHrs/target*100 : 0;
+    const status = remain <= 0 ? (remain < -0.05 ? '🚀 تجاوز الهدف +'+r1(-remain) : '✅ محقّق')
+                               : '⏳ متبقّي '+r1(remain)+' ساعة';
+    return { c, byDate, days, totHrs, totOrd, avgHrs: days?totHrs/days:0, target, remain, pct, status };
+  });
+
+  // ── الصفحة 1: الإجماليات + الهدف والمتبقي ──
+  const s1 = [
+    ['إجمالي الساعات والطلبات + الهدف لكل سائق'],
+    ['معرف الكابتن','الاسم','إجمالي الساعات','إجمالي الطلبات','أيام العمل','متوسط الساعات',
+     'الهدف (ساعات)','المتبقي من الهدف','نسبة الإنجاز %','التقدّم','الحالة']
+  ];
+  capData.forEach(d=>{
+    s1.push([d.c.id, d.c.name, r1(d.totHrs), r1(d.totOrd), d.days, r1(d.avgHrs),
+             d.target, r1(d.remain), Math.round(d.pct), bar(d.pct), d.status]);
+  });
+
+  // ── ملخص نهاية التقرير: ما تبقّى من الهدف إجمالاً ──
+  const sumTarget = capData.reduce((a,d)=>a+d.target,0);
+  const sumWorked = capData.reduce((a,d)=>a+d.totHrs,0);
+  const sumRemain = sumTarget - sumWorked;
+  const sumPct    = sumTarget>0 ? sumWorked/sumTarget*100 : 0;
+  s1.push([]); s1.push([]);
+  s1.push(['━━━ ملخص نهاية التقرير ━━━']);
+  s1.push(['إجمالي ساعات الهدف',      r1(sumTarget)]);
+  s1.push(['إجمالي الساعات المنفّذة',   r1(sumWorked)]);
+  s1.push(['إجمالي المتبقي من الهدف',   r1(sumRemain), sumRemain<=0 ? '✅ الهدف محقّق' : '⏳ متبقّي على الأسطول']);
+  s1.push(['نسبة الإنجاز الكلية',       Math.round(sumPct)+'%', bar(sumPct)]);
+
+  const ws1 = XLSX.utils.aoa_to_sheet(s1);
+  ws1['!cols'] = [{wch:16},{wch:22},{wch:14},{wch:14},{wch:10},{wch:14},{wch:14},{wch:16},{wch:14},{wch:14},{wch:20}];
+
+  // ── الصفحة 2: أعمدة بالتواريخ — الساعات (مع الهدف والمتبقي) ثم الطلبات ──
+  const s2 = [];
+  s2.push(['الساعات اليومية — أعمدة بالتواريخ']);
+  s2.push(['معرف الكابتن','الاسم', ...dates, 'الإجمالي','الهدف','المتبقي']);
+  capData.forEach(d=>{
+    const row = [d.c.id, d.c.name];
+    dates.forEach(dt=>{ row.push(d.byDate[dt] ? num(d.byDate[dt].hrs) : ''); });
+    row.push(r1(d.totHrs), d.target, r1(d.remain));
+    s2.push(row);
+  });
+  s2.push([]); s2.push([]);
+  s2.push(['الطلبات اليومية — أعمدة بالتواريخ']);
+  s2.push(['معرف الكابتن','الاسم', ...dates, 'الإجمالي']);
+  capData.forEach(d=>{
+    const row = [d.c.id, d.c.name];
+    dates.forEach(dt=>{ row.push(d.byDate[dt] ? num(d.byDate[dt].ord) : ''); });
+    row.push(r1(d.totOrd));
+    s2.push(row);
+  });
+  const ws2 = XLSX.utils.aoa_to_sheet(s2);
+  ws2['!cols'] = [{wch:16},{wch:22}, ...dates.map(()=>({wch:11})), {wch:11},{wch:11},{wch:11}];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws1, 'الإجماليات');
+  XLSX.utils.book_append_sheet(wb, ws2, 'بالتواريخ');
+  XLSX.writeFile(wb, 'ninja_hours_orders.xlsx');
+}
+
+/* ═══════════════════════════════════════════════
+   Clear
+═══════════════════════════════════════════════ */
+function clearHistory(){
+  if(confirm('مسح كل سجلات الأداء؟ الأهداف المخصّصة ستبقى محفوظة. لا يمكن التراجع.')){
+    localStorage.removeItem('fleet_hub_v24');
+    // لا نمسح fleet_goals_v24 — الأهداف المخصّصة تبقى محفوظة عبر التصفير
+    location.reload();
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Captain Search — بحث ثابت عبر كل الصفحات + سجل الدوام يوم بيوم
+═══════════════════════════════════════════════ */
+let currentCaptainId = null;
+
+// فهرس كل الكباتن (فريد بالمعرف) عبر كل التواريخ المرفوعة
+function buildCaptainIndex(){
+  const idx = new Map();
+  Object.values(historyLog).forEach(s=>{
+    (s.captains||[]).forEach(c=>{
+      const key = String(c.id);
+      const cur = idx.get(key);
+      if(!cur) idx.set(key,{id:key, name:c.name||key});
+      else if(c.name && (!cur.name || cur.name===key)) cur.name = c.name; // فضّل الاسم الحقيقي
+    });
+  });
+  return idx;
+}
+
+// سجل كابتن واحد: صفّ لكل تاريخ يظهر فيه (مرتّب زمنياً تصاعدياً)
+function getCaptainHistory(id){
+  const target = String(id);
+  const out = [];
+  Object.keys(historyLog).sort().forEach(date=>{
+    const rec = (historyLog[date].captains||[]).find(c=>String(c.id)===target);
+    if(rec) out.push(Object.assign({date}, rec));
+  });
+  return out;
+}
+
+function capInitials(name,id){
+  return (name||'').split(' ').slice(0,2).map(x=>x[0]||'').join('').toUpperCase() || String(id).slice(0,2);
+}
+
+// بحث حي أثناء الكتابة
+function runCaptainSearch(){
+  const inp = document.getElementById('cap-search-input');
+  const q   = inp.value.trim().toLowerCase();
+  const box = document.getElementById('cap-search-results');
+  document.getElementById('cap-search-clear').style.display = q ? 'block' : 'none';
+  if(!q){ box.style.display='none'; box.innerHTML=''; return; }
+
+  const matches = [...buildCaptainIndex().values()]
+    .filter(c=> c.id.toLowerCase().includes(q) || (c.name||'').toLowerCase().includes(q))
+    .sort((a,b)=> (a.name||a.id).localeCompare(b.name||b.id,'ar'))
+    .slice(0,10);
+
+  if(!matches.length){
+    box.innerHTML='<div style="padding:14px;color:var(--text3);font-size:12px;text-align:center;">لا يوجد كابتن مطابق — جرّب اسماً أو معرفاً آخر</div>';
+    box.style.display='block'; return;
+  }
+  box.innerHTML = matches.map(c=>{
+    const hist   = getCaptainHistory(c.id);
+    const latest = hist.length ? hist[hist.length-1] : null;
+    const w      = latest ? parseFloat(latest.wpi) : null;
+    const ini    = capInitials(c.name,c.id);
+    const tag    = w==null ? '' : `<span class="tag ${w>=80?'tag-green':w>=60?'tag-amber':'tag-red'}" style="flex-shrink:0;">${w.toFixed(0)}%</span>`;
+    const safeId = String(c.id).replace(/'/g,"\\'");
+    return `<div class="cap-search-row" onclick="openCaptainDetail('${safeId}')">
+      <div class="avatar" style="width:30px;height:30px;font-size:11px;">${ini}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</div>
+        <div class="mono" style="font-size:10px;color:var(--text3);">${c.id} · ${hist.length} يوم دوام</div>
+      </div>${tag}
+    </div>`;
+  }).join('');
+  box.style.display='block';
+}
+
+function capSearchKey(e){
+  if(e.key==='Escape'){ clearCaptainSearch(); return; }
+  if(e.key==='Enter'){
+    const first = document.querySelector('#cap-search-results .cap-search-row');
+    if(first) first.click();
+  }
+}
+
+function clearCaptainSearch(){
+  const inp = document.getElementById('cap-search-input');
+  inp.value='';
+  document.getElementById('cap-search-results').style.display='none';
+  document.getElementById('cap-search-clear').style.display='none';
+  inp.focus();
+}
+
+// إغلاق قائمة النتائج عند الضغط خارج الخانة
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.cap-search-wrap')){
+    const box = document.getElementById('cap-search-results');
+    if(box) box.style.display='none';
+  }
+});
+
+// عرض تفاصيل الكابتن: ملخص + جدول كل أيام الدوام
+function openCaptainDetail(id){
+  currentCaptainId = String(id);
+  const box = document.getElementById('cap-search-results'); if(box) box.style.display='none';
+
+  const meta = buildCaptainIndex().get(currentCaptainId) || {id:currentCaptainId, name:currentCaptainId};
+  const hist = getCaptainHistory(currentCaptainId);
+  document.getElementById('capDetailAvatar').innerText = capInitials(meta.name, currentCaptainId);
+  document.getElementById('capDetailTitle').innerText  = meta.name || currentCaptainId;
+  document.getElementById('capDetailSub').innerText    = 'معرف: ' + currentCaptainId;
+  const body = document.getElementById('capDetailBody');
+
+  if(!hist.length){
+    body.innerHTML = '<div class="empty-state">لا توجد سجلات دوام لهذا الكابتن بعد. ارفع ملف SLA يحتوي عليه.</div>';
+    document.getElementById('captain-overlay').style.display='flex'; return;
+  }
+
+  const n    = hist.length;
+  const num  = v => parseFloat(v)||0;
+  const avg  = k => hist.reduce((a,b)=>a+num(b[k]),0)/n;
+  const best = hist.reduce((a,b)=> num(b.wpi)>num(a.wpi)?b:a);
+  const worst= hist.reduce((a,b)=> num(b.wpi)<num(a.wpi)?b:a);
+  const latest = hist[n-1], prev = n>1 ? hist[n-2] : null;
+  const trend  = prev ? num(latest.wpi)-num(prev.wpi) : null;
+  const wcol = v => v>=80?'var(--green)':v>=60?'var(--amber)':'var(--red)';
+  const stat = (label,val,color,sub)=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
+    <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">${label}</div>
+    <div style="font-size:16px;font-weight:700;${color?'color:'+color+';':''}">${val}${sub?' '+sub:''}</div>
+  </div>`;
+  const trendHTML = trend==null ? '' : `<span style="font-size:11px;color:${trend>=0?'var(--green)':'var(--red)'};">${trend>=0?'▲ +':'▼ '}${Math.abs(trend).toFixed(1)}%</span>`;
+  const rowLabel = t => `<div style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.04em;margin:0 0 .55rem;">${t}</div>`;
+
+  // ── الصف 1: الفترة الحالية (آخر يوم) — أهم 5 مؤشرات ──
+  const curRow = rowLabel('الفترة الحالية · ' + latest.date) +
+    `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:8px;margin-bottom:1.1rem;">
+      ${stat('WPI', num(latest.wpi).toFixed(1)+'%', wcol(num(latest.wpi)), trendHTML)}
+      ${stat('الطلبات', num(latest.ord).toFixed(1))}
+      ${stat('الساعات', num(latest.hrs).toFixed(1))}
+      ${stat('التوصيل %', num(latest.dl).toFixed(1)+'%')}
+      ${stat('التأخير', num(latest.dly).toFixed(0)+' د', num(latest.dly)>125?'var(--red)':null)}
+    </div>`;
+
+  // ── الصف 2: متوسط كل الفترة — نفس المؤشرات للمقارنة ──
+  const avgRow = rowLabel('متوسط كل الفترة · ' + n + ' يوم عمل') +
+    `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:8px;margin-bottom:1.1rem;">
+      ${stat('متوسط WPI', avg('wpi').toFixed(1)+'%', wcol(avg('wpi')))}
+      ${stat('متوسط الطلبات', avg('ord').toFixed(1))}
+      ${stat('متوسط الساعات', avg('hrs').toFixed(1))}
+      ${stat('متوسط التوصيل %', avg('dl').toFixed(1)+'%')}
+      ${stat('متوسط التأخير', avg('dly').toFixed(0)+' د', avg('dly')>125?'var(--red)':null)}
+    </div>`;
+
+  // ── الصف 3: التقدير والتوصية — مقابل الأهداف (الساعات + أيام الدوام + الطلبات) ──
+  const gHrs = num(goals.avgHrs)||10, gOrd = num(goals.avgDlv)||25;
+  const totalDays = Object.keys(historyLog).length, daysWorked = n;
+  const hrsOK = avg('hrs')>=gHrs, ordOK = avg('ord')>=gOrd, dayOK = totalDays>0 ? (daysWorked/totalDays)>=0.8 : true;
+  const hrsAch = gHrs>0 ? Math.min(avg('hrs')/gHrs,1) : 1;
+  const ordAch = gOrd>0 ? Math.min(avg('ord')/gOrd,1) : 1;
+  const dayAch = totalDays>0 ? Math.min(daysWorked/totalDays,1) : 1;
+  const score  = (hrsAch+ordAch+dayAch)/3*100;
+  let grade,gColor,gEmoji;
+  if(score>=90){grade='ممتاز';gColor='var(--green)';gEmoji='🏆';}
+  else if(score>=75){grade='جيد';gColor='var(--green)';gEmoji='👍';}
+  else if(score>=60){grade='مقبول';gColor='var(--amber)';gEmoji='➖';}
+  else if(score>=40){grade='ضعيف';gColor='var(--red)';gEmoji='⚠️';}
+  else {grade='ضعيف جداً';gColor='var(--red)';gEmoji='🔴';}
+  const dimChip = (label,val,goal,ok)=>`<div style="text-align:center;padding:7px 12px;border-radius:9px;background:${ok?'var(--green-soft)':'var(--amber-soft)'};min-width:84px;">
+    <div style="font-size:9px;color:var(--text3);margin-bottom:2px;">${label}</div>
+    <div style="font-size:13px;font-weight:700;color:${ok?'var(--green)':'var(--amber)'};">${val}<span style="font-size:9px;color:var(--text3);font-weight:500;"> / ${goal}</span> ${ok?'✓':'⚠️'}</div>
+  </div>`;
+  const recs = [];
+  if(!hrsOK) recs.push(`زيادة ساعات العمل — المتوسط ${avg('hrs').toFixed(1)} مقابل هدف ${gHrs} ساعة`);
+  if(!ordOK) recs.push(`رفع عدد الطلبات — المتوسط ${avg('ord').toFixed(1)} مقابل هدف ${gOrd} طلب`);
+  if(!dayOK) recs.push(`تحسين انتظام الدوام — ${daysWorked} من ${totalDays} يوم عمل`);
+  if(!recs.length) recs.push('الأداء ضمن كل الأهداف — استمرار ممتاز 👏');
+
+  const evalRow = rowLabel('التقدير والتوصية') +
+    `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:1.25rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <span style="font-size:24px;font-weight:800;color:${gColor};white-space:nowrap;">${gEmoji} ${grade}</span>
+          <span style="font-size:11px;color:var(--text3);">درجة الإنجاز مقابل الأهداف: <b style="color:var(--text);">${score.toFixed(0)}%</b></span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${dimChip('الساعات', avg('hrs').toFixed(1), gHrs, hrsOK)}
+          ${dimChip('الطلبات', avg('ord').toFixed(1), gOrd, ordOK)}
+          ${dimChip('أيام الدوام', daysWorked, totalDays, dayOK)}
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:10px;">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:6px;">التوصية</div>
+        <ul style="margin:0;padding-right:18px;font-size:12px;color:var(--text2);line-height:1.85;">${recs.map(r=>`<li>${r}</li>`).join('')}</ul>
+      </div>
+    </div>`;
+
+  const summary = curRow + avgRow + evalRow;
+
+  const rows = [...hist].reverse().map(h=>{  // الأحدث أولاً
+    const w  = num(h.wpi), dl = num(h.dly);
+    const isBest  = h.date===best.date;
+    const isWorst = h.date===worst.date && n>1;
+    const mark = isBest ? '<span class="tag tag-green" style="padding:1px 6px;font-size:9px;">الأفضل</span>'
+               : isWorst ? '<span class="tag tag-red" style="padding:1px 6px;font-size:9px;">الأضعف</span>' : '';
+    return `<tr>
+      <td style="white-space:nowrap;"><span class="mono" style="font-weight:600;">${h.date}</span> ${mark}</td>
+      <td style="text-align:center;min-width:90px;">
+        <span class="tag ${w>=80?'tag-green':w>=60?'tag-amber':'tag-red'}">${w.toFixed(1)}%</span>
+        <div class="wpi-bar" style="margin-top:5px;"><div class="wpi-fill" style="width:${Math.min(w,100)}%;background:${wcol(w)};"></div></div>
+      </td>
+      <td style="text-align:center;font-weight:600;">${num(h.ord).toFixed(1)}</td>
+      <td style="text-align:center;">${num(h.hrs).toFixed(1)}</td>
+      <td style="text-align:center;color:${dl>125?'var(--red)':'var(--text)'};font-weight:600;">${dl.toFixed(0)}</td>
+      <td style="text-align:center;">${num(h.dl).toFixed(1)}%</td>
+      <td style="text-align:center;">${num(h.pk).toFixed(1)}%</td>
+      <td style="text-align:center;color:var(--text3);">${num(h.rm).toFixed(0)}</td>
+      <td style="text-align:center;color:var(--text3);">${num(h.off).toFixed(0)}</td>
+    </tr>`;
+  }).join('');
+
+  const table = `<div class="section-title" style="margin-bottom:.6rem;">سجل الدوام اليومي — ${n} يوم</div>
+    <div class="table-wrap" style="overflow-x:auto;max-height:430px;overflow-y:auto;border:1px solid var(--border);border-radius:12px;">
+      <table>
+        <thead><tr>
+          <th style="text-align:right;">التاريخ</th>
+          <th style="text-align:center;">WPI</th>
+          <th style="text-align:center;">الطلبات</th>
+          <th style="text-align:center;">الساعات</th>
+          <th style="text-align:center;">التأخير (د)</th>
+          <th style="text-align:center;">التوصيل %</th>
+          <th style="text-align:center;">الاستلام %</th>
+          <th style="text-align:center;">التجوال (د)</th>
+          <th style="text-align:center;">الأوفلاين (د)</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+
+  body.innerHTML = summary + table;
+  document.getElementById('captain-overlay').style.display='flex';
+}
+
+// تصدير سجل الكابتن الحالي إلى Excel
+function exportCaptainHistory(){
+  if(!currentCaptainId) return;
+  const hist = getCaptainHistory(currentCaptainId);
+  if(!hist.length){ alert('لا توجد بيانات لهذا الكابتن'); return; }
+  const meta = buildCaptainIndex().get(currentCaptainId) || {name:currentCaptainId};
+  const num  = v => parseFloat(v)||0;
+  const rows = [
+    ['التاريخ','WPI %','الطلبات','الساعات','التأخير (د)','التوصيل %','الاستلام %','التجوال (د)','الأوفلاين (د)'],
+    ...hist.map(h=>[h.date, num(h.wpi).toFixed(1), num(h.ord).toFixed(1), num(h.hrs).toFixed(1),
+      num(h.dly).toFixed(0), num(h.dl).toFixed(1), num(h.pk).toFixed(1), num(h.rm).toFixed(0), num(h.off).toFixed(0)])
+  ];
+  const wb = XLSX.utils.book_new();
+  const safe = String(meta.name||currentCaptainId).replace(/[\\/*?:\[\]]/g,'').slice(0,28) || 'captain';
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), safe);
+  XLSX.writeFile(wb, `captain_${currentCaptainId}_history.xlsx`);
+}
+</script>
+
+<!-- Toast -->
+<div id="wa-toast">✅ تم الإرسال بنجاح</div>
+
+<!-- WhatsApp Config Modal -->
+<div id="wa-overlay" onclick="closeWAPanel(event)" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);z-index:300;align-items:center;justify-content:center;padding:1rem;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;width:100%;max-width:620px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.3);overflow:hidden;" onclick="event.stopPropagation()">
+
+    <!-- header -->
+    <div style="padding:1.25rem 1.75rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:#25D366;color:#fff;border-radius:20px 20px 0 0;">
+      <div>
+        <div style="font-size:16px;font-weight:700;">💬 إعداد واتساب</div>
+        <div style="font-size:11px;opacity:.85;margin-top:2px;">Meta Cloud API — Make.com Webhook</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span id="wa-conn-badge" style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:99px;background:rgba(255,255,255,.2);">غير مُعدّ</span>
+        <button onclick="closeWAPanel()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:18px;cursor:pointer;border-radius:8px;padding:2px 8px;">&times;</button>
+      </div>
+    </div>
+
+    <!-- body tabs -->
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);">
+      <button class="wa-tab-btn active" id="watab-config" onclick="switchWATab('config')" style="flex:1;padding:10px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:var(--accent-soft);color:var(--accent);border-bottom:2px solid var(--accent);">⚙️ الإعداد</button>
+      <button class="wa-tab-btn" id="watab-send" onclick="switchWATab('send')" style="flex:1;padding:10px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:var(--surface);color:var(--text2);border-bottom:2px solid transparent;">📤 إرسال</button>
+      <button class="wa-tab-btn" id="watab-log" onclick="switchWATab('log')" style="flex:1;padding:10px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:var(--surface);color:var(--text2);border-bottom:2px solid transparent;">📋 السجل</button>
+    </div>
+
+    <!-- ── TAB: Config ── -->
+    <div id="watab-config-panel" style="padding:1.5rem;overflow-y:auto;flex:1;">
+
+      <div class="wa-config-row">
+        <div style="min-width:130px;">
+          <div style="font-size:13px;font-weight:600;">Make.com Webhook <span style="font-size:10px;color:var(--text3);font-weight:400;">(اختياري)</span></div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px;">لو عندك Make.com — بدونه يشتغل wa.me</div>
+        </div>
+        <input class="wa-input" id="wa-webhook" type="url" placeholder="https://hook.eu1.make.com/xxxxx" oninput="saveWAConfig()">
+      </div>
+
+      <div class="wa-config-row">
+        <div style="min-width:130px;">
+          <div style="font-size:13px;font-weight:600;">وقت التقرير اليومي</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px;">يُرسل تلقائياً كل يوم</div>
+        </div>
+        <input class="wa-input" id="wa-time" type="time" value="12:00" style="max-width:100px;" oninput="saveWAConfig();scheduleDaily()">
+      </div>
+
+      <div class="wa-config-row">
+        <div style="min-width:130px;">
+          <div style="font-size:13px;font-weight:600;">المستقبلون</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px;">أضف رقماً أو Group ID</div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+          <div style="display:flex;gap:6px;">
+            <input class="wa-input" id="wa-recip-input" placeholder="966XXXXXXXXX أو group_id" style="flex:1;">
+            <input class="wa-input" id="wa-recip-label" placeholder="الاسم / المجموعة" style="max-width:130px;">
+            <button onclick="addRecipient()" style="padding:6px 12px;border-radius:8px;background:#25D366;color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:700;">+</button>
+          </div>
+          <div id="wa-recip-list" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+        </div>
+      </div>
+
+      <div class="wa-config-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
+        <div style="font-size:13px;font-weight:600;">إرسال تلقائي عند رفع ملف</div>
+        <div style="display:flex;flex-direction:column;gap:8px;width:100%;">
+          <label class="wa-send-row">
+            <input type="checkbox" id="wa-auto-upload" onchange="saveWAConfig()">
+            <div><div style="font-size:12px;font-weight:600;">تنبيه فوري عند رفع ملف SLA</div><div style="font-size:10px;color:var(--text3);">يرسل ملخصاً سريعاً + Red Flags فوراً</div></div>
+          </label>
+          <label class="wa-send-row">
+            <input type="checkbox" id="wa-auto-daily" onchange="saveWAConfig();scheduleDaily()">
+            <div><div style="font-size:12px;font-weight:600;">تقرير يومي تلقائي</div><div style="font-size:10px;color:var(--text3);">يُرسل في الوقت المحدد أعلاه يومياً</div></div>
+          </label>
+          <label class="wa-send-row">
+            <input type="checkbox" id="wa-auto-redflag" onchange="saveWAConfig()">
+            <div><div style="font-size:12px;font-weight:600;">تنبيه Red Flag تلقائي</div><div style="font-size:10px;color:var(--text3);">عند وجود WPI أقل من 60% أو تأخير مرتفع</div></div>
+          </label>
+        </div>
+      </div>
+
+      <div style="margin-top:1rem;padding:10px;background:var(--amber-soft);border-radius:10px;border:1px solid var(--amber);font-size:11px;color:var(--amber);">
+        ⚠️ تأكد من إنشاء Template Message معتمد في Meta Business Manager قبل الإرسال. اسم الـ Template يُضاف في Make.com Scenario.
+      </div>
+    </div>
+
+    <!-- ── TAB: Send ── -->
+    <div id="watab-send-panel" style="padding:1.5rem;overflow-y:auto;flex:1;display:none;">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:1rem;">اختر نوع الرسالة وأرسل يدوياً</div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <!-- Daily Summary -->
+        <div style="border:1px solid var(--border);border-radius:12px;padding:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+            <div>
+              <div style="font-size:13px;font-weight:700;">📊 ملخص يومي شامل</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:2px;">WPI + متوسط الطلبات + الكباتن النشطين + أبرز المخالفات</div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+              <button onclick="copyMsg('daily')" class="btn btn-ghost" style="padding:7px 10px;font-size:12px;" title="نسخ الرسالة">📋 نسخ</button>
+              <button onclick="sendWAMessage('daily')" class="btn wa-btn" style="padding:7px 14px;font-size:12px;">💬 فتح واتساب</button>
+            </div>
+          </div>
+          <div id="wa-preview-daily" style="background:var(--surface2);border-radius:8px;padding:10px;font-size:11px;line-height:1.7;color:var(--text2);white-space:pre-wrap;font-family:'JetBrains Mono',monospace;max-height:120px;overflow-y:auto;direction:rtl;">ارفع ملف SLA لمعاينة الرسالة</div>
+        </div>
+
+        <!-- Red Flags -->
+        <div style="border:1px solid var(--border);border-radius:12px;padding:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+            <div>
+              <div style="font-size:13px;font-weight:700;">🚩 تقرير Red Flags</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:2px;">المتأخرين + ساعات حرجة + إنتاجية ضعيفة بالأسماء</div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+              <button onclick="copyMsg('redflags')" class="btn btn-ghost" style="padding:7px 10px;font-size:12px;" title="نسخ الرسالة">📋 نسخ</button>
+              <button onclick="sendWAMessage('redflags')" class="btn wa-btn" style="padding:7px 14px;font-size:12px;">💬 فتح واتساب</button>
+            </div>
+          </div>
+          <div id="wa-preview-redflags" style="background:var(--surface2);border-radius:8px;padding:10px;font-size:11px;line-height:1.7;color:var(--text2);white-space:pre-wrap;font-family:'JetBrains Mono',monospace;max-height:120px;overflow-y:auto;direction:rtl;">ارفع ملف SLA لمعاينة الرسالة</div>
+        </div>
+
+        <!-- Upload Alert -->
+        <div style="border:1px solid var(--border);border-radius:12px;padding:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+            <div>
+              <div style="font-size:13px;font-weight:700;">⚡ تنبيه رفع ملف جديد</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:2px;">إشعار سريع بأبرز الأرقام فقط</div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+              <button onclick="copyMsg('upload')" class="btn btn-ghost" style="padding:7px 10px;font-size:12px;" title="نسخ الرسالة">📋 نسخ</button>
+              <button onclick="sendWAMessage('upload')" class="btn wa-btn" style="padding:7px 14px;font-size:12px;">💬 فتح واتساب</button>
+            </div>
+          </div>
+          <div id="wa-preview-upload" style="background:var(--surface2);border-radius:8px;padding:10px;font-size:11px;line-height:1.7;color:var(--text2);white-space:pre-wrap;font-family:'JetBrains Mono',monospace;max-height:80px;overflow-y:auto;direction:rtl;">ارفع ملف SLA لمعاينة الرسالة</div>
+        </div>
+
+        <!-- info strip -->
+        <div style="background:var(--accent-soft);border-radius:10px;padding:10px 14px;font-size:11px;color:var(--accent);line-height:1.6;">
+          💡 <strong>كيف يشتغل:</strong> اضغط "فتح واتساب" — يفتح واتساب ويب مباشرة بالرسالة جاهزة لكل مستقبل. الزر "نسخ" يحفظ الرسالة للكليبورد لو تبي تلصقها يدوياً.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: Log ── -->
+    <div id="watab-log-panel" style="padding:1.5rem;overflow-y:auto;flex:1;display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;">سجل الإرسال</div>
+        <button onclick="clearWALog()" style="font-size:11px;color:var(--red);background:none;border:none;cursor:pointer;font-weight:600;">مسح السجل</button>
+      </div>
+      <div id="wa-log-list"><div class="empty-state" style="padding:2rem;">لا يوجد سجل بعد</div></div>
+    </div>
+
+  </div>
+</div>
+<!-- /WhatsApp Modal -->
+
+<script>
+/* ═══════════════════════════════════════════════
+   WhatsApp Config — persisted in localStorage
+═══════════════════════════════════════════════ */
+let waConfig = JSON.parse(localStorage.getItem('fleet_wa_config')||'{}');
+let waLog    = JSON.parse(localStorage.getItem('fleet_wa_log')||'[]');
+let waDailyTimer = null;
+
+function saveWAConfig(){
+  waConfig.webhook    = document.getElementById('wa-webhook')?.value || waConfig.webhook || '';
+  waConfig.time       = document.getElementById('wa-time')?.value || '12:00';
+  waConfig.autoUpload = document.getElementById('wa-auto-upload')?.checked || false;
+  waConfig.autoDaily  = document.getElementById('wa-auto-daily')?.checked || false;
+  waConfig.autoRedFlag= document.getElementById('wa-auto-redflag')?.checked || false;
+  waConfig.recipients = waConfig.recipients || [];
+  localStorage.setItem('fleet_wa_config', JSON.stringify(waConfig));
+  updateWAStatus();
+}
+
+function loadWAConfig(){
+  if(waConfig.webhook)  { const el=document.getElementById('wa-webhook');  if(el) el.value=waConfig.webhook; }
+  if(waConfig.time)     { const el=document.getElementById('wa-time');     if(el) el.value=waConfig.time; }
+  if(waConfig.autoUpload) { const el=document.getElementById('wa-auto-upload');  if(el) el.checked=true; }
+  if(waConfig.autoDaily)  { const el=document.getElementById('wa-auto-daily');   if(el) el.checked=true; }
+  if(waConfig.autoRedFlag){ const el=document.getElementById('wa-auto-redflag'); if(el) el.checked=true; }
+  renderRecipients();
+  updateWAStatus();
+  if(waConfig.autoDaily) scheduleDaily();
+}
+
+function updateWAStatus(){
+  const dot   = document.getElementById('wa-dot');
+  const badge = document.getElementById('wa-conn-badge');
+  const ready = waConfig.webhook && (waConfig.recipients||[]).length > 0;
+  if(dot)   { dot.style.background = ready ? '#fff' : '#fff'; dot.style.opacity = ready ? '1' : '.35'; }
+  if(badge) { badge.textContent = ready ? '✅ جاهز للإرسال' : 'غير مُعدّ'; badge.style.background = ready ? 'rgba(255,255,255,.3)' : 'rgba(255,255,255,.15)'; }
+}
+
+/* ── Recipients ── */
+function addRecipient(){
+  const num = document.getElementById('wa-recip-input').value.trim();
+  const lbl = document.getElementById('wa-recip-label').value.trim() || num;
+  if(!num) return;
+  if(!waConfig.recipients) waConfig.recipients=[];
+  if(waConfig.recipients.find(r=>r.num===num)) return;
+  waConfig.recipients.push({num, lbl});
+  document.getElementById('wa-recip-input').value='';
+  document.getElementById('wa-recip-label').value='';
+  saveWAConfig();
+  renderRecipients();
+}
+function removeRecipient(num){
+  waConfig.recipients = (waConfig.recipients||[]).filter(r=>r.num!==num);
+  saveWAConfig();
+  renderRecipients();
+}
+function renderRecipients(){
+  const el=document.getElementById('wa-recip-list');
+  if(!el) return;
+  el.innerHTML=(waConfig.recipients||[]).map(r=>`
+    <span class="wa-tag">${r.lbl}
+      <button onclick="removeRecipient('${r.num}')" style="background:none;border:none;cursor:pointer;color:inherit;font-size:13px;line-height:1;padding:0 2px;">×</button>
+    </span>`).join('');
+}
+
+/* ── Message builders ── */
+function buildDailyMsg(s){
+  if(!s) return 'لا يوجد بيانات';
+  const caps = s.captains||[];
+  const delayed = caps.filter(c=>parseFloat(c.dly)>125);
+  const lowOrd  = caps.filter(c=>parseFloat(c.ord)<25);
+  const lowHrs  = caps.filter(c=>parseFloat(c.hrs)<10);
+  const d = new Date().toLocaleDateString('ar-SA',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  return `📊 *تقرير الأسطول اليومي*
+${d}
+━━━━━━━━━━━━━━━━
+🏆 WPI الإجمالي: *${s.wpi?.toFixed(1)||'—'}%*
+📦 متوسط الطلبات: *${s.avgDlv?.toFixed(1)||'—'}*
+👥 الكباتن النشطين: *${s.active||'—'}*
+⏱ متوسط الساعات: *${s.avgHrs?.toFixed(1)||'—'}*
+🚚 التوصيل في الوقت: *${s.delivOT?.toFixed(1)||'—'}%*
+━━━━━━━━━━━━━━━━
+⚠️ المتأخرين: *${delayed.length}* كابتن
+${delayed.length ? delayed.map(c=>`  • ${c.name} (${c.dly}د)`).join('\n') : '  لا يوجد'}
+🕐 ساعات حرجة: *${lowHrs.length}* كابتن
+📉 إنتاجية ضعيفة: *${lowOrd.length}* كابتن
+━━━━━━━━━━━━━━━━
+Ninja Command Center v1.26.0`;
+}
+
+function buildRedFlagsMsg(s){
+  if(!s) return 'لا يوجد بيانات';
+  const caps = s.captains||[];
+  const delayed  = caps.filter(c=>parseFloat(c.dly)>125);
+  const lowOrd   = caps.filter(c=>parseFloat(c.ord)<25);
+  const lowHrs   = caps.filter(c=>parseFloat(c.hrs)<10);
+  const critWPI  = caps.filter(c=>parseFloat(c.wpi)<60);
+  const total = delayed.length+lowOrd.length+lowHrs.length+critWPI.length;
+  return `🚩 *تقرير Red Flags*
+${new Date().toLocaleDateString('ar-SA')}
+━━━━━━━━━━━━━━━━
+إجمالي المخالفات: *${total}*
+
+🔴 *متأخرون (>${'125'}د)*: ${delayed.length}
+${delayed.map(c=>`  • ${c.name} — ${c.dly}د`).join('\n')||'  لا يوجد'}
+
+🕐 *ساعات حرجة (<10ساعة)*: ${lowHrs.length}
+${lowHrs.map(c=>`  • ${c.name} — ${c.hrs}ساعة`).join('\n')||'  لا يوجد'}
+
+📉 *إنتاجية ضعيفة (<25طلب)*: ${lowOrd.length}
+${lowOrd.map(c=>`  • ${c.name} — ${c.ord}طلب`).join('\n')||'  لا يوجد'}
+
+⚡ *WPI حرج (<60%)*: ${critWPI.length}
+${critWPI.map(c=>`  • ${c.name} — ${c.wpi}%`).join('\n')||'  لا يوجد'}
+━━━━━━━━━━━━━━━━
+Ninja Command Center v1.26.0`;
+}
+
+function buildUploadMsg(s){
+  if(!s) return 'لا يوجد بيانات';
+  return `⚡ *ملف SLA جديد — ${new Date().toLocaleDateString('ar-SA')}*
+━━━━━━━━━━━━
+WPI: *${s.wpi?.toFixed(1)||'—'}%*  |  طلبات: *${s.avgDlv?.toFixed(1)||'—'}*
+نشطين: *${s.active||'—'}*  |  متأخرين: *${s.delayed||0}*
+Red Flags: *${(s.captains||[]).filter(c=>parseFloat(c.wpi)<60).length}* كابتن
+━━━━━━━━━━━━
+Ninja Command Center`;
+}
+
+/* ── Preview updater ── */
+function refreshWAPreviews(){
+  const s=currentStats;
+  const dp=document.getElementById('wa-preview-daily');
+  const rp=document.getElementById('wa-preview-redflags');
+  const up=document.getElementById('wa-preview-upload');
+  if(dp) dp.textContent=buildDailyMsg(s);
+  if(rp) rp.textContent=buildRedFlagsMsg(s);
+  if(up) up.textContent=buildUploadMsg(s);
+}
+
+/* ── Copy message to clipboard ── */
+async function copyMsg(type){
+  if(!currentStats){ showToast('❌ ارفع ملف SLA أولاً','#dc2626'); return; }
+  const msgs = {
+    daily:    buildDailyMsg(currentStats),
+    redflags: buildRedFlagsMsg(currentStats),
+    upload:   buildUploadMsg(currentStats)
+  };
+  const msg = msgs[type];
+  try {
+    await navigator.clipboard.writeText(msg);
+  } catch(e) {
+    const ta=document.createElement('textarea');
+    ta.value=msg;ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+  showToast('📋 تم النسخ — الصق في واتساب','#2563eb');
+}
+
+/* ── Core send function — يفتح واتساب ويب مباشرة، يشتغل من file:// ── */
+async function sendWAMessage(type, silent=false){
+  if(!currentStats){ if(!silent) showToast('❌ ارفع ملف SLA أولاً','#dc2626'); return; }
+
+  const msgs = {
+    daily:    buildDailyMsg(currentStats),
+    redflags: buildRedFlagsMsg(currentStats),
+    upload:   buildUploadMsg(currentStats)
+  };
+  const typeLabels = { daily:'ملخص يومي', redflags:'Red Flags', upload:'تنبيه رفع ملف' };
+  const msg = msgs[type];
+  const recips = waConfig.recipients||[];
+
+  /* 1. نسخ الرسالة للكليبورد */
+  try {
+    await navigator.clipboard.writeText(msg);
+  } catch(e) {
+    /* fallback for file:// */
+    const ta = document.createElement('textarea');
+    ta.value = msg; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+
+  /* 2. فتح واتساب لكل مستقبل */
+  const encoded = encodeURIComponent(msg);
+  if(recips.length > 0){
+    recips.forEach((r, i) => {
+      const num = r.num.replace(/\D/g,'');
+      /* تأخير بسيط بين كل نافذة عشان ما يبلوكها المتصفح */
+      setTimeout(() => {
+        window.open(`https://wa.me/${num}?text=${encoded}`, '_blank');
+      }, i * 600);
+    });
+    logWA(typeLabels[type], 'sent', `فُتح واتساب لـ ${recips.length} مستقبل`);
+    if(!silent) showToast(`✅ تم النسخ + فتح واتساب (${recips.length})`, '#25D366');
+  } else {
+    /* لو ما في مستقبلين — افتح wa.me عام */
+    window.open(`https://wa.me/?text=${encoded}`, '_blank');
+    logWA(typeLabels[type], 'sent', 'فُتح واتساب (بدون رقم محدد)');
+    if(!silent) showToast('✅ تم النسخ + فتح واتساب', '#25D366');
+  }
+
+  /* webhook اختياري — لو موجود يرسل كذا بدون انتظار */
+  if(waConfig.webhook){
+    const body = {
+      type, message: msg, recipients: recips,
+      date: new Date().toISOString(),
+      stats: {
+        wpi: currentStats.wpi?.toFixed(1),
+        avgDlv: currentStats.avgDlv?.toFixed(1),
+        active: currentStats.active,
+        delayed: currentStats.delayed
+      }
+    };
+    fetch(waConfig.webhook, {
+      method:'POST', mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    }).catch(()=>{});
+  }
+}
+
+/* ── Auto triggers ── */
+function triggerAutoSend(stats){
+  if(waConfig.autoUpload) sendWAMessage('upload', true);
+  if(waConfig.autoRedFlag){
+    const hasFlags = stats.delayed>5 || stats.wpi<70 || (stats.captains||[]).filter(c=>parseFloat(c.wpi)<60).length>0;
+    if(hasFlags) sendWAMessage('redflags', true);
+  }
+}
+
+/* ── Daily scheduler ── */
+function scheduleDaily(){
+  if(waDailyTimer) clearTimeout(waDailyTimer);
+  if(!waConfig.autoDaily || !waConfig.time) return;
+  const [h,m] = waConfig.time.split(':').map(Number);
+  const now = new Date();
+  const target = new Date();
+  target.setHours(h,m,0,0);
+  if(target<=now) target.setDate(target.getDate()+1);
+  const ms = target-now;
+  waDailyTimer = setTimeout(()=>{
+    sendWAMessage('daily', true);
+    scheduleDaily(); // reschedule for tomorrow
+  }, ms);
+}
+
+/* ── Log ── */
+function logWA(type, status, note){
+  waLog.unshift({
+    type, status, note,
+    time: new Date().toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'}),
+    date: new Date().toLocaleDateString('ar-SA')
+  });
+  if(waLog.length>50) waLog.pop();
+  localStorage.setItem('fleet_wa_log', JSON.stringify(waLog));
+  renderWALog();
+}
+function renderWALog(){
+  const el=document.getElementById('wa-log-list');
+  if(!el) return;
+  if(!waLog.length){ el.innerHTML='<div class="empty-state" style="padding:2rem;">لا يوجد سجل بعد</div>'; return; }
+  el.innerHTML=waLog.map(l=>`
+    <div class="wa-log-entry">
+      <span style="font-size:14px;">${l.status==='success'||l.status==='sent'?'✅':'❌'}</span>
+      <div style="flex:1;">
+        <div style="font-size:12px;font-weight:600;">${l.type}</div>
+        <div style="font-size:10px;color:var(--text3);">${l.note}</div>
+      </div>
+      <div class="wa-log-time">${l.date} ${l.time}</div>
+    </div>`).join('');
+}
+function clearWALog(){
+  waLog=[];
+  localStorage.removeItem('fleet_wa_log');
+  renderWALog();
+}
+
+/* ── UI helpers ── */
+function showToast(msg, bg='#25D366'){
+  const t=document.getElementById('wa-toast');
+  t.textContent=msg;
+  t.style.background=bg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+function openWAPanel(){
+  loadWAConfig();
+  refreshWAPreviews();
+  renderWALog();
+  document.getElementById('wa-overlay').style.display='flex';
+}
+function closeWAPanel(e){
+  if(!e || e.target===document.getElementById('wa-overlay'))
+    document.getElementById('wa-overlay').style.display='none';
+}
+function switchWATab(tab){
+  ['config','send','log'].forEach(t=>{
+    document.getElementById('watab-'+t+'-panel').style.display = t===tab?'flex':'none';
+    document.getElementById('watab-'+t+'-panel').style.flexDirection = 'column';
+    const btn=document.getElementById('watab-'+t);
+    btn.style.background  = t===tab?'var(--accent-soft)':'var(--surface)';
+    btn.style.color       = t===tab?'var(--accent)':'var(--text2)';
+    btn.style.borderBottom= t===tab?'2px solid var(--accent)':'2px solid transparent';
+  });
+  document.getElementById('watab-'+tab+'-panel').style.display='flex';
+  if(tab==='send') refreshWAPreviews();
+  if(tab==='log')  renderWALog();
+}
+
+/* ── Download HTML ── */
+function downloadHTML(){
+  const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'fleet_hub_v1.26.0.html';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/* boot WA */
+(function initWA(){
+  updateWAStatus();
+  if(waConfig.autoDaily) scheduleDaily();
+})();
+</script>
+<script id="wf-supabase-dash">
+/* ═══════════════════════════════════════════════════════════════════════
+   wf-supabase-dash v1 — ربط Ninja Command Center و Keemarta بقاعدة AFMC الموحّدة
+   طبقة غير مدمّرة تُحقن قبل </body> — لا تغيّر مفاتيح التخزين ولا الحسابات.
+   • كل ملف يُرفع: يُحفظ يومه في القاعدة (يظهر على كل الأجهزة) + يدخل حضور
+     كل كابتن في attendance_daily مربوطاً برقم إقامته في وثيق.
+   • الكابتن غير المربوط لا يضيع: يظهر في «ملاحظات المزامنة».
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  if (window.__wfSbDash) return; window.__wfSbDash = true;
+  var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
+  var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
+  var SKEY = 'wfsb_session', PULL_EVERY = 60000;
+
+  var APP = null;
+  try { if (typeof captainsHist !== 'undefined' && typeof captainMeta !== 'undefined') APP = 'keemart'; } catch(e){}
+  try { if (!APP && typeof historyLog !== 'undefined' && typeof restoreCaptainsFromStats === 'function') APP = 'ninja'; } catch(e){}
+  if (!APP) return;
+  var PROJECT = APP === 'ninja' ? 'NINJA' : 'KEEMART';
+  var APP_AR = APP === 'ninja' ? 'Ninja Command Center' : 'Keemarta Command Center';
+
+  function lsGet(k, d){ try { var r = localStorage.getItem(k); return r ? JSON.parse(r) : d; } catch(e){ return d; } }
+  function lsSet(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch(e){ return false; } }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function stable(v){
+    if (v === null || typeof v !== 'object') return JSON.stringify(v === undefined ? null : v);
+    if (Array.isArray(v)) return '[' + v.map(stable).join(',') + ']';
+    return '{' + Object.keys(v).filter(function(k){ return v[k] !== undefined; }).sort().map(function(k){ return JSON.stringify(k) + ':' + stable(v[k]); }).join(',') + '}';
+  }
+  function hash(o){ var s = stable(o), h = 5381; for (var i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; return h.toString(36) + ':' + s.length; }
+
+  /* ---------- الجلسة (نفس حساب وثيق والأسطول) ---------- */
+  var sess = lsGet(SKEY, null), me = null;
+  function authFetch(path, body){
+    return fetch(SB_URL + '/auth/v1/' + path, { method: 'POST', headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error(j.error_description || j.msg || j.message || ('HTTP ' + r.status)); return j; }); });
+  }
+  function keep(j){ sess = { access_token: j.access_token, refresh_token: j.refresh_token, expires_at: Date.now() + (j.expires_in || 3600) * 1000, user_id: j.user && j.user.id, email: j.user && j.user.email }; lsSet(SKEY, sess); }
+  var refreshing = null;
+  function token(){
+    var fresh = lsGet(SKEY, null);
+    if (fresh && sess && fresh.user_id === sess.user_id && fresh.expires_at > sess.expires_at) sess = fresh;
+    if (!sess && fresh) sess = fresh;
+    if (!sess) return Promise.reject(new Error('no session'));
+    if (Date.now() < sess.expires_at - 90000) return Promise.resolve(sess.access_token);
+    if (!refreshing) refreshing = authFetch('token?grant_type=refresh_token', { refresh_token: sess.refresh_token })
+      .then(function(j){ keep(j); refreshing = null; return sess.access_token; })
+      .catch(function(e){ refreshing = null; sess = null; me = null; try { localStorage.removeItem(SKEY); } catch(_){} showGate('انتهت الجلسة — سجّل الدخول مرة أخرى.'); throw e; });
+    return refreshing;
+  }
+  function api(method, path, body, headers){
+    return token().then(function(t){
+      var h = { apikey: SB_KEY, Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' };
+      if (headers) for (var k in headers) h[k] = headers[k];
+      return fetch(SB_URL + '/rest/v1/' + path, { method: method, headers: h, body: body == null ? undefined : JSON.stringify(body) });
+    }).then(function(r){ return r.text().then(function(t){ var j = t ? JSON.parse(t) : null; if (!r.ok) throw new Error((j && j.message) || ('HTTP ' + r.status)); return j; }); });
+  }
+  function rpc(fn, args){ return api('POST', 'rpc/' + fn, args || {}); }
+
+  /* ---------- حالة المزامنة ---------- */
+  var MKEY = 'wfsb_dash_' + APP;
+  var meta = lsGet(MKEY, null);
+  function resetMeta(){ meta = { user: sess && sess.user_id, days: {} }; }
+  function saveMeta(){ lsSet(MKEY, meta); }
+
+  /* صيغة «اليوم» المحفوظة في القاعدة */
+  function dayRecord(d){
+    if (!historyLog[d]) return null;
+    if (APP === 'ninja') return { hist: historyLog[d] };
+    var caps = captainsHist[d] || {}, m = {};
+    Object.keys(caps).forEach(function(id){ if (captainMeta[id]) m[id] = captainMeta[id]; });
+    return { hist: historyLog[d], caps: caps, meta: m };
+  }
+  function attendanceRows(d){
+    var out = [];
+    if (APP === 'ninja') {
+      ((historyLog[d] && historyLog[d].captains) || []).forEach(function(c){
+        out.push({ id: String(c.id), name: c.name, date: d, hours: +c.hrs || 0, orders: +c.ord || 0, quality: +c.dl || 0 });
+      });
+    } else {
+      var caps = captainsHist[d] || {};
+      Object.keys(caps).forEach(function(id){
+        var r = caps[id], mm = captainMeta[id] || {};
+        out.push({ id: String(id), name: mm.n || '', phone: mm.ph || '', date: d,
+                   hours: r.teh != null ? +r.teh : +r.hrs || 0, orders: r.tord != null ? +r.tord : +r.ord || 0, present: (+r.act || 0) > 0 });
+      });
+    }
+    return out;
+  }
+
+  /* ---------- رفع يوم بعد معالجة ملفه ---------- */
+  var queue = {}, qTimer = null, busy = false, lastFull = null;
+  function enqueue(d){ queue[d] = 1; clearTimeout(qTimer); qTimer = setTimeout(flush, 1500); }
+  function flush(){
+    if (!me || busy) { if (me) qTimer = setTimeout(flush, 3000); return; }
+    var days = Object.keys(queue); if (!days.length) return; queue = {}; busy = true; setChip('sync');
+    var now = new Date().toISOString(), recs = [], att = [], stats = { inserted: 0, updated: 0, linked: 0, unmatched: 0 };
+    days.forEach(function(d){
+      var r = dayRecord(d); if (!r) return;
+      if (APP === 'keemart' && d === newestDate() && lastFull) r.full = lastFull;
+      recs.push({ key: d, rec: r, edited_at: now });
+      meta.days[d] = hash(r);
+      att = att.concat(attendanceRows(d));
+    });
+    var p = rpc('sync_records', { p_app: APP, p_coll: 'day', p_rows: recs });
+    for (var i = 0; i < att.length; i += 400) (function(ch){
+      p = p.then(function(){ return rpc('import_attendance', { p_project: PROJECT, p_rows: ch, p_source: APP_AR }).then(function(r){
+        stats.inserted += r.inserted || 0; stats.updated += r.updated || 0; stats.linked += r.linked || 0; stats.unmatched += r.unmatched_count || 0; }); });
+    })(att.slice(i, i + 400));
+    p.then(function(){
+      saveMeta(); busy = false; setChip('ok');
+      note('☁️ حُفظ ' + days.length + ' يوم في القاعدة — ' + (stats.inserted + stats.updated) + ' سجل حضور'
+        + (stats.linked ? ' · رُبط ' + stats.linked + ' كابتن جديد بوثيق' : '')
+        + (stats.unmatched ? ' · ' + stats.unmatched + ' كابتن غير مربوط (ملاحظات المزامنة)' : ''));
+    }).catch(function(e){ busy = false; days.forEach(function(d){ queue[d] = 1; }); setChip('off', e.message); note('⚠️ لم يُحفظ في القاعدة: ' + e.message + ' — سيُعاد تلقائياً'); qTimer = setTimeout(flush, 30000); });
+  }
+  function newestDate(){ var ds = Object.keys(historyLog).sort(); return ds[ds.length - 1]; }
+
+  function hookProcess(){
+    if (typeof window.processData !== 'function' || window.processData.__wfsb) return;
+    var orig = window.processData;
+    var w = function(data, fDate){
+      var r = orig.apply(this, arguments);
+      try {
+        if (APP === 'keemart') { try { var f = JSON.parse(localStorage.getItem('fleet_caps_v24') || 'null'); if (Array.isArray(f)) lastFull = f; } catch(e){} }
+        if (fDate && historyLog[fDate]) enqueue(fDate);
+      } catch(e){}
+      return r;
+    };
+    w.__wfsb = true; window.processData = w;
+  }
+
+  /* ---------- سحب الأيام من الأجهزة الأخرى ---------- */
+  function pull(){
+    if (!me) return Promise.resolve(0);
+    return api('GET', 'app_records?select=key,data,updated_at&app=eq.' + APP + '&coll=eq.day&deleted_at=is.null&order=key.asc&limit=2000').then(function(rows){
+      var changed = 0, newest = newestDate(), gotNewest = null;
+      (rows || []).forEach(function(row){
+        var d = row.key, r = row.data || {}; if (!r.hist) return;
+        var full = r.full; delete r.full;
+        var h = hash(r); if (meta.days[d] === h && historyLog[d] && isMine(historyLog[d])) return;
+        var local = dayRecord(d);
+        if (local && hash(local) === h) { meta.days[d] = h; return; }
+        historyLog[d] = r.hist;
+        if (APP === 'keemart') { captainsHist[d] = r.caps || {}; Object.keys(r.meta || {}).forEach(function(id){ captainMeta[id] = r.meta[id]; }); }
+        meta.days[d] = h; changed++;
+        if (!newest || d >= newest) { newest = d; gotNewest = full || gotNewest; }
+      });
+      if (changed) applyLocal(gotNewest);
+      saveMeta(); return changed;
+    });
+  }
+  function applyLocal(full){
+    try { localStorage.setItem('fleet_hub_v24', JSON.stringify(historyLog)); } catch(e){}
+    var d = newestDate(), last = historyLog[d];
+    try {
+      if (APP === 'ninja') {
+        restoreCaptainsFromStats(last); refreshDateSelectors(); updateUI(last); updateChart(); updateTrendDots();
+        updateComparison(); updateLeaderboard(); updatePredictive();
+      } else {
+        try { localStorage.setItem('fleet_caps_meta_v24', JSON.stringify(captainMeta)); } catch(e){}
+        if (typeof persistCaptainsHist === 'function') persistCaptainsHist();
+        if (full && Array.isArray(full)) { try { localStorage.setItem('fleet_caps_v24', JSON.stringify(full)); } catch(e){} restoreCaptainsSnapshot(); }
+        refreshVendorSelector(); refreshDateSelectors(); applyVendorFilter(activeVendor);
+      }
+    } catch(e){ console.warn('[wf-supabase-dash] render', e); }
+  }
+
+  /* أول مرة على هذا الجهاز: ارفع الأيام المحلية غير الموجودة في القاعدة */
+  function firstUpload(){
+    return api('GET', 'app_records?select=key&app=eq.' + APP + '&coll=eq.day&limit=2000').then(function(rows){
+      var have = {}; (rows || []).forEach(function(r){ have[r.key] = 1; });
+      var missing = Object.keys(historyLog).filter(function(d){ return !have[d] && isMine(historyLog[d]); });
+      if (!missing.length || window.WF_CLOUD) return;
+      if (!confirm('يوجد ' + missing.length + ' يوم محفوظ على هذا الجهاز وغير موجود في القاعدة.\nرفعها الآن (مع حضور الكباتن)؟')) return;
+      missing.forEach(function(d){ queue[d] = 1; }); flush();
+    });
+  }
+  /* يمنع خلط أيام Ninja و Keemart (يتشاركان مفتاح التخزين على نفس المتصفح) */
+  function isMine(h){ if (!h) return false; return APP === 'keemart' ? h.legacy === false : h.legacy !== false; }
+
+  /* Ninja و Keemart يتشاركان المفتاح fleet_hub_v24 على نفس المتصفح (file://).
+     أيام Keemart تُسقط Ninja عند الفتح — نخفيها من ذاكرة Ninja فقط، ونعيد دمجها
+     عند كل حفظ حتى لا يضيع شيء من بيانات Keemart. المفتاح لا يتغيّر. */
+  if (APP === 'ninja') {
+    try {
+      Object.keys(historyLog).forEach(function(d){ if (!isMine(historyLog[d])) delete historyLog[d]; });
+      var protoSet = Storage.prototype.setItem;
+      Storage.prototype.setItem = function(k, v){
+        if (this === window.localStorage && k === 'fleet_hub_v24') {
+          try {
+            var cur = JSON.parse(protoSet === null ? '{}' : (window.localStorage.getItem(k) || '{}')) || {}, mine = JSON.parse(v) || {};
+            Object.keys(cur).forEach(function(d){ if (!isMine(cur[d]) && !(d in mine)) mine[d] = cur[d]; });
+            v = JSON.stringify(mine);
+          } catch(e){}
+        }
+        return protoSet.call(this, k, v);
+      };
+    } catch(e){}
+  }
+
+  /* ═════════════════════ الواجهة ═════════════════════ */
+  function css(){
+    if (document.getElementById('wfsb-dash-css')) return;
+    var s = document.createElement('style'); s.id = 'wfsb-dash-css';
+    s.textContent = '#wfsbGate{position:fixed;inset:0;z-index:2147483600;background:linear-gradient(135deg,#0b1f1f,#0f6e6e);display:flex;align-items:center;justify-content:center;font-family:system-ui,Tahoma,sans-serif;direction:rtl}'
+      + '#wfsbGate .card{background:#fff;border-radius:18px;padding:24px 22px;width:min(370px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.35);color:#1f2a2a}'
+      + '#wfsbGate h2{margin:0 0 4px;font-size:19px}#wfsbGate .sub{font-size:13px;color:#5b6b6b;margin-bottom:14px}'
+      + '#wfsbGate input{width:100%;box-sizing:border-box;padding:11px;border:1px solid #d9d2c3;border-radius:10px;margin-bottom:10px;font:inherit;font-size:14px;direction:ltr;text-align:right}'
+      + '#wfsbGate button{width:100%;padding:11px;border:0;border-radius:10px;background:#0f6e6e;color:#fff;font:inherit;font-weight:700;font-size:15px;cursor:pointer}'
+      + '#wfsbGate .msg{font-size:13px;margin-bottom:12px;padding:9px 11px;border-radius:10px;background:#fdf3e7;color:#9a5b12}#wfsbGate .msg.ok{background:#eaf5ef;color:#1e6b43}'
+      + '#wfsbDChip{position:fixed;bottom:12px;left:12px;z-index:2147483000;font:600 12px system-ui,Tahoma;direction:rtl;background:#fff;color:#1f2a2a;border:1px solid #d9d2c3;border-radius:999px;padding:7px 12px;box-shadow:0 4px 14px rgba(0,0,0,.12);cursor:pointer;display:flex;gap:6px;align-items:center}'
+      + '#wfsbDChip .dot{width:9px;height:9px;border-radius:50%;background:#94a3b8}#wfsbDChip.ok .dot{background:#16a34a}#wfsbDChip.sync .dot{background:#f59e0b}#wfsbDChip.off .dot{background:#dc2626}'
+      + '#wfsbDToast{position:fixed;bottom:56px;left:12px;z-index:2147483001;max-width:min(420px,90vw);direction:rtl;font:13px system-ui,Tahoma;background:#0f3d3e;color:#fff;border-radius:12px;padding:10px 14px;box-shadow:0 8px 24px rgba(0,0,0,.25);display:none}'
+      + '#wfsbDModal{position:fixed;inset:0;z-index:2147483100;background:rgba(15,30,30,.45);display:flex;align-items:center;justify-content:center;direction:rtl;font:13px system-ui,Tahoma}'
+      + '#wfsbDModal .box{background:#fff;color:#1f2a2a;border-radius:16px;width:min(820px,94vw);max-height:84vh;display:flex;flex-direction:column}#wfsbDModal .top{display:flex;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #eee;font-weight:700}'
+      + '#wfsbDModal .body{overflow:auto;padding:12px 18px}#wfsbDModal td,#wfsbDModal th{padding:7px 6px;border-bottom:1px solid #f0eadd;text-align:right}#wfsbDModal table{width:100%;border-collapse:collapse}#wfsbDModal .x{border:0;background:none;font-size:20px;cursor:pointer}';
+    document.head.appendChild(s);
+  }
+  var toastT = null;
+  function note(m){ css(); var t = document.getElementById('wfsbDToast'); if (!t) { t = document.createElement('div'); t.id = 'wfsbDToast'; document.body.appendChild(t); }
+    t.textContent = m; t.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(function(){ t.style.display = 'none'; }, 6000); }
+  var chip = null, lastOk = null;
+  function setChip(s, err){
+    css(); if (!chip) { chip = document.createElement('div'); chip.id = 'wfsbDChip'; document.body.appendChild(chip); chip.onclick = menu; }
+    if (s === 'ok') lastOk = new Date();
+    chip.className = s; chip.title = err || '';
+    chip.innerHTML = '<span class="dot"></span>' + (s === 'sync' ? 'جارٍ المزامنة…' : s === 'off' ? 'غير متصل — سيُعاد' : '☁️ متصل' + (lastOk ? ' · ' + lastOk.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }) : ''));
+  }
+  function menu(){
+    if (window.top !== window) { setChip('sync'); pull().then(function(n){ setChip('ok'); note(n ? '🔄 وصل ' + n + ' يوم جديد' : '✅ كل شيء محدّث'); }); return; }
+    var a = prompt('1 = مزامنة الآن\n2 = الكباتن غير المربوطين بوثيق\n3 = تسجيل الخروج\n\n' + (me ? me.email : ''), '1');
+    if (a === '1') { setChip('sync'); pull().then(function(n){ setChip('ok'); note(n ? '🔄 وصل ' + n + ' يوم جديد' : '✅ كل شيء محدّث'); }); }
+    if (a === '2') issues();
+    if (a === '3') { sess = null; me = null; try { localStorage.removeItem(SKEY); } catch(e){} location.reload(); }
+  }
+  function issues(){
+    api('GET', 'sync_issues?select=entity_key,message,created_at&app=eq.' + APP + '&resolved_at=is.null&order=created_at.desc&limit=1000').then(function(rows){
+      rows = rows || [];
+      var m = document.createElement('div'); m.id = 'wfsbDModal';
+      m.innerHTML = '<div class="box"><div class="top"><span>الكباتن غير المربوطين بوثيق (' + rows.length + ')</span><button class="x">×</button></div><div class="body">'
+        + (rows.length ? '<div style="margin-bottom:8px;color:#5b6b6b">حضورهم محفوظ في الملفات لكنه لم يدخل قاعدة الموظفين. أضف رقم الكابتن أو الجوال في وثيق وسيُربط تلقائياً عند الرفع التالي.</div><table><tr><th>الرقم</th><th>التفاصيل</th></tr>'
+          + rows.map(function(r){ return '<tr><td>' + esc(r.entity_key) + '</td><td>' + esc(r.message) + '</td></tr>'; }).join('') + '</table>' : '<div style="padding:24px;text-align:center">✅ كل الكباتن مربوطون بوثيق</div>')
+        + '</div></div>';
+      document.body.appendChild(m); m.querySelector('.x').onclick = function(){ m.remove(); };
+    }).catch(function(e){ note('تعذّر التحميل: ' + e.message); });
+  }
+
+  var gate = null;
+  function showGate(msg, ok){
+    css(); if (!gate) { gate = document.createElement('div'); gate.id = 'wfsbGate'; document.body.appendChild(gate); }
+    gate.style.display = 'flex';
+    gate.innerHTML = '<div class="card"><h2>تسجيل الدخول</h2><div class="sub">' + APP_AR + ' — قاعدة AFMC الموحّدة</div>'
+      + (msg ? '<div class="msg' + (ok ? ' ok' : '') + '">' + esc(msg) + '</div>' : '')
+      + '<input id="gE" type="email" placeholder="البريد الإلكتروني" autocomplete="username"><input id="gP" type="password" placeholder="كلمة المرور" autocomplete="current-password">'
+      + '<button id="gGo">دخول</button></div>';
+    document.getElementById('gP').onkeydown = function(e){ if (e.key === 'Enter') document.getElementById('gGo').click(); };
+    document.getElementById('gGo').onclick = function(){
+      var em = document.getElementById('gE').value.trim(), pw = document.getElementById('gP').value, b = this;
+      if (!em || !pw) return; b.disabled = true;
+      authFetch('token?grant_type=password', { email: em, password: pw }).then(function(j){ keep(j); start(); })
+        .catch(function(e){ b.disabled = false; showGate(/invalid/i.test(e.message) ? 'البريد أو كلمة المرور غير صحيحة.' : 'تعذّر الدخول: ' + e.message); });
+    };
+  }
+
+  var timer = null;
+  function start(){
+    rpc('whoami').then(function(w){
+      if (!w) { showGate(); return; }
+      if (!w.approved) { showGate('حسابك (' + w.email + ') بانتظار موافقة المدير.', true); sess = null; try { localStorage.removeItem(SKEY); } catch(e){} return; }
+      me = w; if (gate) gate.style.display = 'none';
+      if (!meta || meta.user !== sess.user_id) resetMeta();
+      hookProcess(); setChip('sync');
+      return pull().then(function(){ setChip('ok'); return firstUpload(); }).then(function(){
+        if (!timer) timer = setInterval(function(){ if (document.visibilityState !== 'hidden') pull().then(function(){ setChip('ok'); }).catch(function(e){ setChip('off', e.message); }); }, PULL_EVERY);
+      });
+    }).catch(function(e){ if (!sess) showGate(); else { setChip('off', e.message); setTimeout(start, 20000); } });
+  }
+  window.wfSupabaseDash = { pull: pull, flush: flush, issues: issues, me: function(){ return me; } };
+  hookProcess();   /* يلتقط أي رفع حتى قبل اكتمال الدخول — يُرفع بعده */
+  function boot(){ if (sess) start(); else showGate(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+})();
+
+</script>
+</body>
+</html>

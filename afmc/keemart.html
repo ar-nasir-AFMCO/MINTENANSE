@@ -1,0 +1,2752 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+<script id="wf-cloud">window.WF_CLOUD_APP="keemart";
+/* ═══════════════════════════════════════════════════════════════════════
+   wf-cloud — النسخة السحابية لأنظمة AFMC (تُحقن في <head> قبل أي كود)
+   • لا حفظ محلي على الجهاز (ملفات/نسخ/ربط مجلد) — القاعدة الموحّدة هي الحفظ الوحيد
+   • لا واتساب (أزرار، إعدادات، إرسال تلقائي، روابط wa.me)
+   • تبقى كل الوظائف الأخرى كما هي — التصدير إلى Excel يبقى
+   • Ninja و Keemart: مفاتيح تخزين منفصلة لكل نظام (لا تداخل بينهما)
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  var APP = window.WF_CLOUD_APP || '';
+  window.WF_CLOUD = true;
+  var WA = /wa\.me|api\.whatsapp|whatsapp:|web\.whatsapp/i;
+
+  /* ---------- 1) Ninja/Keemart: تخزين منفصل لكل نظام ---------- */
+  if (APP === 'ninja' || APP === 'keemart') {
+    try {
+      var P = Storage.prototype, g = P.getItem, s = P.setItem, r = P.removeItem, pre = APP + '::';
+      var mine = function(k){ return typeof k === 'string' && /^fleet_/.test(k); };
+      P.getItem = function(k){ return g.call(this, this === window.localStorage && mine(k) ? pre + k : k); };
+      P.setItem = function(k, v){ return s.call(this, this === window.localStorage && mine(k) ? pre + k : k, v); };
+      P.removeItem = function(k){ return r.call(this, this === window.localStorage && mine(k) ? pre + k : k); };
+    } catch(e){}
+  }
+
+  /* ---------- 2) منع واتساب وملفات الجهاز على مستوى المتصفح ---------- */
+  try {
+    var _open = window.open;
+    window.open = function(u){ if (WA.test(String(u || ''))) return null; return _open.apply(window, arguments); };
+  } catch(e){}
+  document.addEventListener('click', function(e){
+    var a = e.target && e.target.closest && e.target.closest('a[href]');
+    if (a && WA.test(a.getAttribute('href') || '')) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
+  ['showSaveFilePicker', 'showOpenFilePicker', 'showDirectoryPicker'].forEach(function(f){
+    try { if (window[f]) window[f] = function(){ return Promise.reject(new DOMException('disabled in cloud edition', 'AbortError')); }; } catch(e){}
+  });
+
+  /* ---------- 3) إخفاء الواجهات ---------- */
+  var HIDE = {
+    common: ['#wfiBtn', '.wa-btn', '[onclick*="WhatsApp"]', '[onclick*="openWA"]', '[onclick*="sendWA"]', '[onclick*="downloadHTML"]',
+             '#waFloatMsg', '#waSendModal', '[data-wa]'],
+    watheeq: ['#wx4Pill', '#wx4Link', '#wx4Save', '#wx4Rest', '#wx4Sep1', '#wx4Veh', '#wx4VehBtn',
+              '[onclick*="wx11Wa"]', '[onclick*="wx10Share"]', '[onclick*="wx4"]', '#cloudPill', '#wfsbStale'],
+    fleet: ['#btn-save-now', '[onclick*="saveToFolder"]', '[onclick*="openDataManager"]', '[onclick*="importFromFile"]',
+            '[onclick*="setupSaveFolder"]', '[onclick*="_writeToHandle"]', '[onclick*="openWAConfig"]', '[onclick*="sendDriverWhatsApp"]',
+            '#fsSaveCard', '#fsPick', '#mtWaAll', '#mtWaOne', '#mtWaC', '#waConfigModal', '#save-label'],
+    ninja: ['#wa-panel', '#waPanel', '.wa-panel'], keemart: ['#wa-panel', '#waPanel', '.wa-panel']
+  };
+  var sel = HIDE.common.concat(HIDE[APP] || []).join(',');
+  var st = document.createElement('style'); st.id = 'wf-cloud-css';
+  st.textContent = sel + '{display:none!important}';
+  (document.head || document.documentElement).appendChild(st);
+
+  /* نصوص صريحة لأزرار الحفظ المحلي/واتساب التي تُنشأ بلا معرّف */
+  var TXT = /واتس|whatsapp|حفظ الآن على الجهاز|ربط ملف الحفظ|استرجاع من ملف الجهاز|اربط ملفاً على الجهاز|إدارة البيانات والحفظ|تحميل HTML|إعداد مجلد الحفظ|تغيير الملف|📂 فتح ملف/i;
+  var busy = false, t = null;
+  function sweep(){
+    if (busy) return; busy = true;
+    try {
+      var els = document.querySelectorAll('button, a.btn, .btn, [role="button"], .menu-item, li > a');
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i]; if (el.__wfc) continue;
+        var tx = (el.textContent || '').trim();
+        if (tx && tx.length < 60 && TXT.test(tx)) { el.style.setProperty('display', 'none', 'important'); el.__wfc = 1; }
+      }
+    } catch(e){}
+    busy = false;
+  }
+  function later(){ clearTimeout(t); t = setTimeout(sweep, 250); }
+  function observe(){
+    sweep();
+    try { new MutationObserver(function(){ if (!busy) later(); }).observe(document.body, { childList: true, subtree: true }); } catch(e){}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', observe); else observe();
+
+  /* ---------- 4) تعطيل الدوال (بعد تعريفها) ---------- */
+  var NOOP = {
+    common: ['openWAPanel', 'sendWAMessage', 'triggerAutoSend', 'openWAConfig', 'saveWAConfig', 'sendDriverWhatsApp', 'downloadHTML'],
+    watheeq: ['wx4LinkFile', 'wx4SaveNow', 'wx4Restore', 'wx11Wa', 'wx10ShareFallback'],
+    fleet: ['saveToFolder', 'autoSave', 'setupSaveFolder', 'openDataManager', 'importFromFile', '_writeToHandle', 'idbClearHandle'],
+    ninja: [], keemart: []
+  };
+  function neutralize(){
+    NOOP.common.concat(NOOP[APP] || []).forEach(function(f){
+      try { if (typeof window[f] === 'function' && !window[f].__wfc) { var n = function(){ return Promise.resolve(false); }; n.__wfc = true; window[f] = n; } } catch(e){}
+    });
+    try { if (typeof waDailyTimer !== 'undefined' && waDailyTimer) { clearInterval(waDailyTimer); clearTimeout(waDailyTimer); } } catch(e){}
+  }
+  document.addEventListener('DOMContentLoaded', neutralize);
+  window.addEventListener('load', function(){ neutralize(); setTimeout(neutralize, 1500); });
+})();
+
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Keemarta Command Center v24.7</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#f0f2f7;--surface:#ffffff;--surface2:#f7f9fc;--border:#e4e8f0;
+    --text:#0d1117;--text2:#5a6478;--text3:#9aa3b5;
+    --accent:#2563eb;--accent-soft:#eff4ff;
+    --green:#16a34a;--green-soft:#f0fdf4;
+    --red:#dc2626;--red-soft:#fef2f2;
+    --amber:#d97706;--amber-soft:#fffbeb;
+    --purple:#7c3aed;--purple-soft:#f5f3ff;
+    --card-shadow:0 1px 3px rgba(0,0,0,0.06),0 4px 16px rgba(0,0,0,0.04);
+    --glow:0 0 0 3px rgba(37,99,235,0.12);
+  }
+  [data-theme="dark"] {
+    --bg:#0a0d14;--surface:#111520;--surface2:#161b28;--border:#1e2535;
+    --text:#e8ecf4;--text2:#7d8aa0;--text3:#4a5568;
+    --accent:#3b82f6;--accent-soft:#1e2a4a;
+    --green:#4ade80;--green-soft:#052e16;
+    --red:#f87171;--red-soft:#2d0a0a;
+    --amber:#fbbf24;--amber-soft:#2d1f00;
+    --purple:#a78bfa;--purple-soft:#1e1040;
+    --card-shadow:0 1px 3px rgba(0,0,0,0.4),0 4px 16px rgba(0,0,0,0.3);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--card-shadow);transition:background .3s,border-color .3s;}
+  .card-sm{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.9rem 1.1rem;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
+  .card-sm::before{content:'';position:absolute;inset:0;background:var(--accent);opacity:0;transition:opacity .2s;}
+  .card-sm:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(37,99,235,.12);border-color:var(--accent);}
+  .card-sm:hover::before{opacity:.03;}
+  .tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;}
+  .tag-green{background:var(--green-soft);color:var(--green);}
+  .tag-red{background:var(--red-soft);color:var(--red);}
+  .tag-amber{background:var(--amber-soft);color:var(--amber);}
+  .tag-blue{background:var(--accent-soft);color:var(--accent);}
+  .tag-purple{background:var(--purple-soft);color:var(--purple);}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .2s;font-family:inherit;}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:hover{background:#1d4ed8;transform:translateY(-1px);}
+  .btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border);}
+  .btn-ghost:hover{background:var(--surface2);}
+  .metric-val{font-size:21px;font-weight:700;line-height:1.1;}
+  .metric-label{font-size:10px;color:var(--text3);font-weight:500;margin-bottom:5px;line-height:1.3;}
+  .progress-bar{height:3px;border-radius:99px;background:var(--border);overflow:hidden;margin-top:6px;}
+  .progress-fill{height:100%;border-radius:99px;transition:width .6s ease;}
+  .goal-pct{font-size:9px;color:var(--text3);margin-top:2px;text-align:left;}
+
+  /* ── Trend bubbles ── */
+  .trend-row{display:flex;align-items:flex-end;gap:4px;margin-top:8px;flex-wrap:nowrap;}
+  .t-bub{display:flex;flex-direction:column;align-items:center;gap:2px;}
+  .t-bub-circle{
+    border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-family:'JetBrains Mono',monospace;font-weight:700;color:#fff;
+    line-height:1;transition:transform .18s;flex-shrink:0;
+    border:2px solid rgba(255,255,255,.25);
+  }
+  .t-bub:hover .t-bub-circle{transform:scale(1.14);}
+  .t-bub-date{font-size:8.5px;color:var(--text3);white-space:nowrap;font-family:'JetBrains Mono',monospace;margin-top:1px;}
+
+  /* ── Separator inside card ── */
+  .card-sep{height:1px;background:var(--border);margin:7px 0;}
+
+  #modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:200;align-items:center;justify-content:center;padding:1rem;}
+  .modal-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;width:100%;max-width:900px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.3);overflow:hidden;}
+  .modal-header{padding:1.5rem 2rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+  .modal-body{padding:1.5rem 2rem;overflow-y:auto;flex:1;}
+  .table-wrap table{width:100%;border-collapse:collapse;font-size:13px;}
+  .table-wrap th{padding:10px 14px;text-align:right;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;background:var(--surface2);position:sticky;top:0;}
+  .table-wrap td{padding:12px 14px;border-top:1px solid var(--border);}
+  .table-wrap tr:hover td{background:var(--surface2);}
+
+  .nav-tab{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text3);transition:all .2s;}
+  .nav-tab.active{background:var(--accent-soft);color:var(--accent);}
+  .goal-input{width:60px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;text-align:center;background:var(--surface);color:var(--text);font-family:'JetBrains Mono',monospace;}
+  .goal-input:focus{outline:none;border-color:var(--accent);box-shadow:var(--glow);}
+  .predict-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;}
+  .predict-critical{background:var(--red-soft);color:var(--red);}
+  .predict-warning{background:var(--amber-soft);color:var(--amber);}
+  .predict-good{background:var(--green-soft);color:var(--green);}
+  .leader-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+  .leader-rank{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;}
+  .rank-1{background:#fef08a;color:#713f12;}.rank-2{background:#e2e8f0;color:#334155;}.rank-3{background:#fed7aa;color:#7c2d12;}.rank-n{background:var(--surface2);color:var(--text3);}
+  .avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;background:var(--accent-soft);color:var(--accent);}
+  .pulse{animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+  .section-title{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem;}
+  .wpi-bar{height:6px;border-radius:99px;overflow:hidden;background:var(--border);margin-top:6px;}
+  .wpi-fill{height:100%;border-radius:99px;}
+  .dark-toggle{cursor:pointer;padding:8px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text2);transition:all .2s;font-size:16px;}
+  .dark-toggle:hover{background:var(--surface2);}
+  select{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;outline:none;}
+  select:focus{border-color:var(--accent);}
+  .tabs-row{display:flex;gap:4px;padding:4px;background:var(--surface2);border-radius:10px;border:1px solid var(--border);}
+  .empty-state{text-align:center;padding:3rem 1rem;color:var(--text3);font-size:13px;}
+  .cap-grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+  .cap-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px 8px;text-align:center;}
+  .cap-card .cc-label{font-size:9.5px;color:var(--text3);margin-bottom:4px;line-height:1.3;}
+  .cap-card .cc-val{font-size:18px;font-weight:700;line-height:1;}
+  @media(max-width:640px){.cap-grid5{grid-template-columns:repeat(2,1fr);}}
+  /* captain profile tabs + hours goal */
+  .cap-tab{padding:8px 16px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;color:var(--text3);border:1px solid transparent;user-select:none;}
+  .cap-tab.active{background:var(--surface);color:var(--accent);border-color:var(--border);box-shadow:var(--card-shadow);}
+  .goal-ring{width:120px;height:120px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .goal-ring-inner{width:92px;height:92px;border-radius:50%;background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  ::-webkit-scrollbar{width:4px;height:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px;}
+
+  /* chart series toggle chips */
+  .series-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid transparent;transition:all .18s;user-select:none;}
+  .series-chip.active{border-color:currentColor;}
+  .series-chip.inactive{opacity:.35;}
+  .chip-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+  @media(max-width:768px){.metric-val{font-size:18px;}}
+
+  /* WhatsApp panel */
+  .wa-btn{background:#25D366;color:#fff;border:none;}
+  .wa-btn:hover{background:#1ebe5a;transform:translateY(-1px);}
+  .wa-status-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-left:5px;flex-shrink:0;}
+  .wa-config-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);gap:12px;}
+  .wa-config-row:last-child{border-bottom:none;}
+  .wa-input{flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;background:var(--surface);color:var(--text);font-family:inherit;outline:none;}
+  .wa-input:focus{border-color:#25D366;}
+  .wa-tag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:600;background:#dcfce7;color:#15803d;}
+  [data-theme="dark"] .wa-tag{background:#052e16;color:#4ade80;}
+  .wa-send-row{display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all .18s;}
+  .wa-send-row:hover{background:var(--surface2);border-color:#25D366;}
+  .wa-send-row input[type=checkbox]{accent-color:#25D366;width:15px;height:15px;cursor:pointer;}
+  .wa-log-entry{font-size:11px;padding:6px 0;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:flex-start;}
+  .wa-log-entry:last-child{border-bottom:none;}
+  .wa-log-time{font-family:'JetBrains Mono',monospace;color:var(--text3);white-space:nowrap;font-size:10px;margin-top:1px;}
+
+  /* toast */
+  #wa-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#25D366;color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:999;transition:transform .3s;pointer-events:none;}
+  #wa-toast.show{transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div style="max-width:1600px;margin:0 auto;padding:1.5rem;">
+
+<header class="card" style="padding:1.25rem 1.75rem;margin-bottom:1.5rem;display:flex;flex-wrap:wrap;gap:1rem;justify-content:space-between;align-items:center;">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+      <div style="width:8px;height:8px;border-radius:50%;background:var(--green);" class="pulse"></div>
+      <h1 style="font-size:17px;font-weight:700;">Keemarta Command Center</h1>
+      <span class="tag tag-blue">v24.7</span>
+    </div>
+    <p style="font-size:11px;color:var(--text3);">تقارير حضور وأداء المندوبين — <b style="color:var(--accent);">Wajehet Al Dam For Logistic Services</b> | v24.7</p>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    <button class="dark-toggle" onclick="toggleDark()" id="theme-btn" title="Dark Mode">🌙</button>
+    <button class="btn btn-ghost" onclick="downloadHTML()" title="تحميل الصفحة كـ HTML">💾 تحميل HTML</button>
+    <button class="btn btn-ghost" onclick="openGoals()">🎯 الأهداف</button>
+    <button class="btn btn-ghost" onclick="exportExcel()">📥 تصدير Excel</button>
+    <button class="btn btn-ghost" onclick="exportRedFlags()">🚩 تصدير Red Flags</button>
+    <button class="btn btn-ghost" onclick="exportHoursReport()" title="تصدير ساعات وطلبات كل المندوبين">🕒 تصدير الساعات</button>
+    <button class="btn wa-btn btn" onclick="openWAPanel()" style="position:relative;">
+      <span>💬 واتساب</span>
+      <span class="wa-status-dot" id="wa-dot" style="background:#fff;opacity:.4;"></span>
+    </button>
+    <button class="btn btn-ghost" onclick="clearHistory()" style="color:var(--red);">🗑️ تصفير</button>
+    <label class="btn btn-primary">⬆️ رفع ملف الحضور<input type="file" id="fileInput" style="display:none;" accept=".xlsx,.xls" multiple></label>
+  </div>
+</header>
+
+<!-- ══ Sticky captain search (visible on every tab) ══ -->
+<div id="captain-search-bar" style="position:sticky;top:0;z-index:150;background:var(--bg);padding:8px 0;margin-bottom:1rem;">
+  <div class="card" style="padding:.55rem .9rem;display:flex;align-items:center;gap:10px;position:relative;">
+    <span style="font-size:16px;">🔎</span>
+    <input id="captain-search-input" autocomplete="off"
+      placeholder="ابحث عن مندوب بالمعرّف أو الاسم — يعرض تاريخه وكل تفاصيل أيام الدوام"
+      style="flex:1;border:none;background:transparent;color:var(--text);font-family:inherit;font-size:13px;outline:none;">
+    <span id="captain-search-count" style="font-size:11px;color:var(--text3);white-space:nowrap;"></span>
+    <div id="captain-search-dropdown" style="display:none;position:absolute;top:100%;right:0;left:0;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--card-shadow);max-height:340px;overflow-y:auto;z-index:160;"></div>
+  </div>
+</div>
+
+<div id="alert-bar" style="display:none;background:var(--red-soft);border:1px solid var(--red);color:var(--red);border-radius:12px;padding:10px 16px;margin-bottom:1.5rem;font-size:13px;font-weight:600;align-items:center;gap:10px;">
+  <span class="pulse" id="alert-icon">🚨</span><span id="alert-text"></span>
+</div>
+
+<div id="vendor-bar" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:1.5rem;align-items:center;gap:10px;flex-wrap:wrap;">
+  <span style="font-size:11px;font-weight:700;color:var(--text3);white-space:nowrap;">🏢 المورد:</span>
+  <div id="vendor-chips" style="display:flex;gap:6px;flex-wrap:wrap;flex:1;"></div>
+  <span id="vendor-count-info" style="font-size:11px;color:var(--text3);white-space:nowrap;"></span>
+</div>
+
+<div class="card" style="padding:1.75rem;margin-bottom:1.5rem;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;flex-wrap:wrap;gap:10px;">
+    <div>
+      <div class="section-title">التوجه الزمني</div>
+      <div style="font-size:15px;font-weight:700;">المقارنة بين المؤشرات</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span style="font-size:11px;color:var(--text3);">نطاق:</span>
+      <select id="cmp-from" onchange="updateComparison()" style="font-size:11px;padding:5px 8px;">
+        <option value="">— من —</option>
+      </select>
+      <span style="font-size:11px;color:var(--text3);">←</span>
+      <select id="cmp-to" onchange="updateComparison()" style="font-size:11px;padding:5px 8px;">
+        <option value="">— إلى —</option>
+      </select>
+      <span id="cmp-diff" style="font-size:11px;color:var(--text3);"></span>
+    </div>
+  </div>
+
+  <div id="series-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1rem;"></div>
+
+  <div style="height:300px;"><canvas id="performanceChart"></canvas></div>
+
+  <div id="cmp-table" style="margin-top:1.25rem;display:none;">
+    <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;" id="cmp-label"></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px;" id="cmp-grid"></div>
+  </div>
+</div>
+
+<div style="display:flex;gap:1rem;margin-bottom:1.25rem;align-items:center;flex-wrap:wrap;">
+  <div class="tabs-row">
+    <div class="nav-tab active" onclick="switchView('metrics')" id="tab-metrics">📊 المؤشرات</div>
+    <div class="nav-tab" onclick="switchView('leaderboard')" id="tab-leaderboard">🏆 Leaderboard</div>
+    <div class="nav-tab" onclick="switchView('predict')" id="tab-predict">🔮 Predictive</div>
+    <div class="nav-tab" onclick="switchView('audit')" id="tab-audit">🚩 Red Flags</div>
+    <div class="nav-tab" onclick="switchView('hours')" id="tab-hours">🕒 الساعات</div>
+  </div>
+</div>
+
+<div id="view-metrics">
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:11px;" id="metrics-grid">
+
+    <div class="card-sm" onclick="openDrillDown('totDlv')">
+      <div class="metric-label">إجمالي الطلبات</div>
+      <div class="metric-val" id="m-totDlv">—</div>
+      <div id="g-totDlv"></div>
+      <div class="trend-row" id="td-totDlv"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('avgDlv')">
+      <div class="metric-label">متوسط الطلبات / مندوب</div>
+      <div class="metric-val" id="m-avgDlv">—</div>
+      <div id="g-avgDlv"></div>
+      <div class="trend-row" id="td-avgDlv"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('active')">
+      <div class="metric-label">المندوبين النشطين</div>
+      <div class="metric-val" id="m-active">—</div>
+      <div id="g-active"></div>
+      <div class="trend-row" id="td-active"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('avgHrs')">
+      <div class="metric-label">متوسط الساعات الفعلية</div>
+      <div class="metric-val" id="m-avgHrs">—</div>
+      <div id="g-avgHrs"></div>
+      <div class="trend-row" id="td-avgHrs"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('totHrs')">
+      <div class="metric-label">إجمالي الساعات</div>
+      <div class="metric-val" id="m-totHrs">—</div>
+      <div id="g-totHrs"></div>
+      <div class="trend-row" id="td-totHrs"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('delivOT')">
+      <div class="metric-label">الانضباط % (بلا تأخير/مبكر)</div>
+      <div class="metric-val" id="m-delivOT">—</div>
+      <div id="g-delivOT"></div>
+      <div class="trend-row" id="td-delivOT"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('pickOT')">
+      <div class="metric-label">الحضور بلا غياب %</div>
+      <div class="metric-val" id="m-pickOT">—</div>
+      <div id="g-pickOT"></div>
+      <div class="trend-row" id="td-pickOT"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('attendOT')">
+      <div class="metric-label">معدل الحضور %</div>
+      <div class="metric-val" id="m-attendOT">—</div>
+      <div id="g-attendOT"></div>
+      <div class="trend-row" id="td-attendOT"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('shiftComp')">
+      <div class="metric-label">الالتزام بالدوام %</div>
+      <div class="metric-val" id="m-shiftComp">—</div>
+      <div id="g-shiftComp"></div>
+      <div class="trend-row" id="td-shiftComp"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('cycleOT')">
+      <div class="metric-label">الحضور بلا تأخير %</div>
+      <div class="metric-val" id="m-cycleOT">—</div>
+      <div id="g-cycleOT"></div>
+      <div class="trend-row" id="td-cycleOT"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('returnOT')">
+      <div class="metric-label">الالتزام بنهاية الدوام %</div>
+      <div class="metric-val" id="m-returnOT">—</div>
+      <div id="g-returnOT"></div>
+      <div class="trend-row" id="td-returnOT"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('delayed')">
+      <div class="metric-label">مندوبين بغيابات</div>
+      <div class="metric-val" id="m-delayed" style="color:var(--red)">—</div>
+      <div id="g-delayed"></div>
+      <div class="trend-row" id="td-delayed"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('offMin')">
+      <div class="metric-label">متوسط مدة التأخير</div>
+      <div class="metric-val" id="m-offMin">—</div>
+      <div id="g-offMin"></div>
+      <div class="trend-row" id="td-offMin"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('roamMin')">
+      <div class="metric-label">متوسط الانصراف المبكر</div>
+      <div class="metric-val" id="m-roamMin">—</div>
+      <div id="g-roamMin"></div>
+      <div class="trend-row" id="td-roamMin"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('delayMin')">
+      <div class="metric-label">متوسط مدة تأخير/مبكر</div>
+      <div class="metric-val" id="m-delayMin">—</div>
+      <div id="g-delayMin"></div>
+      <div class="trend-row" id="td-delayMin"></div>
+    </div>
+
+    <div class="card-sm" onclick="openDrillDown('wpi')" style="grid-column:span 2;border:1px solid var(--accent);background:var(--accent-soft);">
+      <div class="metric-label" style="color:var(--accent);">مؤشر الالتزام الشامل — WPI</div>
+      <div class="metric-val" id="m-wpi" style="font-size:32px;color:var(--accent);">—</div>
+      <div id="g-wpi"></div>
+      <div class="trend-row" id="td-wpi"></div>
+    </div>
+
+  </div>
+</div>
+
+<div id="view-leaderboard" style="display:none;">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+    <div class="card" style="padding:1.5rem;">
+      <div class="section-title">🏆 أعلى 10 مندوبين — WPI</div>
+      <div id="lb-top"></div>
+    </div>
+    <div class="card" style="padding:1.5rem;">
+      <div class="section-title">⚠️ أدنى 10 مندوبين — WPI</div>
+      <div id="lb-bottom"></div>
+    </div>
+  </div>
+</div>
+
+<div id="view-predict" style="display:none;">
+  <div class="card" style="padding:1.5rem;margin-bottom:1rem;">
+    <div class="section-title">🔮 التحليل التنبؤي — بناءً على تاريخ الأداء</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:1rem;">يحلل النظام الـ trend لكل كابتن ويتوقع من سيصل للـ red flag في الدورة القادمة</p>
+    <div id="predict-list"></div>
+  </div>
+</div>
+
+<div id="view-audit" style="display:none;">
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;">
+    <div class="card-sm" onclick="openDrillDown('low_hrs')" style="border-right:3px solid var(--red);">
+      <div class="metric-label">ساعات فعلية حرجة</div>
+      <div style="font-size:18px;font-weight:700;color:var(--red);" id="a-low_hrs">0</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;">أقل من 8 ساعات / دورة</div>
+    </div>
+    <div class="card-sm" onclick="openDrillDown('low_ord')" style="border-right:3px solid var(--amber);">
+      <div class="metric-label">إنتاجية ضعيفة</div>
+      <div style="font-size:18px;font-weight:700;color:var(--amber);" id="a-low_ord">0</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;">أقل من 20 طلب / دورة</div>
+    </div>
+    <div class="card-sm" onclick="openDrillDown('top_roam')" style="border-right:3px solid var(--purple);">
+      <div class="metric-label">أعلى انصراف مبكر</div>
+      <div style="font-size:18px;font-weight:700;color:var(--purple);">Top 5</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;">أعلى مدة انصراف مبكر</div>
+    </div>
+    <div class="card-sm" onclick="openDrillDown('top_delay')" style="border-right:3px solid var(--red);">
+      <div class="metric-label">أعلى تأخير/مبكر مجمّع</div>
+      <div style="font-size:18px;font-weight:700;color:var(--red);">Top 5</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;">أعلى وحدات تأخير + مبكر</div>
+    </div>
+  </div>
+</div>
+
+<div id="view-hours" style="display:none;">
+  <div class="card" style="padding:1.5rem;margin-bottom:1.25rem;">
+    <div class="section-title">🕒 ساعات الأسطول بالتواريخ</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:1rem;">أعمدة إجمالي ساعات العمل لكل تاريخ، مع خط متوسط الساعات لكل مندوب.</p>
+    <div style="height:330px;"><canvas id="fleetHoursChart"></canvas></div>
+  </div>
+  <div class="card" style="padding:1.5rem;">
+    <div class="section-title">تفصيل الساعات لكل فترة — أيام العمل ثم متوسط الساعات</div>
+    <div class="table-wrap" id="hours-table" style="overflow-x:auto;"></div>
+  </div>
+</div>
+
+</div><div id="modal-overlay" onclick="this.style.display='none'">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:4px;">تحليل تفصيلي</div>
+        <h2 style="font-size:18px;font-weight:700;" id="modalTitle">—</h2>
+      </div>
+      <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);padding:4px 8px;border-radius:8px;">&times;</button>
+    </div>
+    <div class="modal-body table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>المندوب</th><th style="text-align:center;">الطلبات</th><th style="text-align:center;">WPI</th><th style="text-align:center;">الساعات الفعلية</th><th style="text-align:center;">غيابات / تأخير</th><th style="text-align:center;">تكرار</th><th style="text-align:center;">الحالة</th></tr></thead>
+        <tbody id="modalBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="captain-modal-overlay" onclick="if(event.target===this)this.style.display='none'" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:250;align-items:center;justify-content:center;padding:1rem;">
+  <div class="modal-box" style="max-width:900px;" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:4px;">ملف المندوب — التاريخ وكل تفاصيل أيام الدوام</div>
+        <h2 style="font-size:18px;font-weight:700;" id="captain-modal-title">—</h2>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="btn btn-ghost" style="padding:7px 12px;font-size:12px;" onclick="exportCaptain(window.__capProfileId)">📥 تصدير المندوب</button>
+        <button onclick="document.getElementById('captain-modal-overlay').style.display='none'" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);padding:4px 8px;border-radius:8px;">&times;</button>
+      </div>
+    </div>
+    <div class="modal-body" id="captain-modal-body"></div>
+  </div>
+</div>
+
+<div id="goals-overlay" onclick="this.style.display='none'" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:200;align-items:center;justify-content:center;padding:1rem;">
+  <div class="modal-box" style="max-width:540px;" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div><div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:4px;">تخصيص الأهداف</div><h2 style="font-size:18px;font-weight:700;">🎯 Goal Setting</h2></div>
+      <button onclick="document.getElementById('goals-overlay').style.display='none'" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--text2);margin-bottom:1.25rem;">حدد الهدف لكل مؤشر — الداشبورد يلوّن تلقائي بناءً على المقارنة مع هدفك</p>
+      <div id="goals-form" style="display:flex;flex-direction:column;gap:10px;"></div>
+      <div style="margin-top:1.5rem;display:flex;justify-content:flex-end;gap:8px;">
+        <button class="btn btn-ghost" onclick="document.getElementById('goals-overlay').style.display='none'">إلغاء</button>
+        <button class="btn btn-primary" onclick="saveGoals()">حفظ الأهداف</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════
+   State
+═══════════════════════════════════════════════ */
+let captainsMap = new Map();
+let historyLog  = JSON.parse(localStorage.getItem('fleet_hub_v24')) || {};
+// Per-captain history across every uploaded period — powers the global captain search.
+// Shape: { 'YYYY-MM-DD': { 'CourierID': {compact record}, ... }, ... }
+let captainsHist = JSON.parse(localStorage.getItem('fleet_caps_hist_v24')) || {};
+// Captain identity stored ONCE (id -> {n,ph,st,vn,vh,tp}) instead of repeated in every
+// period record — keeps the history store small so it can persist completely.
+let captainMeta  = JSON.parse(localStorage.getItem('fleet_caps_meta_v24')) || {};
+let goals = JSON.parse(localStorage.getItem('fleet_goals_v24')) || {
+  avgDlv:20,delivOT:90,pickOT:90,attendOT:95,
+  shiftComp:95,cycleOT:90,returnOT:90,wpi:80,avgHrs:8
+};
+// Hours goal per driver = duty (expected) days × this many hours.
+const HOURS_TARGET_PER_DAY = 12;
+// كل التقارير لهذه الشركة فقط — تُصفّى بيانات الرفع على اسم المورد (اضبط الاسم هنا لو تغيّر).
+const COMPANY_ONLY = 'Wajehet Al Dam For Logistic Services';
+const normVendor = s => (s==null?'':String(s)).trim().replace(/\s+/g,' ').toLowerCase();
+const COMPANY_SLUG = COMPANY_ONLY ? COMPANY_ONLY.replace(/[^A-Za-z0-9]+/g,'_').replace(/^_|_$/g,'') : '';
+let myChart = null;
+let capHoursChart = null;
+let fleetHoursChart = null;
+let currentStats = null;
+let activeVendor = 'all';
+
+function getFilteredCaps(){
+  return Array.from(captainsMap.values()).filter(c=>activeVendor==='all'||c.vendor===activeVendor);
+}
+
+// Data retriever helper to fetch history based on activeVendor selection
+function getActiveStats(date) {
+    const payload = historyLog[date];
+    if (!payload) return null;
+    if (payload.legacy === false) {
+        return activeVendor === 'all' ? payload.all : (payload.vendors[activeVendor] || null);
+    }
+    // Fallback for legacy history log formats (global stats only)
+    return activeVendor === 'all' ? payload : null;
+}
+
+
+/* ── metric catalogue ── */
+const metricsInfo = {
+  totDlv:'إجمالي الطلبات',avgHrs:'متوسط الساعات الفعلية',avgDlv:'متوسط الطلبات / مندوب',
+  active:'المندوبين النشطين',delivOT:'الانضباط % (بلا تأخير/مبكر)',pickOT:'الحضور بلا غياب %',
+  delayed:'مندوبين بغيابات',totHrs:'إجمالي الساعات',attendOT:'معدل الحضور %',
+  shiftComp:'الالتزام بالدوام %',cycleOT:'الحضور بلا تأخير %',returnOT:'الالتزام بنهاية الدوام %',
+  offMin:'متوسط مدة التأخير',roamMin:'متوسط الانصراف المبكر',delayMin:'متوسط مدة تأخير/مبكر',wpi:'WPI %'
+};
+const pctKeys = ['delivOT','pickOT','attendOT','shiftComp','cycleOT','returnOT','wpi'];
+const lowerBetterKeys = ['delayed','offMin','roamMin','delayMin'];
+
+/* ── chart series config ──
+   Each series has: key, label, color, yAxis (left/right), visible
+*/
+const SERIES_CFG = [
+  {key:'wpi',      label:'WPI %',           color:'#2563eb', axis:'y1', vis:true},
+  {key:'delivOT',  label:'انضباط %',         color:'#16a34a', axis:'y1', vis:true},
+  {key:'attendOT', label:'حضور %',           color:'#7c3aed', axis:'y1', vis:false},
+  {key:'pickOT',   label:'بلا غياب %',       color:'#0891b2', axis:'y1', vis:false},
+  {key:'shiftComp',label:'التزام دوام %',    color:'#db2777', axis:'y1', vis:false},
+  {key:'avgDlv',   label:'متوسط طلبات',      color:'#d97706', axis:'y2', vis:true},
+  {key:'avgHrs',   label:'ساعات فعلية',      color:'#ea580c', axis:'y2', vis:false},
+  {key:'delayMin', label:'تأخير/مبكر (وحدة)',color:'#dc2626', axis:'y2', vis:false},
+  {key:'delayed',  label:'مندوبين بغيابات',  color:'#991b1b', axis:'y2', vis:false},
+];
+
+const goalsConfig = [
+  {key:'avgDlv',label:'متوسط الطلبات / مندوب',unit:'طلب',higher:true},
+  {key:'delivOT',label:'الانضباط (بلا تأخير/مبكر)',unit:'%',higher:true},
+  {key:'pickOT',label:'الحضور بلا غياب',unit:'%',higher:true},
+  {key:'attendOT',label:'معدل الحضور',unit:'%',higher:true},
+  {key:'shiftComp',label:'الالتزام بالدوام (ساعات)',unit:'%',higher:true},
+  {key:'cycleOT',label:'الحضور بلا تأخير',unit:'%',higher:true},
+  {key:'returnOT',label:'الالتزام بنهاية الدوام',unit:'%',higher:true},
+  {key:'wpi',label:'مؤشر WPI',unit:'%',higher:true},
+  {key:'avgHrs',label:'الساعات الفعلية اليومية',unit:'ساعة',higher:true},
+];
+
+/* ═══════════════════════════════════════════════
+   Boot
+═══════════════════════════════════════════════ */
+/* Restore the current captains snapshot (persisted separately from the KPI history)
+   so the leaderboard, predictive, vendor filter and drill-downs work after a reload. */
+function restoreCaptainsSnapshot(){
+  try{
+    const raw = localStorage.getItem('fleet_caps_v24');
+    if(!raw) return;
+    const arr = JSON.parse(raw);
+    if(Array.isArray(arr)){
+      captainsMap.clear();
+      arr.forEach(c=>{ if(c && c.id!=null) captainsMap.set(c.id, c); });
+    }
+  }catch(e){ console.error('restore caps failed', e); }
+}
+
+/* Compact per-captain record — shared by the upload path and the reload backfill.
+   Numbers only — identity lives in captainMeta so it isn't repeated in every record.
+   teh = total effective hours for the period, tord = total orders for the period. */
+function compactCaptainRecord(c){
+  return {
+    ord:+(c.ord/c.entries).toFixed(1),
+    hrs:+(c.effHrs/c.entries).toFixed(1),
+    teh:+(+c.effHrs).toFixed(1),
+    tord:+(+c.ord).toFixed(0),
+    wpi:+calcWPI(c).toFixed(1),
+    exp:c.expDays, act:c.actDays,
+    att:+Math.min(c.expDays>0?(c.actDays/c.expDays)*100:0,100).toFixed(1),
+    abs:c.absences, late:c.lateArr, early:c.earlyLeave, ledur:c.lateEarlyDur
+  };
+}
+
+// Total effective hours of a period record (falls back to hrs for old records).
+function recTotHrs(r){ return r.teh!=null ? +r.teh : (+r.hrs||0); }
+// Total orders of a period record (falls back to ord for old records).
+function recTotOrd(r){ return r.tord!=null ? +r.tord : (+r.ord||0); }
+
+// Store/refresh each captain's identity once (latest upload wins).
+function updateCaptainMeta(caps){
+  caps.forEach(c=>{ captainMeta[String(c.id)] = {n:c.name||String(c.id), ph:c.phone||'', st:c.store||'', vn:c.vendor||'', vh:c.vehicle||'', tp:c.type||''}; });
+}
+
+// Persist history + identity. If the browser quota is exceeded, drop the OLDEST periods and
+// retry so the most recent history always saves completely (instead of failing all-or-nothing).
+function persistCaptainsHist(){
+  try { localStorage.setItem('fleet_caps_meta_v24', JSON.stringify(captainMeta)); } catch(e){}
+  let guard=0;
+  while(true){
+    try { localStorage.setItem('fleet_caps_hist_v24', JSON.stringify(captainsHist)); return true; }
+    catch(e){
+      const ds=Object.keys(captainsHist).sort();
+      if(ds.length<=1 || guard++>2000){ console.warn('captain history could not be fully persisted', e); return false; }
+      delete captainsHist[ds[0]]; // drop the oldest period, keep the most recent complete
+    }
+  }
+}
+
+/* Reload safety: if the newest period has no per-captain history (data saved by an older
+   version, or a storage-quota failure dropped it), rebuild it from the restored snapshot so
+   the captain's duty-day rows still appear in search after a page refresh. */
+function backfillCaptainHist(){
+  if(!captainsMap.size) return;
+  updateCaptainMeta(Array.from(captainsMap.values())); // ensure identity exists (incl. old data)
+  const dates = Object.keys(historyLog).sort();
+  const newest = dates.length ? dates[dates.length-1] : null;
+  let changed=false;
+  if(newest && !(captainsHist[newest] && Object.keys(captainsHist[newest]).length)){
+    const day = {};
+    captainsMap.forEach(c=>{ day[String(c.id)] = compactCaptainRecord(c); });
+    captainsHist[newest] = day;
+    changed=true;
+  }
+  try { localStorage.setItem('fleet_caps_meta_v24', JSON.stringify(captainMeta)); } catch(e){}
+  if(changed) persistCaptainsHist(); // only re-write history when we actually added a period
+}
+
+window.onload = () => {
+  const saved = localStorage.getItem('fleet_theme');
+  if(saved==='dark'){document.documentElement.setAttribute('data-theme','dark');document.getElementById('theme-btn').innerText='☀️';}
+  buildSeriesChips();
+  restoreCaptainsSnapshot();
+  backfillCaptainHist();
+  initCaptainSearch();
+  if(Object.keys(historyLog).length>0){
+    refreshDateSelectors();
+    refreshVendorSelector();
+    // Rebuild every view (KPIs, leaderboard, predictive, chart, trend, comparison)
+    // from the restored snapshot + stored history.
+    applyVendorFilter(activeVendor);
+  }
+};
+
+/* ═══════════════════════════════════════════════
+   File input (Batch Optimized & Memory Safe)
+═══════════════════════════════════════════════ */
+document.getElementById('fileInput').addEventListener('change', async function(e){
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+
+  const alertBar = document.getElementById('alert-bar');
+  const alertText = document.getElementById('alert-text');
+  const alertIcon = document.getElementById('alert-icon');
+
+  // Custom Progress State
+  alertBar.style.display = 'flex';
+  alertBar.style.background = 'var(--accent-soft)';
+  alertBar.style.color = 'var(--accent)';
+  alertBar.style.borderColor = 'var(--accent)';
+  alertIcon.innerText = '⏳';
+
+  // Sort chronologically by the date embedded in each filename (falls back to name),
+  // so the last file processed is the newest date and matches the saved snapshot.
+  const fileDate = name => {
+    const mm = name.match(/(\d{1,2})[\.\-\/](\d{1,2})[\.\-\/](\d{4})/);
+    return mm ? `${mm[3]}-${mm[2].padStart(2,'0')}-${mm[1].padStart(2,'0')}` : name;
+  };
+  files.sort((a, b) => fileDate(a.name).localeCompare(fileDate(b.name)));
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+
+    // Crucial: Update progress and forcefully yield execution to browser (prevent "Page Unresponsive" error)
+    alertText.innerHTML = `<span style="font-weight:700">جاري المعالجة...</span> (${i + 1} من ${files.length}) <br><span style="font-size:10px; opacity:0.8; font-family:'JetBrains Mono',monospace;">${file.name}</span>`;
+    await new Promise(r => setTimeout(r, 60)); // slightly larger timeout to let DOM paint properly
+
+    const m = file.name.match(/(\d{1,2})[\.\-\/](\d{1,2})[\.\-\/](\d{4})/);
+    let fDate = m ? `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}` : new Date().toISOString().split('T')[0];
+
+    await new Promise(res => {
+      const reader = new FileReader();
+      reader.onload = evt => {
+        try {
+            const wb = XLSX.read(new Uint8Array(evt.target.result), {type: 'array'});
+            const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+            const isLastFile = (i === files.length - 1);
+            processData(json, fDate, isLastFile);
+        } catch (err) {
+            console.error("Failed processing file:", file.name, err);
+        }
+        res();
+      };
+      reader.onerror = () => res(); // skip file on read error
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  // Restore Alert Bar properties to standard state
+  alertBar.style.background = 'var(--red-soft)';
+  alertBar.style.color = 'var(--red)';
+  alertBar.style.borderColor = 'var(--red)';
+  alertBar.style.display = 'none';
+  alertIcon.innerText = '🚨';
+
+  if(currentStats) checkAlerts(currentStats);
+  this.value = '';
+});
+
+
+/* ═══════════════════════════════════════════════
+   Data processing
+═══════════════════════════════════════════════ */
+function parse(v){
+  if(typeof v==='string') return parseFloat(v.replace('%',''))||0;
+  return (v<=1?v*100:v)||0;
+}
+
+function calcWPI(c){
+  const o=c.ord/c.entries;
+  const attend=c.expDays>0?Math.min(c.actDays/c.expDays,1):0; // 0–1 (capped so WPI never exceeds 100)
+  const h=c.effHrs/c.entries;
+  const reqH=(c.reqHrs/c.entries)||8;
+  return (Math.min(o/25,1)*40)+(attend*40)+(Math.min(h/reqH,1)*20);
+}
+
+/* ═══════════════════════════════════════════════
+   Compute stats from any array of caps
+   (used by both processData and vendor filter)
+═══════════════════════════════════════════════ */
+function computeStatsFromCaps(caps){
+  const n=caps.length||1;
+  const attendRate=c=>c.expDays>0?Math.min((c.actDays/c.expDays)*100,100):0;
+  return {
+    totDlv:caps.reduce((a,b)=>a+b.ord,0),
+    avgHrs:caps.reduce((a,b)=>a+(b.effHrs/b.entries),0)/n,
+    avgDlv:caps.reduce((a,b)=>a+(b.ord/b.entries),0)/n,
+    active:caps.length,
+    delivOT:caps.reduce((a,b)=>a+Math.max(0,b.expDays>0?(1-b.lateEarlyCount/b.expDays)*100:0),0)/n,
+    pickOT:caps.reduce((a,b)=>a+Math.max(0,b.expDays>0?(1-b.absences/b.expDays)*100:0),0)/n,
+    attendOT:caps.reduce((a,b)=>a+attendRate(b),0)/n,
+    shiftComp:caps.reduce((a,b)=>a+(b.reqHrs>0?Math.min((b.effHrs/b.reqHrs)*100,100):0),0)/n,
+    cycleOT:caps.reduce((a,b)=>a+Math.max(0,b.expDays>0?(1-b.lateArr/b.expDays)*100:0),0)/n,
+    returnOT:caps.reduce((a,b)=>a+Math.max(0,b.expDays>0?(1-b.earlyLeave/b.expDays)*100:0),0)/n,
+    delayed:caps.filter(c=>c.absences>0).length,
+    totHrs:caps.reduce((a,b)=>a+b.effHrs,0),
+    offMin:caps.reduce((a,b)=>a+(b.lateDur/b.entries),0)/n,
+    roamMin:caps.reduce((a,b)=>a+(b.earlyLeaveDur/b.entries),0)/n,
+    delayMin:caps.reduce((a,b)=>a+(b.lateEarlyDur/b.entries),0)/n,
+    wpi:caps.reduce((a,b)=>a+calcWPI(b),0)/n,
+    audits:{
+      low_hrs:caps.filter(c=>(c.effHrs/c.entries)<8).map(c=>c.id),
+      low_ord:caps.filter(c=>(c.ord/c.entries)<20).map(c=>c.id),
+      top_roam:[...caps].sort((a,b)=>(b.earlyLeaveDur/b.entries)-(a.earlyLeaveDur/a.entries)).slice(0,5).map(c=>c.id),
+      top_delay:[...caps].sort((a,b)=>(b.lateEarlyDur/b.entries)-(a.lateEarlyDur/a.entries)).slice(0,5).map(c=>c.id)
+    },
+    captains:caps.map(c=>({
+      id:c.id,name:c.name,phone:c.phone||'',store:c.store||'',
+      ord:(c.ord/c.entries).toFixed(1),
+      hrs:(c.effHrs/c.entries).toFixed(1),
+      wpi:calcWPI(c).toFixed(1),
+      absences:(c.absences/c.entries).toFixed(0),
+      lateArr:(c.lateArr/c.entries).toFixed(0),
+      missingChk:(c.missingChk/c.entries).toFixed(0),
+      dly:(c.lateEarlyDur/c.entries).toFixed(0),
+      rm:(c.earlyLeaveDur/c.entries).toFixed(0),
+      off:(c.lateDur/c.entries).toFixed(0),
+      dl:attendRate(c).toFixed(1),
+      pk:(c.expDays>0?Math.max(0,(1-c.absences/c.expDays)*100):0).toFixed(1)
+    }))
+  };
+}
+
+/* ═══════════════════════════════════════════════
+   Vendor filter helpers
+═══════════════════════════════════════════════ */
+function refreshVendorSelector(){
+  if(COMPANY_ONLY){ const b=document.getElementById('vendor-bar'); if(b) b.style.display='none'; activeVendor='all'; return; }
+  const vendors=[...new Set(Array.from(captainsMap.values()).map(c=>c.vendor).filter(Boolean))].sort();
+  const bar=document.getElementById('vendor-bar');
+  const chips=document.getElementById('vendor-chips');
+  if(!vendors.length||!bar||!chips){if(bar) bar.style.display='none';return;}
+  bar.style.display='flex';
+  chips.innerHTML=['all',...vendors].map(v=>{
+    const label=v==='all'?'🌐 الكل':v;
+    const safeId='vchip-'+v.replace(/[^a-zA-Z0-9]/g,'_');
+    return `<span id="${safeId}" onclick="applyVendorFilter('${v.replace(/'/g,"\\'")}')"
+      style="display:inline-flex;align-items:center;padding:5px 14px;border-radius:99px;
+             font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);
+             background:var(--surface2);color:var(--text2);transition:all .18s;user-select:none;">
+      ${label}
+    </span>`;
+  }).join('');
+  highlightVendorChip(activeVendor);
+}
+
+function highlightVendorChip(v){
+  document.querySelectorAll('[id^="vchip-"]').forEach(el=>{
+    el.style.background='var(--surface2)';
+    el.style.color='var(--text2)';
+    el.style.borderColor='var(--border)';
+  });
+  const safeId='vchip-'+(v||'all').replace(/[^a-zA-Z0-9]/g,'_');
+  const el=document.getElementById(safeId);
+  if(el){el.style.background='var(--accent)';el.style.color='#fff';el.style.borderColor='var(--accent)';}
+}
+
+function applyVendorFilter(v){
+  activeVendor=v||'all';
+  highlightVendorChip(activeVendor);
+
+  const caps=getFilteredCaps();
+  const info=document.getElementById('vendor-count-info');
+  if(info) info.innerText=activeVendor==='all'?`${caps.length} مندوب — الكل`:`${caps.length} مندوب — ${activeVendor}`;
+
+  const dates = Object.keys(historyLog).sort();
+  if(!dates.length && !caps.length) return;
+
+  // Prefer freshly-computed stats from the in-memory snapshot so captain-level detail
+  // (needed by Red Flags export + WhatsApp) is available for any vendor. Fall back to
+  // stored KPI stats only when no snapshot is loaded.
+  let stats = caps.length > 0
+      ? computeStatsFromCaps(caps)
+      : (dates.length ? getActiveStats(dates[dates.length - 1]) : null);
+
+  if(!stats) return;
+
+  currentStats=stats;
+  updateUI(stats);
+  updateLeaderboard();
+  updatePredictive();
+  checkAlerts(stats);
+
+  updateChart();
+  updateTrendDots();
+  updateComparison();
+  const hv=document.getElementById('view-hours');
+  if(hv && hv.style.display==='block') renderHoursView();
+}
+
+function processData(data, fDate, isLast = true){
+  captainsMap.clear();
+  const __seenVendors=new Set();
+  data.forEach(r=>{
+    const id=r['Courier ID'];if(!id) return;
+    const __vn=(r['Vendor name']||'').toString().trim();
+    if(__vn) __seenVendors.add(__vn);
+    if(COMPANY_ONLY && normVendor(__vn)!==normVendor(COMPANY_ONLY)) return; // كل التقارير لهذه الشركة فقط
+    if(!captainsMap.has(id)) captainsMap.set(id,{
+      id,
+      name:r["Courier's Name"]||id,
+      phone:r['Phone number']||'',
+      store:r['Store']||'',
+      status:r['Status']||'',
+      type:r['Courier type']||'',
+      vendor:r['Vendor name']||'',
+      vehicle:r['Vehicle Type']||'',
+      entries:0,
+      ord:0,effHrs:0,actHrs:0,reqHrs:0,
+      expDays:0,actDays:0,unschDays:0,
+      leaves:0,leaveDur:0,
+      lateArr:0,earlyLeave:0,lateEarlyCount:0,
+      absences:0,missingChk:0,
+      lateDur:0,earlyLeaveDur:0,lateEarlyDur:0
+    });
+    const c=captainsMap.get(id);
+    c.entries++;
+    c.ord+=Number(r['Total delivery orders']||0);
+    c.effHrs+=Number(r['Effective attendance duration (hours)']||0);
+    c.actHrs+=Number(r['Actual attendance duration (hours)']||0);
+    c.reqHrs+=Number(r['Required attendance duration (hours)']||0);
+    c.expDays+=Number(r['Expected attendance days']||0);
+    c.actDays+=Number(r['Actual attendance days']||0);
+    c.unschDays+=Number(r['Unscheduled attendance days']||0);
+    c.leaves+=Number(r['Number of leaves']||0);
+    c.leaveDur+=Number(r['Leave duration (including overnight)']||0);
+    c.lateArr+=Number(r['Late arrival times']||0);
+    c.earlyLeave+=Number(r['Number of times leaving early']||0);
+    c.lateEarlyCount+=Number(r['Late arrival/Early leave count']||0);
+    c.absences+=Number(r['Absence count']||0);
+    c.missingChk+=Number(r['Missing check-in/out times']||0);
+    c.lateDur+=Number(r['Late duration']||0);
+    c.earlyLeaveDur+=Number(r['Early leave duration']||0);
+    c.lateEarlyDur+=Number(r['Late arrival/Early leave duration']||0);
+  });
+
+  const caps = Array.from(captainsMap.values());
+  if(COMPANY_ONLY && !caps.length){
+    if(isLast) alert('⚠️ لا توجد بيانات لشركة "'+COMPANY_ONLY+'" في هذا الملف.\nالموردون الموجودون في الملف: '+([...__seenVendors].join('، ')||'—')+'\nتأكد أن عمود Vendor name يحتوي اسم الشركة تماماً.');
+    return; // لا نخزّن فترة فارغة لغير هذه الشركة
+  }
+  const allStats = computeStatsFromCaps(caps);
+  delete allStats.captains; // captain-level detail lives in the caps snapshot, not the KPI history
+  const vendors = {};
+  const uniqueVendors = [...new Set(caps.map(c=>c.vendor).filter(Boolean))];
+
+  uniqueVendors.forEach(v => {
+    let vStats = computeStatsFromCaps(caps.filter(c => c.vendor === v));
+    delete vStats.captains; // vendor KPI stats never carry captains either
+    vendors[v] = vStats;
+  });
+
+  // Compact per-captain record for this period (identity is stored once in captainMeta).
+  const capsHistForDate = {};
+  caps.forEach(c=>{ capsHistForDate[String(c.id)] = compactCaptainRecord(c); });
+  captainsHist[fDate] = capsHistForDate;
+  updateCaptainMeta(caps);
+
+  historyLog[fDate] = {
+      legacy: false,
+      all: allStats,
+      vendors: vendors
+  };
+
+  if (isLast) {
+    const dates = Object.keys(historyLog).sort();
+
+    // Storage safety: keep the KPI history slim — captain detail is stored once, separately.
+    dates.forEach(d => { if (historyLog[d].all) delete historyLog[d].all.captains; });
+
+    try {
+        localStorage.setItem('fleet_hub_v24', JSON.stringify(historyLog));
+        localStorage.setItem('fleet_caps_v24', JSON.stringify(caps));
+    } catch(err) {
+        console.error("Storage Limit Hit:", err);
+        // Retry with just the slim KPI history so at least the dashboard persists.
+        try { localStorage.setItem('fleet_hub_v24', JSON.stringify(historyLog)); } catch(e){}
+        alert('⚠️ مساحة تخزين المتصفح ممتلئة! تم معالجة البيانات لكن قد لا تُحفظ تفاصيل المندوبين للجلسة القادمة. جرب النقر على "تصفير" لمسح السجل القديم.');
+    }
+    // Persist the per-captain search history (prunes oldest periods if the quota is hit,
+    // so the most recent history always saves completely).
+    persistCaptainsHist();
+
+    refreshVendorSelector();
+    refreshDateSelectors();
+
+    const newestDate = dates[dates.length - 1];
+    document.getElementById('cmp-to').value = newestDate;
+    if(dates.length > 1) document.getElementById('cmp-from').value = dates[dates.length - 2];
+
+    applyVendorFilter(activeVendor); // sets currentStats (with captains) and rebuilds all views
+    triggerAutoSend(currentStats);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   UI update
+═══════════════════════════════════════════════ */
+function fmt(v,pct){return v!=null?(pct?v.toFixed(1)+'%':v.toLocaleString('ar-SA',{maximumFractionDigits:1})):'—';}
+
+function updateUI(s){
+  Object.keys(metricsInfo).forEach(k=>{
+    const el=document.getElementById('m-'+k);
+    if(el) el.innerText=fmt(s[k],pctKeys.includes(k));
+  });
+
+  // goal bars — only for keys that have a goal
+  goalsConfig.forEach(g=>{
+    const el=document.getElementById('g-'+g.key);
+    if(!el||s[g.key]==null) return;
+    const target=goals[g.key],val=s[g.key];
+    const pct=Math.min((val/target)*100,100);
+    const good=g.higher?val>=target:val<=target;
+    const color=good?'var(--green)':val>target*0.85?'var(--amber)':'var(--red)';
+    el.innerHTML=`<div class="progress-bar" style="margin-top:6px;"><div class="progress-fill" style="width:${pct}%;background:${color};"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:3px;">
+        <span style="font-size:9px;color:${color};font-weight:600;">${good?'✓ محقق':'↗ '+target+g.unit}</span>
+        <span style="font-size:9px;color:var(--text3);">${pct.toFixed(0)}%</span>
+      </div>`;
+  });
+
+  if(s.audits){
+    const lo=document.getElementById('a-low_hrs');
+    const lod=document.getElementById('a-low_ord');
+    if(lo) lo.innerText=s.audits.low_hrs.length;
+    if(lod) lod.innerText=s.audits.low_ord.length;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Trend bubbles inside cards
+═══════════════════════════════════════════════ */
+function shortDate(d){
+  const p=d.split('-');return `${parseInt(p[2])}/${parseInt(p[1])}`;
+}
+function fmtDot(k,v){
+  if(v==null) return '—';
+  if(pctKeys.includes(k)) return v.toFixed(0)+'%';
+  if(k==='totDlv'||k==='totHrs') return v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0);
+  return v.toFixed(1);
+}
+// Sizes: oldest→smallest, newest→largest
+const DOT_SIZES=[20,25,32];
+
+function updateTrendDots(){
+  const allDates=Object.keys(historyLog).sort();
+  const last3=allDates.slice(-3);
+  Object.keys(metricsInfo).forEach(k=>{
+    const el=document.getElementById('td-'+k);
+    if(!el||last3.length===0){if(el) el.innerHTML='';return;}
+    let html='';
+    last3.forEach((date,i)=>{
+      const s = getActiveStats(date);
+      const prevS = i>0 ? getActiveStats(last3[i-1]) : null;
+
+      const val = s ? s[k] : null;
+      const prevVal = prevS ? prevS[k] : null;
+
+      if(val == null) return;
+
+      // offset if fewer than 3 dates
+      const sizeIdx=i+(3-last3.length);
+      const size=DOT_SIZES[sizeIdx];
+      // color logic
+      let color='#2563eb';
+      if(prevVal!=null){
+        const improved=lowerBetterKeys.includes(k)?val<=prevVal:val>=prevVal;
+        color=improved?'#16a34a':'#dc2626';
+      }
+      const displayVal=fmtDot(k,val);
+      const fs=size<=20?8:size<=25?9:10;
+      html+=`<div class="t-bub" title="${date}: ${displayVal}">
+        <div class="t-bub-circle" style="width:${size}px;height:${size}px;background:${color};font-size:${fs}px;">${displayVal}</div>
+        <span class="t-bub-date">${shortDate(date)}</span>
+      </div>`;
+    });
+    el.innerHTML=html;
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   Multi-series chart + chips
+═══════════════════════════════════════════════ */
+function buildSeriesChips(){
+  const wrap=document.getElementById('series-chips');
+  wrap.innerHTML='';
+  SERIES_CFG.forEach((s,i)=>{
+    const chip=document.createElement('span');
+    chip.className='series-chip '+(s.vis?'active':'inactive');
+    chip.style.color=s.color;
+    chip.style.background=s.vis?s.color+'18':'transparent';
+    chip.innerHTML=`<span class="chip-dot" style="background:${s.color};"></span>${s.label}`;
+    chip.onclick=()=>{
+      s.vis=!s.vis;
+      chip.className='series-chip '+(s.vis?'active':'inactive');
+      chip.style.background=s.vis?s.color+'18':'transparent';
+      updateChart();
+    };
+    wrap.appendChild(chip);
+  });
+}
+
+function updateChart(){
+  const dates=Object.keys(historyLog).sort();
+  const canvas=document.getElementById('performanceChart');
+  if(!canvas || typeof Chart==='undefined') return; // stay resilient if the chart library fails to load
+  const ctx=canvas.getContext('2d');
+  if(myChart) myChart.destroy();
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  const gridColor=isDark?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.05)';
+  const textColor=isDark?'#7d8aa0':'#9aa3b5';
+
+  const datasets=SERIES_CFG.filter(s=>s.vis).map(s=>({
+    label:s.label,
+    data:dates.map(d => {
+        const stats = getActiveStats(d);
+        return stats ? stats[s.key] : null;
+    }),
+    borderColor:s.color,
+    backgroundColor:s.color+'22',
+    borderWidth:2,
+    pointBackgroundColor:s.color,
+    pointRadius:4,
+    tension:0.4,
+    fill:false,
+    yAxisID:s.axis
+  }));
+
+  myChart=new Chart(ctx,{
+    type:'line',
+    data:{labels:dates,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          callbacks:{
+            title:items=>items[0].label,
+            label:item=>`${item.dataset.label}: ${item.formattedValue}`
+          }
+        }
+      },
+      scales:{
+        x:{grid:{color:gridColor},ticks:{color:textColor,font:{size:11}}},
+        y1:{position:'right',grid:{color:gridColor},ticks:{color:textColor,font:{size:11}},title:{display:true,text:'%',color:textColor,font:{size:10}}},
+        y2:{position:'left',grid:{display:false},ticks:{color:textColor,font:{size:11}},title:{display:true,text:'عدد/دقيقة',color:textColor,font:{size:10}}}
+      }
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   Date selectors + comparison table
+═══════════════════════════════════════════════ */
+function refreshDateSelectors(){
+  const dates=Object.keys(historyLog).sort();
+  const fromEl=document.getElementById('cmp-from');
+  const toEl=document.getElementById('cmp-to');
+  const fv=fromEl.value,tv=toEl.value;
+  fromEl.innerHTML='<option value="">— من —</option>'+dates.map(d=>`<option value="${d}"${d===fv?' selected':''}>${d}</option>`).join('');
+  toEl.innerHTML='<option value="">— إلى —</option>'+dates.map(d=>`<option value="${d}"${d===tv?' selected':''}>${d}</option>`).join('');
+  if(!fromEl.value&&!toEl.value&&dates.length>=2){
+    fromEl.value=dates[dates.length-2];
+    toEl.value=dates[dates.length-1];
+  }
+}
+
+function updateComparison(){
+  const fromDate=document.getElementById('cmp-from').value;
+  const toDate=document.getElementById('cmp-to').value;
+  const grid=document.getElementById('cmp-grid');
+  const tbl=document.getElementById('cmp-table');
+  const lbl=document.getElementById('cmp-label');
+  const diff=document.getElementById('cmp-diff');
+
+  if(!fromDate||!toDate||fromDate===toDate){
+    tbl.style.display='none';
+    diff.innerText='';
+    return;
+  }
+
+  const from = getActiveStats(fromDate);
+  const to = getActiveStats(toDate);
+
+  if(!from||!to){tbl.style.display='none';return;}
+
+  diff.innerText=`${fromDate} → ${toDate}`;
+  lbl.innerText=`مقارنة: ${fromDate} ← ${toDate}`;
+  tbl.style.display='block';
+
+  let html='';
+  Object.keys(metricsInfo).forEach(k=>{
+    const d=to[k]-from[k];
+    const isPct=pctKeys.includes(k);
+    const lb=lowerBetterKeys.includes(k);
+    const improved=lb?d<=0:d>=0;
+    const color=improved?'var(--green)':'var(--red)';
+
+    const sign=d>0?'+':'';
+    html+=`<div style="background:var(--surface2);border-radius:8px;padding:8px 10px;border:1px solid var(--border);">
+      <div style="font-size:10px;color:var(--text3);margin-bottom:3px;">${metricsInfo[k]}</div>
+      <div style="display:flex;align-items:baseline;gap:5px;">
+        <span style="font-size:13px;font-weight:700;">${fmt(to[k],isPct)}</span>
+        <span style="font-size:10px;font-weight:700;color:${color};">${d===0?'—':(d>0?'▲':'▼')+' '+sign+Math.abs(d).toFixed(1)+(isPct?'%':'')}</span>
+      </div>
+      <div style="font-size:9px;color:var(--text3);">كان: ${fmt(from[k],isPct)}</div>
+    </div>`;
+  });
+  grid.innerHTML=html;
+}
+
+/* ═══════════════════════════════════════════════
+   Leaderboard
+═══════════════════════════════════════════════ */
+function updateLeaderboard(){
+  const caps=getFilteredCaps();
+  if(!caps.length){
+    document.getElementById('lb-top').innerHTML='<div class="empty-state">لا يوجد بيانات</div>';
+    document.getElementById('lb-bottom').innerHTML='<div class="empty-state">لا يوجد بيانات</div>';
+    return;
+  }
+  const sorted=[...caps].sort((a,b)=>calcWPI(b)-calcWPI(a));
+  const renderRow=(c,rank)=>{
+    const wpi=calcWPI(c);
+    const rc=rank===1?'rank-1':rank===2?'rank-2':rank===3?'rank-3':'rank-n';
+    const ini=(c.name||'').split(' ').slice(0,2).map(x=>x[0]||'').join('').toUpperCase()||c.id.slice(0,2);
+    return `<div class="leader-row">
+      <div class="leader-rank ${rc}">${rank}</div>
+      <div class="avatar">${ini}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</div>
+        <div class="mono" style="font-size:10px;color:var(--text3);">${c.id}</div>
+        <div class="wpi-bar"><div class="wpi-fill" style="width:${Math.min(wpi,100)}%;background:${wpi>=80?'var(--green)':wpi>=60?'var(--amber)':'var(--red)'};"></div></div>
+      </div>
+      <div style="text-align:left;">
+        <div style="font-size:14px;font-weight:700;color:${wpi>=80?'var(--green)':wpi>=60?'var(--amber)':'var(--red)'};">${wpi.toFixed(1)}%</div>
+        <div style="font-size:10px;color:var(--text3);">${(c.ord/c.entries).toFixed(1)} طلب | حضور ${c.expDays>0?Math.min((c.actDays/c.expDays)*100,100).toFixed(0):0}%</div>
+      </div>
+    </div>`;
+  };
+  document.getElementById('lb-top').innerHTML=sorted.slice(0,10).map((c,i)=>renderRow(c,i+1)).join('');
+  document.getElementById('lb-bottom').innerHTML=[...sorted].reverse().slice(0,10).map((c,i)=>renderRow(c,sorted.length-i)).join('');
+}
+
+/* ═══════════════════════════════════════════════
+   Predictive
+═══════════════════════════════════════════════ */
+function updatePredictive(){
+  const dates=Object.keys(historyLog).sort();
+  const caps=getFilteredCaps();
+  const el=document.getElementById('predict-list');
+  if(!caps.length||dates.length<2){el.innerHTML='<div class="empty-state">ارفع ملفين على الأقل</div>';return;}
+  const preds=caps.map(c=>{
+    const wpi=calcWPI(c);
+    let risk='good',reasons=[];
+    if(wpi<60){risk='critical';reasons.push('WPI منخفض جداً');}
+    else if(wpi<75){risk='warning';reasons.push('WPI دون المستهدف');}
+    if(c.absences>2){risk='critical';reasons.push('غيابات متكررة');}
+    else if(c.absences>0){if(risk==='good') risk='warning';reasons.push('غياب مسجّل');}
+    if((c.ord/c.entries)<15){risk='critical';reasons.push('إنتاجية ضعيفة جداً');}
+    else if((c.ord/c.entries)<20){if(risk==='good') risk='warning';reasons.push('إنتاجية دون الهدف');}
+    if(c.expDays>0&&(c.actDays/c.expDays)<0.80){risk='critical';reasons.push('حضور < 80%');}
+    return{c,wpi,risk,reasons};
+  });
+  const cr=preds.filter(p=>p.risk==='critical');
+  const wa=preds.filter(p=>p.risk==='warning');
+  const go=preds.filter(p=>p.risk==='good');
+  let html='';
+  if(cr.length){html+=`<div class="section-title" style="color:var(--red);">🔴 Critical — تدخل فوري (${cr.length})</div>`;cr.forEach(p=>html+=renderPredictRow(p,'critical'));}
+  if(wa.length){html+=`<div class="section-title" style="color:var(--amber);margin-top:1.5rem;">🟡 Warning — مراقبة (${wa.length})</div>`;wa.forEach(p=>html+=renderPredictRow(p,'warning'));}
+  if(go.length){html+=`<div class="section-title" style="color:var(--green);margin-top:1.5rem;">🟢 On Track (${go.length})</div><div style="font-size:12px;color:var(--text3);padding:8px 0;">${go.map(p=>p.c.name||p.c.id).join('، ')}</div>`;}
+  el.innerHTML=html;
+}
+function renderPredictRow(p,lv){
+  const cls=lv==='critical'?'predict-critical':lv==='warning'?'predict-warning':'predict-good';
+  const ini=(p.c.name||'').split(' ').slice(0,2).map(x=>x[0]||'').join('').toUpperCase()||p.c.id.slice(0,2);
+  return `<div style="display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:var(--surface2);">
+    <div class="avatar">${ini}</div>
+    <div style="flex:1;"><div style="font-size:13px;font-weight:600;">${p.c.name||p.c.id}</div><div style="font-size:10px;color:var(--text3);">${p.reasons.join(' • ')}</div></div>
+    <div><div class="predict-badge ${cls}">${lv==='critical'?'خطر':'تحذير'}</div><div style="font-size:10px;color:var(--text3);text-align:center;margin-top:4px;">WPI ${p.wpi.toFixed(0)}%</div></div>
+  </div>`;
+}
+
+/* ═══════════════════════════════════════════════
+   Alerts
+═══════════════════════════════════════════════ */
+function checkAlerts(s){
+  if(!s) return;
+  const al=[];
+  if(s.delayed>5) al.push(`${s.delayed} مندوب بغيابات مسجّلة`);
+  if(s.wpi<70) al.push(`WPI ${s.wpi.toFixed(1)}% — دون الحد`);
+  if(s.audits && s.audits.low_hrs.length>10) al.push(`${s.audits.low_hrs.length} مندوب بساعات فعلية حرجة`);
+  if(s.attendOT<80) al.push(`معدل الحضور ${s.attendOT.toFixed(1)}% — منخفض`);
+  const bar=document.getElementById('alert-bar');
+  if(al.length){document.getElementById('alert-text').innerText=al.join(' | ');bar.style.display='flex';}
+  else bar.style.display='none';
+}
+
+/* ═══════════════════════════════════════════════
+   Drill-down modal
+═══════════════════════════════════════════════ */
+function openDrillDown(type){
+  const body=document.getElementById('modalBody');
+  body.innerHTML='';
+  const caps=getFilteredCaps();
+  let list=[];
+  if(metricsInfo[type]){
+    list=[...caps].sort((a,b)=>calcWPI(b)-calcWPI(a));
+    const vLabel=activeVendor==='all'?'الكل':activeVendor;
+    document.getElementById('modalTitle').innerText=metricsInfo[type]+' — '+vLabel;
+  } else {
+    switch(type){
+      case 'low_hrs':list=caps.filter(c=>(c.effHrs/c.entries)<8).sort((a,b)=>(a.effHrs/a.entries)-(b.effHrs/b.entries));break;
+      case 'low_ord':list=caps.filter(c=>(c.ord/c.entries)<20).sort((a,b)=>(a.ord/a.entries)-(b.ord/b.entries));break;
+      case 'top_roam':list=[...caps].sort((a,b)=>(b.earlyLeaveDur/b.entries)-(a.earlyLeaveDur/a.entries)).slice(0,10);break;
+      case 'top_delay':list=[...caps].sort((a,b)=>(b.lateEarlyDur/b.entries)-(a.lateEarlyDur/a.entries)).slice(0,10);break;
+    }
+    document.getElementById('modalTitle').innerText='تدقيق: '+type.replace(/_/g,' ');
+  }
+  if(!list.length){body.innerHTML='<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text3);">لا يوجد بيانات</td></tr>';}
+  list.forEach((c,idx)=>{
+    const wpi=calcWPI(c);
+    let freq=0;
+    // Frequency checks will only look at dates we have in history Log across all vendors
+    Object.values(historyLog).forEach(d=>{
+        const statTarget = d.legacy === false ? (d.vendors[activeVendor] || d.all) : d;
+        if(statTarget && statTarget.audits && statTarget.audits[type] && statTarget.audits[type].includes(c.id)) freq++;
+    });
+
+    const ini=(c.name||'').split(' ').slice(0,2).map(x=>x[0]||'').join('').toUpperCase()||c.id.slice(0,2);
+    body.innerHTML+=`<tr>
+      <td style="color:var(--text3);font-weight:700;font-size:11px;">${idx+1}</td>
+      <td><div style="display:flex;align-items:center;gap:10px;"><div class="avatar" style="width:32px;height:32px;font-size:11px;">${ini}</div><div><div style="font-weight:600;font-size:13px;">${c.name}</div><div class="mono" style="font-size:10px;color:var(--text3);">${c.id}</div></div></div></td>
+      <td style="text-align:center;font-weight:700;">${(c.ord/c.entries).toFixed(1)}</td>
+      <td style="text-align:center;"><span class="tag ${wpi>=80?'tag-green':wpi>=60?'tag-amber':'tag-red'}">${wpi.toFixed(1)}%</span></td>
+      <td style="text-align:center;">${(c.effHrs/c.entries).toFixed(1)}</td>
+      <td style="text-align:center;color:${c.absences>0?'var(--red)':'var(--text)'};font-weight:600;">${c.absences} غياب | ${c.lateArr} تأخير</td>
+      <td style="text-align:center;color:var(--text3);">${freq>0?freq+' أيام':'—'}</td>
+      <td style="text-align:center;">${freq>1?'<span class="pulse" style="font-size:16px;">🚩</span>':freq===1?'<span class="tag tag-amber">جديد</span>':'<span style="color:var(--text3);font-size:11px;">—</span>'}</td>
+    </tr>`;
+  });
+  document.getElementById('modal-overlay').style.display='flex';
+}
+
+/* ═══════════════════════════════════════════════
+   Captain global search (sticky, all tabs)
+═══════════════════════════════════════════════ */
+function capInitials(name,id){
+  return (name||'').split(' ').slice(0,2).map(x=>x[0]||'').join('').toUpperCase() || String(id||'').slice(0,2);
+}
+
+// Union of the latest snapshot and every historical period → one searchable list.
+function getCaptainIndex(){
+  const map=new Map();
+  // Every captain that appears in any stored period (identity from meta, or old-format record).
+  Object.values(captainsHist).forEach(day=>{
+    Object.keys(day).forEach(id=>{
+      const k=String(id);
+      if(!map.has(k)){
+        const m=captainMeta[k]||{}, r=day[id]||{};
+        map.set(k,{id:k, name:m.n||r.n||k, vendor:m.vn||r.vn||'', store:m.st||r.st||''});
+      }
+    });
+  });
+  Object.keys(captainMeta).forEach(id=>{ const m=captainMeta[id]; map.set(String(id),{id:String(id),name:m.n||id,vendor:m.vn||'',store:m.st||''}); });
+  captainsMap.forEach((c,id)=>{ map.set(String(id),{id,name:c.name||String(id),vendor:c.vendor||'',store:c.store||''}); });
+  return Array.from(map.values());
+}
+
+function runCaptainSearch(){
+  const input=document.getElementById('captain-search-input');
+  const dd=document.getElementById('captain-search-dropdown');
+  const count=document.getElementById('captain-search-count');
+  const q=(input.value||'').trim().toLowerCase();
+  if(!q){ dd.style.display='none'; count.innerText=''; return; }
+  const matches=getCaptainIndex().filter(c=>
+    String(c.id).toLowerCase().includes(q) || (c.name||'').toLowerCase().includes(q));
+  count.innerText=`${matches.length} نتيجة`;
+  if(!matches.length){
+    dd.innerHTML='<div style="padding:12px;color:var(--text3);font-size:12px;">لا يوجد مندوب مطابق</div>';
+    dd.style.display='block'; return;
+  }
+  const shown=matches.slice(0,40);
+  window.__capMatches=shown;
+  dd.innerHTML=shown.map((c,i)=>`
+    <div onclick="openCaptainProfile(window.__capMatches[${i}].id)"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"
+      style="padding:9px 12px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:10px;">
+      <div class="avatar" style="width:30px;height:30px;font-size:10px;">${capInitials(c.name,c.id)}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</div>
+        <div class="mono" style="font-size:10px;color:var(--text3);">${c.id}${c.vendor?' • '+c.vendor:''}${c.store?' • '+c.store:''}</div>
+      </div>
+      <span style="font-size:11px;color:var(--accent);font-weight:600;white-space:nowrap;">عرض ↩</span>
+    </div>`).join('');
+  dd.style.display='block';
+}
+
+// Average of a captain's compact records across every stored period.
+function captainAllPeriodsAvg(id){
+  const recs=[];
+  Object.keys(captainsHist).forEach(date=>{ const r=captainsHist[date] && captainsHist[date][id]; if(r) recs.push(r); });
+  if(!recs.length) return null;
+  const n=recs.length;
+  const avg=k=>recs.reduce((a,b)=>a+(+b[k]||0),0)/n;
+  return { periods:n, wpi:avg('wpi'), ord:avg('ord'), hrs:avg('hrs'), att:avg('att'),
+           abs:avg('abs'), late:avg('late'), early:avg('early'), exp:avg('exp'), act:avg('act'), ledur:avg('ledur') };
+}
+
+// Sum a captain's hours goal (duty days × 12), achieved hours and remaining, across all periods.
+function captainHoursGoal(id){
+  let exp=0, teh=0, tord=0, periods=0;
+  Object.keys(captainsHist).forEach(date=>{ const r=captainsHist[date] && captainsHist[date][id];
+    if(r){ exp+=(+r.exp||0); teh+=recTotHrs(r); tord+=recTotOrd(r); periods++; } });
+  const target=exp*HOURS_TARGET_PER_DAY;
+  return { exp, teh:+teh.toFixed(1), tord, target, remain:+(target-teh).toFixed(1), periods,
+           pct: target>0?Math.min(teh/target*100,100):0 };
+}
+
+// 5-level performance grade from a WPI score.
+function performanceRating(wpi){
+  if(wpi>=85) return {label:'ممتاز',    color:'var(--green)',  soft:'var(--green-soft)'};
+  if(wpi>=70) return {label:'جيد',      color:'var(--green)',  soft:'var(--green-soft)'};
+  if(wpi>=55) return {label:'مقبول',    color:'var(--amber)',  soft:'var(--amber-soft)'};
+  if(wpi>=40) return {label:'ضعيف',     color:'var(--red)',    soft:'var(--red-soft)'};
+  return         {label:'ضعيف جداً', color:'var(--red)',    soft:'var(--red-soft)'};
+}
+
+// Recommendations vs. the goals — hours, duty days (attendance), and orders.
+function captainRecommendation(a){
+  const recs=[];
+  if(a.ord < goals.avgDlv) recs.push({ok:false,icon:'📦',txt:`رفع متوسط الطلبات من ${a.ord.toFixed(1)} إلى الهدف ${goals.avgDlv}/يوم`});
+  else                     recs.push({ok:true, icon:'📦',txt:`الطلبات ضمن الهدف (${a.ord.toFixed(1)} ≥ ${goals.avgDlv})`});
+  if(a.hrs < goals.avgHrs) recs.push({ok:false,icon:'⏱',txt:`زيادة ساعات الدوام الفعلية من ${a.hrs.toFixed(1)} إلى الهدف ${goals.avgHrs} ساعة`});
+  else                     recs.push({ok:true, icon:'⏱',txt:`الساعات ضمن الهدف (${a.hrs.toFixed(1)} ≥ ${goals.avgHrs})`});
+  if(a.att < goals.attendOT) recs.push({ok:false,icon:'📅',txt:`تحسين الالتزام بأيام الدوام (حضور ${a.att.toFixed(0)}% مقابل الهدف ${goals.attendOT}%)`});
+  else                       recs.push({ok:true, icon:'📅',txt:`أيام الدوام ضمن الهدف (${a.att.toFixed(0)}% ≥ ${goals.attendOT}%)`});
+  return recs;
+}
+
+// Export one captain (summary + rating + recommendations + full period history) to Excel.
+function exportCaptain(id){
+  if(id==null){ alert('لا يوجد مندوب محدد'); return; }
+  const cur=captainsMap.get(id);
+  const rows=[];
+  Object.keys(captainsHist).sort().reverse().forEach(date=>{ const r=captainsHist[date] && captainsHist[date][id]; if(r) rows.push(Object.assign({date},r)); });
+  const meta = captainMeta[id] || (rows[0] && rows[0].n ? rows[0] : null);
+  const prof = cur
+    ? {name:cur.name||id,id:cur.id,phone:cur.phone||'—',store:cur.store||'—',vendor:cur.vendor||'—',vehicle:cur.vehicle||'—',type:cur.type||'—'}
+    : (meta?{name:meta.n||id,id,phone:meta.ph||'—',store:meta.st||'—',vendor:meta.vn||'—',vehicle:meta.vh||'—',type:meta.tp||'—'}:{name:String(id),id,phone:'—',store:'—',vendor:'—',vehicle:'—',type:'—'});
+  const avg=captainAllPeriodsAvg(id);
+  if(!avg && !cur){ alert('لا توجد بيانات لهذا المندوب'); return; }
+  const base = avg || {periods:1,wpi:calcWPI(cur),ord:cur.ord/cur.entries,hrs:cur.effHrs/cur.entries,att:Math.min(cur.expDays>0?(cur.actDays/cur.expDays)*100:0,100),abs:cur.absences};
+  const g=captainHoursGoal(id);
+  const rating=performanceRating(base.wpi);
+  const summary=[
+    ['ملف المندوب',''],
+    ['الاسم',prof.name],['المعرّف',prof.id],['الهاتف',prof.phone],['المتجر',prof.store],['المورد',prof.vendor],['المركبة',prof.vehicle],['النوع',prof.type],
+    ['',''],
+    ['التقييم العام',rating.label],
+    ['عدد الفترات',base.periods],
+    ['متوسط WPI',base.wpi.toFixed(1)+'%'],
+    ['متوسط الطلبات/يوم',base.ord.toFixed(1)+' (الهدف '+goals.avgDlv+')'],
+    ['متوسط الساعات/يوم',base.hrs.toFixed(1)+' (الهدف '+goals.avgHrs+')'],
+    ['متوسط الحضور',base.att.toFixed(1)+'% (الهدف '+goals.attendOT+'%)'],
+    ['',''],
+    ['هدف الساعات (أيام الدوام × '+HOURS_TARGET_PER_DAY+')',g.target.toFixed(0)+' ساعة'],
+    ['الساعات المنجزة',g.teh.toFixed(1)+' ساعة'],
+    ['المتبقي من الهدف',g.remain.toFixed(1)+' ساعة'],
+    ['',''],
+    ['التوصيات',''],
+    ...captainRecommendation(base).map(r=>[r.ok?'ضمن الهدف ✓':'يحتاج تحسين ↗', r.txt]),
+  ];
+  const hist=[
+    ['التاريخ','WPI %','أيام متوقعة','أيام فعلية','متوسط س/يوم','إجمالي الساعات','هدف الساعات','المتبقي','الطلبات','حضور %','غياب'],
+    ...rows.map(r=>{const th=recTotHrs(r),tg=(+r.exp||0)*HOURS_TARGET_PER_DAY;return [r.date,(+r.wpi).toFixed(1),r.exp,r.act,(+r.act>0?th/+r.act:0).toFixed(1),th.toFixed(1),tg.toFixed(0),(tg-th).toFixed(1),recTotOrd(r),(+r.att).toFixed(0),r.abs];})
+  ];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(summary),'ملخص المندوب');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(hist),'سجل الفترات');
+  XLSX.writeFile(wb,`${COMPANY_SLUG?COMPANY_SLUG+'_':''}courier_${String(id).replace(/[^\w]/g,'')}_${rows[0]?rows[0].date:'data'}.xlsx`);
+}
+
+/* New export — total hours first, then daily hours + orders by captain ID. */
+// Expand the set of data dates to FULL-MONTH day columns (1..last day of each month present),
+// so the pivot covers the whole month even for days not uploaded yet.
+function fullMonthColumns(dates){
+  if(!dates.length) return [];
+  const months=[...new Set(dates.map(d=>String(d).slice(0,7)))].filter(x=>/^\d{4}-\d{2}$/.test(x)).sort();
+  const cols=[], set=new Set();
+  months.forEach(ym=>{
+    const y=+ym.slice(0,4), m=+ym.slice(5,7);
+    const dim=new Date(y, m, 0).getDate(); // last calendar day of month m
+    for(let day=1; day<=dim; day++){ const c=ym+'-'+String(day).padStart(2,'0'); cols.push(c); set.add(c); }
+  });
+  // keep any oddly-formatted data date that no month covered
+  dates.forEach(d=>{ if(!set.has(d)){ cols.push(d); set.add(d); } });
+  return cols.sort();
+}
+
+function exportHoursReport(){
+  const ids=new Set();
+  Object.values(captainsHist).forEach(day=>Object.keys(day).forEach(id=>ids.add(id)));
+  if(!ids.size){ alert('لا يوجد بيانات ساعات — ارفع ملف الحضور أولاً'); return; }
+  const dates=Object.keys(captainsHist).sort();
+  const idList=Array.from(ids).sort();
+  const idName=id=>{ const m=captainMeta[id]; if(m&&m.n) return m.n; const c=captainsMap.get(id); return c?c.name:id; };
+  const idVendor=id=>{ const m=captainMeta[id]; if(m&&m.vn) return m.vn; const c=captainsMap.get(id); return c?c.vendor:''; };
+
+  // Sheet 1 — total hours at the beginning, then work days + average hours, orders, goal, remaining
+  const totals=[['معرف الكبتن','الاسم','المورد','إجمالي الساعات','أيام العمل','متوسط الساعات/يوم','إجمالي الطلبات','هدف الساعات (أيام×'+HOURS_TARGET_PER_DAY+')','المتبقي','عدد الفترات']];
+  idList.forEach(id=>{
+    let teh=0,tord=0,exp=0,act=0,periods=0;
+    dates.forEach(d=>{ const r=captainsHist[d][id]; if(r){ teh+=recTotHrs(r); tord+=recTotOrd(r); exp+=(+r.exp||0); act+=(+r.act||0); periods++; } });
+    const target=exp*HOURS_TARGET_PER_DAY;
+    totals.push([id, idName(id), idVendor(id), +teh.toFixed(1), act, +(act>0?teh/act:0).toFixed(1), tord, +target.toFixed(0), +(target-teh).toFixed(1), periods]);
+  });
+
+  // Sheet 2 — hours pivot: FULL-MONTH columns (each day of the month), then total/goal/remaining
+  const monthCols = fullMonthColumns(dates);
+  const hoursPivot=[['معرف الكبتن','الاسم',...monthCols,'الإجمالي','الهدف','المتبقي']];
+  idList.forEach(id=>{ const row=[id, idName(id)];
+    monthCols.forEach(d=>{ const r=captainsHist[d] && captainsHist[d][id]; row.push(r?+recTotHrs(r).toFixed(1):0); });
+    const g=captainHoursGoal(id);
+    row.push(+g.teh.toFixed(1)); row.push(+g.target.toFixed(0)); row.push(+g.remain.toFixed(1));
+    hoursPivot.push(row); });
+
+  // Sheet 3 — orders pivot: FULL-MONTH columns (each day of the month)
+  const ordPivot=[['معرف الكبتن','الاسم',...monthCols,'الإجمالي']];
+  idList.forEach(id=>{ const row=[id, idName(id)]; let tot=0;
+    monthCols.forEach(d=>{ const r=captainsHist[d] && captainsHist[d][id]; const o=r?recTotOrd(r):0; row.push(o); tot+=o; });
+    row.push(tot); ordPivot.push(row); });
+
+  // Sheet 4 — daily long format: hours + orders by captain ID
+  const daily=[['معرف الكبتن','الاسم','التاريخ','الساعات','الطلبات']];
+  idList.forEach(id=>{ dates.forEach(d=>{ const r=captainsHist[d][id]; if(r) daily.push([id, idName(id), d, recTotHrs(r), recTotOrd(r)]); }); });
+
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(totals),'الإجمالي');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(hoursPivot),'ساعات بالتواريخ');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ordPivot),'طلبات بالتواريخ');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(daily),'يومي ساعات وطلبات');
+  XLSX.writeFile(wb,`${COMPANY_SLUG?COMPANY_SLUG+'_':''}hours_orders_${dates[dates.length-1]||'data'}.xlsx`);
+}
+
+// Bar chart of hours (achieved vs. target) per date — lazily rendered in the profile chart tab.
+function renderCaptainHoursChart(id){
+  const canvas=document.getElementById('cap-hours-canvas');
+  if(!canvas || typeof Chart==='undefined') return;
+  const dates=Object.keys(captainsHist).sort();
+  const labels=[], hrs=[], tgt=[];
+  dates.forEach(d=>{ const r=captainsHist[d] && captainsHist[d][id]; if(r){ labels.push(d); hrs.push(recTotHrs(r)); tgt.push((+r.exp||0)*HOURS_TARGET_PER_DAY); } });
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  const gridColor=isDark?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.06)';
+  const textColor=isDark?'#7d8aa0':'#9aa3b5';
+  if(capHoursChart) capHoursChart.destroy();
+  capHoursChart=new Chart(canvas.getContext('2d'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'الساعات المنجزة',data:hrs,backgroundColor:hrs.map((h,i)=>h>=tgt[i]?'#16a34a':'#d97706'),borderRadius:6,order:2},
+      {label:'هدف الساعات (يوم×'+HOURS_TARGET_PER_DAY+')',data:tgt,type:'line',borderColor:'#2563eb',borderWidth:2,borderDash:[5,4],pointRadius:3,pointBackgroundColor:'#2563eb',fill:false,order:1}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,labels:{color:textColor,font:{size:11},boxWidth:12}},
+        tooltip:{callbacks:{label:it=>`${it.dataset.label}: ${(+it.raw).toFixed(1)} ساعة`}}},
+      scales:{x:{grid:{color:gridColor},ticks:{color:textColor,font:{size:10}}},
+        y:{beginAtZero:true,grid:{color:gridColor},ticks:{color:textColor,font:{size:11}},title:{display:true,text:'ساعات',color:textColor,font:{size:10}}}}}
+  });
+}
+
+function switchCaptainTab(tab){
+  document.getElementById('cap-tab-details').style.display = tab==='details'?'block':'none';
+  document.getElementById('cap-tab-chart').style.display   = tab==='chart'?'block':'none';
+  document.getElementById('cap-tabbtn-details').classList.toggle('active', tab==='details');
+  document.getElementById('cap-tabbtn-chart').classList.toggle('active', tab==='chart');
+  if(tab==='chart') renderCaptainHoursChart(window.__capProfileId);
+}
+
+function openCaptainProfile(id){
+  if(id==null) return;
+  window.__capProfileId=id;
+  const dd=document.getElementById('captain-search-dropdown');
+  if(dd) dd.style.display='none';
+
+  const cur=captainsMap.get(id);
+  const rows=[];
+  Object.keys(captainsHist).sort().reverse().forEach(date=>{
+    const r=captainsHist[date] && captainsHist[date][id];
+    if(r) rows.push(Object.assign({date},r));
+  });
+
+  const meta = captainMeta[id] || (rows[0] && rows[0].n ? rows[0] : null);
+  const prof = cur
+    ? {name:cur.name||id,id:cur.id,phone:cur.phone||'',store:cur.store||'',vendor:cur.vendor||'',vehicle:cur.vehicle||'',type:cur.type||''}
+    : (meta
+        ? {name:meta.n||String(id),id,phone:meta.ph||'',store:meta.st||'',vendor:meta.vn||'',vehicle:meta.vh||'',type:meta.tp||''}
+        : {name:String(id),id});
+
+  const chip=(icon,val)=> val?`<span class="tag tag-blue" style="font-weight:500;">${icon} ${val}</span>`:'';
+  const mcard=(label,val,color)=>`<div class="cap-card"><div class="cc-label">${label}</div><div class="cc-val"${color?` style="color:${color};"`:''}>${val}</div></div>`;
+
+  // Current-period display values (from the raw snapshot, or the latest history record as a fallback)
+  let curDisp=null;
+  if(cur){
+    curDisp={ wpi:calcWPI(cur), ord:cur.ord/cur.entries, hrs:cur.effHrs/cur.entries,
+              att:Math.min(cur.expDays>0?(cur.actDays/cur.expDays)*100:0,100), abs:cur.absences,
+              label:'أهم مؤشرات الفترة الحالية (آخر ملف مرفوع)' };
+  } else if(rows[0]){
+    const r=rows[0];
+    curDisp={ wpi:+r.wpi, ord:+r.ord, hrs:+r.hrs, att:+r.att, abs:r.abs, label:'أهم مؤشرات آخر فترة متاحة ('+r.date+')' };
+  }
+
+  const avg=captainAllPeriodsAvg(id);
+  const base = avg || (curDisp?{periods:1,wpi:curDisp.wpi,ord:curDisp.ord,hrs:curDisp.hrs,att:curDisp.att,abs:curDisp.abs}:null);
+  const g=captainHoursGoal(id);
+
+  // Row 1 — 5 most important current-period indicators
+  let topRowHtml='';
+  if(curDisp){
+    const wc=curDisp.wpi>=80?'var(--green)':curDisp.wpi>=60?'var(--amber)':'var(--red)';
+    topRowHtml=`
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:2px 0 8px;">${curDisp.label}</div>
+      <div class="cap-grid5">
+        ${mcard('WPI',curDisp.wpi.toFixed(1)+'%',wc)}
+        ${mcard('الطلبات / يوم',curDisp.ord.toFixed(1))}
+        ${mcard('الساعات الفعلية / يوم',curDisp.hrs.toFixed(1))}
+        ${mcard('نسبة الحضور',curDisp.att.toFixed(0)+'%')}
+        ${mcard('الغيابات',curDisp.abs,curDisp.abs>0?'var(--red)':'')}
+      </div>`;
+  } else {
+    topRowHtml=`<div style="padding:10px 12px;background:var(--amber-soft);color:var(--amber);border:1px solid var(--amber);border-radius:10px;font-size:12px;">لا توجد بيانات للفترة الحالية — يُعرض السجل التاريخي فقط.</div>`;
+  }
+
+  // Row 2 — 5 all-period averages
+  let avgRowHtml='';
+  if(avg){
+    avgRowHtml=`
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px;">متوسط العمل — كل الفترات (${avg.periods})</div>
+      <div class="cap-grid5">
+        ${mcard('متوسط WPI',avg.wpi.toFixed(1)+'%')}
+        ${mcard('متوسط الطلبات / يوم',avg.ord.toFixed(1))}
+        ${mcard('متوسط الساعات / يوم',avg.hrs.toFixed(1))}
+        ${mcard('متوسط الحضور',avg.att.toFixed(0)+'%')}
+        ${mcard('متوسط الغيابات / فترة',avg.abs.toFixed(1))}
+      </div>`;
+  }
+
+  // Row 3 — overall rating + recommendation (vs. goals: hours, duty days, orders)
+  let ratingHtml='';
+  if(base){
+    const rt=performanceRating(base.wpi);
+    const recs=captainRecommendation(base);
+    ratingHtml=`
+      <div style="margin-top:16px;border:1px solid ${rt.color};background:${rt.soft};border-radius:14px;padding:14px 16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <div>
+            <div style="font-size:11px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;">التقييم العام</div>
+            <div style="font-size:26px;font-weight:800;color:${rt.color};line-height:1.1;">${rt.label}</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:2px;">بناءً على متوسط WPI ${base.wpi.toFixed(1)}% عبر ${base.periods} فترة</div>
+          </div>
+          <div style="width:66px;height:66px;border-radius:50%;border:4px solid ${rt.color};display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:800;color:${rt.color};flex-shrink:0;">${base.wpi.toFixed(0)}</div>
+        </div>
+        <div style="height:1px;background:var(--border);margin:12px 0;"></div>
+        <div style="font-size:11px;color:var(--text3);font-weight:700;margin-bottom:8px;">التوصيات — مقارنة بالأهداف (الساعات، أيام الدوام، الطلبات)</div>
+        <div style="display:flex;flex-direction:column;gap:7px;">
+          ${recs.map(r=>`<div style="display:flex;align-items:center;gap:8px;font-size:12px;">
+            <span style="width:18px;height:18px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;background:${r.ok?'var(--green)':'var(--amber)'};">${r.ok?'✓':'!'}</span>
+            <span>${r.icon} ${r.txt}</span>
+          </div>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  // Hours goal card (creative) — duty days × 12, with remaining prominently shown
+  let goalHtml='';
+  if(g.periods){
+    const met=g.remain<=0;
+    const gc=met?'var(--green)':g.pct>=70?'var(--amber)':'var(--red)';
+    const ringPct=Math.round(g.pct);
+    goalHtml=`
+      <div style="margin-top:16px;border:1px solid var(--border);border-radius:14px;padding:16px;background:var(--surface2);">
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;">🎯 هدف ساعات الدوام — أيام الدوام × ${HOURS_TARGET_PER_DAY} ساعة</div>
+        <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
+          <div class="goal-ring" style="background:conic-gradient(${gc} ${ringPct*3.6}deg, var(--border) 0);">
+            <div class="goal-ring-inner">
+              <div style="font-size:22px;font-weight:800;color:${gc};line-height:1;">${ringPct}%</div>
+              <div style="font-size:9px;color:var(--text3);margin-top:3px;">من الهدف</div>
+            </div>
+          </div>
+          <div style="flex:1;min-width:220px;">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
+              <div style="text-align:center;"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;">الهدف</div><div style="font-size:18px;font-weight:800;">${g.target.toFixed(0)}</div><div style="font-size:9px;color:var(--text3);">ساعة</div></div>
+              <div style="text-align:center;"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;">المنجز</div><div style="font-size:18px;font-weight:800;color:var(--accent);">${g.teh.toFixed(0)}</div><div style="font-size:9px;color:var(--text3);">ساعة</div></div>
+              <div style="text-align:center;"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;">${met?'زيادة عن الهدف':'المتبقي'}</div><div style="font-size:18px;font-weight:800;color:${gc};">${Math.abs(g.remain).toFixed(0)}</div><div style="font-size:9px;color:var(--text3);">ساعة</div></div>
+            </div>
+            <div class="progress-bar" style="height:8px;"><div class="progress-fill" style="width:${g.pct}%;background:${gc};"></div></div>
+            <div style="margin-top:8px;font-size:12px;font-weight:700;color:${gc};">${met?'✓ تحقّق هدف الساعات بالكامل':'⏳ يتبقّى '+g.remain.toFixed(1)+' ساعة للوصول للهدف ('+g.target.toFixed(0)+' ساعة)'}</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  let histHtml='';
+  if(rows.length){
+    let sExp=0,sAct=0,sTeh=0,sTgt=0,sOrd=0,sAbs=0;
+    const bodyRows = rows.map(r=>{
+      const th=recTotHrs(r), tg=(+r.exp||0)*HOURS_TARGET_PER_DAY, avgd=(+r.act>0?th/+r.act:0), rem=tg-th, ord=recTotOrd(r);
+      sExp+=(+r.exp||0); sAct+=(+r.act||0); sTeh+=th; sTgt+=tg; sOrd+=ord; sAbs+=(+r.abs||0);
+      return `<tr>
+        <td class="mono" style="font-size:12px;font-weight:600;white-space:nowrap;">${r.date}</td>
+        <td style="text-align:center;"><span class="tag ${r.wpi>=80?'tag-green':r.wpi>=60?'tag-amber':'tag-red'}">${(+r.wpi).toFixed(1)}%</span></td>
+        <td style="text-align:center;">${r.exp}</td>
+        <td style="text-align:center;">${r.act}</td>
+        <td style="text-align:center;font-weight:600;">${avgd.toFixed(1)}</td>
+        <td style="text-align:center;font-weight:700;">${th.toFixed(1)}</td>
+        <td style="text-align:center;color:var(--text3);">${tg.toFixed(0)}</td>
+        <td style="text-align:center;font-weight:700;color:${rem<=0?'var(--green)':'var(--red)'};">${rem<=0?'✓':rem.toFixed(1)}</td>
+        <td style="text-align:center;">${ord}</td>
+        <td style="text-align:center;color:${r.abs>0?'var(--red)':'var(--text)'};font-weight:600;">${r.abs}</td>
+      </tr>`;
+    }).join('');
+    const totRem=sTgt-sTeh;
+    histHtml=`
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:18px 0 10px;">سجل أيام الدوام والساعات — كل الفترات (${rows.length})</div>
+      <div class="table-wrap" style="border:1px solid var(--border);border-radius:12px;overflow-x:auto;">
+      <table>
+        <thead><tr>
+          <th>التاريخ</th><th style="text-align:center;">WPI</th>
+          <th style="text-align:center;">أيام متوقعة</th><th style="text-align:center;">أيام فعلية</th>
+          <th style="text-align:center;">متوسط س/يوم</th><th style="text-align:center;">إجمالي الساعات</th>
+          <th style="text-align:center;">هدف (×${HOURS_TARGET_PER_DAY})</th><th style="text-align:center;">المتبقي</th>
+          <th style="text-align:center;">الطلبات</th><th style="text-align:center;">غياب</th>
+        </tr></thead>
+        <tbody>${bodyRows}</tbody>
+        <tfoot><tr style="background:var(--surface2);font-weight:800;border-top:2px solid var(--border);">
+          <td style="font-weight:800;">الإجمالي</td>
+          <td style="text-align:center;color:var(--text3);">—</td>
+          <td style="text-align:center;">${sExp}</td>
+          <td style="text-align:center;">${sAct}</td>
+          <td style="text-align:center;">${(sAct>0?sTeh/sAct:0).toFixed(1)}</td>
+          <td style="text-align:center;color:var(--accent);">${sTeh.toFixed(1)}</td>
+          <td style="text-align:center;">${sTgt.toFixed(0)}</td>
+          <td style="text-align:center;color:${totRem<=0?'var(--green)':'var(--red)'};">${totRem<=0?'✓ محقق':totRem.toFixed(1)}</td>
+          <td style="text-align:center;">${sOrd}</td>
+          <td style="text-align:center;">${sAbs}</td>
+        </tr></tfoot>
+      </table></div>`;
+  } else {
+    histHtml=`<div class="empty-state">لا يوجد سجل تاريخي لهذا المندوب</div>`;
+  }
+
+  const body=document.getElementById('captain-modal-body');
+  body.innerHTML=`
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap;">
+      <div class="avatar" style="width:52px;height:52px;font-size:18px;">${capInitials(prof.name,prof.id)}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:17px;font-weight:700;">${prof.name}</div>
+        <div class="mono" style="font-size:11px;color:var(--text3);margin-top:2px;">${prof.id}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+        ${chip('🏢',prof.vendor)}${chip('🏬',prof.store)}${chip('🚗',prof.vehicle)}${chip('👤',prof.type)}${chip('📞',prof.phone)}
+      </div>
+    </div>
+    <div class="tabs-row" style="width:fit-content;margin-bottom:14px;">
+      <div class="cap-tab active" id="cap-tabbtn-details" onclick="switchCaptainTab('details')">📋 التفاصيل</div>
+      <div class="cap-tab" id="cap-tabbtn-chart" onclick="switchCaptainTab('chart')">📊 رسم الساعات بالتواريخ</div>
+    </div>
+    <div id="cap-tab-details">
+      ${topRowHtml}
+      ${avgRowHtml}
+      ${ratingHtml}
+      ${goalHtml}
+      ${histHtml}
+    </div>
+    <div id="cap-tab-chart" style="display:none;">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">أعمدة الساعات المنجزة لكل تاريخ مقابل هدف الساعات (أيام الدوام × ${HOURS_TARGET_PER_DAY}). الأخضر = حقّق الهدف، البرتقالي = دونه.</div>
+      <div style="height:340px;"><canvas id="cap-hours-canvas"></canvas></div>
+    </div>`;
+  document.getElementById('captain-modal-title').innerText=prof.name;
+  document.getElementById('captain-modal-overlay').style.display='flex';
+}
+
+function initCaptainSearch(){
+  const input=document.getElementById('captain-search-input');
+  if(!input) return;
+  input.addEventListener('input', runCaptainSearch);
+  input.addEventListener('keydown', e=>{
+    if(e.key==='Enter'){ const s=window.__capMatches||[]; if(s.length) openCaptainProfile(s[0].id); }
+    else if(e.key==='Escape'){ document.getElementById('captain-search-dropdown').style.display='none'; input.blur(); }
+  });
+  document.addEventListener('click', e=>{
+    const bar=document.getElementById('captain-search-bar');
+    const dd=document.getElementById('captain-search-dropdown');
+    if(bar && dd && !bar.contains(e.target)) dd.style.display='none';
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   Views
+═══════════════════════════════════════════════ */
+function switchView(v){
+  ['metrics','leaderboard','predict','audit','hours'].forEach(id=>{
+    document.getElementById('view-'+id).style.display=id===v?'block':'none';
+    document.getElementById('tab-'+id).classList.toggle('active',id===v);
+  });
+  if(v==='hours') renderHoursView();
+}
+
+/* Fleet hours by date — bar chart (اعمدة بالتواريخ) + per-period table on the main page. */
+function renderHoursView(){
+  const dates=Object.keys(historyLog).sort();
+  const tbl=document.getElementById('hours-table');
+  if(!dates.length){ if(tbl) tbl.innerHTML='<div class="empty-state">لا يوجد بيانات — ارفع ملف الحضور</div>'; return; }
+  if(tbl){
+    const rowsHtml=dates.slice().reverse().map(d=>{ const s=getActiveStats(d)||{};
+      return `<tr>
+        <td class="mono" style="font-weight:600;white-space:nowrap;">${d}</td>
+        <td style="text-align:center;font-weight:700;color:var(--accent);">${(s.totHrs||0).toLocaleString('ar-SA',{maximumFractionDigits:0})}</td>
+        <td style="text-align:center;font-weight:600;">${(s.avgHrs||0).toFixed(1)}</td>
+        <td style="text-align:center;">${s.active||0}</td>
+        <td style="text-align:center;">${(s.avgDlv||0).toFixed(1)}</td>
+      </tr>`; }).join('');
+    tbl.innerHTML=`<table><thead><tr>
+      <th>التاريخ</th><th style="text-align:center;">إجمالي الساعات</th>
+      <th style="text-align:center;">متوسط الساعات / مندوب</th><th style="text-align:center;">المندوبين النشطين</th>
+      <th style="text-align:center;">متوسط الطلبات</th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
+  }
+  const canvas=document.getElementById('fleetHoursChart');
+  if(!canvas || typeof Chart==='undefined') return;
+  const totH=dates.map(d=>{const s=getActiveStats(d);return s?s.totHrs:0;});
+  const avgH=dates.map(d=>{const s=getActiveStats(d);return s?s.avgHrs:0;});
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  const gridColor=isDark?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.06)';
+  const textColor=isDark?'#7d8aa0':'#9aa3b5';
+  if(fleetHoursChart) fleetHoursChart.destroy();
+  fleetHoursChart=new Chart(canvas.getContext('2d'),{
+    type:'bar',
+    data:{labels:dates,datasets:[
+      {label:'إجمالي الساعات',data:totH,backgroundColor:'#2563eb',borderRadius:6,yAxisID:'y'},
+      {label:'متوسط الساعات / مندوب',data:avgH,type:'line',borderColor:'#ea580c',borderWidth:2,pointRadius:3,pointBackgroundColor:'#ea580c',fill:false,tension:.3,yAxisID:'y2'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:true,labels:{color:textColor,font:{size:11},boxWidth:12}}},
+      scales:{x:{grid:{color:gridColor},ticks:{color:textColor,font:{size:10}}},
+        y:{position:'right',beginAtZero:true,grid:{color:gridColor},ticks:{color:textColor,font:{size:11}},title:{display:true,text:'إجمالي ساعات',color:textColor,font:{size:10}}},
+        y2:{position:'left',beginAtZero:true,grid:{display:false},ticks:{color:textColor,font:{size:11}},title:{display:true,text:'متوسط/مندوب',color:textColor,font:{size:10}}}}}
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   Goals
+═══════════════════════════════════════════════ */
+function openGoals(){
+  document.getElementById('goals-form').innerHTML=goalsConfig.map(g=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border:1px solid var(--border);border-radius:8px;">
+      <div><div style="font-size:13px;font-weight:600;">${g.label}</div><div style="font-size:11px;color:var(--text3);">${g.higher?'أعلى من':'أقل من'} الهدف</div></div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input class="goal-input" type="number" id="gi-${g.key}" value="${goals[g.key]}">
+        <span style="font-size:11px;color:var(--text3);">${g.unit}</span>
+      </div>
+    </div>`).join('');
+  document.getElementById('goals-overlay').style.display='flex';
+}
+function saveGoals(){
+  goalsConfig.forEach(g=>{const el=document.getElementById('gi-'+g.key);if(el) goals[g.key]=Number(el.value);});
+  localStorage.setItem('fleet_goals_v24',JSON.stringify(goals));
+  document.getElementById('goals-overlay').style.display='none';
+  if(currentStats) updateUI(currentStats);
+}
+
+/* ═══════════════════════════════════════════════
+   Theme
+═══════════════════════════════════════════════ */
+function toggleDark(){
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  document.documentElement.setAttribute('data-theme',isDark?'light':'dark');
+  document.getElementById('theme-btn').innerText=isDark?'🌙':'☀️';
+  localStorage.setItem('fleet_theme',isDark?'light':'dark');
+  updateChart();
+}
+
+/* ═══════════════════════════════════════════════
+   Export — Excel (KPIs)
+═══════════════════════════════════════════════ */
+function exportExcel(){
+  if(!currentStats){alert('ارفع ملف الحضور أولاً');return;}
+  const dates=Object.keys(historyLog).sort();
+  const date=dates[dates.length-1]||'N/A';
+  const rows=Object.keys(metricsInfo).map(k=>[metricsInfo[k],currentStats[k]?.toFixed?currentStats[k].toFixed(1):currentStats[k]]);
+  const ws=XLSX.utils.aoa_to_sheet([['المؤشر','القيمة'],...rows]);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'تقرير الأداء');
+  XLSX.writeFile(wb,`${COMPANY_SLUG?COMPANY_SLUG+'_':''}fleet_kpi_${date}.xlsx`);
+}
+
+/* ═══════════════════════════════════════════════
+   Export — Red Flags (captain-level audit)
+═══════════════════════════════════════════════ */
+function exportRedFlags(){
+  if(!currentStats||!currentStats.captains){alert('تفاصيل المندوبين غير متوفرة للتاريخ المحدد. يرجى اختيار أحدث تاريخ.');return;}
+  const dates=Object.keys(historyLog).sort();
+  const date=dates[dates.length-1]||'N/A';
+  const caps=currentStats.captains;
+
+  // sheet 1: all couriers ranked by WPI
+  const allRows=[
+    ['المندوب','ID','الهاتف','المتجر','WPI %','الطلبات','الساعات الفعلية','الغيابات','التأخيرات','تأخير/مبكر مجمّع','حضور %','الحالة'],
+    ...caps.sort((a,b)=>parseFloat(b.wpi)-parseFloat(a.wpi)).map(c=>[
+      c.name, c.id, c.phone||'—', c.store||'—', c.wpi, c.ord, c.hrs,
+      c.absences, c.lateArr, c.dly,
+      c.dl+'%',
+      parseFloat(c.wpi)>=80?'ممتاز':parseFloat(c.wpi)>=60?'مقبول':'تحت المستوى'
+    ])
+  ];
+
+  // sheet 2: Red flags only
+  const redRows=[
+    ['نوع المخالفة','المندوب','ID','المتجر','القيمة','WPI %'],
+    // low hours
+    ...caps.filter(c=>parseFloat(c.hrs)<8).map(c=>['ساعات فعلية حرجة < 8',c.name,c.id,c.store||'—',c.hrs+' ساعة',c.wpi]),
+    // low orders
+    ...caps.filter(c=>parseFloat(c.ord)<20).map(c=>['إنتاجية ضعيفة < 20',c.name,c.id,c.store||'—',c.ord+' طلب',c.wpi]),
+    // absences
+    ...caps.filter(c=>parseFloat(c.absences)>0).map(c=>['غيابات مسجّلة',c.name,c.id,c.store||'—',c.absences+' غياب',c.wpi]),
+    // late arrivals
+    ...caps.filter(c=>parseFloat(c.lateArr)>3).map(c=>['تأخيرات متكررة > 3',c.name,c.id,c.store||'—',c.lateArr+' تأخير',c.wpi]),
+    // low wpi
+    ...caps.filter(c=>parseFloat(c.wpi)<60).map(c=>['WPI حرج < 60%',c.name,c.id,c.store||'—',c.wpi+'%',c.wpi]),
+  ];
+
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(allRows),'كل الكباتن');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(redRows),'Red Flags');
+  XLSX.writeFile(wb,`${COMPANY_SLUG?COMPANY_SLUG+'_':''}fleet_redflags_${date}.xlsx`);
+}
+
+/* ═══════════════════════════════════════════════
+   Clear
+═══════════════════════════════════════════════ */
+function clearHistory(){
+  if(confirm('مسح كل السجلات؟ لا يمكن التراجع.')){
+    localStorage.removeItem('fleet_hub_v24');
+    localStorage.removeItem('fleet_goals_v24');
+    localStorage.removeItem('fleet_caps_v24');
+    localStorage.removeItem('fleet_caps_hist_v24');
+    localStorage.removeItem('fleet_caps_meta_v24');
+    location.reload();
+  }
+}
+</script>
+
+<div id="wa-toast">✅ تم الإرسال بنجاح</div>
+
+<div id="wa-overlay" onclick="closeWAPanel(event)" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);z-index:300;align-items:center;justify-content:center;padding:1rem;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;width:100%;max-width:620px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.3);overflow:hidden;" onclick="event.stopPropagation()">
+
+    <div style="padding:1.25rem 1.75rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:#25D366;color:#fff;border-radius:20px 20px 0 0;">
+      <div>
+        <div style="font-size:16px;font-weight:700;">💬 إعداد واتساب</div>
+        <div style="font-size:11px;opacity:.85;margin-top:2px;">Meta Cloud API — Make.com Webhook</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span id="wa-conn-badge" style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:99px;background:rgba(255,255,255,.2);">غير مُعدّ</span>
+        <button onclick="closeWAPanel()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:18px;cursor:pointer;border-radius:8px;padding:2px 8px;">&times;</button>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);">
+      <button class="wa-tab-btn active" id="watab-config" onclick="switchWATab('config')" style="flex:1;padding:10px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:var(--accent-soft);color:var(--accent);border-bottom:2px solid var(--accent);">⚙️ الإعداد</button>
+      <button class="wa-tab-btn" id="watab-send" onclick="switchWATab('send')" style="flex:1;padding:10px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:var(--surface);color:var(--text2);border-bottom:2px solid transparent;">📤 إرسال</button>
+      <button class="wa-tab-btn" id="watab-log" onclick="switchWATab('log')" style="flex:1;padding:10px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:var(--surface);color:var(--text2);border-bottom:2px solid transparent;">📋 السجل</button>
+    </div>
+
+    <div id="watab-config-panel" style="padding:1.5rem;overflow-y:auto;flex:1;">
+
+      <div class="wa-config-row">
+        <div style="min-width:130px;">
+          <div style="font-size:13px;font-weight:600;">Make.com Webhook <span style="font-size:10px;color:var(--text3);font-weight:400;">(اختياري)</span></div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px;">لو عندك Make.com — بدونه يشتغل wa.me</div>
+        </div>
+        <input class="wa-input" id="wa-webhook" type="url" placeholder="https://hook.eu1.make.com/xxxxx" oninput="saveWAConfig()">
+      </div>
+
+      <div class="wa-config-row">
+        <div style="min-width:130px;">
+          <div style="font-size:13px;font-weight:600;">وقت التقرير اليومي</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px;">يُرسل تلقائياً كل يوم</div>
+        </div>
+        <input class="wa-input" id="wa-time" type="time" value="12:00" style="max-width:100px;" oninput="saveWAConfig();scheduleDaily()">
+      </div>
+
+      <div class="wa-config-row">
+        <div style="min-width:130px;">
+          <div style="font-size:13px;font-weight:600;">المستقبلون</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px;">أضف رقماً أو Group ID</div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+          <div style="display:flex;gap:6px;">
+            <input class="wa-input" id="wa-recip-input" placeholder="966XXXXXXXXX أو group_id" style="flex:1;">
+            <input class="wa-input" id="wa-recip-label" placeholder="الاسم / المجموعة" style="max-width:130px;">
+            <button onclick="addRecipient()" style="padding:6px 12px;border-radius:8px;background:#25D366;color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:700;">+</button>
+          </div>
+          <div id="wa-recip-list" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+        </div>
+      </div>
+
+      <div class="wa-config-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
+        <div style="font-size:13px;font-weight:600;">إرسال تلقائي عند رفع ملف</div>
+        <div style="display:flex;flex-direction:column;gap:8px;width:100%;">
+          <label class="wa-send-row">
+            <input type="checkbox" id="wa-auto-upload" onchange="saveWAConfig()">
+            <div><div style="font-size:12px;font-weight:600;">تنبيه فوري عند رفع ملف SLA</div><div style="font-size:10px;color:var(--text3);">يرسل ملخصاً سريعاً + Red Flags فوراً</div></div>
+          </label>
+          <label class="wa-send-row">
+            <input type="checkbox" id="wa-auto-daily" onchange="saveWAConfig();scheduleDaily()">
+            <div><div style="font-size:12px;font-weight:600;">تقرير يومي تلقائي</div><div style="font-size:10px;color:var(--text3);">يُرسل في الوقت المحدد أعلاه يومياً</div></div>
+          </label>
+          <label class="wa-send-row">
+            <input type="checkbox" id="wa-auto-redflag" onchange="saveWAConfig()">
+            <div><div style="font-size:12px;font-weight:600;">تنبيه Red Flag تلقائي</div><div style="font-size:10px;color:var(--text3);">عند وجود WPI أقل من 60% أو تأخير مرتفع</div></div>
+          </label>
+        </div>
+      </div>
+
+      <div style="margin-top:1rem;padding:10px;background:var(--amber-soft);border-radius:10px;border:1px solid var(--amber);font-size:11px;color:var(--amber);">
+        ⚠️ تأكد من إنشاء Template Message معتمد في Meta Business Manager قبل الإرسال. اسم الـ Template يُضاف في Make.com Scenario.
+      </div>
+    </div>
+
+    <div id="watab-send-panel" style="padding:1.5rem;overflow-y:auto;flex:1;display:none;">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:1rem;">اختر نوع الرسالة وأرسل يدوياً</div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="border:1px solid var(--border);border-radius:12px;padding:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+            <div>
+              <div style="font-size:13px;font-weight:700;">📊 ملخص يومي شامل</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:2px;">WPI + متوسط الطلبات + المندوبين النشطين + أبرز المخالفات</div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+              <button onclick="copyMsg('daily')" class="btn btn-ghost" style="padding:7px 10px;font-size:12px;" title="نسخ الرسالة">📋 نسخ</button>
+              <button onclick="sendWAMessage('daily')" class="btn wa-btn" style="padding:7px 14px;font-size:12px;">💬 فتح واتساب</button>
+            </div>
+          </div>
+          <div id="wa-preview-daily" style="background:var(--surface2);border-radius:8px;padding:10px;font-size:11px;line-height:1.7;color:var(--text2);white-space:pre-wrap;font-family:'JetBrains Mono',monospace;max-height:120px;overflow-y:auto;direction:rtl;">ارفع ملف SLA لمعاينة الرسالة</div>
+        </div>
+
+        <div style="border:1px solid var(--border);border-radius:12px;padding:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+            <div>
+              <div style="font-size:13px;font-weight:700;">🚩 تقرير Red Flags</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:2px;">بغيابات + ساعات حرجة + تأخيرات + إنتاجية ضعيفة بالأسماء</div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+              <button onclick="copyMsg('redflags')" class="btn btn-ghost" style="padding:7px 10px;font-size:12px;" title="نسخ الرسالة">📋 نسخ</button>
+              <button onclick="sendWAMessage('redflags')" class="btn wa-btn" style="padding:7px 14px;font-size:12px;">💬 فتح واتساب</button>
+            </div>
+          </div>
+          <div id="wa-preview-redflags" style="background:var(--surface2);border-radius:8px;padding:10px;font-size:11px;line-height:1.7;color:var(--text2);white-space:pre-wrap;font-family:'JetBrains Mono',monospace;max-height:120px;overflow-y:auto;direction:rtl;">ارفع ملف SLA لمعاينة الرسالة</div>
+        </div>
+
+        <div style="border:1px solid var(--border);border-radius:12px;padding:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+            <div>
+              <div style="font-size:13px;font-weight:700;">⚡ تنبيه رفع ملف جديد</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:2px;">إشعار سريع بأبرز الأرقام فقط</div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+              <button onclick="copyMsg('upload')" class="btn btn-ghost" style="padding:7px 10px;font-size:12px;" title="نسخ الرسالة">📋 نسخ</button>
+              <button onclick="sendWAMessage('upload')" class="btn wa-btn" style="padding:7px 14px;font-size:12px;">💬 فتح واتساب</button>
+            </div>
+          </div>
+          <div id="wa-preview-upload" style="background:var(--surface2);border-radius:8px;padding:10px;font-size:11px;line-height:1.7;color:var(--text2);white-space:pre-wrap;font-family:'JetBrains Mono',monospace;max-height:80px;overflow-y:auto;direction:rtl;">ارفع ملف SLA لمعاينة الرسالة</div>
+        </div>
+
+        <div style="background:var(--accent-soft);border-radius:10px;padding:10px 14px;font-size:11px;color:var(--accent);line-height:1.6;">
+          💡 <strong>كيف يشتغل:</strong> اضغط "فتح واتساب" — يفتح واتساب ويب مباشرة بالرسالة جاهزة لكل مستقبل. الزر "نسخ" يحفظ الرسالة للكليبورد لو تبي تلصقها يدوياً.
+        </div>
+      </div>
+    </div>
+
+    <div id="watab-log-panel" style="padding:1.5rem;overflow-y:auto;flex:1;display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;">سجل الإرسال</div>
+        <button onclick="clearWALog()" style="font-size:11px;color:var(--red);background:none;border:none;cursor:pointer;font-weight:600;">مسح السجل</button>
+      </div>
+      <div id="wa-log-list"><div class="empty-state" style="padding:2rem;">لا يوجد سجل بعد</div></div>
+    </div>
+
+  </div>
+</div>
+<script>
+/* ═══════════════════════════════════════════════
+   WhatsApp Config — persisted in localStorage
+═══════════════════════════════════════════════ */
+let waConfig = JSON.parse(localStorage.getItem('fleet_wa_config')||'{}');
+let waLog    = JSON.parse(localStorage.getItem('fleet_wa_log')||'[]');
+let waDailyTimer = null;
+
+function saveWAConfig(){
+  waConfig.webhook    = document.getElementById('wa-webhook')?.value || waConfig.webhook || '';
+  waConfig.time       = document.getElementById('wa-time')?.value || waConfig.time || '12:00';
+  waConfig.autoUpload = document.getElementById('wa-auto-upload')?.checked || false;
+  waConfig.autoDaily  = document.getElementById('wa-auto-daily')?.checked || false;
+  waConfig.autoRedFlag= document.getElementById('wa-auto-redflag')?.checked || false;
+  waConfig.recipients = waConfig.recipients || [];
+  localStorage.setItem('fleet_wa_config', JSON.stringify(waConfig));
+  updateWAStatus();
+}
+
+function loadWAConfig(){
+  if(waConfig.webhook)  { const el=document.getElementById('wa-webhook');  if(el) el.value=waConfig.webhook; }
+  if(waConfig.time)     { const el=document.getElementById('wa-time');     if(el) el.value=waConfig.time; }
+  if(waConfig.autoUpload) { const el=document.getElementById('wa-auto-upload');  if(el) el.checked=true; }
+  if(waConfig.autoDaily)  { const el=document.getElementById('wa-auto-daily');   if(el) el.checked=true; }
+  if(waConfig.autoRedFlag){ const el=document.getElementById('wa-auto-redflag'); if(el) el.checked=true; }
+  renderRecipients();
+  updateWAStatus();
+  if(waConfig.autoDaily) scheduleDaily();
+}
+
+function updateWAStatus(){
+  const dot   = document.getElementById('wa-dot');
+  const badge = document.getElementById('wa-conn-badge');
+  const ready = waConfig.webhook && (waConfig.recipients||[]).length > 0;
+  if(dot)   { dot.style.background = ready ? '#fff' : '#fff'; dot.style.opacity = ready ? '1' : '.35'; }
+  if(badge) { badge.textContent = ready ? '✅ جاهز للإرسال' : 'غير مُعدّ'; badge.style.background = ready ? 'rgba(255,255,255,.3)' : 'rgba(255,255,255,.15)'; }
+}
+
+/* ── Recipients ── */
+function addRecipient(){
+  const num = document.getElementById('wa-recip-input').value.trim();
+  const lbl = document.getElementById('wa-recip-label').value.trim() || num;
+  if(!num) return;
+  if(!waConfig.recipients) waConfig.recipients=[];
+  if(waConfig.recipients.find(r=>r.num===num)) return;
+  waConfig.recipients.push({num, lbl});
+  document.getElementById('wa-recip-input').value='';
+  document.getElementById('wa-recip-label').value='';
+  saveWAConfig();
+  renderRecipients();
+}
+function removeRecipient(num){
+  waConfig.recipients = (waConfig.recipients||[]).filter(r=>r.num!==num);
+  saveWAConfig();
+  renderRecipients();
+}
+function renderRecipients(){
+  const el=document.getElementById('wa-recip-list');
+  if(!el) return;
+  el.innerHTML=(waConfig.recipients||[]).map(r=>`
+    <span class="wa-tag">${r.lbl}
+      <button onclick="removeRecipient('${r.num}')" style="background:none;border:none;cursor:pointer;color:inherit;font-size:13px;line-height:1;padding:0 2px;">×</button>
+    </span>`).join('');
+}
+
+/* ── Message builders ── */
+function buildDailyMsg(s){
+  if(!s) return 'لا يوجد بيانات';
+  const caps = s.captains||[];
+  const withAbsences = caps.filter(c=>parseFloat(c.absences)>0);
+  const lowOrd  = caps.filter(c=>parseFloat(c.ord)<20);
+  const lowHrs  = caps.filter(c=>parseFloat(c.hrs)<8);
+  const d = new Date().toLocaleDateString('ar-SA',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  return `📊 *تقرير المندوبين اليومي*
+🏢 Wajehet Al Dam For Logistic Services
+${d}
+━━━━━━━━━━━━━━━━
+🏆 WPI الإجمالي: *${s.wpi?.toFixed(1)||'—'}%*
+📦 متوسط الطلبات: *${s.avgDlv?.toFixed(1)||'—'}*
+👥 المندوبين النشطين: *${s.active||'—'}*
+⏱ متوسط الساعات الفعلية: *${s.avgHrs?.toFixed(1)||'—'}*
+✅ معدل الحضور: *${s.attendOT?.toFixed(1)||'—'}%*
+━━━━━━━━━━━━━━━━
+🔴 غيابات مسجّلة: *${withAbsences.length}* مندوب
+${withAbsences.length ? withAbsences.map(c=>`  • ${c.name} (${c.absences} غياب)`).join('\n') : '  لا يوجد'}
+🕐 ساعات فعلية حرجة: *${lowHrs.length}* مندوب
+📉 إنتاجية ضعيفة: *${lowOrd.length}* مندوب
+━━━━━━━━━━━━━━━━
+Keemarta Command Center v24.7`;
+}
+
+function buildRedFlagsMsg(s){
+  if(!s) return 'لا يوجد بيانات';
+  const caps = s.captains||[];
+  const withAbsences = caps.filter(c=>parseFloat(c.absences)>0);
+  const highLate  = caps.filter(c=>parseFloat(c.lateArr)>3);
+  const lowOrd    = caps.filter(c=>parseFloat(c.ord)<20);
+  const lowHrs    = caps.filter(c=>parseFloat(c.hrs)<8);
+  const critWPI   = caps.filter(c=>parseFloat(c.wpi)<60);
+  const total = withAbsences.length+highLate.length+lowOrd.length+lowHrs.length+critWPI.length;
+  return `🚩 *تقرير Red Flags — الحضور والأداء*
+🏢 Wajehet Al Dam For Logistic Services
+${new Date().toLocaleDateString('ar-SA')}
+━━━━━━━━━━━━━━━━
+إجمالي المخالفات: *${total}*
+
+🔴 *غيابات مسجّلة*: ${withAbsences.length}
+${withAbsences.map(c=>`  • ${c.name} — ${c.absences} غياب`).join('\n')||'  لا يوجد'}
+
+⏰ *تأخيرات متكررة (>3)*: ${highLate.length}
+${highLate.map(c=>`  • ${c.name} — ${c.lateArr} تأخير`).join('\n')||'  لا يوجد'}
+
+🕐 *ساعات فعلية حرجة (<8ساعة)*: ${lowHrs.length}
+${lowHrs.map(c=>`  • ${c.name} — ${c.hrs}ساعة`).join('\n')||'  لا يوجد'}
+
+📉 *إنتاجية ضعيفة (<20طلب)*: ${lowOrd.length}
+${lowOrd.map(c=>`  • ${c.name} — ${c.ord}طلب`).join('\n')||'  لا يوجد'}
+
+⚡ *WPI حرج (<60%)*: ${critWPI.length}
+${critWPI.map(c=>`  • ${c.name} — ${c.wpi}%`).join('\n')||'  لا يوجد'}
+━━━━━━━━━━━━━━━━
+Keemarta Command Center v24.7`;
+}
+
+function buildUploadMsg(s){
+  if(!s) return 'لا يوجد بيانات';
+  return `⚡ *ملف حضور جديد — ${new Date().toLocaleDateString('ar-SA')}*
+🏢 Wajehet Al Dam For Logistic Services
+━━━━━━━━━━━━
+WPI: *${s.wpi?.toFixed(1)||'—'}%* |  طلبات: *${s.avgDlv?.toFixed(1)||'—'}*
+نشطين: *${s.active||'—'}* |  بغيابات: *${s.delayed||0}*
+حضور: *${s.attendOT?.toFixed(1)||'—'}%* |  Red Flags: *${(s.captains||[]).filter(c=>parseFloat(c.wpi)<60).length}* مندوب
+━━━━━━━━━━━━
+Keemarta Command Center v24.7`;
+}
+
+/* ── Preview updater ── */
+function refreshWAPreviews(){
+  const s=currentStats;
+  const dp=document.getElementById('wa-preview-daily');
+  const rp=document.getElementById('wa-preview-redflags');
+  const up=document.getElementById('wa-preview-upload');
+  if(dp) dp.textContent=buildDailyMsg(s);
+  if(rp) rp.textContent=buildRedFlagsMsg(s);
+  if(up) up.textContent=buildUploadMsg(s);
+}
+
+/* ── Copy message to clipboard ── */
+async function copyMsg(type){
+  if(!currentStats){ showToast('❌ ارفع ملف الحضور أولاً','#dc2626'); return; }
+  const msgs = {
+    daily:    buildDailyMsg(currentStats),
+    redflags: buildRedFlagsMsg(currentStats),
+    upload:   buildUploadMsg(currentStats)
+  };
+  const msg = msgs[type];
+  try {
+    await navigator.clipboard.writeText(msg);
+  } catch(e) {
+    const ta=document.createElement('textarea');
+    ta.value=msg;ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+  showToast('📋 تم النسخ — الصق في واتساب','#2563eb');
+}
+
+/* ── Core send function — يفتح واتساب ويب مباشرة، يشتغل من file:// ── */
+async function sendWAMessage(type, silent=false){
+  if(!currentStats){ if(!silent) showToast('❌ ارفع ملف الحضور أولاً','#dc2626'); return; }
+
+  const msgs = {
+    daily:    buildDailyMsg(currentStats),
+    redflags: buildRedFlagsMsg(currentStats),
+    upload:   buildUploadMsg(currentStats)
+  };
+  const typeLabels = { daily:'ملخص يومي', redflags:'Red Flags', upload:'تنبيه رفع ملف' };
+  const msg = msgs[type];
+  const recips = waConfig.recipients||[];
+
+  /* 1. نسخ الرسالة للكليبورد */
+  try {
+    await navigator.clipboard.writeText(msg);
+  } catch(e) {
+    /* fallback for file:// */
+    const ta = document.createElement('textarea');
+    ta.value = msg; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+
+  /* 2. فتح واتساب لكل مستقبل */
+  const encoded = encodeURIComponent(msg);
+  if(recips.length > 0){
+    recips.forEach((r, i) => {
+      const num = r.num.replace(/\D/g,'');
+      /* تأخير بسيط بين كل نافذة عشان ما يبلوكها المتصفح */
+      setTimeout(() => {
+        window.open(`https://wa.me/${num}?text=${encoded}`, '_blank');
+      }, i * 600);
+    });
+    logWA(typeLabels[type], 'sent', `فُتح واتساب لـ ${recips.length} مستقبل`);
+    if(!silent) showToast(`✅ تم النسخ + فتح واتساب (${recips.length})`, '#25D366');
+  } else {
+    /* لو ما في مستقبلين — افتح wa.me عام */
+    window.open(`https://wa.me/?text=${encoded}`, '_blank');
+    logWA(typeLabels[type], 'sent', 'فُتح واتساب (بدون رقم محدد)');
+    if(!silent) showToast('✅ تم النسخ + فتح واتساب', '#25D366');
+  }
+
+  /* webhook اختياري — لو موجود يرسل كذا بدون انتظار */
+  if(waConfig.webhook){
+    const body = {
+      type, message: msg, recipients: recips,
+      date: new Date().toISOString(),
+      stats: {
+        wpi: currentStats.wpi?.toFixed(1),
+        avgDlv: currentStats.avgDlv?.toFixed(1),
+        active: currentStats.active,
+        delayed: currentStats.delayed
+      }
+    };
+    fetch(waConfig.webhook, {
+      method:'POST', mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    }).catch(()=>{});
+  }
+}
+
+/* ── Auto triggers ── */
+function triggerAutoSend(stats){
+  if(waConfig.autoUpload) sendWAMessage('upload', true);
+  if(waConfig.autoRedFlag){
+    const hasFlags = stats.delayed>5 || stats.wpi<70 || (stats.captains||[]).filter(c=>parseFloat(c.wpi)<60).length>0;
+    if(hasFlags) sendWAMessage('redflags', true);
+  }
+}
+
+/* ── Daily scheduler ── */
+function scheduleDaily(){
+  if(waDailyTimer) clearTimeout(waDailyTimer);
+  if(!waConfig.autoDaily || !waConfig.time) return;
+  const [h,m] = waConfig.time.split(':').map(Number);
+  const now = new Date();
+  const target = new Date();
+  target.setHours(h,m,0,0);
+  if(target<=now) target.setDate(target.getDate()+1);
+  const ms = target-now;
+  waDailyTimer = setTimeout(()=>{
+    sendWAMessage('daily', true);
+    scheduleDaily(); // reschedule for tomorrow
+  }, ms);
+}
+
+/* ── Log ── */
+function logWA(type, status, note){
+  waLog.unshift({
+    type, status, note,
+    time: new Date().toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'}),
+    date: new Date().toLocaleDateString('ar-SA')
+  });
+  if(waLog.length>50) waLog.pop();
+  localStorage.setItem('fleet_wa_log', JSON.stringify(waLog));
+  renderWALog();
+}
+function renderWALog(){
+  const el=document.getElementById('wa-log-list');
+  if(!el) return;
+  if(!waLog.length){ el.innerHTML='<div class="empty-state" style="padding:2rem;">لا يوجد سجل بعد</div>'; return; }
+  el.innerHTML=waLog.map(l=>`
+    <div class="wa-log-entry">
+      <span style="font-size:14px;">${l.status==='success'||l.status==='sent'?'✅':'❌'}</span>
+      <div style="flex:1;">
+        <div style="font-size:12px;font-weight:600;">${l.type}</div>
+        <div style="font-size:10px;color:var(--text3);">${l.note}</div>
+      </div>
+      <div class="wa-log-time">${l.date} ${l.time}</div>
+    </div>`).join('');
+}
+function clearWALog(){
+  waLog=[];
+  localStorage.removeItem('fleet_wa_log');
+  renderWALog();
+}
+
+/* ── UI helpers ── */
+function showToast(msg, bg='#25D366'){
+  const t=document.getElementById('wa-toast');
+  t.textContent=msg;
+  t.style.background=bg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+function openWAPanel(){
+  loadWAConfig();
+  refreshWAPreviews();
+  renderWALog();
+  document.getElementById('wa-overlay').style.display='flex';
+}
+function closeWAPanel(e){
+  if(!e || e.target===document.getElementById('wa-overlay'))
+    document.getElementById('wa-overlay').style.display='none';
+}
+function switchWATab(tab){
+  ['config','send','log'].forEach(t=>{
+    document.getElementById('watab-'+t+'-panel').style.display = t===tab?'flex':'none';
+    document.getElementById('watab-'+t+'-panel').style.flexDirection = 'column';
+    const btn=document.getElementById('watab-'+t);
+    btn.style.background  = t===tab?'var(--accent-soft)':'var(--surface)';
+    btn.style.color       = t===tab?'var(--accent)':'var(--text2)';
+    btn.style.borderBottom= t===tab?'2px solid var(--accent)':'2px solid transparent';
+  });
+  document.getElementById('watab-'+tab+'-panel').style.display='flex';
+  if(tab==='send') refreshWAPreviews();
+  if(tab==='log')  renderWALog();
+}
+
+/* ── Download HTML ── */
+function downloadHTML(){
+  const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'fleet_hub_v24.7.html';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/* boot WA */
+(function initWA(){
+  updateWAStatus();
+  if(waConfig.autoDaily) scheduleDaily();
+})();
+</script>
+<script id="wf-supabase-dash">
+/* ═══════════════════════════════════════════════════════════════════════
+   wf-supabase-dash v1 — ربط Ninja Command Center و Keemarta بقاعدة AFMC الموحّدة
+   طبقة غير مدمّرة تُحقن قبل </body> — لا تغيّر مفاتيح التخزين ولا الحسابات.
+   • كل ملف يُرفع: يُحفظ يومه في القاعدة (يظهر على كل الأجهزة) + يدخل حضور
+     كل كابتن في attendance_daily مربوطاً برقم إقامته في وثيق.
+   • الكابتن غير المربوط لا يضيع: يظهر في «ملاحظات المزامنة».
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  if (window.__wfSbDash) return; window.__wfSbDash = true;
+  var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
+  var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
+  var SKEY = 'wfsb_session', PULL_EVERY = 60000;
+
+  var APP = null;
+  try { if (typeof captainsHist !== 'undefined' && typeof captainMeta !== 'undefined') APP = 'keemart'; } catch(e){}
+  try { if (!APP && typeof historyLog !== 'undefined' && typeof restoreCaptainsFromStats === 'function') APP = 'ninja'; } catch(e){}
+  if (!APP) return;
+  var PROJECT = APP === 'ninja' ? 'NINJA' : 'KEEMART';
+  var APP_AR = APP === 'ninja' ? 'Ninja Command Center' : 'Keemarta Command Center';
+
+  function lsGet(k, d){ try { var r = localStorage.getItem(k); return r ? JSON.parse(r) : d; } catch(e){ return d; } }
+  function lsSet(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch(e){ return false; } }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function stable(v){
+    if (v === null || typeof v !== 'object') return JSON.stringify(v === undefined ? null : v);
+    if (Array.isArray(v)) return '[' + v.map(stable).join(',') + ']';
+    return '{' + Object.keys(v).filter(function(k){ return v[k] !== undefined; }).sort().map(function(k){ return JSON.stringify(k) + ':' + stable(v[k]); }).join(',') + '}';
+  }
+  function hash(o){ var s = stable(o), h = 5381; for (var i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; return h.toString(36) + ':' + s.length; }
+
+  /* ---------- الجلسة (نفس حساب وثيق والأسطول) ---------- */
+  var sess = lsGet(SKEY, null), me = null;
+  function authFetch(path, body){
+    return fetch(SB_URL + '/auth/v1/' + path, { method: 'POST', headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error(j.error_description || j.msg || j.message || ('HTTP ' + r.status)); return j; }); });
+  }
+  function keep(j){ sess = { access_token: j.access_token, refresh_token: j.refresh_token, expires_at: Date.now() + (j.expires_in || 3600) * 1000, user_id: j.user && j.user.id, email: j.user && j.user.email }; lsSet(SKEY, sess); }
+  var refreshing = null;
+  function token(){
+    var fresh = lsGet(SKEY, null);
+    if (fresh && sess && fresh.user_id === sess.user_id && fresh.expires_at > sess.expires_at) sess = fresh;
+    if (!sess && fresh) sess = fresh;
+    if (!sess) return Promise.reject(new Error('no session'));
+    if (Date.now() < sess.expires_at - 90000) return Promise.resolve(sess.access_token);
+    if (!refreshing) refreshing = authFetch('token?grant_type=refresh_token', { refresh_token: sess.refresh_token })
+      .then(function(j){ keep(j); refreshing = null; return sess.access_token; })
+      .catch(function(e){ refreshing = null; sess = null; me = null; try { localStorage.removeItem(SKEY); } catch(_){} showGate('انتهت الجلسة — سجّل الدخول مرة أخرى.'); throw e; });
+    return refreshing;
+  }
+  function api(method, path, body, headers){
+    return token().then(function(t){
+      var h = { apikey: SB_KEY, Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' };
+      if (headers) for (var k in headers) h[k] = headers[k];
+      return fetch(SB_URL + '/rest/v1/' + path, { method: method, headers: h, body: body == null ? undefined : JSON.stringify(body) });
+    }).then(function(r){ return r.text().then(function(t){ var j = t ? JSON.parse(t) : null; if (!r.ok) throw new Error((j && j.message) || ('HTTP ' + r.status)); return j; }); });
+  }
+  function rpc(fn, args){ return api('POST', 'rpc/' + fn, args || {}); }
+
+  /* ---------- حالة المزامنة ---------- */
+  var MKEY = 'wfsb_dash_' + APP;
+  var meta = lsGet(MKEY, null);
+  function resetMeta(){ meta = { user: sess && sess.user_id, days: {} }; }
+  function saveMeta(){ lsSet(MKEY, meta); }
+
+  /* صيغة «اليوم» المحفوظة في القاعدة */
+  function dayRecord(d){
+    if (!historyLog[d]) return null;
+    if (APP === 'ninja') return { hist: historyLog[d] };
+    var caps = captainsHist[d] || {}, m = {};
+    Object.keys(caps).forEach(function(id){ if (captainMeta[id]) m[id] = captainMeta[id]; });
+    return { hist: historyLog[d], caps: caps, meta: m };
+  }
+  function attendanceRows(d){
+    var out = [];
+    if (APP === 'ninja') {
+      ((historyLog[d] && historyLog[d].captains) || []).forEach(function(c){
+        out.push({ id: String(c.id), name: c.name, date: d, hours: +c.hrs || 0, orders: +c.ord || 0, quality: +c.dl || 0 });
+      });
+    } else {
+      var caps = captainsHist[d] || {};
+      Object.keys(caps).forEach(function(id){
+        var r = caps[id], mm = captainMeta[id] || {};
+        out.push({ id: String(id), name: mm.n || '', phone: mm.ph || '', date: d,
+                   hours: r.teh != null ? +r.teh : +r.hrs || 0, orders: r.tord != null ? +r.tord : +r.ord || 0, present: (+r.act || 0) > 0 });
+      });
+    }
+    return out;
+  }
+
+  /* ---------- رفع يوم بعد معالجة ملفه ---------- */
+  var queue = {}, qTimer = null, busy = false, lastFull = null;
+  function enqueue(d){ queue[d] = 1; clearTimeout(qTimer); qTimer = setTimeout(flush, 1500); }
+  function flush(){
+    if (!me || busy) { if (me) qTimer = setTimeout(flush, 3000); return; }
+    var days = Object.keys(queue); if (!days.length) return; queue = {}; busy = true; setChip('sync');
+    var now = new Date().toISOString(), recs = [], att = [], stats = { inserted: 0, updated: 0, linked: 0, unmatched: 0 };
+    days.forEach(function(d){
+      var r = dayRecord(d); if (!r) return;
+      if (APP === 'keemart' && d === newestDate() && lastFull) r.full = lastFull;
+      recs.push({ key: d, rec: r, edited_at: now });
+      meta.days[d] = hash(r);
+      att = att.concat(attendanceRows(d));
+    });
+    var p = rpc('sync_records', { p_app: APP, p_coll: 'day', p_rows: recs });
+    for (var i = 0; i < att.length; i += 400) (function(ch){
+      p = p.then(function(){ return rpc('import_attendance', { p_project: PROJECT, p_rows: ch, p_source: APP_AR }).then(function(r){
+        stats.inserted += r.inserted || 0; stats.updated += r.updated || 0; stats.linked += r.linked || 0; stats.unmatched += r.unmatched_count || 0; }); });
+    })(att.slice(i, i + 400));
+    p.then(function(){
+      saveMeta(); busy = false; setChip('ok');
+      note('☁️ حُفظ ' + days.length + ' يوم في القاعدة — ' + (stats.inserted + stats.updated) + ' سجل حضور'
+        + (stats.linked ? ' · رُبط ' + stats.linked + ' كابتن جديد بوثيق' : '')
+        + (stats.unmatched ? ' · ' + stats.unmatched + ' كابتن غير مربوط (ملاحظات المزامنة)' : ''));
+    }).catch(function(e){ busy = false; days.forEach(function(d){ queue[d] = 1; }); setChip('off', e.message); note('⚠️ لم يُحفظ في القاعدة: ' + e.message + ' — سيُعاد تلقائياً'); qTimer = setTimeout(flush, 30000); });
+  }
+  function newestDate(){ var ds = Object.keys(historyLog).sort(); return ds[ds.length - 1]; }
+
+  function hookProcess(){
+    if (typeof window.processData !== 'function' || window.processData.__wfsb) return;
+    var orig = window.processData;
+    var w = function(data, fDate){
+      var r = orig.apply(this, arguments);
+      try {
+        if (APP === 'keemart') { try { var f = JSON.parse(localStorage.getItem('fleet_caps_v24') || 'null'); if (Array.isArray(f)) lastFull = f; } catch(e){} }
+        if (fDate && historyLog[fDate]) enqueue(fDate);
+      } catch(e){}
+      return r;
+    };
+    w.__wfsb = true; window.processData = w;
+  }
+
+  /* ---------- سحب الأيام من الأجهزة الأخرى ---------- */
+  function pull(){
+    if (!me) return Promise.resolve(0);
+    return api('GET', 'app_records?select=key,data,updated_at&app=eq.' + APP + '&coll=eq.day&deleted_at=is.null&order=key.asc&limit=2000').then(function(rows){
+      var changed = 0, newest = newestDate(), gotNewest = null;
+      (rows || []).forEach(function(row){
+        var d = row.key, r = row.data || {}; if (!r.hist) return;
+        var full = r.full; delete r.full;
+        var h = hash(r); if (meta.days[d] === h && historyLog[d] && isMine(historyLog[d])) return;
+        var local = dayRecord(d);
+        if (local && hash(local) === h) { meta.days[d] = h; return; }
+        historyLog[d] = r.hist;
+        if (APP === 'keemart') { captainsHist[d] = r.caps || {}; Object.keys(r.meta || {}).forEach(function(id){ captainMeta[id] = r.meta[id]; }); }
+        meta.days[d] = h; changed++;
+        if (!newest || d >= newest) { newest = d; gotNewest = full || gotNewest; }
+      });
+      if (changed) applyLocal(gotNewest);
+      saveMeta(); return changed;
+    });
+  }
+  function applyLocal(full){
+    try { localStorage.setItem('fleet_hub_v24', JSON.stringify(historyLog)); } catch(e){}
+    var d = newestDate(), last = historyLog[d];
+    try {
+      if (APP === 'ninja') {
+        restoreCaptainsFromStats(last); refreshDateSelectors(); updateUI(last); updateChart(); updateTrendDots();
+        updateComparison(); updateLeaderboard(); updatePredictive();
+      } else {
+        try { localStorage.setItem('fleet_caps_meta_v24', JSON.stringify(captainMeta)); } catch(e){}
+        if (typeof persistCaptainsHist === 'function') persistCaptainsHist();
+        if (full && Array.isArray(full)) { try { localStorage.setItem('fleet_caps_v24', JSON.stringify(full)); } catch(e){} restoreCaptainsSnapshot(); }
+        refreshVendorSelector(); refreshDateSelectors(); applyVendorFilter(activeVendor);
+      }
+    } catch(e){ console.warn('[wf-supabase-dash] render', e); }
+  }
+
+  /* أول مرة على هذا الجهاز: ارفع الأيام المحلية غير الموجودة في القاعدة */
+  function firstUpload(){
+    return api('GET', 'app_records?select=key&app=eq.' + APP + '&coll=eq.day&limit=2000').then(function(rows){
+      var have = {}; (rows || []).forEach(function(r){ have[r.key] = 1; });
+      var missing = Object.keys(historyLog).filter(function(d){ return !have[d] && isMine(historyLog[d]); });
+      if (!missing.length || window.WF_CLOUD) return;
+      if (!confirm('يوجد ' + missing.length + ' يوم محفوظ على هذا الجهاز وغير موجود في القاعدة.\nرفعها الآن (مع حضور الكباتن)؟')) return;
+      missing.forEach(function(d){ queue[d] = 1; }); flush();
+    });
+  }
+  /* يمنع خلط أيام Ninja و Keemart (يتشاركان مفتاح التخزين على نفس المتصفح) */
+  function isMine(h){ if (!h) return false; return APP === 'keemart' ? h.legacy === false : h.legacy !== false; }
+
+  /* Ninja و Keemart يتشاركان المفتاح fleet_hub_v24 على نفس المتصفح (file://).
+     أيام Keemart تُسقط Ninja عند الفتح — نخفيها من ذاكرة Ninja فقط، ونعيد دمجها
+     عند كل حفظ حتى لا يضيع شيء من بيانات Keemart. المفتاح لا يتغيّر. */
+  if (APP === 'ninja') {
+    try {
+      Object.keys(historyLog).forEach(function(d){ if (!isMine(historyLog[d])) delete historyLog[d]; });
+      var protoSet = Storage.prototype.setItem;
+      Storage.prototype.setItem = function(k, v){
+        if (this === window.localStorage && k === 'fleet_hub_v24') {
+          try {
+            var cur = JSON.parse(protoSet === null ? '{}' : (window.localStorage.getItem(k) || '{}')) || {}, mine = JSON.parse(v) || {};
+            Object.keys(cur).forEach(function(d){ if (!isMine(cur[d]) && !(d in mine)) mine[d] = cur[d]; });
+            v = JSON.stringify(mine);
+          } catch(e){}
+        }
+        return protoSet.call(this, k, v);
+      };
+    } catch(e){}
+  }
+
+  /* ═════════════════════ الواجهة ═════════════════════ */
+  function css(){
+    if (document.getElementById('wfsb-dash-css')) return;
+    var s = document.createElement('style'); s.id = 'wfsb-dash-css';
+    s.textContent = '#wfsbGate{position:fixed;inset:0;z-index:2147483600;background:linear-gradient(135deg,#0b1f1f,#0f6e6e);display:flex;align-items:center;justify-content:center;font-family:system-ui,Tahoma,sans-serif;direction:rtl}'
+      + '#wfsbGate .card{background:#fff;border-radius:18px;padding:24px 22px;width:min(370px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.35);color:#1f2a2a}'
+      + '#wfsbGate h2{margin:0 0 4px;font-size:19px}#wfsbGate .sub{font-size:13px;color:#5b6b6b;margin-bottom:14px}'
+      + '#wfsbGate input{width:100%;box-sizing:border-box;padding:11px;border:1px solid #d9d2c3;border-radius:10px;margin-bottom:10px;font:inherit;font-size:14px;direction:ltr;text-align:right}'
+      + '#wfsbGate button{width:100%;padding:11px;border:0;border-radius:10px;background:#0f6e6e;color:#fff;font:inherit;font-weight:700;font-size:15px;cursor:pointer}'
+      + '#wfsbGate .msg{font-size:13px;margin-bottom:12px;padding:9px 11px;border-radius:10px;background:#fdf3e7;color:#9a5b12}#wfsbGate .msg.ok{background:#eaf5ef;color:#1e6b43}'
+      + '#wfsbDChip{position:fixed;bottom:12px;left:12px;z-index:2147483000;font:600 12px system-ui,Tahoma;direction:rtl;background:#fff;color:#1f2a2a;border:1px solid #d9d2c3;border-radius:999px;padding:7px 12px;box-shadow:0 4px 14px rgba(0,0,0,.12);cursor:pointer;display:flex;gap:6px;align-items:center}'
+      + '#wfsbDChip .dot{width:9px;height:9px;border-radius:50%;background:#94a3b8}#wfsbDChip.ok .dot{background:#16a34a}#wfsbDChip.sync .dot{background:#f59e0b}#wfsbDChip.off .dot{background:#dc2626}'
+      + '#wfsbDToast{position:fixed;bottom:56px;left:12px;z-index:2147483001;max-width:min(420px,90vw);direction:rtl;font:13px system-ui,Tahoma;background:#0f3d3e;color:#fff;border-radius:12px;padding:10px 14px;box-shadow:0 8px 24px rgba(0,0,0,.25);display:none}'
+      + '#wfsbDModal{position:fixed;inset:0;z-index:2147483100;background:rgba(15,30,30,.45);display:flex;align-items:center;justify-content:center;direction:rtl;font:13px system-ui,Tahoma}'
+      + '#wfsbDModal .box{background:#fff;color:#1f2a2a;border-radius:16px;width:min(820px,94vw);max-height:84vh;display:flex;flex-direction:column}#wfsbDModal .top{display:flex;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #eee;font-weight:700}'
+      + '#wfsbDModal .body{overflow:auto;padding:12px 18px}#wfsbDModal td,#wfsbDModal th{padding:7px 6px;border-bottom:1px solid #f0eadd;text-align:right}#wfsbDModal table{width:100%;border-collapse:collapse}#wfsbDModal .x{border:0;background:none;font-size:20px;cursor:pointer}';
+    document.head.appendChild(s);
+  }
+  var toastT = null;
+  function note(m){ css(); var t = document.getElementById('wfsbDToast'); if (!t) { t = document.createElement('div'); t.id = 'wfsbDToast'; document.body.appendChild(t); }
+    t.textContent = m; t.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(function(){ t.style.display = 'none'; }, 6000); }
+  var chip = null, lastOk = null;
+  function setChip(s, err){
+    css(); if (!chip) { chip = document.createElement('div'); chip.id = 'wfsbDChip'; document.body.appendChild(chip); chip.onclick = menu; }
+    if (s === 'ok') lastOk = new Date();
+    chip.className = s; chip.title = err || '';
+    chip.innerHTML = '<span class="dot"></span>' + (s === 'sync' ? 'جارٍ المزامنة…' : s === 'off' ? 'غير متصل — سيُعاد' : '☁️ متصل' + (lastOk ? ' · ' + lastOk.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }) : ''));
+  }
+  function menu(){
+    if (window.top !== window) { setChip('sync'); pull().then(function(n){ setChip('ok'); note(n ? '🔄 وصل ' + n + ' يوم جديد' : '✅ كل شيء محدّث'); }); return; }
+    var a = prompt('1 = مزامنة الآن\n2 = الكباتن غير المربوطين بوثيق\n3 = تسجيل الخروج\n\n' + (me ? me.email : ''), '1');
+    if (a === '1') { setChip('sync'); pull().then(function(n){ setChip('ok'); note(n ? '🔄 وصل ' + n + ' يوم جديد' : '✅ كل شيء محدّث'); }); }
+    if (a === '2') issues();
+    if (a === '3') { sess = null; me = null; try { localStorage.removeItem(SKEY); } catch(e){} location.reload(); }
+  }
+  function issues(){
+    api('GET', 'sync_issues?select=entity_key,message,created_at&app=eq.' + APP + '&resolved_at=is.null&order=created_at.desc&limit=1000').then(function(rows){
+      rows = rows || [];
+      var m = document.createElement('div'); m.id = 'wfsbDModal';
+      m.innerHTML = '<div class="box"><div class="top"><span>الكباتن غير المربوطين بوثيق (' + rows.length + ')</span><button class="x">×</button></div><div class="body">'
+        + (rows.length ? '<div style="margin-bottom:8px;color:#5b6b6b">حضورهم محفوظ في الملفات لكنه لم يدخل قاعدة الموظفين. أضف رقم الكابتن أو الجوال في وثيق وسيُربط تلقائياً عند الرفع التالي.</div><table><tr><th>الرقم</th><th>التفاصيل</th></tr>'
+          + rows.map(function(r){ return '<tr><td>' + esc(r.entity_key) + '</td><td>' + esc(r.message) + '</td></tr>'; }).join('') + '</table>' : '<div style="padding:24px;text-align:center">✅ كل الكباتن مربوطون بوثيق</div>')
+        + '</div></div>';
+      document.body.appendChild(m); m.querySelector('.x').onclick = function(){ m.remove(); };
+    }).catch(function(e){ note('تعذّر التحميل: ' + e.message); });
+  }
+
+  var gate = null;
+  function showGate(msg, ok){
+    css(); if (!gate) { gate = document.createElement('div'); gate.id = 'wfsbGate'; document.body.appendChild(gate); }
+    gate.style.display = 'flex';
+    gate.innerHTML = '<div class="card"><h2>تسجيل الدخول</h2><div class="sub">' + APP_AR + ' — قاعدة AFMC الموحّدة</div>'
+      + (msg ? '<div class="msg' + (ok ? ' ok' : '') + '">' + esc(msg) + '</div>' : '')
+      + '<input id="gE" type="email" placeholder="البريد الإلكتروني" autocomplete="username"><input id="gP" type="password" placeholder="كلمة المرور" autocomplete="current-password">'
+      + '<button id="gGo">دخول</button></div>';
+    document.getElementById('gP').onkeydown = function(e){ if (e.key === 'Enter') document.getElementById('gGo').click(); };
+    document.getElementById('gGo').onclick = function(){
+      var em = document.getElementById('gE').value.trim(), pw = document.getElementById('gP').value, b = this;
+      if (!em || !pw) return; b.disabled = true;
+      authFetch('token?grant_type=password', { email: em, password: pw }).then(function(j){ keep(j); start(); })
+        .catch(function(e){ b.disabled = false; showGate(/invalid/i.test(e.message) ? 'البريد أو كلمة المرور غير صحيحة.' : 'تعذّر الدخول: ' + e.message); });
+    };
+  }
+
+  var timer = null;
+  function start(){
+    rpc('whoami').then(function(w){
+      if (!w) { showGate(); return; }
+      if (!w.approved) { showGate('حسابك (' + w.email + ') بانتظار موافقة المدير.', true); sess = null; try { localStorage.removeItem(SKEY); } catch(e){} return; }
+      me = w; if (gate) gate.style.display = 'none';
+      if (!meta || meta.user !== sess.user_id) resetMeta();
+      hookProcess(); setChip('sync');
+      return pull().then(function(){ setChip('ok'); return firstUpload(); }).then(function(){
+        if (!timer) timer = setInterval(function(){ if (document.visibilityState !== 'hidden') pull().then(function(){ setChip('ok'); }).catch(function(e){ setChip('off', e.message); }); }, PULL_EVERY);
+      });
+    }).catch(function(e){ if (!sess) showGate(); else { setChip('off', e.message); setTimeout(start, 20000); } });
+  }
+  window.wfSupabaseDash = { pull: pull, flush: flush, issues: issues, me: function(){ return me; } };
+  hookProcess();   /* يلتقط أي رفع حتى قبل اكتمال الدخول — يُرفع بعده */
+  function boot(){ if (sess) start(); else showGate(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+})();
+
+</script>
+</body>
+</html>
