@@ -54,6 +54,23 @@
   st.textContent = sel + '{display:none!important}';
   (document.head || document.documentElement).appendChild(st);
 
+  /* ---------- 3ب) لمسة موحّدة لكل الأنظمة: الخط، أشرطة التمرير، التركيز، التحديد ----------
+     شكل فقط — لا يغيّر أي وظيفة أو ألوان داخلية للأنظمة. */
+  try {
+    var fl = document.createElement('link'); fl.rel = 'stylesheet';
+    fl.href = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap';
+    (document.head || document.documentElement).appendChild(fl);
+    var th = document.createElement('style'); th.id = 'wf-cloud-theme';
+    th.textContent = 'body{font-family:"IBM Plex Sans Arabic",Tahoma,"Segoe UI",system-ui,sans-serif!important;-webkit-font-smoothing:antialiased}'
+      + 'button,input,select,textarea{font-family:inherit}'
+      + '::selection{background:rgba(14,94,92,.18)}'
+      + ':focus-visible{outline:2px solid #0e5e5c;outline-offset:2px}'
+      + '*{scrollbar-width:thin;scrollbar-color:#cfc8ba transparent}'
+      + '::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#d3cdc0;border-radius:10px;border:2px solid transparent;background-clip:padding-box}'
+      + '::-webkit-scrollbar-thumb:hover{background-color:#b9b2a3}::-webkit-scrollbar-track{background:transparent}';
+    (document.head || document.documentElement).appendChild(th);
+  } catch(e){}
+
   /* نصوص صريحة لأزرار الحفظ المحلي/واتساب التي تُنشأ بلا معرّف */
   var TXT = /واتس|whatsapp|حفظ الآن على الجهاز|ربط ملف الحفظ|استرجاع من ملف الجهاز|اربط ملفاً على الجهاز|إدارة البيانات والحفظ|تحميل HTML|إعداد مجلد الحفظ|تغيير الملف|📂 فتح ملف/i;
   var busy = false, t = null;

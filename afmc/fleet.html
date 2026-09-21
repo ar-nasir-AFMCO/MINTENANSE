@@ -54,6 +54,23 @@
   st.textContent = sel + '{display:none!important}';
   (document.head || document.documentElement).appendChild(st);
 
+  /* ---------- 3ب) لمسة موحّدة لكل الأنظمة: الخط، أشرطة التمرير، التركيز، التحديد ----------
+     شكل فقط — لا يغيّر أي وظيفة أو ألوان داخلية للأنظمة. */
+  try {
+    var fl = document.createElement('link'); fl.rel = 'stylesheet';
+    fl.href = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap';
+    (document.head || document.documentElement).appendChild(fl);
+    var th = document.createElement('style'); th.id = 'wf-cloud-theme';
+    th.textContent = 'body{font-family:"IBM Plex Sans Arabic",Tahoma,"Segoe UI",system-ui,sans-serif!important;-webkit-font-smoothing:antialiased}'
+      + 'button,input,select,textarea{font-family:inherit}'
+      + '::selection{background:rgba(14,94,92,.18)}'
+      + ':focus-visible{outline:2px solid #0e5e5c;outline-offset:2px}'
+      + '*{scrollbar-width:thin;scrollbar-color:#cfc8ba transparent}'
+      + '::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#d3cdc0;border-radius:10px;border:2px solid transparent;background-clip:padding-box}'
+      + '::-webkit-scrollbar-thumb:hover{background-color:#b9b2a3}::-webkit-scrollbar-track{background:transparent}';
+    (document.head || document.documentElement).appendChild(th);
+  } catch(e){}
+
   /* نصوص صريحة لأزرار الحفظ المحلي/واتساب التي تُنشأ بلا معرّف */
   var TXT = /واتس|whatsapp|حفظ الآن على الجهاز|ربط ملف الحفظ|استرجاع من ملف الجهاز|اربط ملفاً على الجهاز|إدارة البيانات والحفظ|تحميل HTML|إعداد مجلد الحفظ|تغيير الملف|📂 فتح ملف/i;
   var busy = false, t = null;
@@ -1588,7 +1605,7 @@ function cardHTML(v){
       <div class="drv-av">${initials}</div>
       <div class="drv-info">
         <div class="drv-name">${d.name_ar||d.name_en||'—'}</div>
-        <div class="drv-since">منذ ${d.date_receive||'—'} · ${d.project.trim()||'—'}</div>
+        <div class="drv-since">منذ ${d.date_receive||'—'} · ${String(d.project||"").trim()||'—'}</div>
       </div>
       <span class="lock-ico">🔒</span>
     </div>`:
@@ -1766,7 +1783,7 @@ function buildDriverPanel(v){
         <div class="kv"><div class="kv-l">الاسم إنجليزي</div><div class="kv-v">${d.name_en||'—'}</div></div>
         <div class="kv"><div class="kv-l">رقم الإقامة</div><div class="kv-v mono">${d.driver_id||'—'}</div></div>
         <div class="kv"><div class="kv-l">الجوال</div><div class="kv-v mono">${d.mobile||'—'}</div></div>
-        <div class="kv"><div class="kv-l">المشروع</div><div class="kv-v">${d.project.trim()||'—'}</div></div>
+        <div class="kv"><div class="kv-l">المشروع</div><div class="kv-v">${String(d.project||"").trim()||'—'}</div></div>
         <div class="kv"><div class="kv-l">المنطقة</div><div class="kv-v">${d.area||'—'}</div></div>
         <div class="kv"><div class="kv-l">تاريخ الاستلام</div><div class="kv-v mono">${d.date_receive||'—'}</div></div>
         <div class="kv"><div class="kv-l">فرع الاستلام</div><div class="kv-v">${d.branch_receive||'—'}</div></div>
@@ -5963,6 +5980,7 @@ async function handleAccidentFile(input){
 
   /* ---------------- جانب وثيق ---------------- */
   var _wfPendingReq = {};
+  window.__wfReqRefresh = function(){ try{ if(typeof APP!=='undefined' && APP==='watheeq') wfLoadPendingReq(wfDecorateCards); else if(typeof APP!=='undefined' && APP==='fleetos'){ wfBuildFleetReqWidget(); wfFleetReqPoll(); } }catch(_){} };  /* AFMC Cloud: تحديث مباشر للطلبات */
   function wfLoadPendingReq(cb){
     try{
       cloudGet(_wfReqKey).then(function(r){
@@ -8212,7 +8230,10 @@ setInterval(mtBadge, 5000);
   window.addEventListener('online', function(){ if (ready) pushAll(); });
   document.addEventListener('visibilitychange', function(){ if (ready && document.visibilityState === 'visible') pullAll().catch(function(){}); });
 
-  window.wfSupabase = { pull: pullAll, push: pushAll, issues: showIssues, users: showUsers, logout: logout, me: function(){ return me; } };
+  /* تحديث مباشر: المنصّة تُبلغ عند أي تغيير في القاعدة → سحب الفروقات فوراً (لا يقاطع رفعاً جارياً) */
+  var pokeT = null;
+  function poke(){ if (!ready) return; clearTimeout(pokeT); pokeT = setTimeout(function(){ if (pushing) return poke(); pullAll().catch(function(){}); }, 400); }
+  window.wfSupabase = { pull: pullAll, poke: poke, push: pushAll, issues: showIssues, users: showUsers, logout: logout, me: function(){ return me; } };
 
   function boot(){ if (sess) start(); else showGate(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
