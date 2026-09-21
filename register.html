@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>طلب حساب — أنظمة AFMC</title>
+<meta name="theme-color" content="#0f6e6e">
+<style>
+:root{--brand:#0f6e6e;--brand-2:#0b5454;--sand:#d8b98a;--bg:#f4efe6;--surface:#fffdf8;--ink:#1f2a2a;--muted:#5b6b6b;--line:#e4dccb;--ok:#1e6b43;--okbg:#eaf5ef;--warn:#9a5b12;--warnbg:#fdf3e7;--bad:#a23a2e;--badbg:#fbecea}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family:Tahoma,"Segoe UI",system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;padding:24px 16px 40px}
+.head{width:min(460px,100%);text-align:center;margin-bottom:18px}
+.logo{width:54px;height:54px;border-radius:16px;background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;margin-bottom:10px}
+h1{margin:0;font-size:21px}
+.head p{margin:6px 0 0;color:var(--muted);font-size:14px;line-height:1.7}
+.card{width:min(460px,100%);background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px 18px;box-shadow:0 8px 30px rgba(15,60,60,.08)}
+.tabs{display:flex;gap:6px;background:#efe7d8;border-radius:12px;padding:4px;margin-bottom:18px}
+.tabs button{flex:1;border:0;background:none;padding:10px;border-radius:9px;font:inherit;font-size:14px;color:var(--muted);cursor:pointer}
+.tabs button.on{background:var(--surface);color:var(--brand);font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+label{display:block;margin-bottom:12px}
+label span{display:block;font-size:13px;color:var(--muted);margin-bottom:5px}
+label span b{color:var(--bad);font-weight:400}
+input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;font:inherit;font-size:15px;color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:2px solid rgba(15,110,110,.25);border-color:var(--brand)}
+input.ltr{direction:ltr;text-align:right}
+.row{display:flex;gap:10px}.row label{flex:1}
+.btn{width:100%;padding:13px;border:0;border-radius:11px;background:var(--brand);color:#fff;font:inherit;font-size:16px;font-weight:700;cursor:pointer;margin-top:4px}
+.btn:disabled{opacity:.6;cursor:default}
+.msg{padding:11px 13px;border-radius:11px;font-size:14px;line-height:1.7;margin-bottom:14px}
+.msg.ok{background:var(--okbg);color:var(--ok)}.msg.warn{background:var(--warnbg);color:var(--warn)}.msg.bad{background:var(--badbg);color:var(--bad)}
+.hint{font-size:12px;color:var(--muted);margin-top:12px;line-height:1.7;text-align:center}
+.hide{display:none}
+.done{text-align:center;padding:10px 4px}
+.done .big{font-size:42px;margin-bottom:6px}
+.done h2{margin:0 0 6px;font-size:19px}
+.done p{margin:0;color:var(--muted);line-height:1.8;font-size:14px}
+</style>
+</head>
+<body>
+<div class="head">
+  <div class="logo">A</div>
+  <h1>طلب حساب في أنظمة AFMC</h1>
+  <p>وثيق · الأسطول · Ninja · Keemart<br>سجّل بياناتك، وسيصلك الدخول بعد موافقة المدير.</p>
+</div>
+
+<div class="card">
+  <div class="tabs">
+    <button id="tReg" class="on">طلب حساب جديد</button>
+    <button id="tChk">متابعة طلبي</button>
+  </div>
+
+  <div id="out"></div>
+
+  <form id="fReg" autocomplete="on">
+    <label><span>الاسم الكامل <b>*</b></span><input id="name" required autocomplete="name"></label>
+    <div class="row">
+      <label><span>رقم الإقامة / الهوية</span><input id="iqama" class="ltr" inputmode="numeric" maxlength="10"></label>
+      <label><span>رقم الجوال <b>*</b></span><input id="phone" class="ltr" inputmode="tel" required placeholder="05xxxxxxxx" autocomplete="tel"></label>
+    </div>
+    <div class="row">
+      <label><span>المشروع</span><select id="project"><option value="">— اختر —</option></select></label>
+      <label><span>العمل المطلوب</span><select id="job">
+        <option value="viewer">متابعة فقط</option><option value="supervisor">مشرف</option>
+        <option value="maintenance">صيانة</option><option value="finance">مالية</option><option value="manager">إدارة</option>
+      </select></label>
+    </div>
+    <label><span>البريد الإلكتروني <b>*</b> — للدخول</span><input id="email" type="email" class="ltr" required autocomplete="email"></label>
+    <label><span>كلمة المرور <b>*</b> — 8 أحرف على الأقل</span><input id="pass" type="password" class="ltr" minlength="8" required autocomplete="new-password"></label>
+    <label><span>ملاحظة للمدير</span><textarea id="note" rows="2" placeholder="اختياري"></textarea></label>
+    <button class="btn" id="bReg" type="submit">إرسال الطلب</button>
+    <div class="hint">لن تظهر لك أي بيانات قبل موافقة المدير. الصلاحية النهائية يحدّدها المدير.</div>
+  </form>
+
+  <form id="fChk" class="hide">
+    <label><span>البريد الإلكتروني</span><input id="cEmail" type="email" class="ltr" required autocomplete="username"></label>
+    <label><span>كلمة المرور</span><input id="cPass" type="password" class="ltr" required autocomplete="current-password"></label>
+    <button class="btn" id="bChk" type="submit">عرض حالة طلبي</button>
+  </form>
+
+  <div id="done" class="done hide"></div>
+</div>
+
+<script>
+(function(){
+  var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
+  var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
+  var ROLE_AR = { admin:'مدير النظام', manager:'مدير', finance:'مالية', supervisor:'مشرف', maintenance:'صيانة', viewer:'متابعة' };
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function digits(s){ return String(s || '').replace(/[٠-٩]/g, function(d){ return d.charCodeAt(0) - 0x0660; }).replace(/[۰-۹]/g, function(d){ return d.charCodeAt(0) - 0x06F0; }).replace(/\D/g, ''); }
+  function show(kind, text){ $('out').innerHTML = text ? '<div class="msg ' + kind + '">' + text + '</div>' : ''; }
+  function call(path, body, tok){
+    var h = { apikey: SB_KEY, 'Content-Type': 'application/json' }; if (tok) h.Authorization = 'Bearer ' + tok;
+    return fetch(SB_URL + path, { method: 'POST', headers: h, body: JSON.stringify(body || {}) })
+      .then(function(r){ return r.text().then(function(t){ var j = t ? JSON.parse(t) : null; if (!r.ok) throw new Error((j && (j.error_description || j.msg || j.message)) || ('HTTP ' + r.status)); return j; }); });
+  }
+  function arErr(m){
+    if (/already registered|already exists/i.test(m)) return 'هذا البريد مسجّل من قبل — استخدم «متابعة طلبي».';
+    if (/invalid login|invalid credentials/i.test(m)) return 'البريد أو كلمة المرور غير صحيحة.';
+    if (/email not confirmed/i.test(m)) return 'أكّد بريدك أولاً من الرسالة التي وصلتك.';
+    if (/rate limit/i.test(m)) return 'طلبات كثيرة في وقت قصير — حاول بعد دقائق.';
+    if (/password/i.test(m)) return 'كلمة المرور ضعيفة — استخدم 8 أحرف على الأقل.';
+    if (/invalid.*email|email.*invalid/i.test(m)) return 'صيغة البريد غير صحيحة.';
+    return 'تعذّر الإرسال: ' + esc(m);
+  }
+  function tab(reg){
+    $('tReg').className = reg ? 'on' : ''; $('tChk').className = reg ? '' : 'on';
+    $('fReg').classList.toggle('hide', !reg); $('fChk').classList.toggle('hide', reg); $('done').classList.add('hide'); show();
+  }
+  $('tReg').onclick = function(){ tab(true); }; $('tChk').onclick = function(){ tab(false); };
+
+  call('/rest/v1/rpc/signup_projects').then(function(list){
+    (list || []).forEach(function(p){ var o = document.createElement('option'); o.value = o.textContent = p; $('project').appendChild(o); });
+  }).catch(function(){});
+
+  function finish(icon, title, text){
+    $('fReg').classList.add('hide'); $('fChk').classList.add('hide'); show();
+    $('done').innerHTML = '<div class="big">' + icon + '</div><h2>' + title + '</h2><p>' + text + '</p>'; $('done').classList.remove('hide');
+  }
+  function status(tok){
+    return call('/rest/v1/rpc/whoami', {}, tok).then(function(w){
+      if (!w) return finish('⏳', 'طلبك قيد المعالجة', 'حاول بعد قليل.');
+      if (w.approved) return finish('✅', 'تم اعتماد حسابك', 'صلاحيتك: <b>' + esc(ROLE_AR[w.role] || w.role) + '</b>' +
+        (w.projects && w.projects.length ? ' — المشاريع: ' + esc(w.projects.join('، ')) : '') + '<br>اطلب من المدير ملف النظام، وادخل بنفس البريد وكلمة المرور.');
+      finish('⏳', 'طلبك بانتظار موافقة المدير', 'استلمنا طلبك باسم <b>' + esc(w.name || w.email) + '</b>.<br>ارجع لهذه الصفحة واضغط «متابعة طلبي» لمعرفة الحالة.');
+    });
+  }
+
+  $('fReg').onsubmit = function(e){
+    e.preventDefault();
+    var phone = digits($('phone').value), iq = digits($('iqama').value);
+    if (phone.length < 9) return show('bad', 'اكتب رقم جوال صحيح.');
+    if (iq && iq.length !== 10) return show('bad', 'رقم الإقامة/الهوية يتكوّن من 10 أرقام.');
+    var b = $('bReg'); b.disabled = true; show('warn', 'جارٍ الإرسال…');
+    call('/auth/v1/signup', { email: $('email').value.trim(), password: $('pass').value,
+      data: { full_name: $('name').value.trim(), phone: phone, iqama: iq, project: $('project').value, job: $('job').value, note: $('note').value.trim() } })
+    .then(function(j){
+      b.disabled = false;
+      if (j && j.access_token) return status(j.access_token);
+      if (j && j.identities && j.identities.length === 0) return show('bad', arErr('already registered'));
+      finish('📧', 'بقي تأكيد بريدك', 'أرسلنا رسالة إلى <b>' + esc($('email').value.trim()) + '</b> — افتحها واضغط رابط التأكيد، ثم انتظر موافقة المدير.');
+    }).catch(function(err){ b.disabled = false; show('bad', arErr(err.message)); });
+  };
+
+  $('fChk').onsubmit = function(e){
+    e.preventDefault();
+    var b = $('bChk'); b.disabled = true; show('warn', 'جارٍ التحقق…');
+    call('/auth/v1/token?grant_type=password', { email: $('cEmail').value.trim(), password: $('cPass').value })
+      .then(function(j){ b.disabled = false; return status(j.access_token); })
+      .catch(function(err){ b.disabled = false; show('bad', arErr(err.message)); });
+  };
+})();
+</script>
+</body>
+</html>
