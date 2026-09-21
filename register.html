@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
-<title>طلب حساب — أنظمة AFMC</title>
+<title>طلب حساب — منصة AFMCO</title>
 <meta name="theme-color" content="#0f6e6e">
 <style>
 :root{--brand:#0f6e6e;--brand-2:#0b5454;--sand:#d8b98a;--bg:#f4efe6;--surface:#fffdf8;--ink:#1f2a2a;--muted:#5b6b6b;--line:#e4dccb;--ok:#1e6b43;--okbg:#eaf5ef;--warn:#9a5b12;--warnbg:#fdf3e7;--bad:#a23a2e;--badbg:#fbecea}
@@ -40,7 +40,7 @@ input.ltr{direction:ltr;text-align:right}
 <body>
 <div class="head">
   <div class="logo">A</div>
-  <h1>طلب حساب في أنظمة AFMC</h1>
+  <h1>طلب حساب في منصة AFMCO</h1>
   <p>وثيق · الأسطول · Ninja · Keemart<br>سجّل بياناتك، وسيصلك الدخول بعد موافقة المدير.<br><a href="afmc/" style="color:#0f6e6e;font-weight:700">لديك حساب معتمد؟ ادخل المنصّة</a></p>
 </div>
 
@@ -122,7 +122,7 @@ input.ltr{direction:ltr;text-align:right}
     return call('/rest/v1/rpc/whoami', {}, tok).then(function(w){
       if (!w) return finish('⏳', 'طلبك قيد المعالجة', 'حاول بعد قليل.');
       if (w.approved) return finish('✅', 'تم اعتماد حسابك', 'صلاحيتك: <b>' + esc(ROLE_AR[w.role] || w.role) + '</b>' +
-        (w.projects && w.projects.length ? ' — المشاريع: ' + esc(w.projects.join('، ')) : '') + '<br><br><a href="afmc/" style="display:inline-block;background:#0f6e6e;color:#fff;padding:11px 22px;border-radius:11px;text-decoration:none;font-weight:700">الدخول إلى منصّة AFMC ←</a>');
+        (w.projects && w.projects.length ? ' — المشاريع: ' + esc(w.projects.join('، ')) : '') + '<br><br><a href="afmc/" style="display:inline-block;background:#0f6e6e;color:#fff;padding:11px 22px;border-radius:11px;text-decoration:none;font-weight:700">الدخول إلى منصة AFMCO ←</a>');
       finish('⏳', 'طلبك بانتظار موافقة المدير', 'استلمنا طلبك باسم <b>' + esc(w.name || w.email) + '</b>.<br>ارجع لهذه الصفحة واضغط «متابعة طلبي» لمعرفة الحالة.');
     });
   }
