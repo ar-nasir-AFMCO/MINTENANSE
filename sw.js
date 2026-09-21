@@ -1,4 +1,4 @@
-var CACHE = "dbb-v1";
+var CACHE = "dbb-v2";
 var FILES = ["./", "./index.html", "./manifest.json", "./app/src/main/assets/app.html"];
 
 self.addEventListener("install", function (e) {
@@ -16,6 +16,7 @@ self.addEventListener("activate", function (e) {
 self.addEventListener("fetch", function (e) {
   if (e.request.method !== "GET") return;
   if (e.request.url.indexOf("script.google.com") > -1) return;
+  if (e.request.url.indexOf("supabase.co") > -1) return;   /* بيانات AFMC: دائماً من القاعدة مباشرة، لا تُخزَّن */
   e.respondWith(
     fetch(e.request).then(function (r) {
       var copy = r.clone();

@@ -41,7 +41,7 @@ input.ltr{direction:ltr;text-align:right}
 <div class="head">
   <div class="logo">A</div>
   <h1>طلب حساب في أنظمة AFMC</h1>
-  <p>وثيق · الأسطول · Ninja · Keemart<br>سجّل بياناتك، وسيصلك الدخول بعد موافقة المدير.</p>
+  <p>وثيق · الأسطول · Ninja · Keemart<br>سجّل بياناتك، وسيصلك الدخول بعد موافقة المدير.<br><a href="afmc/" style="color:#0f6e6e;font-weight:700">لديك حساب معتمد؟ ادخل المنصّة</a></p>
 </div>
 
 <div class="card">
@@ -122,7 +122,7 @@ input.ltr{direction:ltr;text-align:right}
     return call('/rest/v1/rpc/whoami', {}, tok).then(function(w){
       if (!w) return finish('⏳', 'طلبك قيد المعالجة', 'حاول بعد قليل.');
       if (w.approved) return finish('✅', 'تم اعتماد حسابك', 'صلاحيتك: <b>' + esc(ROLE_AR[w.role] || w.role) + '</b>' +
-        (w.projects && w.projects.length ? ' — المشاريع: ' + esc(w.projects.join('، ')) : '') + '<br>اطلب من المدير ملف النظام، وادخل بنفس البريد وكلمة المرور.');
+        (w.projects && w.projects.length ? ' — المشاريع: ' + esc(w.projects.join('، ')) : '') + '<br><br><a href="afmc/" style="display:inline-block;background:#0f6e6e;color:#fff;padding:11px 22px;border-radius:11px;text-decoration:none;font-weight:700">الدخول إلى منصّة AFMC ←</a>');
       finish('⏳', 'طلبك بانتظار موافقة المدير', 'استلمنا طلبك باسم <b>' + esc(w.name || w.email) + '</b>.<br>ارجع لهذه الصفحة واضغط «متابعة طلبي» لمعرفة الحالة.');
     });
   }
