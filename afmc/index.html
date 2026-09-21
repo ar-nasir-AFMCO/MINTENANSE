@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
-<title>منصّة AFMC</title>
+<title>منصة AFMCO</title>
 <meta name="theme-color" content="#0f2524">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -230,7 +230,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <!-- ════════ الدخول ════════ -->
 <div id="gate" class="hide">
   <div class="art">
-    <div style="display:flex;align-items:center;gap:11px"><div class="mark"><span>A</span></div><div><b style="font-size:15px">AFMC</b><div style="font-size:12px;color:#8fa5a3">Wajehet Al Dam Logistics</div></div></div>
+    <div style="display:flex;align-items:center;gap:11px"><div class="mark"><span>A</span></div><div><b style="font-size:15px">AFMCO</b><div style="font-size:12px;color:#8fa5a3">Wajehet Al Dam Logistics</div></div></div>
     <div>
       <h2>منصّة عمليات واحدة لكل الأنظمة</h2>
       <p>الموظفون والأسطول والمناديب والصيانة على قاعدة بيانات واحدة، وأي تعديل يظهر للفريق كله مباشرة.</p>
@@ -253,7 +253,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 
 <div id="app" class="hide">
   <aside class="side" id="side">
-    <div class="brand"><div class="mark"><span>A</span></div><div><b>منصّة AFMC</b><small>العمليات الموحّدة</small></div></div>
+    <div class="brand"><div class="mark"><span>A</span></div><div><b>منصة AFMCO</b><small>العمليات الموحّدة</small></div></div>
     <div class="scroll">
       <div class="grp"><nav class="nav" id="tabs">
         <button data-v="vSys" class="on"><span class="ic"><svg class="i"><use href="#i-home"/></svg></span><span class="tx"><b>الرئيسية</b></span></button>
@@ -270,7 +270,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   <div class="main">
     <header class="bar">
       <button class="tbtn" id="menuBtn" aria-label="القائمة"><svg class="i"><use href="#i-menu"/></svg></button>
-      <div><h1 id="ttl">الرئيسية</h1><div class="crumb" id="crumb">منصّة AFMC</div></div>
+      <div><h1 id="ttl">الرئيسية</h1><div class="crumb" id="crumb">منصة AFMCO</div></div>
       <div class="sp"></div>
       <span class="live" id="live" title="حالة التحديث المباشر"><i></i><span>جارٍ الاتصال…</span></span>
       <span id="fbar" style="display:flex;gap:6px"></span>
@@ -298,19 +298,28 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 
         <div class="sec" id="pendSec" style="margin-top:0">
           <h3><svg class="i"><use href="#i-users"/></svg>طلبات التسجيل الجديدة</h3>
-          <div class="card tbl"><table><thead><tr><th>المتقدّم</th><th>البيانات</th><th>الدور</th><th>المشاريع</th><th></th></tr></thead><tbody id="pendBody"></tbody></table></div>
+          <div class="card tbl"><table><thead><tr><th>المتقدّم</th><th>البيانات</th><th>الدور</th><th>المشاريع</th><th>الأنظمة</th><th></th></tr></thead><tbody id="pendBody"></tbody></table></div>
         </div>
 
         <div class="sec">
           <h3><svg class="i"><use href="#i-users"/></svg>المستخدمون المعتمدون</h3>
-          <div class="card tbl"><table><thead><tr><th>المستخدم</th><th>الدور</th><th>المشاريع (للمشرف والمتابعة)</th><th>مفعّل</th><th></th></tr></thead><tbody id="usersBody"></tbody></table></div>
-          <div class="sub" style="margin-top:8px">مدير النظام والمدير والمالية يرون كل المشاريع. المشرف والمتابعة يرون المشاريع المحدّدة لهم فقط. الرواتب تظهر للمدير والمالية فقط.</div>
+          <div class="card tbl"><table><thead><tr><th>المستخدم</th><th>الدور</th><th>المشاريع (للمشرف والمتابعة)</th><th>الأنظمة</th><th>مفعّل</th><th></th></tr></thead><tbody id="usersBody"></tbody></table></div>
+          <div class="sub" style="margin-top:8px">مدير النظام والمدير والمالية يرون كل المشاريع. المشرف والمتابعة يرون المشاريع المحدّدة لهم فقط. الرواتب تظهر للمدير والمالية فقط.<br>«الأنظمة» تحدّد ما يراه كل مستخدم: الأنظمة المحدّدة فقط تظهر له، والعزل مطبّق داخل القاعدة نفسها. عند تغيير الدور ترجع الأنظمة لافتراضيّ الدور.</div>
         </div>
 
         <div class="sec">
           <h3><svg class="i"><use href="#i-shield"/></svg>مصفوفة الصلاحيات الموحّدة</h3>
           <div class="card tbl"><table><thead><tr><th>الدور</th><th>المشاريع</th><th>تعديل</th><th>تسليم مركبات</th><th>الرواتب</th><th>حذف</th><th>إدارة المستخدمين</th><th>الأنظمة الظاهرة</th></tr></thead><tbody id="matrixBody"></tbody></table></div>
           <div class="sub" style="margin-top:8px">القواعد نفسها تُطبَّق داخل القاعدة على كل الأنظمة، ولا يمكن تجاوزها من أي تطبيق. «مشاريعه فقط» تعني المشاريع المحدّدة للمستخدم أعلاه.</div>
+        </div>
+
+        <div class="sec hide" id="reconSec">
+          <h3><svg class="i"><use href="#i-car"/></svg>الأسطول مرجع البيانات</h3>
+          <div class="card" style="padding:16px 18px">
+            <div class="sub" style="margin-bottom:12px">يطابق وثيق مع الأسطول: حالة السائق، المشروع، الجوال، نوع المركبة، والمنطقة تؤخذ من الأسطول. والنشط في وثيق بلا مركبة نشطة في الأسطول يصبح «متوقف عن العمل». قبل أي تغيير تُحفظ نسخة كاملة ويمكن التراجع.</div>
+            <div class="grid" id="reconGrid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))"></div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap"><button class="btn" id="reconApply">تطبيق المطابقة</button><button class="btn ghost hide" id="reconUndo">تراجع عن آخر مطابقة</button><span class="sub" id="reconNote"></span></div>
+          </div>
         </div>
 
         <div class="sec">
@@ -349,7 +358,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260921202838";
+  var BUILD = "20260921213549";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -462,7 +471,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     ['vSys','vAdm','vRev'].forEach(function(x){ $(x).classList.toggle('hide', x !== v); });
     document.querySelectorAll('#tabs button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-v') === v && !(v === 'vSys' && current)); });
     if (v !== 'vSys' || !keepSys) { current = null; sysUi(); }
-    $('ttl').textContent = TITLES[v]; $('crumb').textContent = 'منصّة AFMC'; $('fbar').innerHTML = '';
+    $('ttl').textContent = TITLES[v]; $('crumb').textContent = 'منصة AFMCO'; $('fbar').innerHTML = '';
     history.replaceState(null, '', v === 'vAdm' ? '#admin' : v === 'vRev' ? '#review' : '#');
     document.body.classList.remove('menu');
     if (v === 'vAdm') loadAdmin(); if (v === 'vRev') loadReview();
@@ -559,7 +568,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   function loadAdmin(){
     $('regLink').textContent = new URL('../register.html', location.href).href; $('openReg').href = $('regLink').textContent;
     Promise.all([
-      api('GET', 'profiles?select=id,email,full_name,role,approved,created_at,phone,requested&order=created_at.desc'),
+      api('GET', 'profiles?select=id,email,full_name,role,approved,created_at,phone,requested,systems&order=created_at.desc'),
       api('GET', 'profile_projects?select=profile_id,project_code'),
       api('GET', 'projects?select=code&is_active=is.true&order=code.asc'),
       rpc('integration_status'),
@@ -571,16 +580,19 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         return '<tr><td><b>' + esc(m.label_ar) + '</b></td><td>' + (m.all_projects ? 'كل المشاريع' : 'مشاريعه فقط') + '</td><td>' + yes(m.can_edit) + '</td><td>' + yes(m.can_assign) + '</td><td>' + yes(m.can_finance)
           + '</td><td>' + yes(m.can_delete) + '</td><td>' + yes(m.can_manage) + '</td><td>' + (m.systems || []).map(function(x){ return '<span class="tag">' + esc(SYS_AR[x] || x) + '</span>'; }).join('') + '</td></tr>';
       }).join('');
+      ROLE_SYS = {}; (r[4] || []).forEach(function(m){ ROLE_SYS[m.role] = m.systems || []; });
       var users = r[0] || [], pp = r[1] || []; projects = (r[2] || []).map(function(p){ return p.code; });
       var byU = {}; pp.forEach(function(x){ (byU[x.profile_id] = byU[x.profile_id] || []).push(x.project_code); });
       var pend = users.filter(function(u){ return !u.approved; }), ok = users.filter(function(u){ return u.approved; });
       $('pendSec').classList.toggle('hide', !pend.length);
       $('pendBody').innerHTML = pend.map(function(u){ return row(u, byU[u.id], true); }).join('');
       $('usersBody').innerHTML = ok.map(function(u){ return row(u, byU[u.id], false); }).join('') || '<tr><td colspan="5" class="empty">لا يوجد مستخدمون</td></tr>';
-      wireRows(); integ(r[3] || {});
+      wireRows(); integ(r[3] || {}); if (me.role === 'admin') recon(false);
       $('pendCnt').textContent = pend.length; $('pendCnt').classList.toggle('hide', !pend.length);
     }).catch(function(e){ toast('تعذّر التحميل: ' + e.message); });
   }
+  var ROLE_SYS = {}, SYS_LIST = [['watheeq','وثيق'],['fleet','الأسطول'],['ninja','Ninja'],['keemart','Keemart'],['dbb','صيانة الدبابات']];
+  function sysTags(sel){ return SYS_LIST.map(function(x){ return '<span class="tag' + (sel.indexOf(x[0]) >= 0 ? ' on' : '') + '" data-y="' + x[0] + '">' + x[1] + '</span>'; }).join(''); }
   function projTags(sel){ return projects.map(function(p){ return '<span class="tag' + (sel.indexOf(p) >= 0 ? ' on' : '') + '" data-p="' + esc(p) + '">' + esc(p) + '</span>'; }).join(''); }
   function row(u, mine, isNew){
     var rq = u.requested || {}, self = sess && u.id === sess.user_id;
@@ -590,21 +602,27 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     var who = '<b>' + esc(u.full_name || u.email) + '</b><div class="sub">' + esc(u.email) + ' · ' + when(u.created_at) + '</div>';
     var roleSel = '<select class="role"' + (self ? ' disabled' : '') + '>' + ROLES.map(function(r){ return '<option value="' + r[0] + '"' + (role === r[0] ? ' selected' : '') + '>' + r[1] + '</option>'; }).join('') + '</select>';
     if (isNew) return '<tr class="new" data-id="' + u.id + '"><td>' + who + '</td><td class="sub">' + (info || '—') + (rq.note ? '<br>ملاحظة: ' + esc(rq.note) : '') + '</td><td>' + roleSel + '</td><td class="pj">' + projTags(sel) + '</td>'
-      + '<td style="white-space:nowrap"><button class="btn sm" data-act="approve">✓ اعتماد</button> <button class="btn ghost sm" data-act="reject">رفض</button></td></tr>';
+      + '<td class="sy">' + sysTags(u.systems || ROLE_SYS[role] || []) + '</td>'
+      + '<td style="white-space:nowrap"><button class="btn sm" data-act="approve">اعتماد</button> <button class="btn ghost sm" data-act="reject">رفض</button></td></tr>';
     return '<tr data-id="' + u.id + '"><td>' + who + (info ? '<div class="sub">' + info + '</div>' : '') + '</td><td>' + roleSel + '</td><td class="pj">' + projTags(sel) + '</td>'
+      + '<td class="sy">' + sysTags(u.systems || ROLE_SYS[role] || []) + (u.systems ? '<div class="sub">مخصّصة</div>' : '') + '</td>'
       + '<td><label class="sw"><input type="checkbox" class="ap" checked' + (self ? ' disabled' : '') + '><span></span></label></td>'
       + '<td>' + (self ? '<span class="sub">حسابك</span>' : '<button class="btn sm" data-act="save">حفظ</button>') + '</td></tr>';
   }
   function wireRows(){
-    document.querySelectorAll('#vAdm .tag[data-p]').forEach(function(t){ t.onclick = function(){ t.classList.toggle('on'); }; });
+    document.querySelectorAll('#vAdm .tag[data-p], #vAdm .tag[data-y]').forEach(function(t){ t.onclick = function(){ if (t.closest('tr').querySelector('.role').disabled) return; t.classList.toggle('on'); }; });
+    document.querySelectorAll('#vAdm select.role').forEach(function(sel){ sel.onchange = function(){ var td = sel.closest('tr').querySelector('.sy'); if (td) { td.innerHTML = sysTags(ROLE_SYS[sel.value] || []); wireRows(); } }; });
     document.querySelectorAll('#vAdm button[data-act]').forEach(function(b){
       b.onclick = function(){
         var tr = b.closest('tr'), id = tr.getAttribute('data-id'), act = b.getAttribute('data-act');
         var codes = [].map.call(tr.querySelectorAll('.tag.on'), function(t){ return t.getAttribute('data-p'); });
         var body = { role: tr.querySelector('.role').value };
+        var ys = [].map.call(tr.querySelectorAll('.tag[data-y].on'), function(t){ return t.getAttribute('data-y'); });
+        var def = (ROLE_SYS[body.role] || []).slice().sort().join(',');
+        body.systems = ys.slice().sort().join(',') === def ? null : ys;
         if (act === 'approve') body.approved = true;
         if (act === 'save') body.approved = tr.querySelector('.ap').checked;
-        if (act === 'reject') { if (!confirm('رفض هذا الطلب؟ سيبقى الحساب موقوفاً.')) return; body = { approved: false, role: 'viewer' }; codes = []; }
+        if (act === 'reject') { if (!confirm('رفض هذا الطلب؟ سيبقى الحساب موقوفاً.')) return; body = { approved: false, role: 'viewer', systems: null }; codes = []; }
         b.disabled = true;
         api('PATCH', 'profiles?id=eq.' + id, body, { Prefer:'return=minimal' })
           .then(function(){ return api('DELETE', 'profile_projects?profile_id=eq.' + id, null, { Prefer:'return=minimal' }); })
@@ -635,6 +653,30 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         + '<div class="s">' + esc(c[4]) + (hl ? '<br><span class="dot ' + hl + '"></span>آخر نشاط: ' + when(c[5]) : '') + '</div></div>';
     }).join('');
   }
+
+  /* ---------------- الأسطول مرجع البيانات ---------------- */
+  var RECON_AR = [['to_active','يعودون «نشط» لأنهم يقودون في الأسطول'],['to_offwork','«متوقف عن العمل» بلا مركبة في الأسطول'],['project','تصحيح المشروع'],['phone','تصحيح الجوال'],['vehicle_type','تصحيح نوع المركبة'],['area','تصحيح المنطقة'],['fleet_drivers_not_in_watheeq','سائقون في الأسطول غير موجودين في وثيق (للمراجعة)']];
+  var lastBatch = null;
+  function recon(apply){
+    $('reconSec').classList.remove('hide');
+    return rpc('fleet_reconcile', { p_apply: !!apply }).then(function(x){
+      $('reconGrid').innerHTML = RECON_AR.map(function(k){ return '<div class="card stat" style="padding:12px 14px;box-shadow:none"><div class="n" style="margin:0">' + num(x[k[0]] || 0) + '</div><div class="s">' + k[1] + '</div></div>'; }).join('');
+      var pending = +x.employees_touched || 0;
+      $('reconApply').disabled = !pending; $('reconApply').textContent = pending ? 'تطبيق المطابقة (' + num(pending) + ' موظف)' : 'وثيق مطابق للأسطول';
+      if (x.applied) { lastBatch = x.batch; $('reconUndo').classList.remove('hide'); $('reconNote').textContent = 'تم التطبيق ونُسخت البيانات قبل التغيير.'; }
+      return x;
+    }).catch(function(e){ $('reconNote').textContent = 'تعذّر: ' + e.message; });
+  }
+  $('reconApply').onclick = function(){
+    if (!confirm('تطبيق بيانات الأسطول على وثيق؟ تُحفظ نسخة قبل التغيير ويمكن التراجع.')) return;
+    $('reconApply').disabled = true;
+    recon(true).then(function(x){ if (x && x.applied) { toast('تم: ' + num(x.employees_touched) + ' موظف طابق الأسطول'); setTimeout(function(){ recon(false); }, 600); } });
+  };
+  $('reconUndo').onclick = function(){
+    if (!lastBatch || !confirm('التراجع عن آخر مطابقة وإرجاع بيانات وثيق كما كانت؟')) return;
+    rpc('fleet_reconcile_undo', { p_batch: lastBatch }).then(function(n){ toast('تم التراجع عن ' + n + ' موظف'); lastBatch = null; $('reconUndo').classList.add('hide'); $('reconNote').textContent = ''; recon(false); })
+      .catch(function(e){ toast('تعذّر: ' + e.message); });
+  };
 
   /* ---------------- data review ---------------- */
   var rev = [], revArea = '';
