@@ -76,6 +76,111 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', observe); else observe();
 
+
+  /* ---------- 5) جسر التكامل وثيق ⇄ الأسطول عبر القاعدة الموحّدة ----------
+     وحدة التكامل القديمة تكتب مفاتيح مشتركة (طلبات التفويض، الوثائق، العقود…).
+     كانت تبقى داخل متصفح كل جهاز؛ الآن تُحفظ في القاعدة سجلاً بسجل وتصل للجميع. */
+  var SENT = 'https://afmc.cloud/wf';
+  window.WF_BRIDGE_URL = SENT;
+  var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co', SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
+  var realFetch = window.fetch.bind(window);
+  function sess(){ try { return JSON.parse(localStorage.getItem('wfsb_session') || 'null'); } catch(e){ return null; } }
+  function tok(){
+    var s = sess(); if (!s) return Promise.reject(new Error('no session'));
+    if (Date.now() < s.expires_at - 60000) return Promise.resolve(s.access_token);
+    return new Promise(function(res){ setTimeout(function(){ var t = sess(); res(t && t.access_token); }, 2500); });  /* طبقة المزامنة تجدّد الجلسة */
+  }
+  function api(method, path, body, extra){
+    return tok().then(function(t){
+      var h = { apikey: SB_KEY, Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' }; if (extra) for (var k in extra) h[k] = extra[k];
+      return realFetch(SB_URL + '/rest/v1/' + path, { method: method, headers: h, body: body == null ? undefined : JSON.stringify(body) });
+    }).then(function(r){ return r.text().then(function(t){ var j = t ? JSON.parse(t) : null; if (!r.ok) throw new Error((j && j.message) || r.status); return j; }); });
+  }
+  function reply(o){ return new Response(JSON.stringify(o), { status: 200, headers: { 'Content-Type': 'application/json' } }); }
+  function getAll(path){ var out = []; function pg(off){ return api('GET', path + '&offset=' + off + '&limit=1000').then(function(r){ out = out.concat(r || []); return (r && r.length === 1000) ? pg(off + 1000) : out; }); } return pg(0); }
+  function stable(v){
+    if (v === null || typeof v !== 'object') return JSON.stringify(v === undefined ? null : v);
+    if (Array.isArray(v)) return '[' + v.map(stable).join(',') + ']';
+    return '{' + Object.keys(v).filter(function(k){ return v[k] !== undefined; }).sort().map(function(k){ return JSON.stringify(k) + ':' + stable(v[k]); }).join(',') + '}';
+  }
+  function nid(x){ return String(x == null ? '' : x).trim().replace(/\.0+$/, ''); }
+  var snap = {};   /* آخر نسخة قُرئت من القاعدة لكل مفتاح — للرفع بالفروقات فقط */
+  var LOCAL_ONLY = { acl3: 1, presence: 1, audit: 1 };   /* الصلاحيات والتدقيق في القاعدة الموحّدة */
+  var PER_ITEM = { vehreq: 'array', docs: 'map' };
+
+  function getKey(key){
+    if (LOCAL_ONLY[key]) return Promise.resolve({ ok: true });
+    if (key === 'watheeq') {
+      if (typeof state !== 'undefined' && state && Array.isArray(state.employees)) return Promise.resolve({ ok: true, data: { employees: state.employees } });
+      return getAll('employees?select=iqama,data&deleted_at=is.null&order=iqama.asc').then(function(rows){
+        var emps = (rows || []).map(function(r){ var o = r.data || {}; o.iqama = o.iqama || r.iqama; return o; });
+        snap.watheeq = {}; emps.forEach(function(e){ snap.watheeq[nid(e.iqama)] = stable(e); });
+        return { ok: true, data: { employees: emps } };
+      });
+    }
+    if (key === 'fleetos') {
+      /* الأسطول هو المرجع — لكن الإيقاف الجماعي التلقائي لا يُنفَّذ بصمت:
+         يظهر في «مراجعة البيانات» ويطبّقه المدير. */
+      if (typeof vehicles !== 'undefined' && Array.isArray(vehicles)) return Promise.resolve({ ok: true, data: { vehicles: vehicles } });
+      return Promise.resolve({ ok: true, data: { vehicles: [] } });
+    }
+    if (PER_ITEM[key]) {
+      return getAll('app_records?select=key,data,updated_at&app=eq.wf&coll=eq.' + key + '&deleted_at=is.null&order=key.asc').then(function(rows){
+        var out = PER_ITEM[key] === 'array' ? [] : {}; snap[key] = {};
+        (rows || []).forEach(function(r){ snap[key][r.key] = stable(r.data); if (PER_ITEM[key] === 'array') out.push(r.data); else out[r.key] = r.data; });
+        return { ok: true, data: out };
+      });
+    }
+    return api('GET', 'app_kv?select=data,updated_at&app=eq.wf&key=eq.' + encodeURIComponent(key)).then(function(rows){
+      var r = rows && rows[0]; return r ? { ok: true, data: r.data, savedAt: r.updated_at } : { ok: true };
+    });
+  }
+  function postKey(key, data){
+    var now = new Date().toISOString();
+    if (LOCAL_ONLY[key] || key === 'fleetos') return Promise.resolve({ ok: true });
+    if (key === 'watheeq') {
+      if (typeof state !== 'undefined' && state && Array.isArray(state.employees)) return Promise.resolve({ ok: true });   /* وثيق يزامن موظفيه بنفسه */
+      var emps = (data && data.employees) || [], rows = [], prev = snap.watheeq || {};
+      emps.forEach(function(e){
+        var k = nid(e && e.iqama); if (!k || !prev[k] || prev[k] === stable(e)) return;   /* فقط ما تغيّر فعلاً */
+        var rec = {}; for (var f in e) if (f !== 'finance' && f !== 'vehicles' && f !== 'iban') rec[f] = e[f];
+        rows.push({ iqama: k, rec: rec, edited_at: now }); prev[k] = stable(e);
+      });
+      if (!rows.length) return Promise.resolve({ ok: true });
+      if (rows.length > 25) return Promise.resolve({ ok: false, error: 'too many changes' });   /* حماية من الكتابة الجماعية */
+      return api('POST', 'rpc/sync_employees', { p_rows: rows }).then(function(r){ return { ok: true, result: r }; });
+    }
+    if (PER_ITEM[key]) {
+      var items = {}, prevI = snap[key] || {}, out = [];
+      if (PER_ITEM[key] === 'array') (data || []).forEach(function(x){ if (x && x.id) { if ('iban' in x) { x = JSON.parse(JSON.stringify(x)); delete x.iban; } items[String(x.id)] = x; } });   /* لا آيبان في طلبات التفويض */
+      else Object.keys(data || {}).forEach(function(k){ items[nid(k)] = data[k]; });
+      Object.keys(items).forEach(function(k){ var st = stable(items[k]); if (prevI[k] !== st) { out.push({ key: k, rec: items[k], edited_at: now }); prevI[k] = st; } });
+      Object.keys(prevI).forEach(function(k){ if (!items[k]) { out.push({ key: k, deleted: true, edited_at: now }); delete prevI[k]; } });
+      snap[key] = prevI;
+      if (!out.length) return Promise.resolve({ ok: true });
+      return api('POST', 'rpc/sync_records', { p_app: 'wf', p_coll: key, p_rows: out }).then(function(){ return { ok: true, savedAt: now }; });
+    }
+    return api('POST', 'app_kv?on_conflict=app,key', [{ app: 'wf', key: key, data: data }], { Prefer: 'resolution=merge-duplicates,return=minimal' })
+      .then(function(){ return { ok: true, savedAt: now }; });
+  }
+  window.fetch = function(input, init){
+    var url = ''; try { url = typeof input === 'string' ? input : (input && input.url) || ''; } catch(e){}
+    if (url.indexOf(SENT) !== 0) return realFetch(input, init);
+    var method = String((init && init.method) || 'GET').toUpperCase(), p;
+    if (method === 'POST') { var o = {}; try { o = JSON.parse((init && init.body) || '{}'); } catch(e){} p = o.key ? postKey(o.key, o.data) : Promise.resolve({ ok: false }); }
+    else { var m = /[?&]key=([^&]+)/.exec(url); p = m ? getKey(decodeURIComponent(m[1])) : Promise.resolve({ ok: false }); }
+    return p.then(reply, function(e){ return reply({ ok: false, error: String(e && e.message || e) }); });
+  };
+  try { var _bc = navigator.sendBeacon && navigator.sendBeacon.bind(navigator);
+        if (_bc) navigator.sendBeacon = function(u, d){ return String(u).indexOf(SENT) === 0 ? true : _bc(u, d); }; } catch(e){}
+
+  /* طلب تفويض مركبة (وثيق → الأسطول) يعود ويعمل بين كل الأجهزة — لمن يملك التعديل */
+  if (APP === 'watheeq') {
+    var st2 = document.createElement('style'); st2.id = 'wf-cloud-req';
+    st2.textContent = 'html.wf-can-edit body .wf-reqbtn{display:inline-flex!important}';
+    (document.head || document.documentElement).appendChild(st2);
+  }
+
   /* ---------- 4) تعطيل الدوال (بعد تعريفها) ---------- */
   var NOOP = {
     common: ['openWAPanel', 'sendWAMessage', 'triggerAutoSend', 'openWAConfig', 'saveWAConfig', 'sendDriverWhatsApp', 'downloadHTML'],
@@ -2730,10 +2835,13 @@ function downloadHTML(){
 
   var timer = null;
   function start(){
-    rpc('whoami').then(function(w){
+    rpc('my_access').then(function(w){
       if (!w) { showGate(); return; }
       if (!w.approved) { showGate('حسابك (' + w.email + ') بانتظار موافقة المدير.', true); sess = null; try { localStorage.removeItem(SKEY); } catch(e){} return; }
       me = w; if (gate) gate.style.display = 'none';
+      if (!(w.perms && w.perms.edit)) {   /* مصفوفة الصلاحيات: رفع الملفات لمن يملك التعديل فقط */
+        var fi = document.getElementById('fileInput'); if (fi) { fi.disabled = true; var lb = fi.closest('label') || fi.parentElement; if (lb) lb.style.display = 'none'; }
+      }
       if (!meta || meta.user !== sess.user_id) resetMeta();
       hookProcess(); setChip('sync');
       return pull().then(function(){ setChip('ok'); return firstUpload(); }).then(function(){

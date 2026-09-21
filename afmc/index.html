@@ -162,6 +162,12 @@ select.role{padding:6px 8px;border:1px solid var(--line);border-radius:8px;backg
   </div>
 
   <div class="sec">
+    <h3>🧭 مصفوفة الصلاحيات الموحّدة</h3>
+    <div class="card tbl"><table><thead><tr><th>الدور</th><th>المشاريع</th><th>تعديل</th><th>تسليم مركبات</th><th>الرواتب</th><th>حذف</th><th>إدارة المستخدمين</th><th>الأنظمة الظاهرة</th></tr></thead><tbody id="matrixBody"></tbody></table></div>
+    <div class="sub" style="margin-top:8px">هذه القواعد نفسها تُطبَّق داخل القاعدة على كل الأنظمة (وثيق، الأسطول، Ninja، Keemart، المراجعة) — لا يمكن تجاوزها من أي تطبيق. «مشاريعه فقط» = المشاريع المحدّدة للمستخدم أعلاه.</div>
+  </div>
+
+  <div class="sec">
     <h3>🔗 رابط التسجيل للفريق</h3>
     <div class="card link"><code id="regLink"></code><button class="btn sm" id="copyReg">نسخ الرابط</button><a class="btn ghost sm" id="openReg" target="_blank">فتح</a></div>
   </div>
@@ -177,6 +183,10 @@ select.role{padding:6px 8px;border:1px solid var(--line);border-radius:8px;backg
   <div class="h"><div><h2>مراجعة البيانات</h2><p>كل ما يحتاج تصحيحاً في الأنظمة المربوطة — يُحدَّث تلقائياً عند التصحيح.</p></div>
     <div style="display:flex;gap:8px"><button class="btn ghost" id="revRefresh">🔄 تحديث</button><button class="btn" id="revCsv">⬇️ تصدير CSV</button></div></div>
   <div class="tiles" id="tiles"></div>
+  <div class="card hide" id="applyBox" style="padding:12px 14px;margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <div style="flex:1;min-width:240px"><b>قاعدة «الأسطول هو المرجع»</b><div class="sub">موظفون نشطون في وثيق ولا توجد لهم مركبة نشطة في الأسطول. التطبيق يحوّلهم إلى «متوقف عن العمل» في وثيق — لا يُنفَّذ إلا بضغطتك.</div></div>
+    <button class="btn" id="applyBtn">تطبيق على المعروضين</button>
+  </div>
   <div class="filters">
     <input id="revQ" placeholder="بحث بالاسم أو الإقامة أو اللوحة…">
     <select id="revSev"><option value="">كل الأولويات</option><option value="high">عالية</option><option value="medium">متوسطة</option><option value="low">منخفضة</option></select>
@@ -207,7 +217,7 @@ select.role{padding:6px 8px;border:1px solid var(--line);border-radius:8px;backg
   var AREA_AR = { employees:'الموظفون', vehicles:'المركبات', attendance:'الحضور', maintenance:'الصيانة' };
   var CODE_AR = { no_phone:'بلا جوال', dup_phone:'جوال مكرر', iqama_expired:'إقامة منتهية', iqama_soon:'إقامة قريبة الانتهاء', license_expired:'رخصة منتهية',
                   no_project:'بلا مشروع', assigned_no_driver:'مسلّمة بلا سائق', workshop_long:'ورشة طويلة', rule:'تعارض قواعد', driver_not_in_hr:'سائق غير موجود في وثيق',
-                  captain_not_in_hr:'كابتن غير مربوط', bike_not_in_fleet:'دباب غير مسجّل' };
+                  captain_not_in_hr:'كابتن غير مربوط', bike_not_in_fleet:'دباب غير مسجّل', active_no_vehicle:'نشط بلا مركبة في الأسطول' };
 
   function $(id){ return document.getElementById(id); }
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
@@ -266,17 +276,17 @@ select.role{padding:6px 8px;border:1px solid var(--line);border-radius:8px;backg
   /* ---------------- start ---------------- */
   function can(need){
     if (!me) return false;
-    if (need === 'admin') return me.role === 'admin';
+    if (need === 'admin') return !!(me.perms && me.perms.manage);
     if (need === 'review') return ['admin','manager','finance'].indexOf(me.role) >= 0;
     return true;
   }
   function start(){
-    rpc('whoami').then(function(w){
+    rpc('my_access').then(function(w){
       if (!w) { signOut(); return; }
       if (!w.approved) { signOut(); gateMsg('warn', 'حسابك (' + esc(w.email) + ') بانتظار موافقة المدير.'); return; }
       me = w;
       $('gate').classList.add('hide'); $('top').classList.remove('hide');
-      $('meName').textContent = me.name || me.email; $('meRole').textContent = ROLE_AR[me.role] || me.role;
+      $('meName').textContent = me.name || me.email; $('meRole').textContent = (me.label || ROLE_AR[me.role] || me.role) + (me.all_projects ? '' : ' · ' + ((me.projects || []).join('، ') || 'بلا مشاريع'));
       $('meAv').textContent = (me.name || me.email || '؟').trim().charAt(0);
       document.querySelectorAll('#tabs button').forEach(function(b){ var n = b.getAttribute('data-need'); b.classList.toggle('hide', !!n && !can(n)); });
       buildSystems(); show(location.hash === '#admin' && can('admin') ? 'vAdm' : location.hash === '#review' && can('review') ? 'vRev' : 'vSys');
@@ -299,7 +309,7 @@ select.role{padding:6px 8px;border:1px solid var(--line);border-radius:8px;backg
   /* ---------------- systems ---------------- */
   var current = null;
   function buildSystems(){
-    var list = SYSTEMS.filter(function(s){ return s.roles.indexOf(me.role) >= 0; });
+    var list = SYSTEMS.filter(function(s){ return (me.systems || []).indexOf(s.id) >= 0; });
     $('sysbar').innerHTML = list.map(function(s){
       return '<button class="sys" data-s="' + s.id + '"><div class="ic">' + s.ic + '</div><div><b>' + s.name + '</b><small>' + s.desc + '</small></div></button>';
     }).join('');
@@ -330,8 +340,15 @@ select.role{padding:6px 8px;border:1px solid var(--line);border-radius:8px;backg
       api('GET', 'profiles?select=id,email,full_name,role,approved,created_at,phone,requested&order=created_at.desc'),
       api('GET', 'profile_projects?select=profile_id,project_code'),
       api('GET', 'projects?select=code&is_active=is.true&order=code.asc'),
-      rpc('integration_status')
+      rpc('integration_status'),
+      api('GET', 'role_matrix?select=*')
     ]).then(function(r){
+      var SYS_AR = { watheeq:'وثيق', fleet:'الأسطول', ninja:'Ninja', keemart:'Keemart', dbb:'صيانة الدبابات' }, ord = ROLES.map(function(x){ return x[0]; });
+      var yes = function(b){ return b ? '<span style="color:var(--ok);font-weight:700">✓</span>' : '<span class="sub">—</span>'; };
+      $('matrixBody').innerHTML = (r[4] || []).sort(function(a, b){ return ord.indexOf(a.role) - ord.indexOf(b.role); }).map(function(m){
+        return '<tr><td><b>' + esc(m.label_ar) + '</b></td><td>' + (m.all_projects ? 'كل المشاريع' : 'مشاريعه فقط') + '</td><td>' + yes(m.can_edit) + '</td><td>' + yes(m.can_assign) + '</td><td>' + yes(m.can_finance)
+          + '</td><td>' + yes(m.can_delete) + '</td><td>' + yes(m.can_manage) + '</td><td>' + (m.systems || []).map(function(x){ return '<span class="tag">' + esc(SYS_AR[x] || x) + '</span>'; }).join('') + '</td></tr>';
+      }).join('');
       var users = r[0] || [], pp = r[1] || []; projects = (r[2] || []).map(function(p){ return p.code; });
       var byU = {}; pp.forEach(function(x){ (byU[x.profile_id] = byU[x.profile_id] || []).push(x.project_code); });
       var pend = users.filter(function(u){ return !u.approved; }), ok = users.filter(function(u){ return u.approved; });
@@ -431,9 +448,18 @@ select.role{padding:6px 8px;border:1px solid var(--line);border-radius:8px;backg
       return '<tr><td><span class="sev ' + x.severity + '">' + ({high:'عالية',medium:'متوسطة',low:'منخفضة'}[x.severity]) + '</span></td><td>' + esc(CODE_AR[x.code] || x.code) + '<div class="sub">' + esc(AREA_AR[x.area] || x.area) + '</div></td>'
         + '<td style="direction:ltr;text-align:right">' + esc(x.key) + '</td><td>' + esc(x.name || '—') + '</td><td>' + esc(x.project || '—') + '</td><td>' + esc(x.issue) + '</td></tr>';
     }).join('') : '<tr><td colspan="6" class="empty">✅ لا توجد ملاحظات بهذا التصفية</td></tr>';
+    var showApply = revArea === 'employees|active_no_vehicle' && me && (me.role === 'admin' || me.role === 'manager') && f.length > 0;
+    $('applyBox').classList.toggle('hide', !showApply); if (showApply) $('applyBtn').textContent = 'تطبيق على المعروضين (' + f.length + ')';
     $('revFoot').textContent = f.length > shown.length ? 'يُعرض أول ' + shown.length + ' من ' + f.length + ' — صدّر CSV للقائمة كاملة.' : f.length + ' ملاحظة';
   }
   ['revQ','revSev','revProj'].forEach(function(id){ $(id).oninput = renderRev; });
+  $('applyBtn').onclick = function(){
+    var keys = filtered().map(function(x){ return x.key; });
+    if (!keys.length || !confirm('تحويل ' + keys.length + ' موظف إلى «متوقف عن العمل» في وثيق؟')) return;
+    var b = $('applyBtn'); b.disabled = true;
+    rpc('apply_offwork', { p_iqamas: keys }).then(function(n){ b.disabled = false; toast('✅ تم تحديث ' + n + ' موظف — يظهر في وثيق خلال دقيقة'); loadReview(); })
+      .catch(function(e){ b.disabled = false; toast('تعذّر: ' + e.message); });
+  };
   $('revRefresh').onclick = loadReview;
   $('revCsv').onclick = function(){
     var f = filtered(), rows = [['الأولوية','النوع','القسم','المرجع','الاسم','المشروع','الملاحظة']].concat(f.map(function(x){
