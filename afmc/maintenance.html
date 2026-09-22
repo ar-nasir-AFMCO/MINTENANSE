@@ -174,7 +174,7 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
       <button data-t="vehicle"><svg class="i"><use href="#i-car"/></svg>السيارات <span class="n hide" id="nVeh"></span></button>
       <button data-t="bike"><svg class="i"><use href="#i-scooter"/></svg>الدبابات <span class="n hide" id="nBike"></span></button>
       <button data-t="housing"><svg class="i"><use href="#i-bld"/></svg>السكنات <span class="n hide" id="nHou"></span></button>
-      <button data-t="rep"><svg class="i"><use href="#i-chart"/></svg>التكاليف والتقارير</button>
+      <button data-t="rep"><svg class="i"><use href="#i-chart"/></svg>الأوامر والتكاليف <span class="n hide" id="nDev"></span></button>
     </nav>
   </div>
 
@@ -193,14 +193,25 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
     <section id="t-housing" class="hide"></section>
 
     <section id="t-rep" class="hide">
+      <div class="card" id="devCard"><h3><svg class="i"><use href="#i-users"/></svg>أجهزة المشرفين<span class="sp"></span><span class="muted sm">بلاغات السيارات والسكنات — الجهاز يعمل بعد الاعتماد</span></h3>
+        <div class="tw"><table class="cards"><thead><tr><th>المشرف</th><th>القسم</th><th>الموقع</th><th>البلاغات</th><th>آخر ظهور</th><th>الحالة</th><th></th></tr></thead><tbody id="devBody"></tbody></table></div></div>
+      <div class="card"><h3><svg class="i"><use href="#i-wrench"/></svg>كل أوامر الصيانة<span class="sp"></span><span class="muted sm" id="allCount"></span></h3>
+        <div class="tools">
+          <select id="fKind"><option value="all">كل الأقسام</option><option value="vehicle">سيارات</option><option value="bike">دبابات</option><option value="housing">سكنات</option></select>
+          <select id="fSt"><option value="open">المفتوحة</option><option value="all">الكل</option><option value="new">مفتوح</option><option value="in_progress">في الورشة</option><option value="waiting_parts">بانتظار قطع</option><option value="done">مغلق</option><option value="cancelled">ملغي</option></select>
+          <input id="qAll" placeholder="بحث برقم الأمر أو الأصل أو العطل…">
+        </div>
+        <div class="tw"><table class="cards"><thead><tr><th>الأمر</th><th>القسم</th><th>الأصل</th><th>العطل</th><th>الحالة</th><th>الفتح</th><th>المدة</th><th>التكلفة</th><th>على السائق</th><th></th></tr></thead><tbody id="b-all"></tbody></table></div></div>
       <div class="card"><h3><svg class="i"><use href="#i-money"/></svg>تكاليف الصيانة</h3>
         <div class="form"><label class="f">من<input id="pS" type="date"></label><label class="f">إلى<input id="pE" type="date"></label><button class="btn" id="pGo">عرض</button><button class="btn ghost" id="pPrint">طباعة</button></div>
         <div id="pOut" style="margin-top:14px"></div></div>
       <div class="card"><h3><svg class="i"><use href="#i-down"/></svg>تصدير Excel (CSV)</h3>
         <div class="tools"><button class="btn ghost sm" data-x="open">الأوامر المفتوحة</button><button class="btn ghost sm" data-x="all">كل الأوامر</button><button class="btn ghost sm" data-x="charge">التحميل على السائقين</button></div></div>
-      <div class="card"><h3><svg class="i"><use href="#i-scooter"/></svg>تطبيق بلاغات المشرفين</h3>
-        <div class="muted sm" style="margin-bottom:10px">بلاغات تطبيق صيانة الدبابات تنعكس هنا تلقائياً، وبيانات دخول المشرفين ما تغيّرت.</div>
-        <a class="btn ghost sm" id="appLink" href="../" target="_blank" rel="noopener"><svg class="i"><use href="#i-ext"/></svg>فتح تطبيق البلاغات</a></div>
+      <div class="card"><h3><svg class="i"><use href="#i-scooter"/></svg>تطبيقات البلاغات الميدانية</h3>
+        <div class="muted sm" style="margin-bottom:10px">ثلاثة تطبيقات بنفس الطريقة: دخول باسم المشرف والموقع، والبلاغ ينزل أمر صيانة هنا وينعكس في الأسطول ووثيق.</div>
+        <div class="tools"><a class="btn ghost sm" id="appLink" href="../" target="_blank" rel="noopener"><svg class="i"><use href="#i-ext"/></svg>الدبابات</a>
+        <a class="btn ghost sm" href="field.html?kind=vehicle" target="_blank" rel="noopener"><svg class="i"><use href="#i-ext"/></svg>السيارات</a>
+        <a class="btn ghost sm" href="field.html?kind=housing" target="_blank" rel="noopener"><svg class="i"><use href="#i-ext"/></svg>السكنات</a></div></div>
     </section>
   </main>
 </div>
@@ -294,70 +305,37 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
   }
 
   /* ---------- البيانات ---------- */
-  var O = [], SUM = {}, assets = { vehicle: [], bike: [], housing: [] }, loadingP = null;
+  var O = [], SUM = {}, DEV = [], loadingP = null;
   function load(){
     if (loadingP) return loadingP;
     loadingP = Promise.all([
       api('GET', 'maint_orders?select=*&deleted_at=is.null&order=opened_at.desc'),
-      rpc('maint_summary').catch(function(){ return {}; })
-    ]).then(function(a){ O = a[0] || []; SUM = a[1] || {}; loadingP = null; render(); })
+      rpc('maint_summary').catch(function(){ return {}; }),
+      api('GET', 'field_devices?select=*&order=created_at.desc').catch(function(){ return []; })
+    ]).then(function(a){ O = a[0] || []; SUM = a[1] || {}; DEV = a[2] || []; loadingP = null; render(); })
       .catch(function(e){ loadingP = null; toast('تعذّر التحميل: ' + e.message, 5000); });
     return loadingP;
   }
-  var assetAt = {};
-  function maybeAssets(k){ if (k === 'bike') { openBike(); return; } if (!SEC[k]) return; if (Date.now() - (assetAt[k] || 0) < 30000) return; assetAt[k] = Date.now(); loadAssets(k); }
-  function loadAssets(kind){
-    return rpc('maint_assets', { p_kind: kind }).then(function(r){ assets[kind] = r || []; fillAsset(kind); }).catch(function(){});
-  }
+  function maybeAssets(k){ if (APPS[k]) openApp(k); }
 
-  /* ---------- الأقسام الثلاثة: نفس المنطق، مصدر مختلف ---------- */
-  var SEC = {
-    vehicle: { ic:'car', title:'أمر صيانة سيارة', assetLabel:'رقم اللوحة', note:'الأصل: الأسطول — فتح الأمر يحوّل المركبة إلى «ورشة»، وإغلاقه يعيدها متاحة تلقائياً.' },
-    bike: { ic:'scooter', title:'أمر صيانة دباب', assetLabel:'رقم اللوحة', note:'الأصل: تطبيق بلاغات المشرفين — بلاغاتهم تنزل هنا تلقائياً، وتقدر تضيف أمر مكتبي.' },
-    housing: { ic:'bld', title:'أمر صيانة سكن', assetLabel:'المبنى والغرفة', note:'الأصل: نظام السكنات — اختر المبنى والغرفة.' }
+  var APPS = {
+    bike: { ic:'scooter', name:'بلاغات صيانة الدبابات', src:'../', note:'التطبيق كما هو — البلاغات تدخل تكاليف وتقارير القسم تلقائياً' },
+    vehicle: { ic:'car', name:'بلاغات صيانة السيارات', src:'field.html?kind=vehicle', note:'نفس طريقة الدبابات — والبلاغ يحوّل المركبة إلى «ورشة» في الأسطول ويظهر في ملف السائق في وثيق' },
+    housing: { ic:'bld', name:'بلاغات صيانة السكنات', src:'field.html?kind=housing', note:'نفس طريقة الدبابات — والبلاغ يظهر في نظام السكنات وفي ملف ساكن الغرفة في وثيق' }
   };
   function buildForms(){
-    $('t-bike').innerHTML = '<div class="card" style="padding:0;overflow:hidden">' +
-      '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--surface-2)">' +
-        '<svg class="i"><use href="#i-scooter"/></svg><b style="font-size:13.5px">بلاغات صيانة الدبابات</b>' +
-        '<span class="muted sm">التطبيق كما هو — البلاغات تدخل تكاليف وتقارير القسم تلقائياً</span><span style="flex:1"></span>' +
-        '<a class="btn ghost sm" href="../" target="_blank" rel="noopener"><svg class="i"><use href="#i-ext"/></svg>نافذة مستقلة</a></div>' +
-      '<iframe id="bikeFr" title="صيانة الدبابات" style="display:block;width:100%;height:calc(100vh - 210px);min-height:560px;border:0"></iframe></div>';
-    Object.keys(SEC).filter(function(k){ return k !== 'bike'; }).forEach(function(k){
-      var s = SEC[k];
-      $('t-' + k).innerHTML =
-        '<div class="card"' + (canEdit ? '' : ' style="display:none"') + '><h3><svg class="i"><use href="#i-' + s.ic + '"/></svg>' + s.title + '</h3>' +
-        '<div class="muted sm" style="margin-bottom:10px">' + s.note + '</div>' +
-        '<div class="form">' +
-          '<label class="f">' + s.assetLabel + (k === 'housing' ? '<select id="a-' + k + '"></select>' : '<input id="a-' + k + '" list="dl-' + k + '" placeholder="اكتب أو اختر"><datalist id="dl-' + k + '"></datalist>') + '</label>' +
-          '<label class="f">نوع العطل<input id="ft-' + k + '" placeholder="كهرباء، فرامل، سباكة…"></label>' +
-          '<label class="f">الوصف<input id="ds-' + k + '"></label>' +
-          '<label class="f">الأولوية<select id="pr-' + k + '"><option value="normal">عادية</option><option value="high">عالية</option><option value="low">منخفضة</option></select></label>' +
-          '<label class="f">تاريخ الفتح<input id="dt-' + k + '" type="date" value="' + today() + '"></label>' +
-          '<button class="btn" data-add="' + k + '"><svg class="i"><use href="#i-plus"/></svg>فتح أمر</button>' +
-        '</div></div>' +
-        '<div class="card"><div class="tools">' +
-          '<input id="q-' + k + '" placeholder="بحث برقم الأمر أو الأصل أو العطل…">' +
-          '<select id="f-' + k + '"><option value="open">المفتوحة</option><option value="all">الكل</option><option value="new">مفتوح</option><option value="in_progress">في الورشة</option><option value="waiting_parts">بانتظار قطع</option><option value="done">مغلق</option><option value="cancelled">ملغي</option></select>' +
-          '<span class="muted sm" id="c-' + k + '"></span></div>' +
-          '<div class="tw"><table class="cards"><thead><tr><th>الأمر</th><th>الأصل</th><th>العطل</th><th>الحالة</th><th>الفتح</th><th>المدة</th><th>التكلفة</th><th>على السائق</th><th></th></tr></thead><tbody id="b-' + k + '"></tbody></table></div></div>';
-      $('q-' + k).oninput = function(){ renderList(k); };
-      $('f-' + k).onchange = function(){ renderList(k); };
-      loadAssets(k);
+    Object.keys(APPS).forEach(function(k){
+      var a = APPS[k];
+      $('t-' + k).innerHTML = '<div class="card" style="padding:0;overflow:hidden">' +
+        '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--surface-2);flex-wrap:wrap">' +
+          '<svg class="i"><use href="#i-' + a.ic + '"/></svg><b style="font-size:13.5px">' + a.name + '</b>' +
+          '<span class="muted sm">' + a.note + '</span><span style="flex:1"></span>' +
+          '<a class="btn ghost sm" href="' + a.src + '" target="_blank" rel="noopener"><svg class="i"><use href="#i-ext"/></svg>نافذة مستقلة</a></div>' +
+        '<iframe id="fr-' + k + '" title="' + a.name + '" style="display:block;width:100%;height:calc(100vh - 210px);min-height:560px;border:0"></iframe></div>';
     });
   }
-  var bikeSrc = null;
-  function openBike(){ var f = $('bikeFr'); if (!f || bikeSrc) return; bikeSrc = '../'; f.src = bikeSrc; }
-  function fillAsset(k){
-    var a = assets[k] || [];
-    if (k === 'housing') {
-      $('a-housing').innerHTML = a.length ? a.map(function(x){ return '<option value="' + x.id + '">' + esc(x.building) + ' — غرفة ' + esc(x.room) + '</option>'; }).join('')
-        : '<option value="">لا توجد غرف — تحتاج صلاحية السكنات</option>';
-    } else {
-      $('dl-' + k).innerHTML = a.map(function(x){ return '<option value="' + esc(x.plate) + '">' + esc([x.project, x.type, x.city].filter(Boolean).join(' · ')) + '</option>'; }).join('');
-    }
-  }
-
+  var appOn = {};
+  function openApp(k){ var a = APPS[k], f = a && $('fr-' + k); if (!f || appOn[k]) return; appOn[k] = 1; f.src = a.src; }
   var tab = 'dash';
   document.querySelectorAll('#tabs button').forEach(function(b){ b.onclick = function(){ setTab(b.getAttribute('data-t')); }; });
   function setTab(t){
@@ -392,23 +370,23 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
       var all = O.filter(function(o){ return o.kind === k; }), op = all.filter(isOpen).length, p = all.length ? Math.round(op / all.length * 100) : 0;
       return '<div style="margin-bottom:12px"><div style="display:flex;gap:8px;font-size:13px"><b>' + KIND[k] + '</b><span style="flex:1"></span><span>' + op + ' مفتوح من ' + all.length + ' أمر</span></div><div class="bar2"><i style="width:' + Math.min(p, 100) + '%"></i></div></div>';
     }).join('');
-    ['vehicle','housing'].forEach(renderList);
+    renderList(); renderDev();
     wire();
   }
-  function renderList(k){
-    if (k === 'bike' || !$('b-' + k)) return;
-    var q = normId($('q-' + k).value).toLowerCase().replace(/\s+/g, ''), f = $('f-' + k).value;
+  function renderList(){
+    var q = normId($('qAll').value).toLowerCase().replace(/\s+/g, ''), f = $('fSt').value, kf = $('fKind').value;
     var list = O.filter(function(o){
-      if (o.kind !== k) return false;
+      if (kf !== 'all' && o.kind !== kf) return false;
       if (f === 'open' ? !isOpen(o) : f !== 'all' && o.status !== f) return false;
       if (!q) return true;
       return (o.order_no + ' ' + (o.asset_label || '') + ' ' + (o.fault_type || '') + ' ' + (o.description || '') + ' ' + (o.project || '')).toLowerCase().replace(/\s+/g, '').indexOf(q) >= 0;
     });
-    $('c-' + k).textContent = num(list.length) + ' أمر';
-    $('b-' + k).innerHTML = list.length ? list.map(function(o){
+    $('allCount').textContent = num(list.length) + ' أمر';
+    $('b-all').innerHTML = list.length ? list.map(function(o){
       var tot = Number(o.cost || 0) + Number(o.parts_cost || 0);
-      return '<tr><td data-l="الأمر"><b>' + esc(o.order_no) + '</b><div class="muted sm">' + (SRC[o.source] || '') + (o.priority === 'high' ? ' · <span class="pill bad">عالية</span>' : '') + '</div></td>' +
-        '<td data-l="الأصل">' + esc(o.asset_label || '—') + (o.project ? '<div class="muted sm">' + esc(o.project) + '</div>' : '') + '</td>' +
+      return '<tr><td data-l="الأمر"><b>' + esc(o.order_no) + '</b><div class="muted sm">' + (SRC[o.source] || '') + (o.reporter ? ' · ' + esc(o.reporter) : '') + (o.priority === 'high' ? ' · <span class="pill bad">عالية</span>' : '') + '</div></td>' +
+        '<td data-l="القسم">' + (KIND[o.kind] || o.kind) + '</td>' +
+        '<td data-l="الأصل">' + esc(o.asset_label || '—') + (o.project || o.site ? '<div class="muted sm">' + esc(o.project || o.site) + '</div>' : '') + '</td>' +
         '<td data-l="العطل">' + esc(o.fault_type || '—') + (o.description ? '<div class="muted sm">' + esc(o.description) + '</div>' : '') + '</td>' +
         '<td data-l="الحالة"><span class="pill ' + ST_CLS[o.status] + '">' + ST[o.status] + '</span></td>' +
         '<td data-l="الفتح">' + esc(o.opened_at) + '</td>' +
@@ -416,7 +394,19 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
         '<td data-l="التكلفة">' + (tot ? money(tot) : '—') + (o.invoice_no ? '<div class="muted sm">' + esc(o.invoice_no) + '</div>' : '') + '</td>' +
         '<td data-l="على السائق">' + (Number(o.charge_amount) > 0 ? '<span class="pill warn">' + money(o.charge_amount) + '</span><div class="muted sm">' + esc(o.charge_iqama || '') + '</div>' : '—') + '</td>' +
         '<td><div class="acts">' + (canEdit && isOpen(o) ? nextBtns(o) : '') + '<button class="btn ghost sm" data-open="' + o.id + '">تفاصيل</button></div></td></tr>';
-    }).join('') : '<tr><td colspan="9" class="empty">لا توجد أوامر</td></tr>';
+    }).join('') : '<tr><td colspan="10" class="empty">لا توجد أوامر</td></tr>';
+  }
+  var DST = { pending:'بانتظار الاعتماد', active:'معتمد', blocked:'موقوف' };
+  function renderDev(){
+    var pend = DEV.filter(function(d){ return d.status === 'pending'; });
+    $('nDev').textContent = pend.length; $('nDev').classList.toggle('hide', !pend.length);
+    $('devBody').innerHTML = DEV.length ? DEV.map(function(d){
+      return '<tr><td data-l="المشرف"><b>' + esc(d.name) + '</b><div class="muted sm">' + esc(d.device_id) + '</div></td>' +
+        '<td data-l="القسم">' + (KIND[d.kind] || d.kind) + '</td><td data-l="الموقع">' + esc(d.site || '—') + '</td>' +
+        '<td data-l="البلاغات">' + num(d.reports) + '</td><td data-l="آخر ظهور">' + esc(String(d.last_seen || '').slice(0, 10)) + '</td>' +
+        '<td data-l="الحالة"><span class="pill ' + (d.status === 'active' ? 'ok' : d.status === 'pending' ? 'warn' : 'mut') + '">' + (DST[d.status] || d.status) + '</span></td>' +
+        '<td><div class="acts">' + (canEdit ? (d.status !== 'active' ? '<button class="btn ok sm" data-dev="' + d.id + '|active">اعتماد</button>' : '<button class="btn ghost sm" data-dev="' + d.id + '|blocked">إيقاف</button>') : '') + '</div></td></tr>';
+    }).join('') : '<tr><td colspan="7" class="empty">لا توجد أجهزة مسجّلة بعد</td></tr>';
   }
   function nextBtns(o){
     var b = '';
@@ -434,15 +424,9 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
   function wire(){
     on('data-st', function(v, b){ var x = v.split('|'); save(b, api('PATCH', 'maint_orders?id=eq.' + x[0], { status: x[1] }), 'تم تحديث الحالة'); });
     on('data-open', function(id, b){ details(id, b.getAttribute('data-close') === '1'); });
-    on('data-add', addOrder);
-  }
-  function addOrder(k, b){
-    var body = { kind: k, fault_type: $('ft-' + k).value.trim() || null, description: $('ds-' + k).value.trim() || null,
-                 priority: $('pr-' + k).value, opened_at: $('dt-' + k).value || today(), created_by_name: (me && (me.name || me.email)) || null };
-    if (k === 'housing') { if (!$('a-housing').value) return toast('اختر الغرفة'); body.room_id = $('a-housing').value; }
-    else { var pl = $('a-' + k).value.trim(); if (!pl) return toast('اكتب رقم اللوحة'); body.plate = pl; body.asset_label = pl; }
-    if (!body.fault_type && !body.description) return toast('اكتب نوع العطل أو الوصف');
-    save(b, api('POST', 'maint_orders', body), 'فُتح أمر صيانة').then(function(){ $('ft-' + k).value = $('ds-' + k).value = ''; if (k !== 'housing') $('a-' + k).value = ''; });
+    on('data-dev', function(v, b){ var x = v.split('|');
+      save(b, api('PATCH', 'field_devices?id=eq.' + x[0], x[1] === 'active' ? { status:'active', approved_at: new Date().toISOString() } : { status:'blocked' }),
+        x[1] === 'active' ? 'تم اعتماد الجهاز' : 'تم إيقاف الجهاز'); });
   }
   function details(id, closing){
     var o = O.filter(function(x){ return x.id === id; })[0]; if (!o) return;
@@ -484,7 +468,8 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
   }
   function close(){ $('modal').classList.add('hide'); }
   $('modal').onclick = function(e){ if (e.target === $('modal')) close(); };
-  $('reload').onclick = function(){ assetAt = {}; maybeAssets(tab); load().then(function(){ toast('تم التحديث'); }); };
+  $('qAll').oninput = renderList; $('fSt').onchange = renderList; $('fKind').onchange = renderList;
+  $('reload').onclick = function(){ maybeAssets(tab); load().then(function(){ toast('تم التحديث'); }); };
 
   /* ---------- التقارير ---------- */
   function printHtml(h){ $('print').innerHTML = h; setTimeout(function(){ window.print(); }, 50); }
@@ -525,7 +510,7 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
   /* ---------- مباشر ---------- */
   function liveState(k, t){ var el = $('live'); el.className = 'live' + (k ? ' ' + k : ''); el.querySelector('span').textContent = t; }
   var rt = (function(){
-    var TABLES = ['maint_orders','vehicles','app_records'];
+    var TABLES = ['maint_orders','vehicles','app_records','field_devices'];
     var TOPIC = 'realtime:afmc-maint', ws = null, hb = null, ref = 0, stopped = true, retry = 1000, t2 = null, poll = null;
     function send(o){ try { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); } catch(e){} }
     function open(){

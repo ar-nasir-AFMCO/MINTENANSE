@@ -8525,6 +8525,12 @@ body.wx-card-open #wx4Pill{ display:none !important; }
         h += '<h4>🚗 حوادث وتلفيات ومالية المركبات (من الأسطول)</h4>' + (inc.length ? '<div class="scroll"><table><thead><tr><th>النوع</th><th>اللوحة</th><th>التاريخ</th><th>التكلفة</th><th>نسبة الخطأ</th><th>على السائق</th><th>الحالة</th><th>الوصف</th></tr></thead><tbody>'
           + inc.map(function(x){ return '<tr><td>' + (x.kind === 'accident' ? 'حادث' : x.kind === 'maintenance' ? 'صيانة' : 'تلفيات') + '</td><td>' + esc(x.plate) + '</td><td>' + esc(x.date || '—') + '</td><td>' + num(x.cost) + '</td><td>' + num(x.fault_pct) + '%</td><td class="warn">' + num(x.charge) + '</td><td>' + esc(x.status || '—') + '</td><td>' + esc(x.description || '') + (x.notes ? ' <span class="muted">(' + esc(x.notes) + ')</span>' : '') + '</td></tr>'; }).join('')
           + '</tbody></table></div>' : '<div class="muted">لا توجد حوادث أو تلفيات مسجّلة على هذا الموظف في الأسطول.</div>');
+        // الصيانة الجارية (قسم الصيانة العام)
+        var mt = o.maint || [];
+        h += '<h4>🔧 الصيانة (من قسم الصيانة العام)</h4>' + (mt.length ? '<div class="scroll"><table><thead><tr><th>القسم</th><th>الأصل</th><th>العطل</th><th>الحالة</th><th>الفتح</th><th>التكلفة</th><th>على السائق</th></tr></thead><tbody>'
+          + mt.map(function(x){ var st = { 'new':'مفتوح', in_progress:'في الورشة', waiting_parts:'بانتظار قطع', done:'مغلق', cancelled:'ملغي' }[x.status] || x.status;
+            return '<tr><td>' + (x.kind === 'vehicle' ? 'مركبته' : 'سكنه') + '</td><td>' + esc(x.asset || '—') + '</td><td>' + esc(x.type || x.desc || '—') + '</td><td>' + esc(st) + '</td><td>' + esc(x.opened || '—') + '</td><td>' + num(x.cost) + '</td><td class="warn">' + num(x.charge) + '</td></tr>'; }).join('')
+          + '</tbody></table></div>' : '<div class="muted">لا توجد أوامر صيانة على مركبته أو سكنه.</div>');
         if (ded.length) h += '<div class="muted" style="margin-top:6px">خصومات مسجّلة في سجل المركبة: ' + ded.map(function(d){ return esc(d.plate) + ' = ' + esc(d.value); }).join(' · ') + '</div>';
         // طلب التفويض
         var pending = window.__wfReqPending && window.__wfReqPending(e.iqama);
@@ -8684,9 +8690,52 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     }
     window.wfAfmcJoin = startDate;
 
-    function tickFn(){ try { hookModal(); ensureTab(); hookCards(); modalJoin(); if (ready) payCard(); } catch(_){} }
+    function tickFn(){ try { hookModal(); ensureTab(); hookCards(); modalJoin(); if (ready) { payCard(); missingBtn(); } } catch(_){} }
     tickFn(); setInterval(tickFn, 1500);
-    window.wfAfmc = { empPane: empPane, calc: calc, rows: function(){ return payRows; } };
+    /* ---------- (٥) زر «بلا معرف»: موظف بلا معرّف منصة أو بلا مشروع (نفس آلية الأسطول) ---------- */
+    function missingBtn(){
+      var bar = document.querySelector('#view-emp .toolbar'); if (!bar || document.getElementById('afxMiss')) return;
+      var b = document.createElement('button'); b.id = 'afxMiss'; b.type = 'button';
+      b.style.cssText = 'border:1px solid #e9b2ac;background:#fbe9e6;color:#a3372b;border-radius:10px;padding:8px 13px;font:inherit;font-weight:600;cursor:pointer;white-space:nowrap';
+      b.innerHTML = '⚠️ بلا معرف <span id="afxMissN" style="font-weight:700"></span>';
+      b.title = 'موظفون بلا معرّف منصة أو بلا مشروع';
+      bar.appendChild(b);
+      b.onclick = missingOpen;
+      rpc('watheeq_missing_ids').then(function(l){ var n = (l || []).length; var el = document.getElementById('afxMissN'); if (el) el.textContent = n ? '(' + n + ')' : ''; }).catch(function(){});
+    }
+    function missingOpen(){
+      var b = document.getElementById('afxMiss'); if (b) b.disabled = true;
+      rpc('watheeq_missing_ids').then(function(list){
+        if (b) b.disabled = false; list = list || [];
+        var el = document.getElementById('afxMissN'); if (el) el.textContent = list.length ? '(' + list.length + ')' : '';
+        if (!list.length) { alert('كل الموظفين لديهم معرّف ومشروع ✅'); return; }
+        var wrap = document.createElement('div'); wrap.className = 'afx';
+        wrap.style.cssText = 'position:fixed;inset:0;background:rgba(8,25,24,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+        var noId = list.filter(function(x){ return x.no_id; }).length, noPr = list.filter(function(x){ return x.no_project; }).length;
+        wrap.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:760px;width:100%;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 50px rgba(8,25,24,.25)">'
+          + '<div style="padding:13px 16px;background:#fbe9e6;color:#a3372b;font-weight:700;display:flex;align-items:center;gap:10px">⚠️ بلا معرف — ' + list.length + ' موظف'
+          + '<span style="flex:1"></span><button id="afxMissX" style="border:0;background:none;font-size:20px;cursor:pointer;color:inherit">✕</button></div>'
+          + '<div class="muted" style="padding:9px 16px">بلا معرّف منصة: ' + noId + ' · بلا مشروع: ' + noPr + ' — اضغط على أي صف لفتح ملف الموظف وإضافة المعرّف مباشرة.</div>'
+          + '<div class="scroll" style="max-height:62vh"><table style="width:100%"><thead><tr><th>الاسم</th><th>الإقامة</th><th>المشروع</th><th>الحالة</th><th>الناقص</th></tr></thead><tbody id="afxMissB">'
+          + list.map(function(x, i){ return '<tr data-iq="' + esc(x.iqama) + '" style="cursor:pointer"><td>' + esc(x.name || '—') + '</td><td style="direction:ltr">' + esc(x.iqama) + '</td><td>'
+            + (x.no_project ? '<span class="warn">بلا مشروع</span>' : esc(x.project)) + '</td><td>' + esc(ST_AR[x.status] || x.status || '') + '</td><td>'
+            + [x.no_id ? 'معرّف منصة' : '', x.no_project ? 'مشروع' : ''].filter(Boolean).join(' + ') + '</td></tr>'; }).join('')
+          + '</tbody></table></div></div>';
+        document.body.appendChild(wrap);
+        wrap.onclick = function(ev){ if (ev.target === wrap) wrap.remove(); };
+        wrap.querySelector('#afxMissX').onclick = function(){ wrap.remove(); };
+        wrap.querySelectorAll('#afxMissB tr').forEach(function(tr){ tr.onclick = function(){
+          var iq = normId(tr.getAttribute('data-iq')); wrap.remove();
+          try {
+            var i = (state.employees || []).findIndex(function(e){ return normId(e.iqama) === iq; });
+            if (i >= 0 && typeof openModal === 'function') openModal(i); else if (i >= 0) w.eval('openModal(' + i + ')');
+          } catch(_){ }
+        }; });
+      }).catch(function(e){ if (b) b.disabled = false; alert('تعذّر الجلب: ' + e.message); });
+    }
+    var ST_AR = { active:'على رأس العمل', terminated:'منتهي الخدمة', stopped:'موقوف', salary_only:'متوقف عن العمل', suspended:'معلّق', on_leave:'إجازة' };
+
+    window.wfAfmc = { empPane: empPane, calc: calc, rows: function(){ return payRows; }, missing: missingOpen };
   })();
 
   /* ═══════════ الأسطول: إسناد مركبة من «طلب تفويض» وثيق ═══════════
