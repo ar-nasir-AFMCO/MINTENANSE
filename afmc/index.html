@@ -358,7 +358,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260922144113";
+  var BUILD = "20260922150649";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -632,7 +632,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     document.querySelectorAll('#vAdm button[data-act]').forEach(function(b){
       b.onclick = function(){
         var tr = b.closest('tr'), id = tr.getAttribute('data-id'), act = b.getAttribute('data-act');
-        var codes = [].map.call(tr.querySelectorAll('.tag.on'), function(t){ return t.getAttribute('data-p'); });
+        var codes = [].map.call(tr.querySelectorAll('.tag[data-p].on'), function(t){ return t.getAttribute('data-p'); });
         var body = { role: tr.querySelector('.role').value };
         var ys = [].map.call(tr.querySelectorAll('.tag[data-y].on'), function(t){ return t.getAttribute('data-y'); });
         var def = (ROLE_SYS[body.role] || []).slice().sort().join(',');
