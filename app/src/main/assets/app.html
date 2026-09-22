@@ -7,7 +7,7 @@
    • تسجيل الدخول وإذن الأجهزة كما هي تماماً (لا حسابات جديدة للمستخدمين).
    • يُحقن في <head> ولا يعدّل أي سطر من كود النظام: كل ما كان يذهب إلى
      Google Apps Script يُخدَّم الآن من Supabase بنفس الشكل والدمج.
-   • مفتاح التطبيق يفتح ملفات أجهزة الصيانة فقط — لا موظفين ولا رواتب ولا مركبات.
+   • مفتاح التطبيق يفتح ملفات أجهزة الصيانة فقط + بحث المندوب بالإقامة (الاسم والجوال والمشروع فقط).
    ═══════════════════════════════════════════════════════════════════════ */
 (function(){
   if (window.__wfSbDbb) return; window.__wfSbDbb = true;
@@ -41,10 +41,37 @@
     return Promise.resolve(reply({ ok: false }));   /* أي طلب آخر (مثل app-master) لا يذهب لأي مكان */
   };
   window.fetch.__wfSbDbb = true;
+
+  /* بلاغات المشرفين: كتابة رقم الإقامة تجلب اسم المندوب وجواله ومشروعه من وثيق (هذه الثلاثة فقط) */
+  var lkT = null, lkLast = '';
+  function digits(v){ return String(v || '').replace(/[٠-٩]/g, function(d){ return d.charCodeAt(0) - 0x0660; }).replace(/\D/g, ''); }
+  function hint(el, html, ok){
+    var h = document.getElementById('rIqHint');
+    if (!h) { h = document.createElement('div'); h.id = 'rIqHint'; h.style.cssText = 'font-size:12px;margin-top:4px;line-height:1.6'; el.parentNode.appendChild(h); }
+    h.style.color = ok ? '#1d6b45' : '#95570f'; h.innerHTML = html;
+  }
+  function lookup(el){
+    var iq = digits(el.value); if (iq.length !== 10) { lkLast = ''; var h = document.getElementById('rIqHint'); if (h) h.innerHTML = ''; return; }
+    if (iq === lkLast) return; lkLast = iq;
+    hint(el, 'جارٍ البحث في وثيق…', true);
+    rpc('dbb_lookup', { p_token: APP_KEY, p_iqama: iq }).then(function(r){
+      if (digits(el.value) !== iq) return;
+      if (!r || !r.found) return hint(el, 'رقم الإقامة غير موجود في وثيق — أكمل البيانات يدوياً.', false);
+      var mob = document.getElementById('rMobile'), pr = document.getElementById('rProject');
+      if (mob && !mob.value.trim() && r.mobile) { var m = digits(r.mobile); mob.value = m.length === 9 ? '0' + m : m; }
+      if (pr && r.project) {
+        var opt = Array.prototype.filter.call(pr.options, function(o){ return String(o.value).toUpperCase() === String(r.project).toUpperCase(); })[0];
+        if (opt && !pr.value) pr.value = opt.value;
+      }
+      hint(el, '✓ ' + String(r.name || '').replace(/[<>&]/g, '') + (r.project ? ' · ' + String(r.project).replace(/[<>&]/g, '') : ''), true);
+    }).catch(function(){ hint(el, 'تعذّر البحث الآن — أكمل البيانات يدوياً.', false); });
+  }
+  document.addEventListener('input', function(e){
+    if (e.target && e.target.id === 'rIqama') { clearTimeout(lkT); var el = e.target; lkT = setTimeout(function(){ lookup(el); }, 350); }
+  }, true);
   try { var bc = navigator.sendBeacon && navigator.sendBeacon.bind(navigator);
         if (bc) navigator.sendBeacon = function(u, d){ return CLOUD.test(String(u)) ? true : bc(u, d); }; } catch(e){}
 })();
-
 </script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -568,7 +595,7 @@ details[open] > summary{margin-bottom:10px}
 (function(){
 'use strict';
 
-var APP_BUILD='2026-09-21-r14-db';
+var APP_BUILD='2026-09-22-r15-db';
 var LS_DATA='dbb_maint_v1', LS_USER='dbb_maint_user_v1';
 var LIVE=['مفتوح','في الورشة','بانتظار قطع'];
 var AGE_WARN=72, AGE_BAD=168; /* ساعات: 3 أيام / 7 أيام */
