@@ -305,7 +305,7 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
     return loadingP;
   }
   var assetAt = {};
-  function maybeAssets(k){ if (!SEC[k]) return; if (Date.now() - (assetAt[k] || 0) < 30000) return; assetAt[k] = Date.now(); loadAssets(k); }
+  function maybeAssets(k){ if (k === 'bike') { openBike(); return; } if (!SEC[k]) return; if (Date.now() - (assetAt[k] || 0) < 30000) return; assetAt[k] = Date.now(); loadAssets(k); }
   function loadAssets(kind){
     return rpc('maint_assets', { p_kind: kind }).then(function(r){ assets[kind] = r || []; fillAsset(kind); }).catch(function(){});
   }
@@ -317,7 +317,13 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
     housing: { ic:'bld', title:'أمر صيانة سكن', assetLabel:'المبنى والغرفة', note:'الأصل: نظام السكنات — اختر المبنى والغرفة.' }
   };
   function buildForms(){
-    Object.keys(SEC).forEach(function(k){
+    $('t-bike').innerHTML = '<div class="card" style="padding:0;overflow:hidden">' +
+      '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--surface-2)">' +
+        '<svg class="i"><use href="#i-scooter"/></svg><b style="font-size:13.5px">بلاغات صيانة الدبابات</b>' +
+        '<span class="muted sm">التطبيق كما هو — البلاغات تدخل تكاليف وتقارير القسم تلقائياً</span><span style="flex:1"></span>' +
+        '<a class="btn ghost sm" href="../" target="_blank" rel="noopener"><svg class="i"><use href="#i-ext"/></svg>نافذة مستقلة</a></div>' +
+      '<iframe id="bikeFr" title="صيانة الدبابات" style="display:block;width:100%;height:calc(100vh - 210px);min-height:560px;border:0"></iframe></div>';
+    Object.keys(SEC).filter(function(k){ return k !== 'bike'; }).forEach(function(k){
       var s = SEC[k];
       $('t-' + k).innerHTML =
         '<div class="card"' + (canEdit ? '' : ' style="display:none"') + '><h3><svg class="i"><use href="#i-' + s.ic + '"/></svg>' + s.title + '</h3>' +
@@ -340,6 +346,8 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
       loadAssets(k);
     });
   }
+  var bikeSrc = null;
+  function openBike(){ var f = $('bikeFr'); if (!f || bikeSrc) return; bikeSrc = '../'; f.src = bikeSrc; }
   function fillAsset(k){
     var a = assets[k] || [];
     if (k === 'housing') {
@@ -384,10 +392,11 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
       var all = O.filter(function(o){ return o.kind === k; }), op = all.filter(isOpen).length, p = all.length ? Math.round(op / all.length * 100) : 0;
       return '<div style="margin-bottom:12px"><div style="display:flex;gap:8px;font-size:13px"><b>' + KIND[k] + '</b><span style="flex:1"></span><span>' + op + ' مفتوح من ' + all.length + ' أمر</span></div><div class="bar2"><i style="width:' + Math.min(p, 100) + '%"></i></div></div>';
     }).join('');
-    ['vehicle','bike','housing'].forEach(renderList);
+    ['vehicle','housing'].forEach(renderList);
     wire();
   }
   function renderList(k){
+    if (k === 'bike' || !$('b-' + k)) return;
     var q = normId($('q-' + k).value).toLowerCase().replace(/\s+/g, ''), f = $('f-' + k).value;
     var list = O.filter(function(o){
       if (o.kind !== k) return false;
