@@ -110,6 +110,20 @@ h2.sec::after{content:"";flex:1;height:1px;background:var(--line)}
 #gate .f span{color:#9DBAB6}
 #gate .f input,#gate .f select{background:#0E332F;border-color:#2C6F69;color:#fff}
 #gate .note{background:#0E332F;border:1px solid #2C6F69;border-radius:var(--r);padding:12px 14px;font-size:13.5px;color:#CFE3E0;margin-top:14px}
+#hub{position:fixed;inset:0;background:var(--slate);color:#fff;z-index:55;overflow:auto;padding:24px 16px;display:flex;align-items:center;justify-content:center}
+#hub .hubbox{width:100%;max-width:560px}
+#hub .mark{width:46px;height:46px;border-radius:10px;background:repeating-linear-gradient(135deg,#D98A1E 0 7px,#0E332F 7px 14px);margin-bottom:14px}
+#hub h1{font-family:var(--font-h);font-size:29px;margin:0 0 6px}
+#hub p{color:#9DBAB6;margin:0 0 20px;font-size:14px}
+.hubcards{display:grid;gap:12px}
+.hubc{display:flex;align-items:center;gap:14px;background:#0E332F;border:1px solid #2C6F69;border-radius:12px;padding:14px 16px;color:#fff;text-decoration:none}
+.hubc:hover{background:#12403B}
+.hubc .ic{font-size:26px;line-height:1}
+.hubc b{font-family:var(--font-h);font-size:19px;display:block}
+.hubc span:last-child{color:#9DBAB6;font-size:12.5px;display:block}
+.hubc b,.hubc span:last-child{flex:0 0 auto}
+.hubc>div{flex:1}
+.hubme{margin-top:18px;background:#0E332F;border:1px solid #2C6F69;border-radius:10px;padding:12px 14px;font-size:13.5px;color:#CFE3E0}
 #toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#17262C;color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;z-index:80;display:none;max-width:92vw}
 .modal{position:fixed;inset:0;background:rgba(23,38,44,.5);z-index:70;display:flex;align-items:flex-end;justify-content:center;padding:0}
 .modal .box{background:var(--card);border-radius:14px 14px 0 0;width:100%;max-width:620px;max-height:92vh;overflow:auto;padding:16px}
@@ -124,11 +138,25 @@ h2.sec::after{content:"";flex:1;height:1px;background:var(--line)}
 </style>
 </head>
 <body>
+<div id="hub" class="hide">
+  <div class="hubbox">
+    <div class="mark"></div>
+    <h1>بوابة الصيانة</h1>
+    <p>للمشرفين والميكانيكيين والمتابعين — اختر القسم. الدخول باسمك والموقع، ونفس اسمك في تطبيق الدبابات يفتح لك الباقي مباشرة.</p>
+    <div class="hubcards">
+      <a class="hubc" href="../"><span class="ic">🛵</span><div><b>الدبابات</b><span>بلاغات الدبابات — التطبيق كما هو</span></div></a>
+      <a class="hubc" href="field.html?kind=vehicle"><span class="ic">🚗</span><div><b>السيارات</b><span>بلاغات المركبات — تنعكس في الأسطول ووثيق</span></div></a>
+      <a class="hubc" href="field.html?kind=housing"><span class="ic">🏠</span><div><b>السكنات</b><span>أعطال المباني والغرف</span></div></a>
+    </div>
+    <div class="hubme" id="hubMe"></div>
+  </div>
+</div>
+
 <div id="gate">
   <div class="box">
     <div class="mark"></div>
     <h1>من يسجّل الآن؟</h1>
-    <p id="gSub">اسمك يُثبت مع كل بلاغ في السجل ولا يمكن تعديله لاحقاً.</p>
+    <p id="gSub">اسمك يُثبت مع كل بلاغ. إذا كان جهازك مأذوناً في تطبيق الدبابات تدخل مباشرة، وإلا ينتظر اعتماد الإدارة.</p>
     <label class="f"><span>اسم المشرف</span><input type="text" id="gName" placeholder="مثال: أحمد الزهراني"></label>
     <label class="f"><span id="gSiteLbl">الموقع</span><input type="text" id="gSite" list="gSites" placeholder="اختر أو اكتب"><datalist id="gSites"></datalist></label>
     <button class="btn amber" id="gGo" style="width:100%">طلب الدخول</button>
@@ -212,7 +240,8 @@ h2.sec::after{content:"";flex:1;height:1px;background:var(--line)}
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var APP_KEY = 'Kq7fR2xNvP4mTgb9ZsD6wHcL3yJeA8Uk';
-  var KIND = (location.search.match(/kind=(vehicle|housing)/) || [])[1] || 'vehicle';
+  var KIND = (location.search.match(/kind=(vehicle|housing)/) || [])[1] || '';
+  var HUB = !KIND; if (HUB) KIND = 'vehicle';
   var CFG = {
     vehicle: { title:'بلاغات صيانة السيارات', sub:'الأسطول · AFMCO', asset:'رقم اللوحة', assets:'السيارات', site:'المشروع / الموقع',
                types:['فرامل','زيت وفلاتر','كهرباء','إطارات','تكييف','مكينة','قير','صدام / تلفيات','فحص دوري'] },
@@ -220,18 +249,24 @@ h2.sec::after{content:"";flex:1;height:1px;background:var(--line)}
                types:['سباكة','كهرباء','مكيّف','أبواب ونوافذ','دهان','أثاث','نظافة عامة'] }
   }[KIND];
   var ST = { new:'مفتوح', in_progress:'في الورشة', waiting_parts:'بانتظار قطع', done:'مغلق', cancelled:'ملغي' };
-  var LSD = 'afmc_fld_dev_' + KIND, LSU = 'afmc_fld_user_' + KIND;
+  var LSD = 'afmc_fld_dev', LSU = 'afmc_fld_user', SKEY = 'wfsb_session';
+  var SB_ROLE = { admin:'إداري', supervisor:'مشرف', mechanic:'ميكانيكي', viewer:'متابعة' };
 
   function $(id){ return document.getElementById(id); }
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   function lsGet(k){ try { var r = localStorage.getItem(k); return r ? JSON.parse(r) : null; } catch(e){ return null; } }
   function lsSet(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
   var tT; function toast(m){ var t = $('toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(tT); tT = setTimeout(function(){ t.style.display = 'none'; }, 3000); }
-  function days(from, to){ if (!from) return 0; return Math.max(Math.round((new Date((to || new Date().toISOString().slice(0,10)) + 'T00:00:00') - new Date(from + 'T00:00:00')) / 86400000), 0); }
-  function rpc(fn, args){
-    return fetch(SB_URL + '/rest/v1/rpc/' + fn, { method:'POST', headers:{ apikey:SB_KEY, 'Content-Type':'application/json' }, body: JSON.stringify(args) })
+  function today(){ try { return new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Riyadh', year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date()); }
+    catch(e){ var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); } }
+  function days(from, to){ if (!from) return 0; return Math.max(Math.round((new Date((to || today()) + 'T00:00:00') - new Date(from + 'T00:00:00')) / 86400000), 0); }
+  function rpc(fn, args, auth){
+    var h = { apikey:SB_KEY, 'Content-Type':'application/json' };
+    if (auth) h.Authorization = 'Bearer ' + auth;
+    return fetch(SB_URL + '/rest/v1/rpc/' + fn, { method:'POST', headers:h, body: JSON.stringify(args) })
       .then(function(r){ return r.text().then(function(t){ var j = t ? JSON.parse(t) : null; if (!r.ok) throw new Error((j && j.message) || ('HTTP ' + r.status)); return j; }); });
   }
+  function dbbDev(){ try { return localStorage.getItem('dbb_dev_id') || null; } catch(e){ return null; } }
   function devId(){
     var d = lsGet(LSD);
     if (!d) { d = (KIND[0] + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8)); lsSet(LSD, d); }
@@ -243,7 +278,14 @@ h2.sec::after{content:"";flex:1;height:1px;background:var(--line)}
   $('nTypes').innerHTML = CFG.types.map(function(t){ return '<option value="' + esc(t) + '">'; }).join('');
   document.querySelectorAll('.tabbar [data-s="ast"]').forEach(function(b){ b.lastChild.textContent = CFG.assets; });
 
-  var user = lsGet(LSU), D = { status:'none', assets:[], orders:[], sites:[], device:{} }, tick = null;
+  var user = lsGet(LSU), D = { status:'none', role:'supervisor', assets:[], orders:[], sites:[], device:{} }, tick = null;
+  function canDo(){ return D.status === 'active' && D.role !== 'viewer'; }
+  /* من يملك حساب المنصة بنظام الصيانة (الإدارة/المالك) يُعتمد جهازه فوراً */
+  function claim(){
+    var s = lsGet(SKEY); if (!s || !s.access_token || Date.now() > (s.expires_at || 0)) return Promise.resolve(false);
+    return rpc('fld_claim', { p_kind:KIND, p_device:devId(), p_name:(user && user.name) || null, p_site:(user && user.site) || null }, s.access_token)
+      .then(function(r){ return !!(r && r.status === 'active'); }).catch(function(){ return false; });
+  }
 
   /* ---------- gate ---------- */
   function showGate(mode){
@@ -262,8 +304,9 @@ h2.sec::after{content:"";flex:1;height:1px;background:var(--line)}
     var n = $('gName').value.trim(); if (!n) return toast('اكتب اسمك');
     user = { name:n, site: $('gSite').value.trim() }; lsSet(LSU, user);
     $('gGo').disabled = true;
-    rpc('fld_hello', { p_token:APP_KEY, p_kind:KIND, p_device:devId(), p_name:user.name, p_site:user.site })
-      .then(function(r){ $('gGo').disabled = false; D.status = r.status; boot(); })
+    rpc('fld_hello', { p_token:APP_KEY, p_kind:KIND, p_device:devId(), p_name:user.name, p_site:user.site, p_dbb_device:dbbDev() })
+      .then(function(r){ $('gGo').disabled = false; D.status = r.status; D.role = r.role || D.role;
+        return claim().then(function(){ return boot().then(function(){ if (HUB) hubShow(); }); }); })
       .catch(function(e){ $('gGo').disabled = false; toast(e.message); });
   };
   $('gRecheck').onclick = function(){ toast('جارٍ التحقق…'); boot(); };
@@ -272,9 +315,10 @@ h2.sec::after{content:"";flex:1;height:1px;background:var(--line)}
   /* ---------- data ---------- */
   function boot(){
     return rpc('fld_boot', { p_token:APP_KEY, p_kind:KIND, p_device:devId() }).then(function(r){
-      D = { status:r.status, assets:r.assets || [], orders:r.orders || [], sites:r.sites || [], device:r.device || {} };
+      D = { status:r.status, role:r.role || 'supervisor', assets:r.assets || [], orders:r.orders || [], sites:r.sites || [], device:r.device || {} };
       if (r.device && r.device.name) { user = { name:r.device.name, site:r.device.site }; lsSet(LSU, user); }
       if (D.status === 'active') { hideGate(); render(); $('uDot').classList.remove('stale'); }
+      else if (D.status === 'pending') { return claim().then(function(ok){ if (ok) return boot(); showGate('pending'); $('uName').textContent = (user && user.name) || 'غير مسجّل'; }); }
       else if (D.status === 'none') showGate('');
       else showGate(D.status);
       $('uName').textContent = (user && user.name) || 'غير مسجّل';
@@ -299,6 +343,8 @@ h2.sec::after{content:"";flex:1;height:1px;background:var(--line)}
     $('bMine').textContent = o.filter(function(x){ return x.mine; }).length;
     $('bOpen').textContent = open.length; $('bOpen').classList.toggle('hide', !open.length);
     $('nAssets').innerHTML = D.assets.map(function(a){ return '<option value="' + esc(a.label) + '">' + esc(a.sub || '') + '</option>'; }).join('');
+    var ro = !canDo();
+    document.querySelectorAll('[data-s="new"]').forEach(function(b){ b.classList.toggle('hide', ro); });
     renderList(); renderAssets(); renderMe();
   }
   function renderList(){
@@ -317,14 +363,16 @@ h2.sec::after{content:"";flex:1;height:1px;background:var(--line)}
     var open = ['new','in_progress','waiting_parts'].indexOf(x.status) >= 0;
     return '<div class="ord"><div class="t"><b>' + esc(x.asset || '—') + '</b>' +
       (x.priority === 'high' ? '<span class="st high">عاجل</span>' : '') +
-      '<span class="sp"></span><span class="st ' + x.status + '">' + ST[x.status] + '</span></div>' +
+      '<span class="sp"></span>' + (x.close_req && open ? '<span class="st done">طلب إغلاق</span>' : '') +
+      '<span class="st ' + x.status + '">' + ST[x.status] + '</span></div>' +
       '<div class="meta">' + esc(x.no) + ' · ' + esc(x.type || '—') + ' · ' + esc(x.opened) + (open ? ' · ' + days(x.opened) + ' يوم' : '') +
       (x.reporter ? ' · ' + esc(x.reporter) : '') + (x.site ? ' · ' + esc(x.site) : '') + '</div>' +
       (x.desc ? '<div class="desc">' + esc(x.desc) + '</div>' : '') +
-      (open ? '<div class="acts">' +
+      (open && canDo() ? '<div class="acts">' +
         (x.status !== 'in_progress' ? '<button class="btn sm ghost" data-id="' + x.id + '" data-st="in_progress">في الورشة</button>' : '') +
         (x.status !== 'waiting_parts' ? '<button class="btn sm ghost" data-id="' + x.id + '" data-st="waiting_parts">بانتظار قطع</button>' : '') +
-        '<button class="btn sm green" data-id="' + x.id + '" data-st="done">إغلاق البلاغ</button></div>' : '') + '</div>';
+        (x.close_req ? '<span class="st done">تم الإصلاح — بانتظار إغلاق الإدارة</span>'
+                     : '<button class="btn sm green" data-id="' + x.id + '" data-st="done">تم الإصلاح</button>') + '</div>' : '') + '</div>';
   }
   document.querySelectorAll('#segF button').forEach(function(b){ b.onclick = function(){
     document.querySelectorAll('#segF button').forEach(function(x){ x.classList.remove('on'); }); b.classList.add('on'); renderList(); }; });
@@ -336,7 +384,7 @@ h2.sec::after{content:"";flex:1;height:1px;background:var(--line)}
       var open = D.orders.filter(function(o){ return o.asset === a.label && ['new','in_progress','waiting_parts'].indexOf(o.status) >= 0; }).length;
       return '<div class="asset"><div><b>' + esc(a.label) + '</b><div class="sub">' + esc(a.sub || '') + '</div></div><span class="sp"></span>' +
         (open ? '<span class="st new">' + open + ' بلاغ مفتوح</span>' : '') +
-        '<button class="btn sm amber" data-new="' + esc(a.label) + '">بلاغ</button></div>';
+        (canDo() ? '<button class="btn sm amber" data-new="' + esc(a.label) + '">بلاغ</button>' : '') + '</div>';
     }).join('') : '<div class="empty">لا توجد نتائج</div>';
     $('assets').querySelectorAll('[data-new]').forEach(function(b){ b.onclick = function(){ $('nAsset').value = b.getAttribute('data-new'); go('new'); $('nType').focus(); }; });
   }
@@ -345,7 +393,9 @@ h2.sec::after{content:"";flex:1;height:1px;background:var(--line)}
     $('mePanel').innerHTML =
       '<div class="row"><div><div class="k" style="color:var(--ink3);font-size:12.5px">المشرف</div><div style="font-size:18px;font-weight:650">' + esc((user && user.name) || '—') + '</div></div>' +
       '<div><div style="color:var(--ink3);font-size:12.5px">' + CFG.site + '</div><div style="font-size:18px;font-weight:650">' + esc((user && user.site) || '—') + '</div></div>' +
-      '<div><div style="color:var(--ink3);font-size:12.5px">بلاغاتي</div><div style="font-size:18px;font-weight:650">' + (D.device.reports || 0) + '</div></div></div>' +
+      '<div><div style="color:var(--ink3);font-size:12.5px">بلاغاتي</div><div style="font-size:18px;font-weight:650">' + (D.device.reports || 0) + '</div></div>' +
+      '<div><div style="color:var(--ink3);font-size:12.5px">الصلاحية</div><div style="font-size:18px;font-weight:650">' + (SB_ROLE[D.role] || D.role) + '</div></div></div>' +
+      '<div class="muted" style="margin-top:10px;font-size:12.5px">الإغلاق النهائي للبلاغ من إدارة الصيانة — من هنا ترسل «تم الإصلاح».</div>' +
       '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">' +
       '<button class="btn ghost sm" id="meEdit">تغيير الاسم أو الموقع</button>' +
       '<button class="btn ghost sm" id="meSync">تحديث الآن</button></div>' +
@@ -369,17 +419,37 @@ h2.sec::after{content:"";flex:1;height:1px;background:var(--line)}
   };
   function setStatus(id, st){
     var note = '';
-    if (st === 'done' || st === 'waiting_parts') { note = prompt(st === 'done' ? 'ملاحظة الإغلاق (اختياري)' : 'القطعة المطلوبة (اختياري)') || ''; }
+    if (st === 'done' || st === 'waiting_parts') { note = prompt(st === 'done' ? 'ملاحظة الإصلاح (اختياري) — الإغلاق من إدارة الصيانة' : 'القطعة المطلوبة (اختياري)') || ''; }
     rpc('fld_update', { p_token:APP_KEY, p_kind:KIND, p_device:devId(), p_id:id, p_status:st, p_note:note })
-      .then(function(){ toast('تم التحديث'); return boot(); })
+      .then(function(r){ toast(r && r.requested ? 'تم إرسال طلب الإغلاق للإدارة' : 'تم التحديث'); return boot(); })
       .catch(function(e){ toast(e.message); });
   }
 
+  /* ---------- بوابة الصيانة ---------- */
+  function hubShow(){
+    $('hub').classList.remove('hide'); $('gate').classList.add('hide');
+    var st = D.status === 'active' ? ('معتمد — صلاحيتك: ' + (SB_ROLE[D.role] || D.role))
+           : D.status === 'pending' ? 'جهازك بانتظار اعتماد الإدارة — تقدر تدخل بعد الاعتماد'
+           : D.status === 'blocked' ? 'هذا الجهاز موقوف — راجع الإدارة' : 'غير مسجّل';
+    $('hubMe').innerHTML = '<b>' + esc((user && user.name) || 'غير مسجّل') + '</b>' + ((user && user.site) ? ' · ' + esc(user.site) : '')
+      + '<div style="margin-top:4px">' + esc(st) + '</div>'
+      + '<button class="btn ghost sm" id="hubEdit" style="margin-top:10px">تغيير الاسم أو الموقع</button>'
+      + ' <button class="btn ghost sm" id="hubSync" style="margin-top:10px">تحديث الحالة</button>';
+    $('hubEdit').onclick = function(){ $('hub').classList.add('hide'); showGate(''); };
+    $('hubSync').onclick = function(){ boot().then(function(){ hubShow(); toast('تم التحديث'); }); };
+  }
+
   /* ---------- start ---------- */
+  if (HUB) {
+    document.title = 'بوابة الصيانة'; $('tTitle').textContent = 'بوابة الصيانة'; $('tSub').textContent = 'AFMCO';
+    $('gSub').textContent = 'اسمك يُثبت مع كل بلاغ، وإذا كنت مشرفاً معتمداً في تطبيق الدبابات تدخل مباشرة.';
+    boot().then(hubShow);
+  } else {
   if (!user) showGate(''); else $('uName').textContent = user.name;
   boot();
   tick = setInterval(function(){ if (document.visibilityState === 'visible') boot(); }, 60000);
   document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible') boot(); });
+  }
 })();
 </script>
 </body>

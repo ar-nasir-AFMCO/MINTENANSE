@@ -286,7 +286,8 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   function num(n){ return Number(n || 0).toLocaleString('en-US'); }
   function money(n){ return Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 }); }
-  function today(){ var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
+  function today(){ try { return new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Riyadh', year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date()); }
+    catch(e){ var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); } }
   function lsGet(k){ try { var r = localStorage.getItem(k); return r ? JSON.parse(r) : null; } catch(e){ return null; } }
   function lsSet(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
   var toastT; function toast(m, ms){ var t = $('toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(function(){ t.style.display = 'none'; }, ms || 3200); }
@@ -454,6 +455,7 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
         '<td><div class="acts">' + (canEdit && !x.check_out ? '<button class="btn ghost sm" data-edres="' + x.id + '">تعديل / نقل</button><button class="btn warn sm" data-out="' + x.id + '">مغادرة</button>' : '') +
         (canEdit && x.check_out ? '<button class="btn ghost sm" data-back="' + x.id + '">تراجع</button>' : '') + '</div></td></tr>';
     }).join('') : '<tr><td colspan="8" class="empty">لا يوجد نزلاء</td></tr>';
+   wire();
   }
   function renderBld(){
     $('bldList').innerHTML = D.b.length ? D.b.map(function(b){
@@ -482,6 +484,7 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
         '<td><div class="acts">' + (canEdit ? '<button class="btn ' + (c.status === 'paid' ? 'ghost' : 'ok') + ' sm" data-pay="' + c.id + '">' + (c.status === 'paid' ? 'إلغاء السداد' : 'سُدد') + '</button>' : '') +
         '<button class="btn ghost sm" data-voucher="' + c.id + '">سند</button>' + (canDel ? '<button class="btn ghost sm" data-delc="' + c.id + '">حذف</button>' : '') + '</div></td></tr>';
     }).join('') : '<tr><td colspan="7" class="empty">لا توجد عقود</td></tr>';
+   wire();
   }
   function renderInv(){
     var rooms = liveRooms(), m = 0, p = 0;
@@ -494,6 +497,7 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
         '<td>' + (canEdit ? '<button class="btn ghost sm" data-inv="' + r.id + '">حفظ</button>' : '') + '</td></tr>';
     }).join('') : '<tr><td colspan="6" class="empty">لا توجد غرف</td></tr>';
     $('invSum').textContent = (m || p) ? 'النقص الإجمالي: ' + m + ' مرتبة · ' + p + ' مخدة' : 'كل الغرف مكتملة';
+   wire();
   }
 
   /* ---------- الأحداث ---------- */

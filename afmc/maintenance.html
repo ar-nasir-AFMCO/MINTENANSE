@@ -194,11 +194,11 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
 
     <section id="t-rep" class="hide">
       <div class="card" id="devCard"><h3><svg class="i"><use href="#i-users"/></svg>أجهزة المشرفين<span class="sp"></span><span class="muted sm">بلاغات السيارات والسكنات — الجهاز يعمل بعد الاعتماد</span></h3>
-        <div class="tw"><table class="cards"><thead><tr><th>المشرف</th><th>القسم</th><th>الموقع</th><th>البلاغات</th><th>آخر ظهور</th><th>الحالة</th><th></th></tr></thead><tbody id="devBody"></tbody></table></div></div>
+        <div class="tw"><table class="cards"><thead><tr><th>المشرف</th><th>القسم</th><th>الصلاحية</th><th>الموقع</th><th>البلاغات</th><th>آخر ظهور</th><th>الحالة</th><th></th></tr></thead><tbody id="devBody"></tbody></table></div></div>
       <div class="card"><h3><svg class="i"><use href="#i-wrench"/></svg>كل أوامر الصيانة<span class="sp"></span><span class="muted sm" id="allCount"></span></h3>
         <div class="tools">
           <select id="fKind"><option value="all">كل الأقسام</option><option value="vehicle">سيارات</option><option value="bike">دبابات</option><option value="housing">سكنات</option></select>
-          <select id="fSt"><option value="open">المفتوحة</option><option value="all">الكل</option><option value="new">مفتوح</option><option value="in_progress">في الورشة</option><option value="waiting_parts">بانتظار قطع</option><option value="done">مغلق</option><option value="cancelled">ملغي</option></select>
+          <select id="fSt"><option value="open">المفتوحة</option><option value="close_req">طلبات الإغلاق</option><option value="all">الكل</option><option value="new">مفتوح</option><option value="in_progress">في الورشة</option><option value="waiting_parts">بانتظار قطع</option><option value="done">مغلق</option><option value="cancelled">ملغي</option></select>
           <input id="qAll" placeholder="بحث برقم الأمر أو الأصل أو العطل…">
         </div>
         <div class="tw"><table class="cards"><thead><tr><th>الأمر</th><th>القسم</th><th>الأصل</th><th>العطل</th><th>الحالة</th><th>الفتح</th><th>المدة</th><th>التكلفة</th><th>على السائق</th><th></th></tr></thead><tbody id="b-all"></tbody></table></div></div>
@@ -207,11 +207,14 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
         <div id="pOut" style="margin-top:14px"></div></div>
       <div class="card"><h3><svg class="i"><use href="#i-down"/></svg>تصدير Excel (CSV)</h3>
         <div class="tools"><button class="btn ghost sm" data-x="open">الأوامر المفتوحة</button><button class="btn ghost sm" data-x="all">كل الأوامر</button><button class="btn ghost sm" data-x="charge">التحميل على السائقين</button></div></div>
-      <div class="card"><h3><svg class="i"><use href="#i-scooter"/></svg>تطبيقات البلاغات الميدانية</h3>
-        <div class="muted sm" style="margin-bottom:10px">ثلاثة تطبيقات بنفس الطريقة: دخول باسم المشرف والموقع، والبلاغ ينزل أمر صيانة هنا وينعكس في الأسطول ووثيق.</div>
-        <div class="tools"><a class="btn ghost sm" id="appLink" href="../" target="_blank" rel="noopener"><svg class="i"><use href="#i-ext"/></svg>الدبابات</a>
+      <div class="card"><h3><svg class="i"><use href="#i-scooter"/></svg>بوابة الصيانة (المشرفون والميكانيكيون والمتابعون)</h3>
+        <div class="muted sm" style="margin-bottom:10px">رابط واحد يوزّع على الفريق: يختار منه القسم (دبابات · سيارات · سكنات) ويدخل باسمه والموقع. مشرفو الدبابات المأذونون يدخلون مباشرة بنفس أسمائهم، ولا صلاحية إغلاق في السيارات والسكنات — «تم الإصلاح» يوصلكم كطلب إغلاق هنا.</div>
+        <div class="tools"><a class="btn sm" id="gateLink" href="field.html" target="_blank" rel="noopener"><svg class="i"><use href="#i-ext"/></svg>فتح بوابة الصيانة</a>
+        <button class="btn ghost sm" id="copyGate">نسخ الرابط</button>
+        <a class="btn ghost sm" id="appLink" href="../" target="_blank" rel="noopener"><svg class="i"><use href="#i-ext"/></svg>الدبابات</a>
         <a class="btn ghost sm" href="field.html?kind=vehicle" target="_blank" rel="noopener"><svg class="i"><use href="#i-ext"/></svg>السيارات</a>
-        <a class="btn ghost sm" href="field.html?kind=housing" target="_blank" rel="noopener"><svg class="i"><use href="#i-ext"/></svg>السكنات</a></div></div>
+        <a class="btn ghost sm" href="field.html?kind=housing" target="_blank" rel="noopener"><svg class="i"><use href="#i-ext"/></svg>السكنات</a></div>
+        <div class="hint" id="gateCopied"></div></div>
     </section>
   </main>
 </div>
@@ -239,7 +242,8 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   function num(n){ return Number(n || 0).toLocaleString('en-US'); }
   function money(n){ return Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 }); }
-  function today(){ var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
+  function today(){ try { return new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Riyadh', year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date()); }
+    catch(e){ var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); } }
   function days(from, to){ if (!from) return 0; return Math.max(Math.round((new Date((to || today()) + 'T00:00:00') - new Date(from + 'T00:00:00')) / 86400000), 0); }
   function lsGet(k){ try { var r = localStorage.getItem(k); return r ? JSON.parse(r) : null; } catch(e){ return null; } }
   function lsSet(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
@@ -300,19 +304,24 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
       canEdit = !!(w.perms && w.perms.edit); hasFleet = sy.indexOf('fleet') >= 0; hasWatheeq = sy.indexOf('watheeq') >= 0; hasHousing = sy.indexOf('housing') >= 0;
       $('gate').classList.add('hide'); $('app').classList.remove('hide');
       buildForms();
+      try { var st0 = sessionStorage.getItem('maint_tab'); if (st0) setTab(st0); else maybeAssets(tab); } catch(e){ maybeAssets(tab); }
       load(); if (!EMBED) rt.start(); else liveState('on', 'مباشر');
     }).catch(function(e){ if (/no session/.test(e.message)) gate(''); else gate('تعذّر الاتصال بالقاعدة: ' + e.message); });
   }
 
   /* ---------- البيانات ---------- */
-  var O = [], SUM = {}, DEV = [], loadingP = null;
+  var O = [], SUM = {}, DEV = [], CH = {}, loadingP = null;
+  function chg(id){ return CH[id] || {}; }
   function load(){
     if (loadingP) return loadingP;
     loadingP = Promise.all([
       api('GET', 'maint_orders?select=*&deleted_at=is.null&order=opened_at.desc'),
       rpc('maint_summary').catch(function(){ return {}; }),
-      api('GET', 'field_devices?select=*&order=created_at.desc').catch(function(){ return []; })
-    ]).then(function(a){ O = a[0] || []; SUM = a[1] || {}; DEV = a[2] || []; loadingP = null; render(); })
+      api('GET', 'field_devices?select=*&order=created_at.desc').catch(function(){ return []; }),
+      hasWatheeq ? api('GET', 'maint_charges?select=*').catch(function(){ return []; }) : Promise.resolve([])
+    ]).then(function(a){ O = a[0] || []; SUM = a[1] || {}; DEV = a[2] || [];
+      CH = {}; (a[3] || []).forEach(function(c){ CH[c.order_id] = c; });
+      loadingP = null; render(); })
       .catch(function(e){ loadingP = null; toast('تعذّر التحميل: ' + e.message, 5000); });
     return loadingP;
   }
@@ -349,14 +358,15 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
   function render(){
     var open = O.filter(isOpen), late = open.filter(function(o){ return days(o.opened_at) >= 7; });
     var mCost = 0, mChg = 0, m0 = today().slice(0, 8) + '01';
-    O.forEach(function(o){ if (o.status !== 'cancelled' && (o.closed_at || o.opened_at) >= m0) { mCost += Number(o.cost || 0) + Number(o.parts_cost || 0); mChg += Number(o.charge_amount || 0); } });
+    O.forEach(function(o){ if (o.status !== 'cancelled' && (o.closed_at || o.opened_at) >= m0) { mCost += Number(o.cost || 0) + Number(o.parts_cost || 0); mChg += Number(chg(o.id).amount || 0); } });
     $('kpis').innerHTML =
       '<div class="kpi ' + (open.length ? 'warn' : 'ok') + '"><b>' + num(open.length) + '</b><span>أمر مفتوح</span></div>' +
       '<div class="kpi"><b>' + num(open.filter(function(o){ return o.kind === 'vehicle'; }).length) + '</b><span>سيارات في الصيانة</span></div>' +
       '<div class="kpi"><b>' + num(open.filter(function(o){ return o.kind === 'bike'; }).length) + '</b><span>دبابات في الصيانة</span></div>' +
       '<div class="kpi"><b>' + num(open.filter(function(o){ return o.kind === 'housing'; }).length) + '</b><span>أعطال سكن</span></div>' +
       '<div class="kpi ' + (late.length ? 'bad' : '') + '"><b>' + num(late.length) + '</b><span>أمر متأخر (+٧ أيام)</span></div>' +
-      '<div class="kpi"><b>' + money(mCost) + '</b><span>تكاليف هذا الشهر (ر.س) · على السائقين ' + money(mChg) + '</span></div>';
+      '<div class="kpi ' + (O.filter(function(o){ return o.close_req && isOpen(o); }).length ? 'warn' : '') + '"><b>' + num(O.filter(function(o){ return o.close_req && isOpen(o); }).length) + '</b><span>طلبات إغلاق من الميدان</span></div>' +
+      '<div class="kpi"><b>' + money(mCost) + '</b><span>تكاليف هذا الشهر (ر.س)' + (hasWatheeq ? ' · على السائقين ' + money(mChg) : '') + '</span></div>';
     ['vehicle','bike','housing'].forEach(function(k){
       var n = open.filter(function(o){ return o.kind === k; }).length, el = $(k === 'vehicle' ? 'nVeh' : k === 'bike' ? 'nBike' : 'nHou');
       el.textContent = n; el.classList.toggle('hide', !n);
@@ -371,13 +381,12 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
       return '<div style="margin-bottom:12px"><div style="display:flex;gap:8px;font-size:13px"><b>' + KIND[k] + '</b><span style="flex:1"></span><span>' + op + ' مفتوح من ' + all.length + ' أمر</span></div><div class="bar2"><i style="width:' + Math.min(p, 100) + '%"></i></div></div>';
     }).join('');
     renderList(); renderDev();
-    wire();
   }
   function renderList(){
     var q = normId($('qAll').value).toLowerCase().replace(/\s+/g, ''), f = $('fSt').value, kf = $('fKind').value;
     var list = O.filter(function(o){
       if (kf !== 'all' && o.kind !== kf) return false;
-      if (f === 'open' ? !isOpen(o) : f !== 'all' && o.status !== f) return false;
+      if (f === 'close_req' ? !(o.close_req && isOpen(o)) : f === 'open' ? !isOpen(o) : f !== 'all' && o.status !== f) return false;
       if (!q) return true;
       return (o.order_no + ' ' + (o.asset_label || '') + ' ' + (o.fault_type || '') + ' ' + (o.description || '') + ' ' + (o.project || '')).toLowerCase().replace(/\s+/g, '').indexOf(q) >= 0;
     });
@@ -388,28 +397,33 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
         '<td data-l="القسم">' + (KIND[o.kind] || o.kind) + '</td>' +
         '<td data-l="الأصل">' + esc(o.asset_label || '—') + (o.project || o.site ? '<div class="muted sm">' + esc(o.project || o.site) + '</div>' : '') + '</td>' +
         '<td data-l="العطل">' + esc(o.fault_type || '—') + (o.description ? '<div class="muted sm">' + esc(o.description) + '</div>' : '') + '</td>' +
-        '<td data-l="الحالة"><span class="pill ' + ST_CLS[o.status] + '">' + ST[o.status] + '</span></td>' +
+        '<td data-l="الحالة"><span class="pill ' + ST_CLS[o.status] + '">' + ST[o.status] + '</span>' +
+          (o.close_req && isOpen(o) ? '<div class="muted sm"><span class="pill ok">طلب إغلاق' + (o.close_req_by ? ' · ' + esc(o.close_req_by) : '') + '</span></div>' : '') + '</td>' +
         '<td data-l="الفتح">' + esc(o.opened_at) + '</td>' +
         '<td data-l="المدة">' + (isOpen(o) ? days(o.opened_at) + ' يوم' : days(o.opened_at, o.closed_at) + ' يوم') + '</td>' +
         '<td data-l="التكلفة">' + (tot ? money(tot) : '—') + (o.invoice_no ? '<div class="muted sm">' + esc(o.invoice_no) + '</div>' : '') + '</td>' +
-        '<td data-l="على السائق">' + (Number(o.charge_amount) > 0 ? '<span class="pill warn">' + money(o.charge_amount) + '</span><div class="muted sm">' + esc(o.charge_iqama || '') + '</div>' : '—') + '</td>' +
+        '<td data-l="على السائق">' + (!hasWatheeq ? '<span class="muted sm">—</span>' : Number(chg(o.id).amount) > 0 ? '<span class="pill warn">' + money(chg(o.id).amount) + '</span><div class="muted sm">' + esc(chg(o.id).iqama || '') + '</div>' : '—') + '</td>' +
         '<td><div class="acts">' + (canEdit && isOpen(o) ? nextBtns(o) : '') + '<button class="btn ghost sm" data-open="' + o.id + '">تفاصيل</button></div></td></tr>';
     }).join('') : '<tr><td colspan="10" class="empty">لا توجد أوامر</td></tr>';
+    wire();
   }
   var DST = { pending:'بانتظار الاعتماد', active:'معتمد', blocked:'موقوف' };
+  var DROLE = { admin:'إداري', supervisor:'مشرف', mechanic:'ميكانيكي', viewer:'متابعة' };
   function renderDev(){
     var pend = DEV.filter(function(d){ return d.status === 'pending'; });
     $('nDev').textContent = pend.length; $('nDev').classList.toggle('hide', !pend.length);
     $('devBody').innerHTML = DEV.length ? DEV.map(function(d){
       return '<tr><td data-l="المشرف"><b>' + esc(d.name) + '</b><div class="muted sm">' + esc(d.device_id) + '</div></td>' +
-        '<td data-l="القسم">' + (KIND[d.kind] || d.kind) + '</td><td data-l="الموقع">' + esc(d.site || '—') + '</td>' +
+        '<td data-l="القسم">' + (KIND[d.kind] || d.kind) + '</td>' +
+        '<td data-l="الصلاحية">' + (DROLE[d.role] || d.role || '—') + '</td><td data-l="الموقع">' + esc(d.site || '—') + '</td>' +
         '<td data-l="البلاغات">' + num(d.reports) + '</td><td data-l="آخر ظهور">' + esc(String(d.last_seen || '').slice(0, 10)) + '</td>' +
         '<td data-l="الحالة"><span class="pill ' + (d.status === 'active' ? 'ok' : d.status === 'pending' ? 'warn' : 'mut') + '">' + (DST[d.status] || d.status) + '</span></td>' +
         '<td><div class="acts">' + (canEdit ? (d.status !== 'active' ? '<button class="btn ok sm" data-dev="' + d.id + '|active">اعتماد</button>' : '<button class="btn ghost sm" data-dev="' + d.id + '|blocked">إيقاف</button>') : '') + '</div></td></tr>';
-    }).join('') : '<tr><td colspan="7" class="empty">لا توجد أجهزة مسجّلة بعد</td></tr>';
+    }).join('') : '<tr><td colspan="8" class="empty">لا توجد أجهزة مسجّلة بعد — الفريق يدخل من بوابة الصيانة، ومشرفو الدبابات المأذونون يُعتمدون تلقائياً</td></tr>';
+    wire();
   }
   function nextBtns(o){
-    var b = '';
+    var b = o.close_req ? '<button class="btn ok sm" data-st="' + o.id + '|done">إغلاق الأمر</button>' : '';
     if (o.status === 'new') b += '<button class="btn sm" data-st="' + o.id + '|in_progress">في الورشة</button>';
     if (o.status === 'in_progress') b += '<button class="btn ghost sm" data-st="' + o.id + '|waiting_parts">بانتظار قطع</button>';
     if (o.status === 'waiting_parts') b += '<button class="btn sm" data-st="' + o.id + '|in_progress">رجع للورشة</button>';
@@ -443,15 +457,15 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
       '<label class="f">رقم الفاتورة<input id="mIn" value="' + esc(o.invoice_no || '') + '"' + dis + '></label>' +
       '<label class="f">تكلفة الإصلاح<input id="mCo" type="number" min="0" step="0.01" value="' + (o.cost || 0) + '"' + dis + '></label>' +
       '<label class="f">قطع الغيار<input id="mPa" type="number" min="0" step="0.01" value="' + (o.parts_cost || 0) + '"' + dis + '></label>' +
-      (hasWatheeq ? '<label class="f">تحميل على السائق (الإقامة)<input id="mIq" value="' + esc(o.charge_iqama || '') + '"' + dis + '></label>' +
-        '<label class="f">المبلغ المحمّل<input id="mAm" type="number" min="0" step="0.01" value="' + (o.charge_amount || 0) + '"' + dis + '></label>' +
-        '<div class="full hint" id="mHint">' + (o.charge_iqama ? 'يظهر في ملف الموظف في وثيق وفي كشف الرواتب.' : '') + '</div>' : '') +
+      (hasWatheeq ? '<label class="f">تحميل على السائق (الإقامة)<input id="mIq" value="' + esc(chg(o.id).iqama || '') + '"' + dis + '></label>' +
+        '<label class="f">المبلغ المحمّل<input id="mAm" type="number" min="0" step="0.01" value="' + (chg(o.id).amount || 0) + '"' + dis + '></label>' +
+        '<div class="full hint" id="mHint">' + (chg(o.id).iqama ? 'يظهر في ملف الموظف في وثيق وفي كشف الرواتب.' : '') + '</div>' : '') +
       '<label class="f full">ملاحظات<input id="mNo" value="' + esc(o.notes || '') + '"' + dis + '></label>' +
       '</div>' +
       '<div class="ft">' + (ro ? '' : '<button class="btn" id="mOk">حفظ</button>') + '<button class="btn ghost" id="mNo2">إغلاق النافذة</button></div>';
     $('modal').classList.remove('hide');
     $('mNo2').onclick = close;
-    if (hasWatheeq && hasFleet && o.kind === 'vehicle' && !o.charge_iqama && !ro) {
+    if (hasWatheeq && hasFleet && o.kind === 'vehicle' && !chg(o.id).iqama && !ro) {
       rpc('maint_driver_hint', { p_plate: o.plate || o.asset_label }).then(function(h){
         if (h && h.iqama && $('mHint')) { $('mHint').className = 'full hint ok';
           $('mHint').innerHTML = 'السائق الحالي: ' + esc(h.name || '') + ' (' + esc(h.iqama) + ') <button class="btn ghost sm" id="mUse">تحميل عليه</button>';
@@ -462,12 +476,25 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
       var body = { status: $('mSt').value, priority: $('mPr').value, fault_type: $('mFt').value.trim() || null, mechanic: $('mMe').value.trim() || null,
                    description: $('mDs').value.trim() || null, vendor: $('mVn').value.trim() || null, invoice_no: $('mIn').value.trim() || null,
                    cost: +$('mCo').value || 0, parts_cost: +$('mPa').value || 0, notes: $('mNo').value.trim() || null };
-      if (hasWatheeq) { body.charge_iqama = normId($('mIq').value) || null; body.charge_amount = +$('mAm').value || 0; }
-      save($('mOk'), api('PATCH', 'maint_orders?id=eq.' + id, body), 'تم الحفظ').then(close);
+      var p = api('PATCH', 'maint_orders?id=eq.' + id, body);
+      if (hasWatheeq) {
+        var iq = normId($('mIq').value) || null, am = +$('mAm').value || 0;
+        p = p.then(function(){
+          if (!iq && !am) return chg(id).order_id ? api('DELETE', 'maint_charges?order_id=eq.' + id) : null;
+          return api('POST', 'maint_charges?on_conflict=order_id', { order_id: id, iqama: iq, amount: am, note: null }, { Prefer: 'resolution=merge-duplicates' });
+        });
+      }
+      save($('mOk'), p, 'تم الحفظ').then(close);
     };
   }
   function close(){ $('modal').classList.add('hide'); }
   $('modal').onclick = function(e){ if (e.target === $('modal')) close(); };
+  $('copyGate').onclick = function(){
+    var u = new URL('field.html', location.href).href;
+    var done = function(){ $('gateCopied').className = 'hint ok'; $('gateCopied').textContent = 'تم نسخ الرابط: ' + u; };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(u).then(done, function(){ $('gateCopied').className = 'hint'; $('gateCopied').textContent = u; });
+    else { $('gateCopied').className = 'hint'; $('gateCopied').textContent = u; }
+  };
   $('qAll').oninput = renderList; $('fSt').onchange = renderList; $('fKind').onchange = renderList;
   $('reload').onclick = function(){ maybeAssets(tab); load().then(function(){ toast('تم التحديث'); }); };
 
@@ -480,7 +507,7 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
     var list = O.filter(function(o){ var d = o.closed_at || o.opened_at; return o.status !== 'cancelled' && d >= s && d <= e; });
     var rows = ['vehicle','bike','housing','other'].map(function(k){
       var l = list.filter(function(o){ return o.kind === k; }), c = 0, p = 0, ch = 0;
-      l.forEach(function(o){ c += Number(o.cost || 0); p += Number(o.parts_cost || 0); ch += Number(o.charge_amount || 0); });
+      l.forEach(function(o){ c += Number(o.cost || 0); p += Number(o.parts_cost || 0); ch += Number(chg(o.id).amount || 0); });
       return { k: k, n: l.length, c: c, p: p, ch: ch };
     }).filter(function(r){ return r.n; });
     var tc = 0, tp = 0, tch = 0; rows.forEach(function(r){ tc += r.c; tp += r.p; tch += r.ch; });
@@ -497,14 +524,15 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
     var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([s], { type: 'text/csv;charset=utf-8' })); a.download = 'maint_' + name + '_' + today() + '.csv';
     document.body.appendChild(a); a.click(); a.remove();
   }
-  var HEAD = ['رقم الأمر','القسم','الأصل','المشروع','العطل','الوصف','الحالة','المصدر','الفتح','الإغلاق','المدة','الإصلاح','قطع الغيار','الفاتورة','إقامة السائق','المحمّل'];
-  function row(o){ return [o.order_no, KIND[o.kind], o.asset_label, o.project, o.fault_type, o.description, ST[o.status], SRC[o.source] || o.source, o.opened_at, o.closed_at,
-    (isOpen(o) ? days(o.opened_at) : days(o.opened_at, o.closed_at)) + ' يوم', o.cost, o.parts_cost, o.invoice_no, o.charge_iqama, o.charge_amount]; }
+  var HEAD = ['رقم الأمر','القسم','الأصل','المشروع','العطل','الوصف','الحالة','المصدر','المُبلّغ','الفتح','الإغلاق','المدة','الإصلاح','قطع الغيار','الفاتورة','إقامة السائق','المحمّل'];
+  function row(o){ return [o.order_no, KIND[o.kind], o.asset_label, o.project, o.fault_type, o.description, ST[o.status], SRC[o.source] || o.source, o.reporter, o.opened_at, o.closed_at,
+    (isOpen(o) ? days(o.opened_at) : days(o.opened_at, o.closed_at)) + ' يوم', o.cost, o.parts_cost, o.invoice_no,
+    hasWatheeq ? chg(o.id).iqama : '', hasWatheeq ? chg(o.id).amount : '']; }
   document.querySelectorAll('[data-x]').forEach(function(b){ b.onclick = function(){
     var k = b.getAttribute('data-x');
     if (k === 'open') csv(k, HEAD, O.filter(isOpen).map(row));
     if (k === 'all') csv(k, HEAD, O.map(row));
-    if (k === 'charge') csv(k, HEAD, O.filter(function(o){ return Number(o.charge_amount) > 0; }).map(row));
+    if (k === 'charge') { if (!hasWatheeq) return toast('تحميل السائقين يحتاج صلاحية وثيق'); csv(k, HEAD, O.filter(function(o){ return Number(chg(o.id).amount) > 0; }).map(row)); }
   }; });
 
   /* ---------- مباشر ---------- */
@@ -544,7 +572,7 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
   window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); deferred = e; if (!EMBED && !lsGet('maint_install_no')) $('installBar').classList.remove('hide'); });
   $('installBtn').onclick = function(){ if (!deferred) return; deferred.prompt(); deferred.userChoice.then(function(){ deferred = null; $('installBar').classList.add('hide'); }); };
   $('installNo').onclick = function(){ lsSet('maint_install_no', 1); $('installBar').classList.add('hide'); };
-  try { var st0 = sessionStorage.getItem('maint_tab'); if (st0) setTab(st0); } catch(e){}
+
 
   start();
 })();
