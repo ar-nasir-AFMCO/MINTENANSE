@@ -8572,7 +8572,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     var obsOn = false;
     function hookModal(){
       if (obsOn) return; var mdl = document.getElementById('modal'); if (!mdl) return; obsOn = true;
-      var t = null; new MutationObserver(function(){ clearTimeout(t); t = setTimeout(function(){ try { if (ready) addEmpTab(); } catch(_){} }, 60); }).observe(mdl, { childList: true });
+      var t = null; new MutationObserver(function(){ clearTimeout(t); t = setTimeout(function(){ try { modalJoin(); if (ready) addEmpTab(); } catch(_){} }, 60); }).observe(mdl, { childList: true });
     }
     function ensureTab(){ try { if (ready && state.current != null && document.querySelector('#scrim.on')) addEmpTab(); } catch(_){} }
 
@@ -8648,7 +8648,43 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       note('✅ اعتُمدت رواتب ' + list.length + ' موظف · سُوّيت ' + settled + ' سلفة', 'green');
       card.querySelector('#afxCommit').disabled = true;
     }
-    function tickFn(){ try { hookModal(); ensureTab(); if (ready) payCard(); } catch(_){} }
+    /* ---------- (٣) تاريخ المباشرة: «تاريخ الالتحاق» إن أُدخل يدوياً، وإلا أول تفويض لأول مركبة (من الأسطول) ---------- */
+    function startDate(e){
+      var j = String((e && e.join_date) || '').slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(j)) return { d: j, src: 'manual' };
+      var first = null;
+      (e && e.vehicles || []).forEach(function(v){ var d = String(v.date_receive || '').slice(0, 10); if (/^\d{4}-\d{2}-\d{2}$/.test(d) && (!first || d < first)) first = d; });
+      return first ? { d: first, src: 'fleet' } : null;
+    }
+    function joinLabel(sd){ return sd ? '📅 مباشرة: ' + sd.d + (sd.src === 'fleet' ? ' <span style="opacity:.7">(أول تفويض)</span>' : '') : '📅 مباشرة: —'; }
+    function decorateJoin(){
+      var host = document.getElementById('empCards'); if (!host) return;
+      Array.prototype.forEach.call(host.querySelectorAll('button.card'), function(card){
+        if (card.querySelector('.afx-join')) return;
+        var m = /openModal\((\d+)\)/.exec(card.getAttribute('onclick') || ''); if (!m) return;
+        var e = state.employees[+m[1]]; if (!e) return;
+        var sub = card.querySelector('.top-line .sub'); if (!sub) return;
+        var el = document.createElement('div'); el.className = 'sub afx-join'; el.style.marginTop = '2px'; el.innerHTML = joinLabel(startDate(e));
+        sub.parentNode.appendChild(el);
+      });
+    }
+    var joinObs = false;
+    function hookCards(){
+      if (joinObs) return; var host = document.getElementById('empCards'); if (!host) return; joinObs = true;
+      var t = null; new MutationObserver(function(){ clearTimeout(t); t = setTimeout(decorateJoin, 60); }).observe(host, { childList: true });
+      decorateJoin();
+    }
+    function modalJoin(){
+      var mdl = document.getElementById('modal'); if (!mdl || state.current == null) return;
+      var grid = mdl.querySelector('#pane-ov .grid2'); if (!grid || grid.querySelector('.afx-join-f')) return;
+      var e = state.employees[state.current]; if (!e) return;
+      var sd = startDate(e), f = document.createElement('div'); f.className = 'field afx-join-f';
+      f.innerHTML = '<div class="k">تاريخ المباشرة</div><div class="v">' + (sd ? esc(sd.d) + (sd.src === 'fleet' ? ' <span style="color:#778;font-size:12px">(أول تفويض لأول مركبة)</span>' : '') : '—') + '</div>';
+      grid.insertBefore(f, grid.firstChild);
+    }
+    window.wfAfmcJoin = startDate;
+
+    function tickFn(){ try { hookModal(); ensureTab(); hookCards(); modalJoin(); if (ready) payCard(); } catch(_){} }
     tickFn(); setInterval(tickFn, 1500);
     window.wfAfmc = { empPane: empPane, calc: calc, rows: function(){ return payRows; } };
   })();
