@@ -191,14 +191,7 @@
   try { var _bc = navigator.sendBeacon && navigator.sendBeacon.bind(navigator);
         if (_bc) navigator.sendBeacon = function(u, d){ return String(u).indexOf(SENT) === 0 ? true : _bc(u, d); }; } catch(e){}
 
-  /* الأسطول: وحدة «الوضع المحلي» القديمة تخفي لوحة طلبات التفويض لصالح كرت الحفظ المحلي.
-     في النسخة السحابية لا حفظ محلي → تعود اللوحة (تظهر فقط عند وجود طلبات). */
-  if (APP === 'fleet') {
-    var st3 = document.createElement('style'); st3.id = 'wf-cloud-fleetreq';
-    st3.textContent = 'html body #wfReqPill[style*="inline-flex"]{display:inline-flex!important;position:fixed;bottom:18px;right:14px;z-index:99998;border:0;border-radius:999px;padding:10px 16px;background:#0e5e5c;color:#fff;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.2);cursor:pointer}'
-      + 'html body #wfReqPanel[style*="block"]{display:block!important}';
-    (document.head || document.documentElement).appendChild(st3);
-  }
+  /* الأسطول: طلبات التفويض تظهر في «الصندوق الموحّد» بالمنصّة (🔔) — لوحة الأسطول القديمة تبقى مخفية */
 
   /* طلب تفويض مركبة (وثيق → الأسطول) يعود ويعمل بين كل الأجهزة — لمن يملك التعديل */
   if (APP === 'watheeq') {
@@ -6136,7 +6129,7 @@ async function handleAccidentFile(input){
         var active = wfFleetActiveDrivers();
         /* تنظيف تلقائي: أزل الطلبات لمن أصبح لديه تفويض نشط */
         var pending = raw.filter(function(q){ return q && q.status !== 'done' && !active[normId(q.iqama)]; });
-        if(pending.length !== raw.length){ try{ cloudPost(_wfReqKey, pending); }catch(_){} }
+        /* AFMC Cloud: لا حذف صامت للطلبات — القاعدة ترفض الطلب بسبب واضح في الصندوق الموحّد */
         var pill = document.getElementById('wfReqPill');
         if(pill){
           if(pending.length){ pill.style.display = 'inline-flex'; pill.innerHTML = '🔔 طلبات تفويض (' + pending.length + ')'; }
@@ -8284,8 +8277,10 @@ setInterval(mtBadge, 5000);
         if (ded.length) h += '<div class="muted" style="margin-top:6px">خصومات مسجّلة في سجل المركبة: ' + ded.map(function(d){ return esc(d.plate) + ' = ' + esc(d.value); }).join(' · ') + '</div>';
         // طلب التفويض
         var pending = window.__wfReqPending && window.__wfReqPending(e.iqama);
-        h += '<h4>🔑 طلب تفويض مركبة</h4><div class="row">' + (pending ? '<span class="chip">✅ الطلب مُرسل للأسطول بانتظار إسناد مركبة</span>'
-          : (canEdit && window.__wfReqSend ? '<button class="btnx" id="afxReq">🚗 إرسال طلب تفويض للأسطول</button><span class="muted">يظهر في الأسطول لإسناد مركبة، ويتحدث هنا تلقائياً.</span>' : '<span class="muted">لا يوجد طلب.</span>')) + '</div>';
+        var hasVeh = (e.vehicles || []).some(function(v){ return v && (v.active === true || String(v.status || '').toLowerCase() === 'active'); });
+        h += '<h4>🔑 طلب تفويض مركبة</h4><div class="row">' + (hasVeh ? '<span class="chip">🚗 لديه مركبة نشطة في الأسطول — لا يحتاج طلب</span>'
+          : pending ? '<span class="chip">✅ الطلب مُرسل للأسطول بانتظار إسناد مركبة</span>'
+          : (canEdit && window.__wfReqSend ? '<button class="btnx" id="afxReq">🚗 إرسال طلب تفويض للأسطول</button><span class="muted">يصل «الصندوق الموحّد» عند المسؤول عن الإسناد، ويتحدث هنا تلقائياً.</span>' : '<span class="muted">لا يوجد طلب.</span>')) + '</div><div id="afxReqHist"></div>';
         pane.innerHTML = h + '</div>';
         var add = pane.querySelector('#afxAdd');
         if (add) add.onclick = function(){
@@ -8301,6 +8296,11 @@ setInterval(mtBadge, 5000);
           x.onclick = function(){ if (!confirm('حذف هذا المعرّف؟')) return;
             api('DELETE', 'employee_ids?id=eq.' + x.getAttribute('data-rid'), null, { Prefer: 'return=minimal' }).then(function(){ empPane(e, pane); }).catch(function(err){ note('تعذّر: ' + err.message, 'red'); }); };
         });
+        var ST = { 'new': 'جديد', in_progress: 'قيد التنفيذ', done: 'منجز', rejected: 'مرفوض' };
+        api('GET', 'inbox_items?select=status,close_note,created_at,created_by_name&kind=eq.vehicle_request&ref->>iqama=eq.' + encodeURIComponent(normId(e.iqama)) + '&order=created_at.desc&limit=5').then(function(list){
+          var box = pane.querySelector('#afxReqHist'); if (!box || !list || !list.length) return;
+          box.innerHTML = '<div class="muted" style="margin-top:6px">سجل الطلبات:</div>' + list.map(function(x){ return '<div class="chip" style="display:flex">' + esc(String(x.created_at).slice(0, 10)) + ' · <b>' + esc(ST[x.status] || x.status) + '</b>' + (x.close_note ? ' — ' + esc(x.close_note) : '') + '</div>'; }).join('');
+        }).catch(function(){});
         var rq = pane.querySelector('#afxReq');
         if (rq) rq.onclick = function(){ var idx = state.employees.indexOf(e); if (idx >= 0) window.__wfReqSend(idx); setTimeout(function(){ empPane(e, pane); }, 1500); };
       }).catch(function(err){ pane.innerHTML = '<div class="afx warn">تعذّر التحميل: ' + esc(err.message) + '</div>'; });
@@ -8321,7 +8321,7 @@ setInterval(mtBadge, 5000);
     var obsOn = false;
     function hookModal(){
       if (obsOn) return; var mdl = document.getElementById('modal'); if (!mdl) return; obsOn = true;
-      var t = null; new MutationObserver(function(){ clearTimeout(t); t = setTimeout(function(){ try { if (ready) addEmpTab(); } catch(_){} }, 60); }).observe(mdl, { childList: true });
+      var t = null; new MutationObserver(function(){ clearTimeout(t); t = setTimeout(function(){ try { modalJoin(); if (ready) addEmpTab(); } catch(_){} }, 60); }).observe(mdl, { childList: true });
     }
     function ensureTab(){ try { if (ready && state.current != null && document.querySelector('#scrim.on')) addEmpTab(); } catch(_){} }
 
@@ -8397,7 +8397,43 @@ setInterval(mtBadge, 5000);
       note('✅ اعتُمدت رواتب ' + list.length + ' موظف · سُوّيت ' + settled + ' سلفة', 'green');
       card.querySelector('#afxCommit').disabled = true;
     }
-    function tickFn(){ try { hookModal(); ensureTab(); if (ready) payCard(); } catch(_){} }
+    /* ---------- (٣) تاريخ المباشرة: «تاريخ الالتحاق» إن أُدخل يدوياً، وإلا أول تفويض لأول مركبة (من الأسطول) ---------- */
+    function startDate(e){
+      var j = String((e && e.join_date) || '').slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(j)) return { d: j, src: 'manual' };
+      var first = null;
+      (e && e.vehicles || []).forEach(function(v){ var d = String(v.date_receive || '').slice(0, 10); if (/^\d{4}-\d{2}-\d{2}$/.test(d) && (!first || d < first)) first = d; });
+      return first ? { d: first, src: 'fleet' } : null;
+    }
+    function joinLabel(sd){ return sd ? '📅 مباشرة: ' + sd.d + (sd.src === 'fleet' ? ' <span style="opacity:.7">(أول تفويض)</span>' : '') : '📅 مباشرة: —'; }
+    function decorateJoin(){
+      var host = document.getElementById('empCards'); if (!host) return;
+      Array.prototype.forEach.call(host.querySelectorAll('button.card'), function(card){
+        if (card.querySelector('.afx-join')) return;
+        var m = /openModal\((\d+)\)/.exec(card.getAttribute('onclick') || ''); if (!m) return;
+        var e = state.employees[+m[1]]; if (!e) return;
+        var sub = card.querySelector('.top-line .sub'); if (!sub) return;
+        var el = document.createElement('div'); el.className = 'sub afx-join'; el.style.marginTop = '2px'; el.innerHTML = joinLabel(startDate(e));
+        sub.parentNode.appendChild(el);
+      });
+    }
+    var joinObs = false;
+    function hookCards(){
+      if (joinObs) return; var host = document.getElementById('empCards'); if (!host) return; joinObs = true;
+      var t = null; new MutationObserver(function(){ clearTimeout(t); t = setTimeout(decorateJoin, 60); }).observe(host, { childList: true });
+      decorateJoin();
+    }
+    function modalJoin(){
+      var mdl = document.getElementById('modal'); if (!mdl || state.current == null) return;
+      var grid = mdl.querySelector('#pane-ov .grid2'); if (!grid || grid.querySelector('.afx-join-f')) return;
+      var e = state.employees[state.current]; if (!e) return;
+      var sd = startDate(e), f = document.createElement('div'); f.className = 'field afx-join-f';
+      f.innerHTML = '<div class="k">تاريخ المباشرة</div><div class="v">' + (sd ? esc(sd.d) + (sd.src === 'fleet' ? ' <span style="color:#778;font-size:12px">(أول تفويض لأول مركبة)</span>' : '') : '—') + '</div>';
+      grid.insertBefore(f, grid.firstChild);
+    }
+    window.wfAfmcJoin = startDate;
+
+    function tickFn(){ try { hookModal(); ensureTab(); hookCards(); modalJoin(); if (ready) payCard(); } catch(_){} }
     tickFn(); setInterval(tickFn, 1500);
     window.wfAfmc = { empPane: empPane, calc: calc, rows: function(){ return payRows; } };
   })();

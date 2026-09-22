@@ -190,6 +190,36 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 #gate .alt a{color:var(--brand);font-weight:600;text-decoration:none}
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:200;background:#12302e;color:#fff;border-radius:12px;padding:11px 18px;font-size:13px;box-shadow:var(--sh-lg);display:none;max-width:90vw}
 #scrim{display:none}
+/* ═════ الصندوق الموحّد ═════ */
+.bellb{position:relative}
+.bellb .cnt{position:absolute;top:-6px;left:-6px;background:#c2493b;color:#fff;border-radius:999px;font-size:10.5px;padding:1px 6px;font-weight:600}
+#inbox{position:fixed;top:0;bottom:0;left:0;width:min(460px,100vw);background:var(--surface);z-index:60;box-shadow:var(--sh-lg);display:flex;flex-direction:column;transform:translateX(-105%);transition:transform .2s}
+#inbox.on{transform:none}
+#inbox .ih{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line)}
+#inbox .ih b{font-size:15px;flex:1}
+#inbox .itabs{display:flex;gap:4px;padding:10px 16px 0}
+#inbox .itabs button{border:0;background:none;padding:8px 12px;border-radius:9px;color:var(--muted);font-weight:500}
+#inbox .itabs button.on{background:var(--brand-soft);color:var(--brand);font-weight:600}
+#inbox .ifil{display:flex;gap:8px;padding:10px 16px;border-bottom:1px solid var(--line-2)}
+#inbox .ifil select{padding:7px 9px;border:1px solid var(--line);border-radius:9px;background:#fff;flex:1}
+#inbox .ibody{flex:1;overflow:auto}
+.ii{display:block;width:100%;text-align:right;border:0;border-bottom:1px solid var(--line-2);background:none;padding:12px 16px}
+.ii:hover{background:var(--surface-2)}
+.ii .t{display:flex;align-items:center;gap:8px}.ii .t b{flex:1;font-weight:500;font-size:13.5px}
+.ii.unread .t b{font-weight:700}.ii.unread{background:#fbf8f1}
+.ii .m{color:var(--muted);font-size:12px;margin-top:3px}
+.st{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap}
+.st.new{background:var(--infobg);color:var(--info)}.st.in_progress{background:var(--warnbg);color:var(--warn)}.st.done{background:var(--okbg);color:var(--ok)}.st.rejected{background:var(--badbg);color:var(--bad)}
+.idet{padding:16px}
+.idet h3{margin:0 0 6px;font-size:16px}
+.idet .meta{color:var(--muted);font-size:12px;line-height:1.8}
+.idet .bd{margin:12px 0;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);white-space:pre-wrap;line-height:1.8}
+.idet .acts{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.cmt{border-inline-start:3px solid var(--line);padding:6px 10px;margin:8px 0}
+.cmt .w{font-size:11.5px;color:var(--muted)}.cmt.me{border-color:var(--brand)}
+.ifrm label{display:block;margin-bottom:10px}.ifrm label span{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.ifrm input,.ifrm select,.ifrm textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:#fff}
+#ibScrim{display:none;position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:59}#ibScrim.on{display:block}
 
 @media (max-width:900px){
   #app{grid-template-columns:1fr}
@@ -224,6 +254,8 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/></symbol>
   <symbol id="i-cal" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></symbol>
   <symbol id="i-chev" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M20 4 3 11l7 3 3 7z"/><path d="m10 14 4-4"/></symbol>
   <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6z"/></symbol>
 </svg>
 
@@ -272,6 +304,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       <button class="tbtn" id="menuBtn" aria-label="القائمة"><svg class="i"><use href="#i-menu"/></svg></button>
       <div><h1 id="ttl">الرئيسية</h1><div class="crumb" id="crumb">منصة AFMCO</div></div>
       <div class="sp"></div>
+      <button class="tbtn bellb" id="inboxBtn" title="الصندوق الموحّد: الطلبات والرسائل"><svg class="i"><use href="#i-bell"/></svg><span class="cnt hide" id="inboxCnt"></span></button>
       <span class="live" id="live" title="حالة التحديث المباشر"><i></i><span>جارٍ الاتصال…</span></span>
       <span id="fbar" style="display:flex;gap:6px"></span>
     </header>
@@ -354,11 +387,18 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   </div>
 </div>
 
+<div id="ibScrim"></div>
+<aside id="inbox" aria-label="الصندوق الموحّد">
+  <div class="ih"><b>الصندوق الموحّد</b><button class="btn sm" id="ibNew">+ جديد</button><button class="tbtn" id="ibClose" title="إغلاق">✕</button></div>
+  <div class="itabs"><button data-t="req" class="on">الطلبات</button><button data-t="msg">الرسائل</button></div>
+  <div class="ifil"><select id="ibSt"><option value="open">المفتوحة</option><option value="all">الكل</option><option value="closed">المنجزة والمرفوضة</option></select></div>
+  <div class="ibody" id="ibBody"></div>
+</aside>
 <div id="toast"></div>
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260922155723";
+  var BUILD = "20260922171834";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -463,7 +503,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       if (h === '#admin' && can('admin')) show('vAdm'); else if (h === '#review' && can('review')) show('vRev');
       else { var last = null; try { last = localStorage.getItem('afmc_portal_sys'); } catch(e){}
              if (last === 'ninja' || last === 'keemart') openSys('couriers', last); else if (last && SYSTEMS.some(function(s){ return s.id === last && allowed(s); })) openSys(last); else show('vSys'); }
-      badges(); live.start(); versionWatch();
+      badges(); live.start(); versionWatch(); ib.load(); loadProjects();
     }).catch(function(e){ if (!sess) { $('gate').classList.remove('hide'); return; } if (/no session/.test(e.message)) signOut(); else { $('gate').classList.remove('hide'); gateMsg('bad', 'تعذّر الاتصال بالقاعدة: ' + esc(e.message)); } });
   }
   var TITLES = { vSys:'الرئيسية', vAdm:'الصلاحيات والتكامل', vRev:'مراجعة البيانات' };
@@ -565,6 +605,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   }
   /* ---------------- permissions & integration ---------------- */
   var projects = [];
+  function loadProjects(){ return api('GET', 'projects?select=code&is_active=is.true&order=code.asc').then(function(r){ if (!projects.length) projects = (r || []).map(function(p){ return p.code; }); }).catch(function(){}); }
   function loadAdmin(){
     $('regLink').textContent = new URL('../register.html', location.href).href; $('openReg').href = $('regLink').textContent;
     Promise.all([
@@ -754,7 +795,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
      اتصال واحد للمنصّة كلها. أي تغيير في القاعدة يصل فوراً ويُسحب في الأنظمة المفتوحة.
      إذا انقطع الاتصال، تبقى المزامنة الدورية في كل نظام تعمل كاحتياط. */
   var live = (function(){
-    var TABLES = ['employees','vehicles','vehicle_assignments','app_records','app_kv','attendance_daily','profiles'];
+    var TABLES = ['employees','vehicles','vehicle_assignments','app_records','app_kv','attendance_daily','profiles','inbox_items','inbox_comments'];
     var TOPIC = 'realtime:afmc-live', ws = null, hb = null, ref = 0, joined = false, stopped = true, retry = 1000, sentTok = null, tokT = null;
     var pend = {}, apps = {}, flushT = null, revT = 0;
     function state(k, t){ var el = $('live'); el.className = 'live' + (k ? ' ' + k : ''); el.querySelector('span').textContent = t; }
@@ -813,6 +854,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         } catch(e){}
       });
       if (p.profiles) badges();
+      if (p.inbox_items || p.inbox_comments || a.wf) ib.load();
       if (p.attendance_daily || a.ninja || a.keemart) { if (current === 'couriers') loadSummary(); }
       if (!$('vRev').classList.contains('hide') && (core || p.attendance_daily) && Date.now() - revT > 4000) { revT = Date.now(); loadReview(); }
       if (!current && !$('vSys').classList.contains('hide')) homeMeta();
@@ -820,6 +862,128 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     return { start: start, stop: stop, flush: flush, _pend: function(t, app){ pend[t] = 1; if (app) apps[app] = 1; flush(); } };
   })();
   window.afmcLive = live;
+
+  /* ═══════════ الصندوق الموحّد: طلبات كل الأنظمة + الرسائل ═══════════
+     نفس الطريقة في كل مكان: جديد ← قيد التنفيذ ← منجز / مرفوض، مع محادثة على كل طلب. */
+  var ib = (function(){
+    var items = [], reads = {}, tab = 'req', cur = null, dir = null, loading = false;
+    var KIND_AR = { vehicle_request: 'طلب تفويض مركبة', account_request: 'طلب حساب', message: 'رسالة', task: 'طلب' };
+    var ST_AR = { 'new': 'جديد', in_progress: 'قيد التنفيذ', done: 'منجز', rejected: 'مرفوض' };
+    var SYS_AR2 = { watheeq: 'وثيق', fleet: 'الأسطول', ninja: 'Ninja', keemart: 'Keemart', dbb: 'صيانة الدبابات', admin: 'الإدارة' };
+    function uid(){ return sess && sess.user_id; }
+    function unread(x){ var r = reads[x.id]; return (!r || new Date(r) < new Date(x.updated_at)) && !(x.created_by === uid() && !r && x.kind !== 'message'); }
+    function isOpen(x){ return x.status === 'new' || x.status === 'in_progress'; }
+    function load(){
+      if (!me || loading) return Promise.resolve(); loading = true;
+      return Promise.all([api('GET', 'inbox_items?select=*&order=updated_at.desc&limit=300'), api('GET', 'inbox_reads?select=item_id,read_at')]).then(function(r){
+        items = r[0] || []; reads = {}; (r[1] || []).forEach(function(x){ reads[x.item_id] = x.read_at; });
+        loading = false; badge(); if ($('inbox').classList.contains('on')) { if (cur) detail(cur, true); else list(); }
+      }).catch(function(){ loading = false; });
+    }
+    function badge(){
+      var n = items.filter(function(x){ return unread(x) && (isOpen(x) || x.kind === 'message'); }).length;
+      $('inboxCnt').textContent = n; $('inboxCnt').classList.toggle('hide', !n);
+    }
+    function markRead(id){ reads[id] = new Date().toISOString(); badge();
+      return api('POST', 'inbox_reads?on_conflict=item_id,user_id', { item_id: id, read_at: reads[id] }, { Prefer: 'resolution=merge-duplicates,return=minimal' }).catch(function(){}); }
+    function open(){ $('inbox').classList.add('on'); $('ibScrim').classList.add('on'); cur = null; list(); load(); }
+    function close(){ $('inbox').classList.remove('on'); $('ibScrim').classList.remove('on'); cur = null; }
+    function list(){
+      cur = null; var f = $('ibSt').value;
+      var rows = items.filter(function(x){ return (tab === 'msg') === (x.kind === 'message'); })
+        .filter(function(x){ return f === 'all' || (f === 'open' ? (isOpen(x) || (x.kind === 'message' && unread(x))) : !isOpen(x)); });
+      $('ibBody').innerHTML = rows.length ? rows.map(function(x){
+        return '<button class="ii' + (unread(x) ? ' unread' : '') + '" data-id="' + x.id + '"><div class="t"><b>' + esc(x.title) + '</b>' + (x.kind === 'message' ? '' : '<span class="st ' + x.status + '">' + ST_AR[x.status] + '</span>') + '</div>'
+          + '<div class="m">' + esc(KIND_AR[x.kind] || x.kind) + (x.system ? ' · ' + esc(SYS_AR2[x.system] || x.system) : '') + (x.project ? ' · ' + esc(x.project) : '') + ' · من ' + esc(x.created_by_name || '—') + ' · ' + when(x.updated_at) + '</div></button>'; }).join('')
+        : '<div class="empty">' + (tab === 'msg' ? 'لا توجد رسائل.' : 'لا توجد طلبات بهذه التصفية.') + '</div>';
+      $('ibBody').querySelectorAll('.ii').forEach(function(b){ b.onclick = function(){ detail(b.getAttribute('data-id')); }; });
+    }
+    function detail(id, keep){
+      var x = items.filter(function(i){ return i.id === id; })[0]; if (!x) return list();
+      cur = id; if (!keep) markRead(id);
+      var canAct = x.kind !== 'message', ref = x.ref || {};
+      var h = '<div class="idet"><button class="tbtn" id="ibBack">→ رجوع</button><h3 style="margin-top:12px">' + esc(x.title) + '</h3>'
+        + '<div class="meta">' + esc(KIND_AR[x.kind] || x.kind) + (x.system ? ' · ' + esc(SYS_AR2[x.system] || x.system) : '') + (x.project ? ' · ' + esc(x.project) : '')
+        + '<br>من: ' + esc(x.created_by_name || '—') + ' · ' + new Date(x.created_at).toLocaleString('ar-SA-u-ca-gregory-nu-latn') + (canAct ? ' · <span class="st ' + x.status + '">' + ST_AR[x.status] + '</span>' : '') + '</div>'
+        + (x.body ? '<div class="bd">' + esc(x.body) + '</div>' : '')
+        + (x.close_note ? '<div class="msg ' + (x.status === 'rejected' ? 'bad' : 'ok') + '">' + esc(x.close_note) + '</div>' : '')
+        + '<div class="acts">';
+      if (x.kind === 'vehicle_request' && isOpen(x) && (me.systems || []).indexOf('fleet') >= 0 && me.perms && (me.perms.assign || me.perms.manage))
+        h += '<button class="btn sm" id="ibAssign">🚗 إسناد مركبة</button>';
+      if (x.kind === 'account_request' && isOpen(x) && can('admin')) h += '<button class="btn sm" id="ibAcct">فتح طلبات الحسابات</button>';
+      if (canAct && x.status !== 'in_progress' && isOpen(x)) h += '<button class="btn ghost sm" data-s="in_progress">قيد التنفيذ</button>';
+      if (canAct && isOpen(x)) h += '<button class="btn ghost sm" data-s="done">منجز</button><button class="btn ghost sm" data-s="rejected">رفض</button>';
+      if (canAct && !isOpen(x)) h += '<button class="btn ghost sm" data-s="new">إعادة فتح</button>';
+      h += '</div><div id="ibCm"><div class="sub">جارٍ تحميل المحادثة…</div></div>'
+        + '<div class="ifrm" style="margin-top:10px"><textarea id="ibTxt" rows="3" placeholder="اكتب رداً…"></textarea><button class="btn sm" id="ibSend" style="margin-top:6px"><svg class="i"><use href="#i-send"/></svg>إرسال</button></div></div>';
+      $('ibBody').innerHTML = h;
+      $('ibBack').onclick = list;
+      $('ibBody').querySelectorAll('[data-s]').forEach(function(b){ b.onclick = function(){
+        var st = b.getAttribute('data-s'), body = { status: st };
+        if (st === 'rejected') { var n = prompt('سبب الرفض:'); if (n === null) return; body.close_note = n || 'مرفوض'; }
+        if (st === 'done') body.close_note = x.close_note || null;
+        if (st === 'new') body.close_note = null;
+        api('PATCH', 'inbox_items?id=eq.' + x.id, body, { Prefer: 'return=minimal' }).then(function(){ toast('تم التحديث'); return load(); }).then(function(){ markRead(x.id); }).catch(function(e){ toast('تعذّر: ' + e.message); });
+      }; });
+      if ($('ibAssign')) $('ibAssign').onclick = function(){ assign(x); };
+      if ($('ibAcct')) $('ibAcct').onclick = function(){ close(); show('vAdm'); };
+      $('ibSend').onclick = function(){
+        var t = $('ibTxt').value.trim(); if (!t) return; $('ibSend').disabled = true;
+        api('POST', 'inbox_comments', { item_id: x.id, body: t }, { Prefer: 'return=minimal' }).then(function(){ $('ibTxt').value = ''; $('ibSend').disabled = false; return load(); })
+          .then(function(){ markRead(x.id); comments(x); }).catch(function(e){ $('ibSend').disabled = false; toast('تعذّر: ' + e.message); });
+      };
+      comments(x);
+    }
+    function comments(x){
+      api('GET', 'inbox_comments?select=*&item_id=eq.' + x.id + '&order=created_at.asc').then(function(cs){
+        var el = $('ibCm'); if (!el || cur !== x.id) return;
+        el.innerHTML = (cs || []).length ? cs.map(function(c){ return '<div class="cmt' + (c.created_by === uid() ? ' me' : '') + '"><div class="w">' + esc(c.created_by_name || '—') + ' · ' + when(c.created_at) + '</div>' + esc(c.body) + '</div>'; }).join('') : '<div class="sub">لا توجد ردود بعد.</div>';
+      }).catch(function(){});
+    }
+    function assign(x){
+      var ref = x.ref || {}; close(); openSys('fleet');
+      var tries = 0;
+      (function wait(){
+        var f = document.querySelector('iframe[data-s="fleet"]'), w = null; try { w = f && f.contentWindow; } catch(e){}
+        var ok = false; try { ok = w && w.wfAfmcFleet && w.eval('typeof vehicles !== "undefined" && vehicles.length > 0'); } catch(e){}
+        if (ok) { w.wfAfmcFleet.pick({ id: ref.req_id, iqama: ref.iqama, name_ar: ref.name_ar, name_en: ref.name_en, project: ref.project, area: ref.area, mobile: ref.mobile }); return; }
+        if (tries++ < 120) setTimeout(wait, 500); else toast('تعذّر فتح الأسطول');
+      })();
+    }
+    function compose(){
+      cur = null;
+      var sysOpts = (me.systems || []).map(function(s){ return '<option value="' + s + '">' + esc(SYS_AR2[s] || s) + '</option>'; }).join('') + (can('admin') ? '' : '<option value="admin">الإدارة</option>');
+      $('ibBody').innerHTML = '<div class="idet ifrm"><button class="tbtn" id="ibBack">→ رجوع</button><h3 style="margin-top:12px">جديد</h3>'
+        + '<label><span>النوع</span><select id="cKind"><option value="message">رسالة لمستخدم</option><option value="task">طلب لفريق نظام</option></select></label>'
+        + '<label id="cToL"><span>إلى</span><select id="cTo"><option value="">جارٍ التحميل…</option></select></label>'
+        + '<label id="cSysL" class="hide"><span>النظام</span><select id="cSys">' + sysOpts + '</select></label>'
+        + '<label id="cPrjL" class="hide"><span>المشروع (اختياري)</span><select id="cPrj"><option value="">— كل المشاريع —</option>' + (me.all_projects ? projects : (me.projects || [])).map(function(p){ return '<option>' + esc(p) + '</option>'; }).join('') + '</select></label>'
+        + '<label><span>العنوان</span><input id="cTitle" maxlength="140"></label><label><span>النص</span><textarea id="cBody" rows="5"></textarea></label>'
+        + '<button class="btn" id="cSend"><svg class="i"><use href="#i-send"/></svg>إرسال</button></div>';
+      $('ibBack').onclick = list;
+      (dir ? Promise.resolve(dir) : rpc('inbox_directory')).then(function(d){ dir = d || []; $('cTo').innerHTML = dir.map(function(u){ return '<option value="' + u.id + '">' + esc(u.name) + ' — ' + esc(ROLE_AR[u.role] || u.role) + '</option>'; }).join(''); });
+      $('cKind').onchange = function(){ var m = $('cKind').value === 'message'; $('cToL').classList.toggle('hide', !m); $('cSysL').classList.toggle('hide', m); $('cPrjL').classList.toggle('hide', m); };
+      $('cSend').onclick = function(){
+        var kind = $('cKind').value, title = $('cTitle').value.trim(), body = $('cBody').value.trim();
+        if (!title) return toast('اكتب العنوان');
+        var row = { kind: kind, title: title, body: body || null };
+        if (kind === 'message') { row.to_user = $('cTo').value; if (!row.to_user) return toast('اختر المستلم'); }
+        else { row.system = $('cSys').value; row.project = $('cPrj').value || null; }
+        $('cSend').disabled = true;
+        api('POST', 'inbox_items', row, { Prefer: 'return=representation' }).then(function(r){
+          var it = r && r[0]; toast('تم الإرسال'); tab = kind === 'message' ? 'msg' : 'req';
+          document.querySelectorAll('#inbox .itabs button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-t') === tab); });
+          return load().then(function(){ if (it) { markRead(it.id); detail(it.id, true); } });
+        }).catch(function(e){ $('cSend').disabled = false; toast('تعذّر: ' + e.message); });
+      };
+    }
+    $('inboxBtn').onclick = function(){ if ($('inbox').classList.contains('on')) close(); else open(); };
+    $('ibClose').onclick = close; $('ibScrim').onclick = close; $('ibNew').onclick = compose; $('ibSt').onchange = list;
+    document.querySelectorAll('#inbox .itabs button').forEach(function(b){ b.onclick = function(){ tab = b.getAttribute('data-t'); document.querySelectorAll('#inbox .itabs button').forEach(function(x){ x.classList.toggle('on', x === b); }); list(); }; });
+    setInterval(function(){ if (me) load(); }, 120000);
+    return { load: load, open: open, detail: detail, items: function(){ return items; } };
+  })();
+  window.afmcInbox = ib;
 
   /* ═══════════ تحديث النظام تلقائياً ═══════════
      عند نشر نسخة جديدة يتحمّل تلقائياً لكل المستخدمين — بدون ملفات أو تثبيت. */
