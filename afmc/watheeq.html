@@ -191,6 +191,15 @@
   try { var _bc = navigator.sendBeacon && navigator.sendBeacon.bind(navigator);
         if (_bc) navigator.sendBeacon = function(u, d){ return String(u).indexOf(SENT) === 0 ? true : _bc(u, d); }; } catch(e){}
 
+  /* الأسطول: وحدة «الوضع المحلي» القديمة تخفي لوحة طلبات التفويض لصالح كرت الحفظ المحلي.
+     في النسخة السحابية لا حفظ محلي → تعود اللوحة (تظهر فقط عند وجود طلبات). */
+  if (APP === 'fleet') {
+    var st3 = document.createElement('style'); st3.id = 'wf-cloud-fleetreq';
+    st3.textContent = 'html body #wfReqPill[style*="inline-flex"]{display:inline-flex!important;position:fixed;bottom:18px;right:14px;z-index:99998;border:0;border-radius:999px;padding:10px 16px;background:#0e5e5c;color:#fff;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.2);cursor:pointer}'
+      + 'html body #wfReqPanel[style*="block"]{display:block!important}';
+    (document.head || document.documentElement).appendChild(st3);
+  }
+
   /* طلب تفويض مركبة (وثيق → الأسطول) يعود ويعمل بين كل الأجهزة — لمن يملك التعديل */
   if (APP === 'watheeq') {
     var st2 = document.createElement('style'); st2.id = 'wf-cloud-req';
@@ -2944,6 +2953,7 @@ boot();
 
   /* ---------------- جانب وثيق ---------------- */
   var _wfPendingReq = {};
+  window.__wfReqSend = function(idx){ try{ wfRequestVehicle(idx); }catch(_){} }; window.__wfReqPending = function(iq){ try{ return !!_wfPendingReq[normId(iq)]; }catch(_){ return false; } };
   window.__wfReqRefresh = function(){ try{ if(typeof APP!=='undefined' && APP==='watheeq') wfLoadPendingReq(wfDecorateCards); else if(typeof APP!=='undefined' && APP==='fleetos'){ wfBuildFleetReqWidget(); wfFleetReqPoll(); } }catch(_){} };  /* AFMC Cloud: تحديث مباشر للطلبات */
   function wfLoadPendingReq(cb){
     try{
@@ -3679,6 +3689,7 @@ boot();
     var ui=wfOverlay('⬆ استخراج رواتب — '+wfEsc(proj), body, 820);
     ui.body.querySelector('#wfPayCommit').onclick=function(){ wfPayrollCommit(proj, prepared); ui.close(); };
   }
+  window.__wfPay = { contractFor: function(p){ return wfContractFor(p); }, calc: function(c,m){ return wfCalcSalary(c,m); }, loadCfg: function(cb){ wfLoadCfg(cb); }, advList: function(e){ return wfAdvList(e); }, editContract: function(p){ wfOpenContractEditor(p); } };  /* AFMC Cloud: رواتب من الحضور */
   function wfPayrollCommit(proj, prepared){
     var month=new Date().toISOString().slice(0,7);
     var settled=0, applied=0;
@@ -8479,6 +8490,227 @@ body.wx-card-open #wx4Pill{ display:none !important; }
   setInterval(function(){ if (ready) pushAll(); }, 60000);                       /* إعادة محاولة ما لم يُرفع (انقطاع إنترنت) */
   window.addEventListener('online', function(){ if (ready) pushAll(); });
   document.addEventListener('visibilitychange', function(){ if (ready && document.visibilityState === 'visible') pullAll().catch(function(){}); });
+
+  /* ═══════════ وثيق: المعرّفات + الحضور التراكمي + التفويض + حوادث المركبات + رواتب من الحضور ═══════════
+     كل البيانات من القاعدة الموحّدة (ملفات الحضور في Ninja/Keemart + الأسطول). وثيق يعرضها ولا يكررها. */
+  if (APP === 'watheeq') (function(){
+    var PLATFORMS = ['NINJA', 'KEEMART', 'KEETA', 'NOON', 'SHIPMENT', 'NAQEL', 'STARLINKS', 'ARAMEX', 'CALO'];
+    var num = function(n){ var x = Number(n) || 0; return x.toLocaleString('en-US', { maximumFractionDigits: 2 }); };
+    var mcss = document.createElement('style'); mcss.id = 'wfsb-afmc-css';
+    mcss.textContent = '.afx h4{margin:16px 0 8px;font-size:14px}.afx h4:first-child{margin-top:0}'
+      + '.afx table{width:100%;border-collapse:collapse;font-size:12.5px}.afx th,.afx td{padding:7px 8px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap}'
+      + '.afx th{background:#f7f5f0;color:#667;font-weight:600}.afx .tot td{font-weight:700;background:#fbfaf6}'
+      + '.afx .chip{display:inline-flex;gap:6px;align-items:center;border:1px solid #d9d3c5;border-radius:999px;padding:3px 10px;margin:3px;font-size:12px;background:#fff}'
+      + '.afx .chip b{color:#0e5e5c}.afx .chip i{cursor:pointer;color:#a3372b;font-style:normal}'
+      + '.afx .row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px}.afx input,.afx select{padding:7px 9px;border:1px solid #d9d3c5;border-radius:8px;font:inherit}'
+      + '.afx .btnx{border:0;background:#0e5e5c;color:#fff;border-radius:8px;padding:7px 12px;font:inherit;font-weight:600;cursor:pointer}.afx .btnx.gh{background:#fff;color:#0e5e5c;border:1px solid #d9d3c5}'
+      + '.afx .muted{color:#778;font-size:12px}.afx .warn{color:#a3372b}.afx .scroll{overflow:auto;max-height:60vh}';
+    document.head.appendChild(mcss);
+
+    /* ---------- (١) تبويب «المنصّة» في ملف الموظف ---------- */
+    function empPane(e, pane){
+      pane.innerHTML = '<div class="afx muted">جارٍ التحميل من القاعدة…</div>';
+      rpc('employee_overview', { p_iqama: normId(e.iqama) }).then(function(o){
+        o = o || {}; var ids = o.ids || [], months = o.months || [], inc = o.incidents || [], ded = o.deductions || [];
+        var canEdit = !!(me && me.perms && me.perms.edit), canDel = !!(me && (me.role === 'admin' || me.role === 'manager'));
+        var h = '<div class="afx">';
+        // المعرّفات
+        h += '<h4>🪪 معرّفات الموظف في المشاريع</h4><div>' + (ids.length ? ids.map(function(x){
+          return '<span class="chip">' + esc(x.platform) + ' <b>' + esc(x.id) + '</b>' + (canDel ? ' <i data-rid="' + esc(x.rid) + '" title="حذف">✕</i>' : '') + '</span>'; }).join('')
+          : '<span class="muted">لا توجد معرّفات بعد. تُضاف تلقائياً من ملفات الحضور عند تطابق الجوال، أو يدوياً هنا.</span>') + '</div>';
+        if (canEdit) h += '<div class="row"><select id="afxPl">' + PLATFORMS.concat(e.project && PLATFORMS.indexOf(String(e.project).toUpperCase()) < 0 ? [String(e.project).toUpperCase()] : [])
+          .map(function(p){ return '<option' + (String(e.project || '').toUpperCase() === p ? ' selected' : '') + '>' + esc(p) + '</option>'; }).join('')
+          + '</select><input id="afxId" placeholder="رقم المعرّف في المشروع" style="direction:ltr"><button class="btnx" id="afxAdd">إضافة معرّف</button></div>';
+        // الحضور والتفويض
+        var t = o.totals || {};
+        h += '<h4>🗓️ الدوام والتفويض (آخر ٦ أشهر)</h4><div class="scroll"><table><thead><tr><th>الشهر</th><th>أيام الدوام</th><th>الساعات</th><th>الطلبات</th><th>أيام التفويض</th><th>الغياب</th><th>المشاريع</th></tr></thead><tbody>'
+          + months.map(function(m){ return '<tr><td>' + esc(m.month) + '</td><td>' + num(m.days) + '</td><td>' + num(m.hours) + '</td><td>' + num(m.orders) + '</td><td>' + num(m.auth_days) + '</td><td>'
+            + (m.absence == null ? '<span class="muted">بلا تفويض</span>' : num(m.absence)) + '</td><td class="muted">' + (m.by_project || []).map(function(b){ return esc(b.project) + ': ' + num(b.days); }).join(' · ') + '</td></tr>'; }).join('')
+          + '<tr class="tot"><td>الإجمالي</td><td>' + num(t.days) + '</td><td>' + num(t.hours) + '</td><td>' + num(t.orders) + '</td><td colspan="3"></td></tr></tbody></table></div>'
+          + '<div class="muted">أيام الدوام + الغياب = أيام التفويض (أيام المركبة في الأسطول). الدوام والساعات والطلبات من ملفات الحضور في Ninja وKeemart.</div>';
+        // حوادث وتلفيات
+        h += '<h4>🚗 حوادث وتلفيات ومالية المركبات (من الأسطول)</h4>' + (inc.length ? '<div class="scroll"><table><thead><tr><th>النوع</th><th>اللوحة</th><th>التاريخ</th><th>التكلفة</th><th>نسبة الخطأ</th><th>على السائق</th><th>الحالة</th><th>الوصف</th></tr></thead><tbody>'
+          + inc.map(function(x){ return '<tr><td>' + (x.kind === 'accident' ? 'حادث' : 'تلفيات') + '</td><td>' + esc(x.plate) + '</td><td>' + esc(x.date || '—') + '</td><td>' + num(x.cost) + '</td><td>' + num(x.fault_pct) + '%</td><td class="warn">' + num(x.charge) + '</td><td>' + esc(x.status || '—') + '</td><td>' + esc(x.description || '') + (x.notes ? ' <span class="muted">(' + esc(x.notes) + ')</span>' : '') + '</td></tr>'; }).join('')
+          + '</tbody></table></div>' : '<div class="muted">لا توجد حوادث أو تلفيات مسجّلة على هذا الموظف في الأسطول.</div>');
+        if (ded.length) h += '<div class="muted" style="margin-top:6px">خصومات مسجّلة في سجل المركبة: ' + ded.map(function(d){ return esc(d.plate) + ' = ' + esc(d.value); }).join(' · ') + '</div>';
+        // طلب التفويض
+        var pending = window.__wfReqPending && window.__wfReqPending(e.iqama);
+        h += '<h4>🔑 طلب تفويض مركبة</h4><div class="row">' + (pending ? '<span class="chip">✅ الطلب مُرسل للأسطول بانتظار إسناد مركبة</span>'
+          : (canEdit && window.__wfReqSend ? '<button class="btnx" id="afxReq">🚗 إرسال طلب تفويض للأسطول</button><span class="muted">يظهر في الأسطول لإسناد مركبة، ويتحدث هنا تلقائياً.</span>' : '<span class="muted">لا يوجد طلب.</span>')) + '</div>';
+        pane.innerHTML = h + '</div>';
+        var add = pane.querySelector('#afxAdd');
+        if (add) add.onclick = function(){
+          var pl = pane.querySelector('#afxPl').value, id = normId(pane.querySelector('#afxId').value);
+          if (!id) return note('اكتب رقم المعرّف', 'amber');
+          api('GET', 'employees?select=id&iqama=eq.' + encodeURIComponent(normId(e.iqama))).then(function(r){
+            if (!r || !r[0]) throw new Error('الموظف غير موجود في القاعدة بعد');
+            return api('POST', 'employee_ids', { employee_id: r[0].id, platform: pl, external_id: id }, { Prefer: 'return=minimal' });
+          }).then(function(){ note('✅ أُضيف المعرّف ' + pl + ' ' + id, 'green'); empPane(e, pane); })
+            .catch(function(err){ note(/duplicate|unique/i.test(err.message) ? 'هذا المعرّف مسجّل لموظف آخر في نفس المشروع' : 'تعذّر: ' + err.message, 'red'); });
+        };
+        Array.prototype.forEach.call(pane.querySelectorAll('[data-rid]'), function(x){
+          x.onclick = function(){ if (!confirm('حذف هذا المعرّف؟')) return;
+            api('DELETE', 'employee_ids?id=eq.' + x.getAttribute('data-rid'), null, { Prefer: 'return=minimal' }).then(function(){ empPane(e, pane); }).catch(function(err){ note('تعذّر: ' + err.message, 'red'); }); };
+        });
+        var rq = pane.querySelector('#afxReq');
+        if (rq) rq.onclick = function(){ var idx = state.employees.indexOf(e); if (idx >= 0) window.__wfReqSend(idx); setTimeout(function(){ empPane(e, pane); }, 1500); };
+      }).catch(function(err){ pane.innerHTML = '<div class="afx warn">تعذّر التحميل: ' + esc(err.message) + '</div>'; });
+    }
+    function addEmpTab(){
+      var mdl = document.getElementById('modal'); if (!mdl || state.current == null) return;
+      var tabs = mdl.querySelector('.mtabs'), body = mdl.querySelector('.mbody'); if (!tabs || !body || tabs.querySelector('[data-pane="afmc"]')) return;
+      var e = state.employees[state.current]; if (!e) return;
+      var b = document.createElement('button'); b.setAttribute('data-pane', 'afmc'); b.textContent = 'المنصّة: الدوام والمعرّفات'; tabs.appendChild(b);
+      var p = document.createElement('div'); p.className = 'mpane'; p.id = 'pane-afmc'; body.appendChild(p);
+      var loaded = false;
+      b.onclick = function(){
+        tabs.querySelectorAll('button').forEach(function(x){ x.classList.remove('on'); }); body.querySelectorAll('.mpane').forEach(function(x){ x.classList.remove('on'); });
+        b.classList.add('on'); p.classList.add('on'); if (!loaded) { loaded = true; empPane(e, p); }
+      };
+    }
+    /* لا نغلّف openModal (طبقة أخرى في وثيق تعيد تغليفه دورياً) — نراقب النافذة ونضيف التبويب عند فتحها */
+    var obsOn = false;
+    function hookModal(){
+      if (obsOn) return; var mdl = document.getElementById('modal'); if (!mdl) return; obsOn = true;
+      var t = null; new MutationObserver(function(){ clearTimeout(t); t = setTimeout(function(){ try { if (ready) addEmpTab(); } catch(_){} }, 60); }).observe(mdl, { childList: true });
+    }
+    function ensureTab(){ try { if (ready && state.current != null && document.querySelector('#scrim.on')) addEmpTab(); } catch(_){} }
+
+    /* ---------- (٢) استخراج الرواتب من الحضور (تبويب ملفات الرواتب) ---------- */
+    var payRows = [];
+    function payCard(){
+      var view = document.getElementById('view-wf_payroll'); if (!view || view.querySelector('#afxPay')) return;
+      var projs = {}; (state.employees || []).forEach(function(e){ if (e.project) projs[String(e.project).toUpperCase()] = 1; }); projs.NINJA = 1; projs.KEEMART = 1;
+      var m0 = new Date(); var mv = m0.getFullYear() + '-' + String(m0.getMonth() + 1).padStart(2, '0');
+      var card = document.createElement('div'); card.className = 'wfp-card afx'; card.id = 'afxPay'; card.style.marginBottom = '14px';
+      card.innerHTML = '<h3 style="margin-top:0">🧮 استخراج الرواتب من الحضور (حسب عقد المشروع)</h3>'
+        + '<p class="muted">يجمع أيام الدوام والساعات والطلبات من ملفات الحضور، وأيام التفويض من الأسطول (الغياب = التفويض − الدوام)، وخصومات الحوادث والتلفيات، ثم يحسب الراتب بعقد المشروع. الفترة: الشهر الميلادي.</p>'
+        + '<div class="row"><select id="afxProj">' + Object.keys(projs).sort().map(function(p){ return '<option>' + esc(p) + '</option>'; }).join('') + '</select>'
+        + '<input type="month" id="afxMonth" value="' + mv + '"><button class="btnx" id="afxCalc">احسب</button><button class="btnx gh" id="afxContract">📄 عقد المشروع</button>'
+        + '<button class="btnx gh" id="afxXls" disabled>⬇️ Excel</button><button class="btnx" id="afxCommit" disabled>✅ اعتماد الرواتب</button></div>'
+        + '<div id="afxOut" style="margin-top:12px"></div>';
+      view.insertBefore(card, view.firstChild);
+      card.querySelector('#afxContract').onclick = function(){ if (window.__wfPay) window.__wfPay.editContract(card.querySelector('#afxProj').value); };
+      card.querySelector('#afxCalc').onclick = function(){ calc(card); };
+      card.querySelector('#afxXls').onclick = function(){ xls(card); };
+      card.querySelector('#afxCommit').onclick = function(){ commit(card); };
+    }
+    function calc(card){
+      var proj = card.querySelector('#afxProj').value, month = card.querySelector('#afxMonth').value, out = card.querySelector('#afxOut');
+      if (!month) return; out.innerHTML = '<div class="muted">جارٍ الحساب…</div>';
+      var P = window.__wfPay;
+      (P ? new Promise(function(res){ P.loadCfg(res); }) : Promise.resolve()).then(function(){
+        return rpc('payroll_month', { p_project: proj, p_month: month + '-01' });
+      }).then(function(rows){
+        var c = P ? P.contractFor(proj) : { hours: 0, orders: 0, days: 0, bonusPerDay: 0, bonusPerOrder: 0, formula: '' };
+        var noContract = !c.formula && !c.bonusPerDay && !c.bonusPerOrder;
+        var byIq = {}; (state.employees || []).forEach(function(e){ byIq[normId(e.iqama)] = e; });
+        payRows = (rows || []).map(function(r){
+          var e = byIq[normId(r.iqama)] || null, base = (e && e.finance && Number(e.finance.base)) || 0;
+          var gross = P ? P.calc(c, { hours: r.hours, orders: r.orders, days: r.days, base: base }) : base;
+          var adv = 0; if (e && P) P.advList(e).forEach(function(a){ var s = a.status || 'new'; if (s === 'approved' || s === 'disbursed') adv += Number(a.amount) || 0; });
+          return { r: r, e: e, base: base, gross: Math.round(gross * 100) / 100, adv: adv, veh: Number(r.vehicle_charges) || 0, net: Math.round((gross - adv - (Number(r.vehicle_charges) || 0)) * 100) / 100 };
+        });
+        var T = { days: 0, hours: 0, orders: 0, auth: 0, abs: 0, gross: 0, adv: 0, veh: 0, net: 0 };
+        payRows.forEach(function(x){ T.days += x.r.days; T.hours += Number(x.r.hours); T.orders += x.r.orders; T.auth += x.r.auth_days; T.abs += x.r.absence || 0; T.gross += x.gross; T.adv += x.adv; T.veh += x.veh; T.net += x.net; });
+        out.innerHTML = (noContract ? '<div class="warn" style="margin-bottom:8px">⚠️ لا يوجد عقد لمشروع ' + esc(proj) + ' بعد — الإجمالي = الراتب الأساسي فقط. عدّل «عقد المشروع» ثم احسب مرة ثانية.</div>' : '')
+          + '<div class="muted" style="margin-bottom:6px">' + payRows.length + ' موظف · العقد: بونص اليوم ' + num(c.bonusPerDay) + ' · بونص الطلب ' + num(c.bonusPerOrder) + (c.formula ? ' · المعادلة: <code>' + esc(c.formula) + '</code>' : '') + '</div>'
+          + '<div class="scroll"><table><thead><tr><th>الموظف</th><th>المعرّفات</th><th>الدوام</th><th>الساعات</th><th>الطلبات</th><th>التفويض</th><th>الغياب</th><th>الأساسي</th><th>الإجمالي</th><th>سلف</th><th>حوادث/تلفيات</th><th>الصافي</th></tr></thead><tbody>'
+          + payRows.map(function(x){ var r = x.r; return '<tr' + (x.e ? '' : ' style="background:#fff7ed"') + '><td>' + esc(r.name || '—') + '<div class="muted">' + esc(r.iqama) + (r.plates ? ' · ' + esc(r.plates) : '') + '</div></td>'
+            + '<td class="muted">' + (r.ids || []).map(function(i){ return esc(i.platform) + ':' + esc(i.id); }).join(' ') + '</td><td>' + num(r.days) + '</td><td>' + num(r.hours) + '</td><td>' + num(r.orders) + '</td><td>' + num(r.auth_days) + '</td><td>'
+            + (r.absence == null ? '<span class="muted">—</span>' : num(r.absence)) + '</td><td>' + num(x.base) + '</td><td>' + num(x.gross) + '</td><td>' + num(x.adv) + '</td><td class="warn">' + num(x.veh) + '</td><td><b>' + num(x.net) + '</b></td></tr>'; }).join('')
+          + '<tr class="tot"><td>الإجمالي</td><td></td><td>' + num(T.days) + '</td><td>' + num(T.hours) + '</td><td>' + num(T.orders) + '</td><td>' + num(T.auth) + '</td><td>' + num(T.abs) + '</td><td></td><td>' + num(T.gross) + '</td><td>' + num(T.adv) + '</td><td>' + num(T.veh) + '</td><td>' + num(T.net) + '</td></tr></tbody></table></div>';
+        card.querySelector('#afxXls').disabled = !payRows.length; card.querySelector('#afxCommit').disabled = !payRows.length;
+        card._month = month; card._proj = proj;
+      }).catch(function(err){ out.innerHTML = '<div class="warn">تعذّر الحساب: ' + esc(err.message) + '</div>'; });
+    }
+    function xls(card){
+      if (typeof XLSX === 'undefined') return note('مكتبة Excel غير محمّلة', 'red');
+      var aoa = [['الإقامة','الاسم','المعرّفات','أيام الدوام','الساعات','الطلبات','أيام التفويض','الغياب','المركبات','الأساسي','الإجمالي','سلف','حوادث/تلفيات','الصافي']].concat(payRows.map(function(x){ var r = x.r;
+        return [r.iqama, r.name, (r.ids || []).map(function(i){ return i.platform + ':' + i.id; }).join(' '), r.days, Number(r.hours), r.orders, r.auth_days, r.absence == null ? '' : r.absence, r.plates || '', x.base, x.gross, x.adv, x.veh, x.net]; }));
+      var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), 'الرواتب');
+      XLSX.writeFile(wb, 'payroll-' + card._proj + '-' + card._month + '.xlsx');
+    }
+    function commit(card){
+      var list = payRows.filter(function(x){ return x.e; });
+      if (!list.length) return note('لا يوجد موظفون مطابقون في وثيق', 'amber');
+      if (!confirm('اعتماد رواتب ' + list.length + ' موظف لشهر ' + card._month + '؟ تُسوّى السلف المعمدة تلقائياً.')) return;
+      var settled = 0, P = window.__wfPay;
+      list.forEach(function(x){
+        var e = x.e; e.finance = e.finance || { advances: [] };
+        if (P) P.advList(e).forEach(function(a){ var s = a.status || 'new'; if (s === 'approved' || s === 'disbursed') { a.status = 'settled'; a.settled_at = nowIso(); a.settle_month = card._month; settled++; } });
+        e.finance.payroll = { month: card._month, project: card._proj, days: x.r.days, hours: Number(x.r.hours), orders: x.r.orders, auth_days: x.r.auth_days, absence: x.r.absence,
+                              base: x.base, gross: x.gross, advances_settled: x.adv, vehicle_charges: x.veh, net: x.net, by: (me && me.email) || '', at: nowIso(), source: 'حضور + عقد المشروع' };
+        e.finance.days = x.r.days; e.finance.accident = x.veh; e.finance.net = x.net;
+      });
+      try { if (typeof recomputeStats === 'function') recomputeStats(); } catch(_){}
+      try { window.persist(); } catch(_){}
+      note('✅ اعتُمدت رواتب ' + list.length + ' موظف · سُوّيت ' + settled + ' سلفة', 'green');
+      card.querySelector('#afxCommit').disabled = true;
+    }
+    function tickFn(){ try { hookModal(); ensureTab(); if (ready) payCard(); } catch(_){} }
+    tickFn(); setInterval(tickFn, 1500);
+    window.wfAfmc = { empPane: empPane, calc: calc, rows: function(){ return payRows; } };
+  })();
+
+  /* ═══════════ الأسطول: إسناد مركبة من «طلب تفويض» وثيق ═══════════
+     زر «إسناد مركبة» في لوحة الطلبات يفتح اختيار مركبة متاحة → يُسجَّل التفويض في الأسطول
+     → يُغلق الطلب → الموظف يصبح «نشط» في وثيق. */
+  if (APP === 'fleet') (function(){
+    var BR = 'https://afmc.cloud/wf';
+    function bridgeGet(key){ return fetch(BR + '?key=' + key).then(function(r){ return r.json(); }); }
+    function bridgePost(key, data){ return fetch(BR, { method: 'POST', body: JSON.stringify({ key: key, data: data }) }).then(function(r){ return r.json(); }); }
+    function today(){ var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+    function free(v){ return v && !v.current_driver && ['assigned','workshop','stolen','sold','returned'].indexOf(String(v.vehicle_status || 'available')) < 0; }
+    function pick(req){
+      if (!(me && me.perms && (me.perms.assign || me.perms.manage))) return note('الإسناد لمن يملك «تسليم مركبات» في جدول الصلاحيات', 'amber');
+      var proj = String(req.project || '').toUpperCase();
+      var html = '<div style="margin-bottom:8px">الموظف: <b>' + esc(req.name_ar || req.name_en || '') + '</b> · ' + esc(req.iqama || '') + (req.project ? ' · ' + esc(req.project) : '') + '</div>'
+        + '<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap"><input id="asgQ" placeholder="بحث باللوحة أو النوع أو المنطقة" style="flex:1;min-width:180px;padding:8px;border:1px solid #ccc;border-radius:8px">'
+        + '<label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" id="asgAll"> كل المشاريع</label></div>'
+        + '<div id="asgList" style="max-height:55vh;overflow:auto"></div>';
+      var m = modal('🚗 إسناد مركبة لطلب التفويض', html);
+      var box = m.querySelector('#asgList');
+      function render(){
+        var q = (m.querySelector('#asgQ').value || '').trim().toUpperCase(), all = m.querySelector('#asgAll').checked;
+        var list = (vehicles || []).filter(free).filter(function(v){ return all || !proj || String(v.project || '').toUpperCase() === proj; })
+          .filter(function(v){ return !q || (v.plate + ' ' + (v.vehicle_type || '') + ' ' + (v.area || '') + ' ' + (v.project || '')).toUpperCase().indexOf(q) >= 0; }).slice(0, 200);
+        box.innerHTML = list.length ? '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="text-align:right;padding:6px">اللوحة</th><th style="text-align:right">النوع</th><th style="text-align:right">المشروع</th><th style="text-align:right">المنطقة</th><th></th></tr></thead><tbody>'
+          + list.map(function(v){ return '<tr style="border-top:1px solid #eee"><td style="padding:6px"><b>' + esc(v.plate) + '</b></td><td>' + esc(v.vehicle_type || '') + '</td><td>' + esc(v.project || '') + '</td><td>' + esc(v.area || '') + '</td><td><button data-plate="' + esc(v.plate) + '" style="border:0;background:#0e5e5c;color:#fff;border-radius:8px;padding:6px 10px;cursor:pointer">إسناد</button></td></tr>'; }).join('')
+          + '</tbody></table>' : '<div style="color:#667;padding:12px">لا توجد مركبات متاحة' + (all ? '' : ' في مشروع ' + esc(proj) + ' — فعّل «كل المشاريع»') + '.</div>';
+        Array.prototype.forEach.call(box.querySelectorAll('[data-plate]'), function(b){ b.onclick = function(){ assign(req, b.getAttribute('data-plate'), m); }; });
+      }
+      m.querySelector('#asgQ').oninput = render; m.querySelector('#asgAll').onchange = render; render();
+    }
+    function assign(req, plate, m){
+      var v = (vehicles || []).filter(function(x){ return x.plate === plate; })[0]; if (!v) return;
+      if (!confirm('إسناد المركبة ' + plate + ' إلى ' + (req.name_ar || req.name_en || req.iqama) + '؟')) return;
+      var entry = { driver_id: String(req.iqama || ''), name_ar: req.name_ar || '', name_en: req.name_en || '', mobile: req.mobile || '', email: '',
+        date_receive: today(), date_deliver: '', status: 'Active', branch_receive: '', branch_deliver: '', reason: '', notes: 'إسناد من طلب تفويض وثيق',
+        project: req.project || v.project || '', area: req.area || v.area || '', city: '', id_ninja: '', iban: '', salary_deductions: '', id_photo: '', lic_photo: '' };
+      v.history = v.history || []; v.history.push(entry); v.current_driver = entry; v.vehicle_status = 'assigned';
+      if (entry.project) v.project = entry.project; if (entry.area) v.area = entry.area;
+      try { if (typeof logEv === 'function') logEv('driver_assign', plate, { name_ar: entry.name_ar, iq: entry.driver_id, date: entry.date_receive }); } catch(_){}
+      try { window.persist(); } catch(_){}
+      try { if (typeof applyFilters === 'function') applyFilters(); } catch(_){}
+      bridgeGet('vehreq').then(function(r){
+        var list = (r && r.data) || [];
+        return bridgePost('vehreq', list.filter(function(x){ return x && x.id !== req.id; }));
+      }).then(function(){ return rpc('fleet_assign_activate', { p_iqama: String(req.iqama || ''), p_plate: plate }); })
+        .then(function(res){
+          note('✅ أُسندت ' + plate + ' إلى ' + (req.name_ar || req.iqama) + (res && res.activated ? ' · أصبح «نشط» في وثيق' : ''), 'green');
+          try { if (m && m.parentNode) m.parentNode.removeChild(m); else if (m && m.closest) { var ov = m.closest('.wfsb-ov'); if (ov) ov.remove(); } } catch(_){}
+          try { if (window.__wfReqRefresh) window.__wfReqRefresh(); } catch(_){}
+        }).catch(function(err){ note('تم الإسناد في الأسطول، لكن تعذّر إكمال الطلب: ' + err.message, 'amber'); });
+    }
+    /* يستبدل زر «إسناد مركبة» القديم (كان يستدعي دالة غير متاحة فيفشل بصمت) */
+    document.addEventListener('click', function(ev){
+      var b = ev.target && ev.target.closest && ev.target.closest('#wfReqPanel [data-asg]'); if (!b) return;
+      ev.stopImmediatePropagation(); ev.preventDefault();
+      var q = (window._wfFleetReqCache || [])[parseInt(b.getAttribute('data-asg'), 10)]; if (q) pick(q);
+    }, true);
+    window.wfAfmcFleet = { pick: pick, assign: assign };
+  })();
 
   /* تحديث مباشر: المنصّة تُبلغ عند أي تغيير في القاعدة → سحب الفروقات فوراً (لا يقاطع رفعاً جارياً) */
   var pokeT = null;

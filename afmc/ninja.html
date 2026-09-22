@@ -191,6 +191,15 @@
   try { var _bc = navigator.sendBeacon && navigator.sendBeacon.bind(navigator);
         if (_bc) navigator.sendBeacon = function(u, d){ return String(u).indexOf(SENT) === 0 ? true : _bc(u, d); }; } catch(e){}
 
+  /* الأسطول: وحدة «الوضع المحلي» القديمة تخفي لوحة طلبات التفويض لصالح كرت الحفظ المحلي.
+     في النسخة السحابية لا حفظ محلي → تعود اللوحة (تظهر فقط عند وجود طلبات). */
+  if (APP === 'fleet') {
+    var st3 = document.createElement('style'); st3.id = 'wf-cloud-fleetreq';
+    st3.textContent = 'html body #wfReqPill[style*="inline-flex"]{display:inline-flex!important;position:fixed;bottom:18px;right:14px;z-index:99998;border:0;border-radius:999px;padding:10px 16px;background:#0e5e5c;color:#fff;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.2);cursor:pointer}'
+      + 'html body #wfReqPanel[style*="block"]{display:block!important}';
+    (document.head || document.documentElement).appendChild(st3);
+  }
+
   /* طلب تفويض مركبة (وثيق → الأسطول) يعود ويعمل بين كل الأجهزة — لمن يملك التعديل */
   if (APP === 'watheeq') {
     var st2 = document.createElement('style'); st2.id = 'wf-cloud-req';

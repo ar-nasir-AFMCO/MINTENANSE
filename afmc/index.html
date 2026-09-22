@@ -230,7 +230,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <!-- ════════ الدخول ════════ -->
 <div id="gate" class="hide">
   <div class="art">
-    <div style="display:flex;align-items:center;gap:11px"><div class="mark"><span>A</span></div><div><b style="font-size:15px">AFMCO</b><div style="font-size:12px;color:#8fa5a3">Wajehet Al Dam Logistics</div></div></div>
+    <div style="display:flex;align-items:center;gap:11px"><div class="mark"><span>A</span></div><div><b style="font-size:15px">AFMCO</b><div style="font-size:12px;color:#8fa5a3">منصة العمليات الموحّدة</div></div></div>
     <div>
       <h2>منصّة عمليات واحدة لكل الأنظمة</h2>
       <p>الموظفون والأسطول والمناديب والصيانة على قاعدة بيانات واحدة، وأي تعديل يظهر للفريق كله مباشرة.</p>
@@ -308,9 +308,9 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         </div>
 
         <div class="sec">
-          <h3><svg class="i"><use href="#i-shield"/></svg>مصفوفة الصلاحيات الموحّدة</h3>
-          <div class="card tbl"><table><thead><tr><th>الدور</th><th>المشاريع</th><th>تعديل</th><th>تسليم مركبات</th><th>الرواتب</th><th>حذف</th><th>إدارة المستخدمين</th><th>الأنظمة الظاهرة</th></tr></thead><tbody id="matrixBody"></tbody></table></div>
-          <div class="sub" style="margin-top:8px">القواعد نفسها تُطبَّق داخل القاعدة على كل الأنظمة، ولا يمكن تجاوزها من أي تطبيق. «مشاريعه فقط» تعني المشاريع المحدّدة للمستخدم أعلاه.</div>
+          <h3><svg class="i"><use href="#i-shield"/></svg>جدول الصلاحيات والعزل: الأدوار × الأنظمة</h3>
+          <div class="card tbl"><table><thead><tr><th>الدور</th><th>كل المشاريع</th><th>تعديل</th><th>تسليم مركبات</th><th>الرواتب</th><th>حذف</th><th>إدارة المستخدمين</th><th>الأنظمة</th><th></th></tr></thead><tbody id="matrixBody"></tbody></table></div>
+          <div class="sub" style="margin-top:8px">عدّل أي خانة ثم «حفظ»: التغيير يُطبَّق فوراً داخل القاعدة على كل الأنظمة ولا يمكن تجاوزه من أي تطبيق. «كل المشاريع» مطفأة = يرى المستخدم مشاريعه المحدّدة فقط. «الأنظمة» هنا افتراضيّ الدور، ويمكن تخصيصها لكل مستخدم في جدول المستخدمين. صلاحيات مدير النظام الأساسية مقفلة حتى لا يُقفل الحساب.</div>
         </div>
 
         <div class="sec hide" id="reconSec">
@@ -358,7 +358,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260921213549";
+  var BUILD = "20260922144113";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -576,10 +576,27 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     ]).then(function(r){
       var SYS_AR = { watheeq:'وثيق', fleet:'الأسطول', ninja:'Ninja', keemart:'Keemart', dbb:'صيانة الدبابات' }, ord = ROLES.map(function(x){ return x[0]; });
       var yes = function(b){ return b ? '<span class="yes">✓</span>' : '<span class="no">—</span>'; };
+      var ed = me.role === 'admin';
+      var cb = function(role, k, v){ var lock = !ed || (role === 'admin' && (k === 'can_manage' || k === 'all_projects'));
+        return ed ? '<label class="sw"><input type="checkbox" data-k="' + k + '"' + (v ? ' checked' : '') + (lock ? ' disabled' : '') + '><span></span></label>' : yes(v); };
       $('matrixBody').innerHTML = (r[4] || []).sort(function(a, b){ return ord.indexOf(a.role) - ord.indexOf(b.role); }).map(function(m){
-        return '<tr><td><b>' + esc(m.label_ar) + '</b></td><td>' + (m.all_projects ? 'كل المشاريع' : 'مشاريعه فقط') + '</td><td>' + yes(m.can_edit) + '</td><td>' + yes(m.can_assign) + '</td><td>' + yes(m.can_finance)
-          + '</td><td>' + yes(m.can_delete) + '</td><td>' + yes(m.can_manage) + '</td><td>' + (m.systems || []).map(function(x){ return '<span class="tag">' + esc(SYS_AR[x] || x) + '</span>'; }).join('') + '</td></tr>';
+        return '<tr data-role="' + esc(m.role) + '"><td><b>' + esc(m.label_ar) + '</b></td><td>' + cb(m.role, 'all_projects', m.all_projects) + '</td><td>' + cb(m.role, 'can_edit', m.can_edit) + '</td><td>' + cb(m.role, 'can_assign', m.can_assign)
+          + '</td><td>' + cb(m.role, 'can_finance', m.can_finance) + '</td><td>' + cb(m.role, 'can_delete', m.can_delete) + '</td><td>' + cb(m.role, 'can_manage', m.can_manage) + '</td><td>'
+          + SYS_LIST.map(function(x){ var on = (m.systems || []).indexOf(x[0]) >= 0; return ed ? '<span class="tag' + (on ? ' on' : '') + '" data-ms="' + x[0] + '">' + x[1] + '</span>' : (on ? '<span class="tag">' + x[1] + '</span>' : ''); }).join('')
+          + '</td><td>' + (ed ? '<button class="btn sm" data-msave="1">حفظ</button>' : '') + '</td></tr>';
       }).join('');
+      if (ed) $('matrixBody').querySelectorAll('tr[data-role]').forEach(function(tr){
+        var role = tr.getAttribute('data-role');
+        tr.querySelectorAll('.tag[data-ms]').forEach(function(t){ t.onclick = function(){ if (role === 'admin') return; t.classList.toggle('on'); }; });
+        tr.querySelector('[data-msave]').onclick = function(){
+          var body = { systems: [].map.call(tr.querySelectorAll('.tag[data-ms].on'), function(t){ return t.getAttribute('data-ms'); }) };
+          tr.querySelectorAll('input[data-k]').forEach(function(i){ body[i.getAttribute('data-k')] = i.checked; });
+          var b = this; b.disabled = true;
+          api('PATCH', 'role_matrix?role=eq.' + role, body, { Prefer: 'return=minimal' })
+            .then(function(){ toast('تم حفظ صلاحيات الدور. تُطبَّق فوراً على كل الأنظمة.'); loadAdmin(); })
+            .catch(function(e){ b.disabled = false; toast('تعذّر الحفظ: ' + e.message); });
+        };
+      });
       ROLE_SYS = {}; (r[4] || []).forEach(function(m){ ROLE_SYS[m.role] = m.systems || []; });
       var users = r[0] || [], pp = r[1] || []; projects = (r[2] || []).map(function(p){ return p.code; });
       var byU = {}; pp.forEach(function(x){ (byU[x.profile_id] = byU[x.profile_id] || []).push(x.project_code); });
