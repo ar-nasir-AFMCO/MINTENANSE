@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>السكنات · منصة AFMCO</title>
+<meta name="theme-color" content="#0f2524">
+<link rel="manifest" href="housing.webmanifest">
+<link rel="icon" href="housing-192.png">
+<link rel="apple-touch-icon" href="housing-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="السكنات">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --font:"IBM Plex Sans Arabic",Tahoma,"Segoe UI",system-ui,sans-serif;
+  --bg:#f4f2ed;--surface:#fff;--surface-2:#f8f6f1;--line:#e6e1d6;--line-2:#efebe3;
+  --ink:#16211f;--ink-2:#34403e;--muted:#6b7674;--faint:#9aa3a1;
+  --brand:#0e5e5c;--brand-2:#0a4644;--brand-soft:#e4efed;--brand-ring:rgba(14,94,92,.16);
+  --gold:#b48a4a;--gold-soft:#f5ecdc;--side:#0f2524;
+  --ok:#1d6b45;--okbg:#e7f3ec;--warn:#95570f;--warnbg:#fbf0de;--bad:#a3372b;--badbg:#fbe9e6;--info:#2a5b86;--infobg:#e7eff7;
+  --r:14px;--r-sm:10px;--sh:0 1px 2px rgba(16,33,31,.04),0 6px 20px rgba(16,33,31,.06);--sh-lg:0 20px 50px rgba(8,25,24,.18);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;min-height:100vh}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.hide{display:none!important}
+svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+
+/* top */
+.top{background:var(--side);color:#e8efee;padding:14px 18px calc(0px);position:sticky;top:0;z-index:20}
+body.embed .top{background:var(--surface);color:var(--ink);border-bottom:1px solid var(--line);padding-top:10px}
+.top .row{display:flex;align-items:center;gap:12px;max-width:1280px;margin:0 auto}
+.mark{width:36px;height:36px;border-radius:10px;background:linear-gradient(145deg,#1b7a76,#0b4442);display:flex;align-items:center;justify-content:center;flex:none;color:#fff}
+.top h1{margin:0;font-size:16px;font-weight:600}.top small{display:block;font-size:11.5px;opacity:.7}
+.top .sp{flex:1}
+.live{display:inline-flex;align-items:center;gap:7px;font-size:12px;border-radius:999px;padding:4px 10px;background:rgba(255,255,255,.08);white-space:nowrap}
+body.embed .live{background:var(--surface-2);border:1px solid var(--line);color:var(--muted)}
+.live i{width:7px;height:7px;border-radius:50%;background:var(--faint)}.live.on i{background:#1fa463}
+.ibtn{border:0;background:rgba(255,255,255,.08);color:inherit;height:34px;min-width:34px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 10px;font-size:12.5px}
+body.embed .ibtn{background:var(--surface-2);border:1px solid var(--line)}
+body.embed .top .row{display:none}
+body.embed .tabs{margin-top:0}
+.tabs{display:flex;gap:4px;overflow-x:auto;max-width:1280px;margin:12px auto 0;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{border:0;background:none;color:inherit;opacity:.72;padding:9px 13px 11px;border-bottom:2.5px solid transparent;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;font-size:13.5px}
+.tabs button.on{opacity:1;border-bottom-color:var(--gold);font-weight:600}
+.tabs .n{background:#c2493b;color:#fff;border-radius:999px;font-size:10.5px;padding:0 6px;font-weight:600}
+
+main{max-width:1280px;margin:0 auto;padding:18px 16px 60px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);padding:16px;margin-bottom:14px}
+.card h3{margin:0 0 12px;font-size:14.5px;font-weight:600;display:flex;align-items:center;gap:8px}
+.card h3 .sp{flex:1}
+.grid{display:grid;gap:12px}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:14px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh)}
+.kpi b{display:block;font-size:24px;font-weight:700;letter-spacing:.3px}.kpi span{font-size:12.5px;color:var(--muted)}
+.kpi.bad b{color:var(--bad)}.kpi.warn b{color:var(--warn)}.kpi.ok b{color:var(--ok)}
+.bar2{height:6px;background:var(--line-2);border-radius:9px;overflow:hidden;margin-top:8px}.bar2 i{display:block;height:100%;background:var(--brand)}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;align-items:end}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+input,select,textarea{border:1px solid var(--line);background:var(--surface);border-radius:var(--r-sm);padding:9px 11px;font-size:13.5px;width:100%;color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-ring)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;background:var(--brand);color:#fff;border-radius:var(--r-sm);padding:9px 15px;font-weight:600;font-size:13px;white-space:nowrap}
+.btn:hover{background:var(--brand-2)}.btn:disabled{opacity:.55;cursor:default}
+.btn.ghost{background:var(--surface);color:var(--brand);border:1px solid var(--line)}.btn.ghost:hover{background:var(--surface-2)}
+.btn.warn{background:#b7791f}.btn.bad{background:var(--bad)}.btn.ok{background:var(--ok)}
+.btn.sm{padding:5px 10px;font-size:12px;font-weight:500}
+.tw{overflow-x:auto;margin:0 -16px;padding:0 16px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-weight:600;color:var(--muted);font-size:12px;text-align:right;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--surface-2)}
+td{padding:9px 10px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+td .acts{display:flex;gap:6px;flex-wrap:wrap}
+.empty{text-align:center;color:var(--faint);padding:22px}
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:500;white-space:nowrap}
+.pill.ok{background:var(--okbg);color:var(--ok)}.pill.bad{background:var(--badbg);color:var(--bad)}.pill.warn{background:var(--warnbg);color:var(--warn)}.pill.info{background:var(--infobg);color:var(--info)}.pill.mut{background:var(--line-2);color:var(--muted)}
+.muted{color:var(--muted)}.sm{font-size:12px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.tools input,.tools select{width:auto;min-width:180px;flex:1}
+.bld{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);margin-bottom:12px;overflow:hidden;box-shadow:var(--sh)}
+.bld .hd{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface-2);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.bld .hd b{font-size:14.5px}.bld .hd .sp{flex:1}
+.rooms{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;padding:12px}
+.room{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff}
+.room .t{display:flex;align-items:center;gap:8px}.room .t b{font-size:15px}.room .t .sp{flex:1}
+.beds{display:flex;gap:4px;flex-wrap:wrap;margin:8px 0 6px}
+.bed{width:22px;height:14px;border-radius:4px;background:var(--line-2);border:1px solid var(--line)}.bed.on{background:var(--brand);border-color:var(--brand)}
+.room ul{list-style:none;margin:0;padding:0;font-size:12.5px}.room li{padding:2px 0;display:flex;gap:6px;align-items:center}
+.room .x{display:flex;gap:6px;margin-top:8px}
+.hint{font-size:12.5px;margin-top:6px;min-height:18px}
+.hint.ok{color:var(--ok)}.hint.bad{color:var(--bad)}.hint.warn{color:var(--warn)}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#16211f;color:#fff;padding:10px 18px;border-radius:12px;font-size:13px;z-index:99;box-shadow:var(--sh-lg);display:none;max-width:90vw}
+.modal{position:fixed;inset:0;background:rgba(8,25,24,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.modal .box{background:var(--surface);border-radius:16px;box-shadow:var(--sh-lg);width:100%;max-width:520px;max-height:92vh;overflow:auto;padding:18px}
+.modal h3{margin:0 0 14px;font-size:15.5px}
+.modal .form{grid-template-columns:1fr 1fr}
+.modal .full{grid-column:1/-1}
+.modal .ft{display:flex;gap:8px;justify-content:flex-start;margin-top:16px}
+#gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--side)}
+#gate .box{background:#fff;border-radius:18px;padding:26px;width:100%;max-width:380px;box-shadow:var(--sh-lg)}
+#gate h2{margin:12px 0 4px;font-size:18px}
+#gate form{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+.msg{padding:10px 12px;border-radius:10px;font-size:13px;margin-top:10px}.msg.bad{background:var(--badbg);color:var(--bad)}.msg.warn{background:var(--warnbg);color:var(--warn)}
+.install{display:flex;gap:10px;align-items:center;background:var(--gold-soft);border:1px solid #eadbbd;color:#6f5424;border-radius:var(--r);padding:10px 14px;margin-bottom:14px;font-size:13px}
+.install .sp{flex:1}
+#print{display:none}
+@media print{
+  body>*:not(#print){display:none!important}
+  #print{display:block!important;color:#000;font-family:var(--font)}
+  #print table{font-size:12px}#print th{background:#eee;color:#000}#print td,#print th{border:1px solid #999}
+  @page{margin:14mm}
+}
+@media (max-width:640px){
+  main{padding:12px 10px 60px}
+  .card{padding:13px}.tw{margin:0 -13px;padding:0 13px}
+  .kpi b{font-size:20px}
+  .modal .form{grid-template-columns:1fr}
+  .top h1{font-size:15px}
+  .hide-m{display:none}
+  table.cards thead{display:none}
+  table.cards tr{display:block;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;padding:6px 4px;background:#fff}
+  table.cards td{display:flex;gap:10px;border:0;padding:5px 10px}
+  table.cards td::before{content:attr(data-l);color:var(--muted);font-size:12px;min-width:92px}
+  table.cards td.empty::before{content:none}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-bed" viewBox="0 0 24 24"><path d="M3 18V6M3 14h18v4M21 14v-2.5A2.5 2.5 0 0 0 18.5 9H11v5"/><circle cx="7" cy="11" r="1.8"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-bld" viewBox="0 0 24 24"><path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M3 21h18M8 8h3M8 12h3M8 16h3"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.4 3.3-5.5 6.5-5.5s5.9 2.1 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.8c1.6.8 2.7 2.6 3 5.2"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3h10v6M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><path d="M7 14h10v7H7z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 8l-4 4 4 4M6 12h10"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 20V9M7 14l5-5 5 5M5 4h14"/></symbol>
+  <symbol id="i-reload" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></symbol>
+</svg>
+
+<div id="gate" class="hide">
+  <div class="box">
+    <div class="mark"><svg class="i"><use href="#i-bed"/></svg></div>
+    <h2>السكنات</h2><div class="muted sm">منصة AFMCO — سجّل دخولك بنفس حساب المنصة</div>
+    <form id="gForm">
+      <input id="gEmail" type="email" placeholder="البريد الإلكتروني" autocomplete="username" required>
+      <input id="gPass" type="password" placeholder="كلمة المرور" autocomplete="current-password" required>
+      <button class="btn" id="gGo">دخول</button>
+    </form>
+    <div id="gMsg"></div>
+  </div>
+</div>
+
+<div id="app" class="hide">
+  <div class="top">
+    <div class="row">
+      <div class="mark brandx"><svg class="i"><use href="#i-bed"/></svg></div>
+      <div class="brandx"><h1>السكنات</h1><small>مربوط بوثيق</small></div>
+      <div class="sp"></div>
+      <span class="live" id="live"><i></i><span>…</span></span>
+      <button class="ibtn" id="reload" title="تحديث"><svg class="i"><use href="#i-reload"/></svg></button>
+      <button class="ibtn brandx" id="logout" title="خروج"><svg class="i"><use href="#i-out"/></svg></button>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button data-t="dash" class="on"><svg class="i"><use href="#i-home"/></svg>لوحة التحكم</button>
+      <button data-t="res"><svg class="i"><use href="#i-users"/></svg>النزلاء <span class="n hide" id="nFlag"></span></button>
+      <button data-t="bld"><svg class="i"><use href="#i-bld"/></svg>المباني والغرف</button>
+      <button data-t="lc"><svg class="i"><use href="#i-doc"/></svg>عقود الملاك <span class="n hide" id="nOver"></span></button>
+      <button data-t="inv"><svg class="i"><use href="#i-box"/></svg>العهد</button>
+      <button data-t="rep"><svg class="i"><use href="#i-chart"/></svg>التقارير</button>
+    </nav>
+  </div>
+
+  <main>
+    <div class="install hide" id="installBar"><svg class="i"><use href="#i-down"/></svg><span>ثبّت «السكنات» كتطبيق على جوالك أو جهازك.</span><span class="sp"></span><button class="btn sm" id="installBtn">تثبيت</button><button class="btn ghost sm" id="installNo">لاحقاً</button></div>
+
+    <!-- لوحة التحكم -->
+    <section id="t-dash">
+      <div class="grid kpis" id="kpis"></div>
+      <div class="card" id="flagCard"><h3><svg class="i"><use href="#i-users"/></svg>نزلاء تغيّرت حالتهم في وثيق<span class="sp"></span><span class="muted sm">منتهي / موقوف / متوقف عن العمل</span></h3><div class="tw"><table class="cards"><thead><tr><th>النزيل</th><th>الإقامة</th><th>السكن</th><th>الحالة في وثيق</th><th></th></tr></thead><tbody id="flagBody"></tbody></table></div></div>
+      <div class="card"><h3><svg class="i"><use href="#i-doc"/></svg>إيجارات مستحقة للملاك</h3><div class="tw"><table class="cards"><thead><tr><th>المالك</th><th>المبنى</th><th>المبلغ</th><th>الاستحقاق</th><th></th></tr></thead><tbody id="overBody"></tbody></table></div></div>
+      <div class="card"><h3><svg class="i"><use href="#i-bld"/></svg>الإشغال حسب المبنى</h3><div id="occByB"></div></div>
+    </section>
+
+    <!-- النزلاء -->
+    <section id="t-res" class="hide">
+      <div class="card" data-edit>
+        <h3><svg class="i"><use href="#i-plus"/></svg>تسكين موظف</h3>
+        <div class="form">
+          <label class="f">رقم الإقامة (من وثيق)<input id="rIq" inputmode="numeric" placeholder="10 أرقام"></label>
+          <label class="f">الاسم<input id="rName"></label>
+          <label class="f">الجوال<input id="rPhone" inputmode="tel"></label>
+          <label class="f">الغرفة<select id="rRoom"></select></label>
+          <label class="f">تاريخ الدخول<input id="rDate" type="date"></label>
+          <label class="f">ملاحظات<input id="rNotes"></label>
+          <button class="btn" id="rAdd"><svg class="i"><use href="#i-plus"/></svg>تسكين</button>
+        </div>
+        <div class="hint" id="rHint"></div>
+      </div>
+      <div class="card">
+        <div class="tools">
+          <input id="rQ" placeholder="بحث بالاسم أو الإقامة أو الغرفة…">
+          <select id="rF"><option value="cur">الساكنون حالياً</option><option value="flag">حالتهم تغيّرت في وثيق</option><option value="out">غادروا (السجل)</option><option value="all">الكل</option></select>
+          <span class="muted sm" id="rCount"></span>
+        </div>
+        <div class="tw"><table class="cards"><thead><tr><th>النزيل</th><th>الإقامة</th><th>المشروع</th><th>السكن</th><th>الدخول</th><th>المغادرة</th><th>وثيق</th><th></th></tr></thead><tbody id="resBody"></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- المباني والغرف -->
+    <section id="t-bld" class="hide">
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))" data-edit>
+        <div class="card"><h3><svg class="i"><use href="#i-bld"/></svg>مبنى جديد</h3>
+          <div class="form"><label class="f">اسم المبنى<input id="bName"></label><label class="f">الموقع<input id="bLoc"></label><label class="f">المدينة<input id="bCity"></label><button class="btn" id="bAdd">إضافة</button></div></div>
+        <div class="card"><h3><svg class="i"><use href="#i-bed"/></svg>غرفة جديدة</h3>
+          <div class="form"><label class="f">المبنى<select id="rmB"></select></label><label class="f">رقم الغرفة<input id="rmNum"></label><label class="f">عدد الأسرّة<input id="rmBeds" type="number" min="0" value="2"></label><label class="f">ملاحظات<input id="rmNotes"></label><button class="btn" id="rmAdd">إضافة</button></div></div>
+      </div>
+      <div id="bldList"></div>
+    </section>
+
+    <!-- عقود الملاك -->
+    <section id="t-lc" class="hide">
+      <div class="card" data-edit><h3><svg class="i"><use href="#i-plus"/></svg>عقد / دفعة إيجار</h3>
+        <div class="form">
+          <label class="f">المالك<input id="cOwner"></label>
+          <label class="f">المبنى<select id="cB"></select></label>
+          <label class="f">رقم العقد<input id="cNo"></label>
+          <label class="f">مبلغ الإيجار (ر.س)<input id="cRent" type="number" min="0"></label>
+          <label class="f">تاريخ الاستحقاق<input id="cDue" type="date"></label>
+          <label class="f">الحالة<select id="cSt"><option value="unpaid">مطلوب</option><option value="paid">مسدد</option></select></label>
+          <button class="btn" id="cAdd">إضافة</button>
+        </div></div>
+      <div class="card">
+        <div class="tools"><select id="cF"><option value="all">الكل</option><option value="unpaid">المطلوب</option><option value="over">المتأخر</option><option value="paid">المسدد</option></select><span class="muted sm" id="cSum"></span></div>
+        <div class="tw"><table class="cards"><thead><tr><th>المالك</th><th>المبنى</th><th>رقم العقد</th><th>المبلغ</th><th>الاستحقاق</th><th>الحالة</th><th></th></tr></thead><tbody id="lcBody"></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- العهد -->
+    <section id="t-inv" class="hide">
+      <div class="card"><h3><svg class="i"><use href="#i-box"/></svg>المراتب والمخدات<span class="sp"></span><span class="muted sm" id="invSum"></span></h3>
+        <div class="tw"><table class="cards"><thead><tr><th>الغرفة</th><th>الأسرّة</th><th>مراتب</th><th>مخدات</th><th>الحالة</th><th></th></tr></thead><tbody id="invBody"></tbody></table></div></div>
+    </section>
+
+    <!-- التقارير -->
+    <section id="t-rep" class="hide">
+      <div class="card"><h3><svg class="i"><use href="#i-print"/></svg>تقرير حركة النزلاء لفترة</h3>
+        <div class="form"><label class="f">من<input id="pS" type="date"></label><label class="f">إلى<input id="pE" type="date"></label>
+          <button class="btn" id="pGo">عرض</button><button class="btn ghost" id="pPrint"><svg class="i"><use href="#i-print"/></svg>طباعة</button></div>
+        <div id="pOut" style="margin-top:14px"></div></div>
+      <div class="card"><h3><svg class="i"><use href="#i-down"/></svg>تصدير Excel (CSV)</h3>
+        <div class="tools"><button class="btn ghost sm" data-x="residents">النزلاء</button><button class="btn ghost sm" data-x="history">سجل الدخول والمغادرة</button><button class="btn ghost sm" data-x="rooms">الغرف</button><button class="btn ghost sm" data-x="contracts">عقود الملاك</button></div></div>
+      <div class="card" data-edit><h3><svg class="i"><use href="#i-up"/></svg>استيراد بيانات نظام السكنات القديم</h3>
+        <div class="muted sm" style="margin-bottom:10px">اختر ملفات CSV المصدّرة من النظام القديم (المباني، الغرف، عقود الملاك، النزلاء) — يمكن اختيارها كلها مرة وحدة — أو ملف نسخة احتياطية JSON. لا يتكرر الاستيراد لو رفعت نفس الملف مرتين، والنزلاء يرتبطون بوثيق تلقائياً برقم الإقامة.</div>
+        <input type="file" id="impF" multiple accept=".csv,.json,text/csv,application/json" style="width:auto">
+        <div class="hint" id="impOut"></div></div>
+    </section>
+  </main>
+</div>
+
+<div id="modal" class="modal hide"><div class="box" id="mBox"></div></div>
+<div id="toast"></div>
+<div id="print"></div>
+
+<script>
+(function(){
+  'use strict';
+  var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
+  var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
+  var SKEY = 'wfsb_session';
+  var EMBED = window.parent !== window;
+  if (EMBED) document.body.classList.add('embed');
+  var ST_AR = { active:'على رأس العمل', terminated:'منتهي الخدمة', stopped:'موقوف', salary_only:'متوقف عن العمل', suspended:'معلّق', on_leave:'إجازة', deleted:'محذوف من وثيق' };
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function num(n){ return Number(n || 0).toLocaleString('en-US'); }
+  function money(n){ return Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 }); }
+  function today(){ var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
+  function lsGet(k){ try { var r = localStorage.getItem(k); return r ? JSON.parse(r) : null; } catch(e){ return null; } }
+  function lsSet(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+  var toastT; function toast(m, ms){ var t = $('toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(function(){ t.style.display = 'none'; }, ms || 3200); }
+  function normId(s){ s = String(s || '').replace(/[٠-٩]/g, function(d){ return '٠١٢٣٤٥٦٧٨٩'.indexOf(d); }).replace(/\s+/g, '').toUpperCase(); return s; }
+
+  /* ---------- session (نفس جلسة المنصة) ---------- */
+  var sess = lsGet(SKEY), me = null, refreshing = null;
+  function auth(path, body){
+    return fetch(SB_URL + '/auth/v1/' + path, { method:'POST', headers:{ apikey:SB_KEY, 'Content-Type':'application/json' }, body: JSON.stringify(body) })
+      .then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error(j.error_description || j.msg || j.message || ('HTTP ' + r.status)); return j; }); });
+  }
+  function keep(j){ sess = { access_token:j.access_token, refresh_token:j.refresh_token, expires_at: Date.now() + (j.expires_in || 3600) * 1000, user_id: j.user && j.user.id, email: j.user && j.user.email }; lsSet(SKEY, sess); }
+  function token(){
+    var fresh = lsGet(SKEY); if (fresh && (!sess || (fresh.user_id === sess.user_id && fresh.expires_at > sess.expires_at))) sess = fresh;
+    if (!sess) return Promise.reject(new Error('no session'));
+    if (Date.now() < sess.expires_at - 90000) return Promise.resolve(sess.access_token);
+    if (!refreshing) refreshing = auth('token?grant_type=refresh_token', { refresh_token: sess.refresh_token })
+      .then(function(j){ keep(j); refreshing = null; return sess.access_token; })
+      .catch(function(e){ refreshing = null; gate('انتهت الجلسة. سجّل الدخول مرة أخرى.'); throw e; });
+    return refreshing;
+  }
+  function api(method, path, body, headers){
+    return token().then(function(t){
+      var h = { apikey:SB_KEY, Authorization:'Bearer ' + t, 'Content-Type':'application/json', Prefer:'return=minimal' }; if (headers) for (var k in headers) h[k] = headers[k];
+      return fetch(SB_URL + '/rest/v1/' + path, { method:method, headers:h, body: body == null ? undefined : JSON.stringify(body) });
+    }).then(function(r){ return r.text().then(function(t){ var j = null; try { j = t ? JSON.parse(t) : null; } catch(e){} if (!r.ok) throw new Error(arDb((j && j.message) || ('HTTP ' + r.status))); return j; }); });
+  }
+  function rpc(fn, a){ return api('POST', 'rpc/' + fn, a || {}); }
+  function arDb(m){
+    if (/row-level security|permission denied/i.test(m)) return 'لا تملك صلاحية التعديل في نظام السكنات';
+    if (/housing_res_one_active|duplicate key/i.test(m)) return 'هذا الموظف ساكن حالياً في غرفة أخرى';
+    if (/housing_rooms_uq/.test(m)) return 'رقم الغرفة موجود مسبقاً في هذا المبنى';
+    return m;
+  }
+  function gate(msg){
+    sess = null; me = null; try { if (!EMBED) localStorage.removeItem(SKEY); } catch(e){}
+    rt.stop(); $('app').classList.add('hide'); $('gate').classList.remove('hide');
+    $('gMsg').innerHTML = msg ? '<div class="msg warn">' + esc(msg) + '</div>' : '';
+  }
+  $('gForm').onsubmit = function(e){
+    e.preventDefault(); var b = $('gGo'); b.disabled = true; $('gMsg').innerHTML = '';
+    auth('token?grant_type=password', { email: $('gEmail').value.trim(), password: $('gPass').value })
+      .then(function(j){ keep(j); b.disabled = false; start(); })
+      .catch(function(err){ b.disabled = false; $('gMsg').innerHTML = '<div class="msg bad">' + (/invalid/i.test(err.message) ? 'البريد أو كلمة المرور غير صحيحة.' : esc(err.message)) + '</div>'; });
+  };
+  $('logout').onclick = function(){
+    try { if (sess) fetch(SB_URL + '/auth/v1/logout', { method:'POST', headers:{ apikey:SB_KEY, Authorization:'Bearer ' + sess.access_token } }); } catch(e){}
+    try { localStorage.removeItem(SKEY); } catch(e){} gate('');
+  };
+
+  var canEdit = false, canDel = false;
+  function start(){
+    if (!sess) { gate(''); return; }
+    rpc('my_access').then(function(w){
+      if (!w || !w.approved) { gate(w ? 'حسابك بانتظار موافقة المدير.' : ''); return; }
+      me = w;
+      if ((w.systems || []).indexOf('housing') < 0) { gate('حسابك لا يملك صلاحية نظام السكنات. اطلبها من مدير النظام.'); return; }
+      canEdit = !!(w.perms && w.perms.edit); canDel = !!(w.perms && w.perms['delete']);
+      document.querySelectorAll('[data-edit]').forEach(function(x){ x.classList.toggle('hide', !canEdit); });
+      $('gate').classList.add('hide'); $('app').classList.remove('hide');
+      $('rDate').value = today();
+      load(); if (!EMBED) rt.start(); else liveState('on', 'مباشر');
+    }).catch(function(e){ if (/no session/.test(e.message)) gate(''); else gate('تعذّر الاتصال بالقاعدة: ' + e.message); });
+  }
+
+  /* ---------- البيانات ---------- */
+  var D = { b: [], r: [], c: [], x: [] }, loadingP = null;
+  function load(){
+    if (loadingP) return loadingP;
+    loadingP = Promise.all([
+      api('GET', 'housing_buildings?select=*&deleted_at=is.null&order=name.asc'),
+      api('GET', 'housing_rooms?select=*&deleted_at=is.null&order=num.asc'),
+      api('GET', 'housing_contracts?select=*&deleted_at=is.null&order=due.desc'),
+      api('GET', 'housing_residents?select=*&deleted_at=is.null&order=check_in.desc')
+    ]).then(function(a){
+      D.b = a[0] || []; D.r = (a[1] || []).sort(function(p, q){ return String(p.num).localeCompare(String(q.num), 'ar', { numeric:true }); });
+      D.c = a[2] || []; D.x = a[3] || []; loadingP = null; render();
+    }).catch(function(e){ loadingP = null; toast('تعذّر التحميل: ' + e.message, 5000); });
+    return loadingP;
+  }
+  function bOf(id){ return D.b.filter(function(b){ return b.id === id; })[0]; }
+  function rOf(id){ return D.r.filter(function(r){ return r.id === id; })[0]; }
+  function roomsOf(bid){ return D.r.filter(function(r){ return r.building_id === bid && bOf(r.building_id); }); }
+  function liveRooms(){ return D.r.filter(function(r){ return bOf(r.building_id); }); }
+  function cur(){ return D.x.filter(function(x){ return !x.check_out; }); }
+  function occOf(rid){ return cur().filter(function(x){ return x.room_id === rid; }); }
+  function where(rid){ var r = rOf(rid); if (!r) return 'غرفة محذوفة'; var b = bOf(r.building_id); return (b ? b.name : '—') + ' · غرفة ' + r.num; }
+  function flagged(x){ return !x.check_out && x.emp_status && x.emp_status !== 'active'; }
+  function over(c){ return c.status === 'unpaid' && c.due && c.due <= today(); }
+  function stPill(x){
+    if (!x.iqama) return '<span class="pill mut">بدون إقامة</span>';
+    if (!x.employee_id) return '<span class="pill warn">غير موجود في وثيق</span>';
+    if (x.emp_status === 'active') return '<span class="pill ok">' + ST_AR.active + '</span>';
+    return '<span class="pill bad">' + esc(ST_AR[x.emp_status] || x.emp_status || '—') + '</span>';
+  }
+
+  /* ---------- العرض ---------- */
+  var tab = 'dash';
+  document.querySelectorAll('#tabs button').forEach(function(b){ b.onclick = function(){ setTab(b.getAttribute('data-t')); }; });
+  function setTab(t){
+    tab = t; document.querySelectorAll('#tabs button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-t') === t); });
+    ['dash','res','bld','lc','inv','rep'].forEach(function(x){ $('t-' + x).classList.toggle('hide', x !== t); });
+    try { sessionStorage.setItem('housing_tab', t); } catch(e){}
+    window.scrollTo(0, 0);
+  }
+  try { var st = sessionStorage.getItem('housing_tab'); if (st) setTab(st); } catch(e){}
+
+  function render(){
+    var rooms = liveRooms(), beds = 0; rooms.forEach(function(r){ beds += Number(r.beds) || 0; });
+    var occ = cur().length, fl = D.x.filter(flagged), ov = D.c.filter(over), shortN = rooms.filter(function(r){ return r.mattresses < r.beds || r.pillows < r.beds; }).length;
+    var pct = beds ? Math.round(occ / beds * 100) : 0, ovSum = 0; ov.forEach(function(c){ ovSum += Number(c.rent) || 0; });
+    $('kpis').innerHTML =
+      '<div class="kpi"><b>' + num(D.b.length) + '</b><span>مبنى · ' + num(rooms.length) + ' غرفة</span></div>' +
+      '<div class="kpi"><b>' + pct + '%</b><span>نسبة الإشغال (' + num(occ) + ' من ' + num(beds) + ' سرير)</span><div class="bar2"><i style="width:' + Math.min(pct, 100) + '%"></i></div></div>' +
+      '<div class="kpi ok"><b>' + num(Math.max(beds - occ, 0)) + '</b><span>سرير شاغر</span></div>' +
+      '<div class="kpi ' + (ov.length ? 'bad' : '') + '"><b>' + num(ov.length) + '</b><span>إيجار متأخر · ' + money(ovSum) + ' ر.س</span></div>' +
+      '<div class="kpi ' + (fl.length ? 'warn' : '') + '"><b>' + num(fl.length) + '</b><span>نزيل تغيّرت حالته في وثيق</span></div>' +
+      '<div class="kpi ' + (shortN ? 'warn' : '') + '"><b>' + num(shortN) + '</b><span>غرفة ينقصها عهد</span></div>';
+    $('nFlag').textContent = fl.length; $('nFlag').classList.toggle('hide', !fl.length);
+    $('nOver').textContent = ov.length; $('nOver').classList.toggle('hide', !ov.length);
+    $('flagCard').classList.toggle('hide', !fl.length);
+    $('flagBody').innerHTML = fl.map(function(x){
+      return '<tr><td data-l="النزيل"><b>' + esc(x.name) + '</b></td><td data-l="الإقامة">' + esc(x.iqama || '—') + '</td><td data-l="السكن">' + esc(where(x.room_id)) + '</td><td data-l="وثيق">' + stPill(x) + '</td>' +
+        '<td>' + (canEdit ? '<button class="btn warn sm" data-out="' + x.id + '">إخلاء السرير</button>' : '') + '</td></tr>';
+    }).join('');
+    $('overBody').innerHTML = ov.length ? ov.map(function(c){
+      var b = bOf(c.building_id);
+      return '<tr><td data-l="المالك">' + esc(c.owner) + '</td><td data-l="المبنى">' + esc(b ? b.name : '—') + '</td><td data-l="المبلغ" style="color:var(--bad);font-weight:600">' + money(c.rent) + '</td><td data-l="الاستحقاق">' + esc(c.due) + '</td>' +
+        '<td>' + (canEdit ? '<button class="btn ok sm" data-pay="' + c.id + '">سُدد</button>' : '') + '</td></tr>';
+    }).join('') : '<tr><td colspan="5" class="empty">لا توجد إيجارات متأخرة</td></tr>';
+    $('occByB').innerHTML = D.b.length ? D.b.map(function(b){
+      var rs = roomsOf(b.id), bb = 0, oo = 0; rs.forEach(function(r){ bb += Number(r.beds) || 0; oo += occOf(r.id).length; });
+      var p = bb ? Math.round(oo / bb * 100) : 0;
+      return '<div style="margin-bottom:12px"><div style="display:flex;gap:8px;font-size:13px"><b>' + esc(b.name) + '</b><span class="muted">' + esc(b.location || '') + '</span><span style="flex:1"></span><span>' + oo + ' من ' + bb + ' سرير · ' + p + '%</span></div><div class="bar2"><i style="width:' + Math.min(p, 100) + '%;' + (p >= 100 ? 'background:var(--bad)' : '') + '"></i></div></div>';
+    }).join('') : '<div class="empty">أضف أول مبنى من تبويب «المباني والغرف»</div>';
+
+    var bOpts = D.b.map(function(b){ return '<option value="' + b.id + '">' + esc(b.name) + '</option>'; }).join('');
+    keepSel('rmB', bOpts); keepSel('cB', '<option value="">—</option>' + bOpts);
+    keepSel('rRoom', roomOpts(null));
+    renderRes(); renderBld(); renderLc(); renderInv();
+    wire();
+  }
+  function keepSel(id, html){ var s = $(id), v = s.value; s.innerHTML = html; if (v && s.querySelector('option[value="' + v + '"]')) s.value = v; }
+  function roomOpts(curRoom){
+    return D.b.map(function(b){
+      var rs = roomsOf(b.id); if (!rs.length) return '';
+      return '<optgroup label="' + esc(b.name) + '">' + rs.map(function(r){
+        var f = r.beds - occOf(r.id).length, mine = r.id === curRoom;
+        return '<option value="' + r.id + '"' + (f <= 0 && !mine ? ' disabled' : '') + (mine ? ' selected' : '') + '>غرفة ' + esc(r.num) + ' — شاغر ' + Math.max(f, 0) + '</option>';
+      }).join('') + '</optgroup>';
+    }).join('');
+  }
+
+  function renderRes(){
+    var q = normId($('rQ').value).toLowerCase(), f = $('rF').value;
+    var list = D.x.filter(function(x){
+      if (f === 'cur' && x.check_out) return false; if (f === 'out' && !x.check_out) return false; if (f === 'flag' && !flagged(x)) return false;
+      if (!q) return true; return (String(x.name) + ' ' + (x.iqama || '') + ' ' + where(x.room_id) + ' ' + (x.project || '')).toLowerCase().replace(/\s+/g, '').indexOf(q.replace(/\s+/g, '')) >= 0;
+    });
+    $('rCount').textContent = num(list.length) + ' سجل';
+    $('resBody').innerHTML = list.length ? list.map(function(x){
+      return '<tr><td data-l="النزيل"><b>' + esc(x.name) + '</b>' + (x.phone ? '<div class="muted sm">' + esc(x.phone) + '</div>' : '') + '</td><td data-l="الإقامة">' + esc(x.iqama || '—') + '</td><td data-l="المشروع">' + esc(x.project || '—') + '</td>' +
+        '<td data-l="السكن">' + esc(where(x.room_id)) + '</td><td data-l="الدخول">' + esc(x.check_in) + '</td><td data-l="المغادرة">' + (x.check_out ? esc(x.check_out) + (x.out_reason ? '<div class="muted sm">' + esc(x.out_reason) + '</div>' : '') : '<span class="pill info">ساكن</span>') + '</td>' +
+        '<td data-l="وثيق">' + (x.check_out ? '' : stPill(x)) + '</td>' +
+        '<td><div class="acts">' + (canEdit && !x.check_out ? '<button class="btn ghost sm" data-edres="' + x.id + '">تعديل / نقل</button><button class="btn warn sm" data-out="' + x.id + '">مغادرة</button>' : '') +
+        (canEdit && x.check_out ? '<button class="btn ghost sm" data-back="' + x.id + '">تراجع</button>' : '') + '</div></td></tr>';
+    }).join('') : '<tr><td colspan="8" class="empty">لا يوجد نزلاء</td></tr>';
+  }
+  function renderBld(){
+    $('bldList').innerHTML = D.b.length ? D.b.map(function(b){
+      var rs = roomsOf(b.id), bb = 0, oo = 0; rs.forEach(function(r){ bb += Number(r.beds) || 0; oo += occOf(r.id).length; });
+      return '<div class="bld"><div class="hd"><svg class="i"><use href="#i-bld"/></svg><b>' + esc(b.name) + '</b><span class="muted sm">' + esc([b.location, b.city].filter(Boolean).join(' · ')) + '</span><span class="sp"></span>' +
+        '<span class="pill ' + (oo >= bb && bb ? 'bad' : 'ok') + '">' + oo + ' من ' + bb + ' سرير</span>' +
+        (canEdit ? '<button class="btn ghost sm" data-edb="' + b.id + '">تعديل</button>' : '') + (canDel ? '<button class="btn ghost sm" data-delb="' + b.id + '">حذف</button>' : '') + '</div>' +
+        '<div class="rooms">' + (rs.length ? rs.map(function(r){
+          var os = occOf(r.id), beds = '';
+          for (var i = 0; i < Math.max(r.beds, os.length); i++) beds += '<span class="bed' + (i < os.length ? ' on' : '') + '"></span>';
+          return '<div class="room"><div class="t"><b>غرفة ' + esc(r.num) + '</b><span class="sp"></span><span class="pill ' + (os.length >= r.beds ? 'bad' : 'ok') + '">شاغر ' + Math.max(r.beds - os.length, 0) + '</span></div>' +
+            '<div class="beds">' + beds + '</div><ul>' + os.map(function(x){ return '<li>' + (flagged(x) ? '<span class="pill bad" title="' + esc(ST_AR[x.emp_status] || '') + '">!</span>' : '•') + ' ' + esc(x.name) + '</li>'; }).join('') + '</ul>' +
+            (r.notes ? '<div class="muted sm">' + esc(r.notes) + '</div>' : '') +
+            (canEdit ? '<div class="x"><button class="btn ghost sm" data-edr="' + r.id + '">تعديل</button>' + (canDel ? '<button class="btn ghost sm" data-delr="' + r.id + '">حذف</button>' : '') + '</div>' : '') + '</div>';
+        }).join('') : '<div class="muted sm">لا توجد غرف</div>') + '</div></div>';
+    }).join('') : '<div class="card empty">لا توجد مبانٍ بعد</div>';
+  }
+  function renderLc(){
+    var f = $('cF').value, sum = 0, list = D.c.filter(function(c){ return f === 'all' || (f === 'over' ? over(c) : c.status === f); });
+    list.forEach(function(c){ sum += Number(c.rent) || 0; });
+    $('cSum').textContent = num(list.length) + ' سجل · ' + money(sum) + ' ر.س';
+    $('lcBody').innerHTML = list.length ? list.map(function(c){
+      var b = bOf(c.building_id);
+      return '<tr><td data-l="المالك"><b>' + esc(c.owner) + '</b></td><td data-l="المبنى">' + esc(b ? b.name : '—') + '</td><td data-l="رقم العقد">' + esc(c.contract_no || '—') + '</td><td data-l="المبلغ">' + money(c.rent) + '</td>' +
+        '<td data-l="الاستحقاق">' + esc(c.due || '—') + '</td><td data-l="الحالة">' + (c.status === 'paid' ? '<span class="pill ok">مسدد' + (c.paid_at ? ' · ' + esc(c.paid_at) : '') + '</span>' : over(c) ? '<span class="pill bad">متأخر</span>' : '<span class="pill warn">مطلوب</span>') + '</td>' +
+        '<td><div class="acts">' + (canEdit ? '<button class="btn ' + (c.status === 'paid' ? 'ghost' : 'ok') + ' sm" data-pay="' + c.id + '">' + (c.status === 'paid' ? 'إلغاء السداد' : 'سُدد') + '</button>' : '') +
+        '<button class="btn ghost sm" data-voucher="' + c.id + '">سند</button>' + (canDel ? '<button class="btn ghost sm" data-delc="' + c.id + '">حذف</button>' : '') + '</div></td></tr>';
+    }).join('') : '<tr><td colspan="7" class="empty">لا توجد عقود</td></tr>';
+  }
+  function renderInv(){
+    var rooms = liveRooms(), m = 0, p = 0;
+    $('invBody').innerHTML = rooms.length ? rooms.map(function(r){
+      var msg = []; if (r.mattresses < r.beds) { msg.push('مراتب ' + (r.beds - r.mattresses)); m += r.beds - r.mattresses; } if (r.pillows < r.beds) { msg.push('مخدات ' + (r.beds - r.pillows)); p += r.beds - r.pillows; }
+      return '<tr><td data-l="الغرفة">' + esc(where(r.id)) + '</td><td data-l="الأسرّة">' + r.beds + '</td>' +
+        '<td data-l="مراتب"><input type="number" min="0" style="width:74px" id="mat-' + r.id + '" value="' + r.mattresses + '"' + (canEdit ? '' : ' disabled') + '></td>' +
+        '<td data-l="مخدات"><input type="number" min="0" style="width:74px" id="pil-' + r.id + '" value="' + r.pillows + '"' + (canEdit ? '' : ' disabled') + '></td>' +
+        '<td data-l="الحالة">' + (msg.length ? '<span class="pill bad">نقص: ' + msg.join('، ') + '</span>' : '<span class="pill ok">مكتمل</span>') + '</td>' +
+        '<td>' + (canEdit ? '<button class="btn ghost sm" data-inv="' + r.id + '">حفظ</button>' : '') + '</td></tr>';
+    }).join('') : '<tr><td colspan="6" class="empty">لا توجد غرف</td></tr>';
+    $('invSum').textContent = (m || p) ? 'النقص الإجمالي: ' + m + ' مرتبة · ' + p + ' مخدة' : 'كل الغرف مكتملة';
+  }
+
+  /* ---------- الأحداث ---------- */
+  function on(sel, fn){ document.querySelectorAll('[' + sel + ']').forEach(function(b){ b.onclick = function(){ fn(b.getAttribute(sel), b); }; }); }
+  function busy(b, p){ if (b) b.disabled = true; return p.then(function(v){ if (b) b.disabled = false; return v; }, function(e){ if (b) b.disabled = false; toast(e.message, 5000); throw e; }); }
+  function save(b, p, msg){ return busy(b, p).then(function(){ if (msg) toast(msg); return load(); }).catch(function(){}); }
+  function wire(){
+    on('data-pay', function(id, b){ var c = D.c.filter(function(x){ return x.id === id; })[0]; save(b, api('PATCH', 'housing_contracts?id=eq.' + id, { status: c.status === 'paid' ? 'unpaid' : 'paid' }), c.status === 'paid' ? 'أُلغي السداد' : 'تم تسجيل السداد'); });
+    on('data-voucher', voucher);
+    on('data-delc', function(id, b){ if (confirm('حذف هذا العقد؟')) save(b, api('PATCH', 'housing_contracts?id=eq.' + id, { deleted_at: new Date().toISOString() }), 'حُذف'); });
+    on('data-out', checkout);
+    on('data-back', function(id, b){ save(b, api('PATCH', 'housing_residents?id=eq.' + id, { check_out: null, out_reason: null }), 'أُعيد النزيل'); });
+    on('data-edres', editRes);
+    on('data-edb', editB);
+    on('data-edr', editR);
+    on('data-delb', function(id, b){
+      if (roomsOf(id).some(function(r){ return occOf(r.id).length; })) return toast('لا يمكن حذف مبنى فيه نزلاء');
+      if (confirm('حذف المبنى وكل غرفه؟')) { var t = new Date().toISOString(); save(b, Promise.all(roomsOf(id).map(function(r){ return api('PATCH', 'housing_rooms?id=eq.' + r.id, { deleted_at: t }); })).then(function(){ return api('PATCH', 'housing_buildings?id=eq.' + id, { deleted_at: t }); }), 'حُذف المبنى'); }
+    });
+    on('data-delr', function(id, b){ if (occOf(id).length) return toast('لا يمكن حذف الغرفة، يوجد بها نزلاء'); if (confirm('حذف الغرفة؟')) save(b, api('PATCH', 'housing_rooms?id=eq.' + id, { deleted_at: new Date().toISOString() }), 'حُذفت الغرفة'); });
+    on('data-inv', function(id, b){ save(b, api('PATCH', 'housing_rooms?id=eq.' + id, { mattresses: +$('mat-' + id).value || 0, pillows: +$('pil-' + id).value || 0 }), 'تم تحديث العهد'); });
+  }
+  $('rQ').oninput = renderRes; $('rF').onchange = renderRes; $('cF').onchange = renderLc;
+  $('reload').onclick = function(){ load().then(function(){ toast('تم التحديث'); }); };
+
+  $('bAdd').onclick = function(){
+    var n = $('bName').value.trim(); if (!n) return toast('اكتب اسم المبنى');
+    save(this, api('POST', 'housing_buildings', { name: n, location: $('bLoc').value.trim() || null, city: $('bCity').value.trim() || null }), 'أُضيف المبنى').then(function(){ $('bName').value = $('bLoc').value = $('bCity').value = ''; });
+  };
+  $('rmAdd').onclick = function(){
+    var b = $('rmB').value, n = $('rmNum').value.trim(), beds = parseInt($('rmBeds').value, 10) || 0;
+    if (!b || !n) return toast('اختر المبنى واكتب رقم الغرفة');
+    if (roomsOf(b).some(function(r){ return String(r.num).trim().toLowerCase() === n.toLowerCase(); })) return toast('رقم الغرفة موجود مسبقاً');
+    save(this, api('POST', 'housing_rooms', { building_id: b, num: n, beds: beds, mattresses: beds, pillows: beds, notes: $('rmNotes').value.trim() || null }), 'أُضيفت الغرفة').then(function(){ $('rmNum').value = $('rmNotes').value = ''; });
+  };
+  $('cAdd').onclick = function(){
+    var o = $('cOwner').value.trim(), rent = $('cRent').value, due = $('cDue').value;
+    if (!o || !rent || !due) return toast('المالك والمبلغ وتاريخ الاستحقاق مطلوبة');
+    save(this, api('POST', 'housing_contracts', { owner: o, building_id: $('cB').value || null, contract_no: $('cNo').value.trim() || null, rent: +rent, due: due, status: $('cSt').value }), 'أُضيف العقد')
+      .then(function(){ $('cOwner').value = $('cNo').value = $('cRent').value = ''; });
+  };
+
+  /* تسكين: البحث في وثيق برقم الإقامة */
+  var lkT = null, lk = null;
+  $('rIq').oninput = function(){
+    clearTimeout(lkT); lk = null; var v = normId(this.value), h = $('rHint');
+    if (v.length < 8) { h.className = 'hint'; h.textContent = ''; return; }
+    h.className = 'hint'; h.textContent = 'جارٍ البحث في وثيق…';
+    lkT = setTimeout(function(){
+      rpc('housing_emp_lookup', { p_iqama: v }).then(function(r){
+        if (normId($('rIq').value) !== v) return;
+        lk = r;
+        if (!r || !r.found) { h.className = 'hint warn'; h.textContent = 'غير موجود في وثيق — يمكنك التسكين بالاسم يدوياً.'; return; }
+        $('rName').value = r.name || ''; if (r.phone) $('rPhone').value = r.phone;
+        var bad = r.status && r.status !== 'active';
+        h.className = 'hint ' + (r.housed_at ? 'bad' : bad ? 'warn' : 'ok');
+        h.textContent = r.housed_at ? '⚠ ساكن حالياً في: ' + r.housed_at + ' — استخدم «تعديل / نقل» بدلاً من تسكين جديد.'
+          : '✓ ' + r.name + ' · ' + (r.project || 'بلا مشروع') + ' · ' + (r.status_label || ST_AR[r.status] || r.status) + (bad ? ' — انتبه: ليس على رأس العمل' : '');
+      }).catch(function(e){ h.className = 'hint bad'; h.textContent = e.message; });
+    }, 350);
+  };
+  $('rAdd').onclick = function(){
+    var name = $('rName').value.trim(), room = $('rRoom').value, d = $('rDate').value, iq = normId($('rIq').value);
+    if (!name && !iq) return toast('اكتب رقم الإقامة أو الاسم');
+    if (!room) return toast('اختر غرفة فيها سرير شاغر');
+    if (!d) return toast('حدّد تاريخ الدخول');
+    if (lk && lk.housed_at) return toast('الموظف ساكن حالياً في ' + lk.housed_at);
+    save(this, api('POST', 'housing_residents', { room_id: room, iqama: iq || null, name: name || null, phone: $('rPhone').value.trim() || null, check_in: d, notes: $('rNotes').value.trim() || null }), 'تم التسكين وتحديث وثيق')
+      .then(function(){ ['rIq','rName','rPhone','rNotes'].forEach(function(k){ $(k).value = ''; }); $('rHint').textContent = ''; lk = null; });
+  };
+
+  /* نوافذ */
+  function modal(html, onOk){
+    $('mBox').innerHTML = html + '<div class="ft"><button class="btn" id="mOk">حفظ</button><button class="btn ghost" id="mNo">إلغاء</button></div>';
+    $('modal').classList.remove('hide');
+    $('mNo').onclick = close; $('mOk').onclick = function(){ var p = onOk(); if (p && p.then) save($('mOk'), p, 'تم الحفظ').then(close); };
+  }
+  function close(){ $('modal').classList.add('hide'); }
+  $('modal').onclick = function(e){ if (e.target === $('modal')) close(); };
+  function checkout(id){
+    var x = D.x.filter(function(y){ return y.id === id; })[0]; if (!x) return;
+    modal('<h3>مغادرة: ' + esc(x.name) + '</h3><div class="muted sm" style="margin-bottom:10px">' + esc(where(x.room_id)) + ' — يبقى في السجل ويُحدَّث وثيق تلقائياً.</div><div class="form">' +
+      '<label class="f">تاريخ المغادرة<input id="mD" type="date" value="' + today() + '"></label>' +
+      '<label class="f">السبب<select id="mR"><option>انتقال لسكن آخر</option><option>انتهاء الخدمة</option><option>توقف عن العمل</option><option>سكن خاص</option><option>أخرى</option></select></label></div>',
+      function(){ if (!$('mD').value) { toast('حدّد التاريخ'); return; } return api('PATCH', 'housing_residents?id=eq.' + id, { check_out: $('mD').value, out_reason: $('mR').value }); });
+    if (x.emp_status === 'terminated') $('mR').value = 'انتهاء الخدمة'; else if (x.emp_status && x.emp_status !== 'active') $('mR').value = 'توقف عن العمل';
+  }
+  function editRes(id){
+    var x = D.x.filter(function(y){ return y.id === id; })[0]; if (!x) return;
+    modal('<h3>تعديل / نقل نزيل</h3><div class="form">' +
+      '<label class="f">الاسم<input id="mN" value="' + esc(x.name) + '"></label><label class="f">رقم الإقامة<input id="mI" value="' + esc(x.iqama || '') + '"></label>' +
+      '<label class="f">الجوال<input id="mP" value="' + esc(x.phone || '') + '"></label><label class="f">تاريخ الدخول<input id="mD" type="date" value="' + esc(x.check_in) + '"></label>' +
+      '<label class="f full">الغرفة<select id="mRm">' + roomOpts(x.room_id) + '</select></label><label class="f full">ملاحظات<input id="mT" value="' + esc(x.notes || '') + '"></label></div>',
+      function(){ return api('PATCH', 'housing_residents?id=eq.' + id, { name: $('mN').value.trim() || x.name, iqama: normId($('mI').value) || null, phone: $('mP').value.trim() || null, check_in: $('mD').value || x.check_in, room_id: $('mRm').value, notes: $('mT').value.trim() || null }); });
+  }
+  function editB(id){
+    var b = bOf(id);
+    modal('<h3>تعديل مبنى</h3><div class="form"><label class="f full">الاسم<input id="mN" value="' + esc(b.name) + '"></label><label class="f">الموقع<input id="mL" value="' + esc(b.location || '') + '"></label><label class="f">المدينة<input id="mC" value="' + esc(b.city || '') + '"></label><label class="f full">ملاحظات<input id="mT" value="' + esc(b.notes || '') + '"></label></div>',
+      function(){ return api('PATCH', 'housing_buildings?id=eq.' + id, { name: $('mN').value.trim() || b.name, location: $('mL').value.trim() || null, city: $('mC').value.trim() || null, notes: $('mT').value.trim() || null }); });
+  }
+  function editR(id){
+    var r = rOf(id), o = occOf(id).length;
+    modal('<h3>تعديل غرفة</h3><div class="form"><label class="f">رقم الغرفة<input id="mN" value="' + esc(r.num) + '"></label><label class="f">عدد الأسرّة<input id="mB" type="number" min="' + o + '" value="' + r.beds + '"></label><label class="f full">ملاحظات<input id="mT" value="' + esc(r.notes || '') + '"></label></div>',
+      function(){ var beds = parseInt($('mB').value, 10) || 0; if (beds < o) { toast('في الغرفة ' + o + ' نزلاء — لا يمكن تقليل الأسرّة عن ذلك'); return; }
+        return api('PATCH', 'housing_rooms?id=eq.' + id, { num: $('mN').value.trim() || r.num, beds: beds, notes: $('mT').value.trim() || null }); });
+  }
+
+  /* طباعة */
+  function printHtml(h){ $('print').innerHTML = h; setTimeout(function(){ window.print(); }, 50); }
+  function voucher(id){
+    var c = D.c.filter(function(x){ return x.id === id; })[0], b = bOf(c.building_id);
+    printHtml('<div style="border:2px solid #000;padding:36px;border-radius:10px;max-width:760px;margin:auto">' +
+      '<h1 style="text-align:center;border-bottom:2px solid #000;padding-bottom:10px;margin:0 0 26px">سند صرف إيجار مبنى</h1>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:18px"><div><b>التاريخ:</b> ' + today() + '</div><div><b>رقم العقد:</b> ' + esc(c.contract_no || '—') + '</div></div>' +
+      '<p style="font-size:17px;line-height:2.1">يُصرف للسيد/للشركة: <b>' + esc(c.owner) + '</b><br>مبلغ وقدره: <b>' + money(c.rent) + ' ريال سعودي</b><br>وذلك دفعة إيجار مستحقة بتاريخ: <b>' + esc(c.due || '—') + '</b><br>الخاصة بالمبنى: <b>' + esc(b ? b.name : 'غير محدد') + (b && b.location ? ' (' + esc(b.location) + ')' : '') + '</b></p>' +
+      '<div style="margin-top:56px;display:flex;justify-content:space-between"><div style="text-align:center">توقيع المحاسب<br>________________</div><div style="text-align:center">توقيع المستلم<br>________________</div></div></div>');
+  }
+  var lastRep = '';
+  $('pS').value = today().slice(0, 8) + '01'; $('pE').value = today();
+  $('pGo').onclick = function(){
+    var s = $('pS').value, e = $('pE').value; if (!s || !e || s > e) return toast('حدّد فترة صحيحة');
+    var ins = D.x.filter(function(x){ return x.check_in >= s && x.check_in <= e; }), outs = D.x.filter(function(x){ return x.check_out && x.check_out >= s && x.check_out <= e; });
+    function tbl(list, out){ return '<table><thead><tr><th>النزيل</th><th>الإقامة</th><th>المشروع</th><th>السكن</th><th>' + (out ? 'المغادرة' : 'الدخول') + '</th>' + (out ? '<th>السبب</th>' : '<th>ملاحظات</th>') + '</tr></thead><tbody>' +
+      (list.length ? list.map(function(x){ return '<tr><td>' + esc(x.name) + '</td><td>' + esc(x.iqama || '—') + '</td><td>' + esc(x.project || '—') + '</td><td>' + esc(where(x.room_id)) + '</td><td>' + esc(out ? x.check_out : x.check_in) + '</td><td>' + esc(out ? x.out_reason : x.notes) + '</td></tr>'; }).join('') : '<tr><td colspan="6" class="empty">لا يوجد</td></tr>') + '</tbody></table>'; }
+    lastRep = '<h2 style="text-align:center;margin:0 0 4px">تقرير حركة النزلاء</h2><div style="text-align:center;margin-bottom:14px">من ' + s + ' إلى ' + e + ' · دخول ' + ins.length + ' · مغادرة ' + outs.length + '</div>' +
+      '<h3>الدخول</h3>' + tbl(ins, false) + '<h3 style="margin-top:18px">المغادرة</h3>' + tbl(outs, true);
+    $('pOut').innerHTML = '<div class="tw">' + lastRep + '</div>';
+  };
+  $('pPrint').onclick = function(){ if (!lastRep) $('pGo').onclick(); if (lastRep) printHtml(lastRep); };
+
+  /* تصدير CSV */
+  function csv(name, head, rows){
+    var s = '﻿' + head.join(',') + '\n' + rows.map(function(r){ return r.map(function(v){ return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; }).join(','); }).join('\n');
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([s], { type: 'text/csv;charset=utf-8' })); a.download = 'housing_' + name + '_' + today() + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  on('data-x', function(k){
+    if (k === 'residents') csv(k, ['الاسم','الإقامة','الجوال','المشروع','المبنى','الغرفة','الدخول','حالة وثيق','ملاحظات'], cur().map(function(x){ var r = rOf(x.room_id) || {}, b = bOf(r.building_id) || {}; return [x.name, x.iqama, x.phone, x.project, b.name, r.num, x.check_in, ST_AR[x.emp_status] || '', x.notes]; }));
+    if (k === 'history') csv(k, ['الاسم','الإقامة','المشروع','السكن','الدخول','المغادرة','السبب'], D.x.map(function(x){ return [x.name, x.iqama, x.project, where(x.room_id), x.check_in, x.check_out, x.out_reason]; }));
+    if (k === 'rooms') csv(k, ['المبنى','الغرفة','الأسرّة','المشغول','الشاغر','مراتب','مخدات','ملاحظات'], liveRooms().map(function(r){ var o = occOf(r.id).length; return [(bOf(r.building_id) || {}).name, r.num, r.beds, o, r.beds - o, r.mattresses, r.pillows, r.notes]; }));
+    if (k === 'contracts') csv(k, ['المالك','المبنى','رقم العقد','المبلغ','الاستحقاق','الحالة','تاريخ السداد'], D.c.map(function(c){ return [c.owner, (bOf(c.building_id) || {}).name, c.contract_no, c.rent, c.due, c.status === 'paid' ? 'مسدد' : 'مطلوب', c.paid_at]; }));
+  });
+
+  /* استيراد النظام القديم */
+  function parseCsv(t){
+    t = t.replace(/^﻿/, ''); var rows = [], row = [], f = '', q = false;
+    for (var i = 0; i < t.length; i++) { var ch = t[i];
+      if (q) { if (ch === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += ch; }
+      else if (ch === '"') q = true; else if (ch === ',') { row.push(f); f = ''; } else if (ch === '\n' || ch === '\r') { if (ch === '\r' && t[i + 1] === '\n') i++; row.push(f); rows.push(row); row = []; f = ''; } else f += ch; }
+    if (f || row.length) { row.push(f); rows.push(row); }
+    rows = rows.filter(function(r){ return r.some(function(v){ return v.trim(); }); }); if (rows.length < 2) return [];
+    var h = rows[0].map(function(x){ return x.trim(); });
+    return rows.slice(1).map(function(r){ var o = {}; h.forEach(function(k, i){ o[k] = (r[i] || '').trim(); }); return o; });
+  }
+  function kindOf(name, rows){
+    var k = rows[0] ? Object.keys(rows[0]) : [];
+    if (/landlord|contract/i.test(name) || k.indexOf('owner') >= 0) return 'landlord_contracts';
+    if (/resident/i.test(name) || k.indexOf('checkIn') >= 0) return 'residents';
+    if (/room/i.test(name) || k.indexOf('beds') >= 0) return 'rooms';
+    if (/building/i.test(name) || k.indexOf('loc') >= 0) return 'buildings';
+    return null;
+  }
+  $('impF').onchange = function(){
+    var files = [].slice.call(this.files || []), out = $('impOut'), inp = this; if (!files.length) return;
+    var pay = { buildings: [], rooms: [], landlord_contracts: [], residents: [] };
+    Promise.all(files.map(function(f){ return f.text().then(function(t){
+      if (/\.json$/i.test(f.name) || /^\s*\{/.test(t)) { var j = JSON.parse(t); if (j.sakanat_company_v4) j = typeof j.sakanat_company_v4 === 'string' ? JSON.parse(j.sakanat_company_v4) : j.sakanat_company_v4; Object.keys(pay).forEach(function(k){ if (Array.isArray(j[k])) pay[k] = pay[k].concat(j[k]); }); return; }
+      var rows = parseCsv(t), k = kindOf(f.name, rows); if (k) pay[k] = pay[k].concat(rows); else throw new Error('ملف غير معروف: ' + f.name);
+    }); })).then(function(){
+      var n = pay.buildings.length + pay.rooms.length + pay.landlord_contracts.length + pay.residents.length;
+      if (!n) throw new Error('لا توجد بيانات في الملفات');
+      if (!confirm('سيتم استيراد: ' + pay.buildings.length + ' مبنى، ' + pay.rooms.length + ' غرفة، ' + pay.landlord_contracts.length + ' عقد، ' + pay.residents.length + ' نزيل. متابعة؟')) return null;
+      out.className = 'hint'; out.textContent = 'جارٍ الاستيراد…';
+      return rpc('housing_import', { p: pay });
+    }).then(function(r){
+      inp.value = ''; if (!r) { out.textContent = ''; return; }
+      out.className = 'hint ok'; out.textContent = '✓ تم: ' + r.buildings + ' مبنى، ' + r.rooms + ' غرفة، ' + r.contracts + ' عقد، ' + r.residents + ' نزيل' + (r.skipped ? ' — تم تخطي ' + r.skipped + ' (مكرر أو بدون غرفة/سرير)' : '');
+      load();
+    }).catch(function(e){ inp.value = ''; out.className = 'hint bad'; out.textContent = e.message; });
+  };
+
+  /* ---------- مباشر ---------- */
+  function liveState(k, t){ var el = $('live'); el.className = 'live' + (k ? ' ' + k : ''); el.querySelector('span').textContent = t; }
+  var rt = (function(){
+    var TABLES = ['housing_buildings','housing_rooms','housing_contracts','housing_residents','employees'];
+    var TOPIC = 'realtime:afmc-housing', ws = null, hb = null, ref = 0, stopped = true, retry = 1000, t2 = null, poll = null;
+    function send(o){ try { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); } catch(e){} }
+    function open(){
+      if (stopped || typeof WebSocket === 'undefined') return;
+      token().then(function(t){
+        try { ws = new WebSocket(SB_URL.replace(/^http/, 'ws') + '/realtime/v1/websocket?apikey=' + encodeURIComponent(SB_KEY) + '&vsn=1.0.0'); } catch(e){ liveState('', 'تحديث دوري'); return; }
+        ws.onopen = function(){
+          send({ topic: TOPIC, event: 'phx_join', ref: String(++ref), join_ref: '1', payload: { access_token: t, config: { broadcast: { self: false }, presence: { key: '' }, private: false,
+            postgres_changes: TABLES.map(function(x){ return { event: '*', schema: 'public', table: x }; }) } } });
+          clearInterval(hb); hb = setInterval(function(){ send({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: String(++ref) }); token().then(function(nt){ send({ topic: TOPIC, event: 'access_token', payload: { access_token: nt }, ref: String(++ref) }); }).catch(function(){}); }, 25000);
+        };
+        ws.onmessage = function(ev){
+          var m; try { m = JSON.parse(ev.data); } catch(e){ return; } if (m.topic !== TOPIC) return;
+          if (m.event === 'phx_reply' && m.payload && m.payload.status === 'ok') { retry = 1000; liveState('on', 'مباشر'); }
+          if (m.event === 'postgres_changes') { clearTimeout(t2); t2 = setTimeout(load, 600); }
+        };
+        ws.onclose = function(){ clearInterval(hb); if (stopped) return; liveState('', 'إعادة الاتصال…'); setTimeout(open, retry); retry = Math.min(retry * 2, 60000); };
+      }).catch(function(){});
+    }
+    return {
+      start: function(){ if (!stopped) return; stopped = false; open(); clearInterval(poll); poll = setInterval(function(){ if (document.visibilityState === 'visible') load(); }, 120000); },
+      stop: function(){ stopped = true; clearInterval(hb); clearInterval(poll); try { if (ws) ws.close(); } catch(e){} ws = null; }
+    };
+  })();
+  document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible' && me) load(); });
+  window.afmcHousing = { reload: function(){ if (me) load(); } };
+
+  /* ---------- تطبيق (PWA) ---------- */
+  var deferred = null;
+  if (!EMBED && 'serviceWorker' in navigator && location.protocol === 'https:') { try { navigator.serviceWorker.register('housing-sw.js'); } catch(e){} }
+  window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); deferred = e; if (!EMBED && !lsGet('housing_install_no')) $('installBar').classList.remove('hide'); });
+  $('installBtn').onclick = function(){ if (!deferred) return; deferred.prompt(); deferred.userChoice.then(function(){ deferred = null; $('installBar').classList.add('hide'); }); };
+  $('installNo').onclick = function(){ lsSet('housing_install_no', 1); $('installBar').classList.add('hide'); };
+
+  start();
+})();
+</script>
+</body>
+</html>

@@ -241,6 +241,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.4 3.3-5.5 6.5-5.5s5.9 2.1 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.8c1.6.8 2.7 2.6 3 5.2"/></symbol>
   <symbol id="i-car" viewBox="0 0 24 24"><path d="M5 17h14M3.5 17v-4.2L5.6 7.3A2 2 0 0 1 7.5 6h9a2 2 0 0 1 1.9 1.3l2.1 5.5V17"/><path d="M3.5 12.8h17"/><circle cx="7.5" cy="17" r="1.8"/><circle cx="16.5" cy="17" r="1.8"/></symbol>
   <symbol id="i-scooter" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M8 17.5h7.5l2-7H14M17.5 10.5 16 5h-2.5"/><path d="M3 13h5l2 4.5"/></symbol>
+  <symbol id="i-bed" viewBox="0 0 24 24"><path d="M3 18V6M3 14h18v4M21 14v-2.5A2.5 2.5 0 0 0 18.5 9H11v5"/><circle cx="7" cy="11" r="1.8"/></symbol>
   <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0 5 5L21 12.6a6 6 0 0 1-8 1.9L6.4 21a2 2 0 0 1-2.8-2.8l6.5-6.6a6 6 0 0 1 1.9-8z"/></symbol>
   <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.6 3.1 8 7.5 9.5 4.4-1.5 7.5-4.9 7.5-9.5V6z"/><path d="m9 12 2 2 4-4"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></symbol>
@@ -398,7 +399,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260922171834";
+  var BUILD = "20260922190003";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -410,6 +411,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     { id:'watheeq', ic:'users', name:'وثيق', desc:'الموظفون والعقود والرواتب', src:'watheeq.html' },
     { id:'fleet', ic:'car', name:'الأسطول', desc:'المركبات والتسليم والورش', src:'fleet.html' },
     { id:'couriers', ic:'scooter', name:'المناديب', desc:'Ninja · Keemart', group:['ninja','keemart'] },
+    { id:'housing', ic:'bed', name:'السكنات', desc:'المباني والغرف والنزلاء', src:'housing.html' },
     { id:'dbb', ic:'wrench', name:'صيانة الدبابات', desc:'أوامر الصيانة الميدانية', src:'../' }
   ];
   var SUBS = { ninja:{ name:'Ninja', desc:'أداء الكباتن والـ SLA', src:'ninja.html' }, keemart:{ name:'Keemart', desc:'الحضور والتسوية والفواتير', src:'keemart.html' } };
@@ -515,6 +517,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     history.replaceState(null, '', v === 'vAdm' ? '#admin' : v === 'vRev' ? '#review' : '#');
     document.body.classList.remove('menu');
     if (v === 'vAdm') loadAdmin(); if (v === 'vRev') loadReview();
+    if (v === 'vSys' && !keepSys && me) homeMeta();
   }
   document.querySelectorAll('#tabs button').forEach(function(b){ b.onclick = function(){ var v = b.getAttribute('data-v'); if (v === 'vSys') { try { localStorage.removeItem('afmc_portal_sys'); } catch(e){} } show(v); }; });
   function badges(){
@@ -537,6 +540,21 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     $('homeCards').querySelectorAll('.sysc').forEach(function(b){ b.onclick = function(){ openSys(b.getAttribute('data-s')); }; });
     homeMeta();
   }
+  function housingMeta(set){
+    if (!((me.systems || []).indexOf('housing') >= 0)) return;
+    rpc('housing_summary').then(function(h){
+      if (!h) return;
+      set('housing', '<span>' + num(h.occupied) + ' من ' + num(h.beds) + ' سرير مشغول</span><span>·</span><span>' + num(h.buildings) + ' مبنى</span>');
+      var add = [];
+      if (h.flagged) add.push(['housing', 'bad', h.flagged, 'نزلاء في السكن تغيّرت حالتهم في وثيق (منتهي/موقوف)']);
+      if (h.overdue) add.push(['housing', 'warn', h.overdue, 'إيجارات سكن مستحقة للملاك']);
+      if (!add.length) return;
+      var a = $('attn'); if (!a.querySelector('.lbl')) a.innerHTML = '<div class="lbl">يحتاج انتباهك</div>';
+      a.insertAdjacentHTML('beforeend', add.map(function(x){ return '<button class="att ' + x[1] + '" data-go="housing"><span class="n">' + num(x[2]) + '</span><span class="l">' + x[3] + '</span>' + ico('chev') + '</button>'; }).join(''));
+      a.classList.remove('hide');
+      a.querySelectorAll('.att[data-go="housing"]').forEach(function(b){ b.onclick = function(){ openSys('housing'); }; });
+    }).catch(function(){ set('housing', '<span>مربوط بوثيق</span>'); });
+  }
   function homeMeta(){
     var set = function(id, h){ var el = document.querySelector('[data-m="' + id + '"]'); if (el) el.innerHTML = h; };
     rpc('integration_status').then(function(s){
@@ -551,7 +569,8 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       $('attn').innerHTML = items.length ? '<div class="lbl">يحتاج انتباهك</div>' + items.map(function(x){ return '<button class="att ' + x[1] + '" data-go="' + x[0] + '"><span class="n">' + num(x[2]) + '</span><span class="l">' + x[3] + '</span>' + ico('chev') + '</button>'; }).join('') : '';
       $('attn').classList.toggle('hide', !items.length);
       $('attn').querySelectorAll('.att').forEach(function(b){ b.onclick = function(){ var g = b.getAttribute('data-go'); if (g === 'dbb') openSys('dbb'); else show(g); }; });
-    }).catch(function(){ ['watheeq','fleet','dbb'].forEach(function(id){ set(id, '<span>قاعدة بيانات موحّدة</span>'); }); });
+      housingMeta(set);
+    }).catch(function(){ ['watheeq','fleet','dbb'].forEach(function(id){ set(id, '<span>قاعدة بيانات موحّدة</span>'); }); housingMeta(set); });
     loadSummary().then(function(){
       var parts = subsFor().map(function(g){ var x = summary[g] || {}; return '<span>' + SUBS[g].name + ': ' + num(x.present) + ' حاضر · ' + day(x.latest) + '</span>'; });
       set('couriers', parts.join('<span>·</span>') || '<span>—</span>');
@@ -615,7 +634,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       rpc('integration_status'),
       api('GET', 'role_matrix?select=*')
     ]).then(function(r){
-      var SYS_AR = { watheeq:'وثيق', fleet:'الأسطول', ninja:'Ninja', keemart:'Keemart', dbb:'صيانة الدبابات' }, ord = ROLES.map(function(x){ return x[0]; });
+      var SYS_AR = { watheeq:'وثيق', fleet:'الأسطول', ninja:'Ninja', keemart:'Keemart', dbb:'صيانة الدبابات', housing:'السكنات' }, ord = ROLES.map(function(x){ return x[0]; });
       var yes = function(b){ return b ? '<span class="yes">✓</span>' : '<span class="no">—</span>'; };
       var ed = me.role === 'admin';
       var cb = function(role, k, v){ var lock = !ed || (role === 'admin' && (k === 'can_manage' || k === 'all_projects'));
@@ -649,7 +668,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       $('pendCnt').textContent = pend.length; $('pendCnt').classList.toggle('hide', !pend.length);
     }).catch(function(e){ toast('تعذّر التحميل: ' + e.message); });
   }
-  var ROLE_SYS = {}, SYS_LIST = [['watheeq','وثيق'],['fleet','الأسطول'],['ninja','Ninja'],['keemart','Keemart'],['dbb','صيانة الدبابات']];
+  var ROLE_SYS = {}, SYS_LIST = [['watheeq','وثيق'],['fleet','الأسطول'],['ninja','Ninja'],['keemart','Keemart'],['dbb','صيانة الدبابات'],['housing','السكنات']];
   function sysTags(sel){ return SYS_LIST.map(function(x){ return '<span class="tag' + (sel.indexOf(x[0]) >= 0 ? ' on' : '') + '" data-y="' + x[0] + '">' + x[1] + '</span>'; }).join(''); }
   function projTags(sel){ return projects.map(function(p){ return '<span class="tag' + (sel.indexOf(p) >= 0 ? ' on' : '') + '" data-p="' + esc(p) + '">' + esc(p) + '</span>'; }).join(''); }
   function row(u, mine, isNew){
@@ -795,7 +814,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
      اتصال واحد للمنصّة كلها. أي تغيير في القاعدة يصل فوراً ويُسحب في الأنظمة المفتوحة.
      إذا انقطع الاتصال، تبقى المزامنة الدورية في كل نظام تعمل كاحتياط. */
   var live = (function(){
-    var TABLES = ['employees','vehicles','vehicle_assignments','app_records','app_kv','attendance_daily','profiles','inbox_items','inbox_comments'];
+    var TABLES = ['employees','vehicles','vehicle_assignments','app_records','app_kv','attendance_daily','profiles','inbox_items','inbox_comments','housing_buildings','housing_rooms','housing_contracts','housing_residents'];
     var TOPIC = 'realtime:afmc-live', ws = null, hb = null, ref = 0, joined = false, stopped = true, retry = 1000, sentTok = null, tokT = null;
     var pend = {}, apps = {}, flushT = null, revT = 0;
     function state(k, t){ var el = $('live'); el.className = 'live' + (k ? ' ' + k : ''); el.querySelector('span').textContent = t; }
@@ -850,6 +869,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
             if (w.wfSupabase) (w.wfSupabase.poke || w.wfSupabase.pull)();
             if (a.wf && w.__wfReqRefresh) w.__wfReqRefresh();
           }
+          if (id === 'housing' && (p.housing_buildings || p.housing_rooms || p.housing_contracts || p.housing_residents || p.employees) && w.afmcHousing) w.afmcHousing.reload();
           if ((id === 'ninja' || id === 'keemart') && (p.attendance_daily || a[id]) && w.wfSupabaseDash) w.wfSupabaseDash.pull().catch(function(){});
         } catch(e){}
       });
@@ -857,7 +877,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       if (p.inbox_items || p.inbox_comments || a.wf) ib.load();
       if (p.attendance_daily || a.ninja || a.keemart) { if (current === 'couriers') loadSummary(); }
       if (!$('vRev').classList.contains('hide') && (core || p.attendance_daily) && Date.now() - revT > 4000) { revT = Date.now(); loadReview(); }
-      if (!current && !$('vSys').classList.contains('hide')) homeMeta();
+      if (!current && !$('vSys').classList.contains('hide') && (core || p.housing_residents || p.housing_contracts || p.housing_rooms || p.attendance_daily || p.inbox_items)) homeMeta();
     }
     return { start: start, stop: stop, flush: flush, _pend: function(t, app){ pend[t] = 1; if (app) apps[app] = 1; flush(); } };
   })();
@@ -869,7 +889,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     var items = [], reads = {}, tab = 'req', cur = null, dir = null, loading = false;
     var KIND_AR = { vehicle_request: 'طلب تفويض مركبة', account_request: 'طلب حساب', message: 'رسالة', task: 'طلب' };
     var ST_AR = { 'new': 'جديد', in_progress: 'قيد التنفيذ', done: 'منجز', rejected: 'مرفوض' };
-    var SYS_AR2 = { watheeq: 'وثيق', fleet: 'الأسطول', ninja: 'Ninja', keemart: 'Keemart', dbb: 'صيانة الدبابات', admin: 'الإدارة' };
+    var SYS_AR2 = { watheeq: 'وثيق', fleet: 'الأسطول', ninja: 'Ninja', keemart: 'Keemart', dbb: 'صيانة الدبابات', housing: 'السكنات', admin: 'الإدارة' };
     function uid(){ return sess && sess.user_id; }
     function unread(x){ var r = reads[x.id]; return (!r || new Date(r) < new Date(x.updated_at)) && !(x.created_by === uid() && !r && x.kind !== 'message'); }
     function isOpen(x){ return x.status === 'new' || x.status === 'in_progress'; }
