@@ -123,6 +123,29 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 .sysc b{font-size:15px;font-weight:600;display:block}.sysc small{color:var(--muted);font-size:12px}
 .sysc .meta{display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid var(--line-2);padding-top:12px;font-size:12px;color:var(--muted)}
 .sysc .go{margin-inline-start:auto;color:var(--faint)}
+.gs{position:relative;flex:1;max-width:420px;margin-inline-start:10px}
+.gs input{width:100%;padding:9px 34px 9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font:inherit;font-size:13px;color:var(--ink)}
+.gs input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-ring)}
+.gs .kbd{position:absolute;inset-inline-end:8px;top:50%;transform:translateY(-50%);font-size:10.5px;color:var(--faint);pointer-events:none;border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+.gsr{position:absolute;inset-inline-start:0;inset-inline-end:0;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh-lg);max-height:60vh;overflow:auto;z-index:60;padding:6px}
+.gsr .gh{font-size:11px;color:var(--faint);padding:7px 10px 3px;font-weight:600}
+.gsr button{display:flex;width:100%;gap:10px;align-items:center;padding:8px 10px;border-radius:9px;text-align:right;background:none;border:0;font:inherit}
+.gsr button:hover,.gsr button.sel{background:var(--surface-2)}
+.gsr .tg{font-size:10.5px;color:var(--brand);background:var(--brand-soft);border-radius:6px;padding:2px 7px;white-space:nowrap}
+.gsr .tx b{display:block;font-size:13px;font-weight:600}.gsr .tx small{color:var(--muted);font-size:11.5px}
+.gsr .empty{padding:14px;text-align:center;color:var(--muted);font-size:12.5px}
+.rep .bar2{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.rep .seg2{display:flex;gap:6px;flex-wrap:wrap}
+.rep .seg2 button{padding:7px 13px;border:1px solid var(--line);background:var(--surface);border-radius:99px;font-size:12.5px;color:var(--ink-2)}
+.rep .seg2 button.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.rep input[type=date],.rep select{padding:7px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);font:inherit;font-size:12.5px;color:var(--ink)}
+.rep .kp{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:16px}
+.rep .kp .b{border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:14px 16px}
+.rep .kp .b .l{font-size:11.5px;color:var(--muted)}.rep .kp .b .v{font-size:25px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums}
+.rep .kp .b.bad .v{color:var(--bad)}.rep .kp .b.warn .v{color:var(--warn)}
+.rep .note{border:1px solid var(--warnbg);background:var(--warnbg);color:var(--warn);border-radius:10px;padding:10px 14px;font-size:12.5px;margin-bottom:14px}
+.rphead{display:none}
+@media print{.side,.bar,#scrim,.rep .bar2,.foot,#toast{display:none!important}.main{margin:0!important}.content{padding:0!important;overflow:visible!important}.rphead{display:block;margin-bottom:14px;border-bottom:2px solid var(--brand);padding-bottom:10px}.rphead b{font-size:19px}.rphead div{font-size:12px;color:#444}.rep .kp{grid-template-columns:repeat(4,1fr)}.card,.rep .kp .b{box-shadow:none!important;break-inside:avoid}table{font-size:10.5px}thead{display:table-header-group}tr{break-inside:avoid}@page{size:A4 landscape;margin:12mm}}
 .pulse{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin:0 0 22px}
 .pt{border:1px solid var(--line);background:var(--surface);border-radius:var(--r);box-shadow:var(--sh);padding:16px 18px;text-align:right}
 .pt .k{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
@@ -261,7 +284,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
   <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
   <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
-  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><rect x="7" y="11" width="3" height="6" rx="1"/><rect x="12.5" y="7" width="3" height="10" rx="1"/><rect x="18" y="13" width="3" height="4" rx="1"/></symbol><symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol>
   <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/></symbol>
   <symbol id="i-cal" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></symbol>
   <symbol id="i-chev" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></symbol>
@@ -301,6 +324,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       <div class="grp"><nav class="nav" id="tabs">
         <button data-v="vSys" class="on"><span class="ic"><svg class="i"><use href="#i-home"/></svg></span><span class="tx"><b>الرئيسية</b></span></button>
         <button data-v="vAdm" data-need="admin"><span class="ic"><svg class="i"><use href="#i-shield"/></svg></span><span class="tx"><b>الصلاحيات والتكامل</b></span><span class="cnt hide" id="pendCnt"></span></button>
+        <button data-v="vRep"><span class="ic"><svg class="i"><use href="#i-chart"/></svg></span><span class="tx"><b>التقارير</b></span></button>
         <button data-v="vRev" data-need="review"><span class="ic"><svg class="i"><use href="#i-search"/></svg></span><span class="tx"><b>مراجعة البيانات</b></span><span class="cnt hide" id="revCnt"></span></button>
       </nav></div>
       <div class="grp"><div class="lb">الأنظمة</div><nav class="nav" id="sysbar"></nav></div>
@@ -314,6 +338,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     <header class="bar">
       <button class="tbtn" id="menuBtn" aria-label="القائمة"><svg class="i"><use href="#i-menu"/></svg></button>
       <div><h1 id="ttl">الرئيسية</h1><div class="crumb" id="crumb">منصة AFMCO</div></div>
+      <div class="gs"><input id="gsq" type="search" autocomplete="off" placeholder="بحث: رقم لوحة · رقم إقامة · اسم"><span class="kbd">Ctrl K</span><div class="gsr hide" id="gsr"></div></div>
       <div class="sp"></div>
       <button class="tbtn bellb" id="inboxBtn" title="الصندوق الموحّد: الطلبات والرسائل"><svg class="i"><use href="#i-bell"/></svg><span class="cnt hide" id="inboxCnt"></span></button>
       <span class="live" id="live" title="حالة التحديث المباشر"><i></i><span>جارٍ الاتصال…</span></span>
@@ -334,6 +359,25 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
           <div class="cards" id="homeCards"></div>
           <div class="attn hide" id="attn"></div>
         </div>
+      </main>
+
+      <!-- ════════ التقارير ════════ -->
+      <main id="vRep" class="view hide rep">
+        <div class="rphead"><b>AFMC Co. Ltd — منصة AFMCO</b><div id="rpMeta"></div></div>
+        <div class="head"><div><h2>التقارير</h2><p>أرقام مجمّعة من القاعدة مباشرة — جاهزة للطباعة أو التصدير.</p></div>
+          <div style="display:flex;gap:8px"><button class="btn ghost" id="rpPrint">طباعة / PDF</button><button class="btn" id="rpCsv"><svg class="i"><use href="#i-down"/></svg>تصدير Excel</button></div></div>
+        <div class="bar2">
+          <div class="seg2" id="rpKinds"></div>
+          <span style="flex:1"></span>
+          <label class="sub" style="display:flex;align-items:center;gap:6px">من <input type="date" id="rpFrom"></label>
+          <label class="sub" style="display:flex;align-items:center;gap:6px">إلى <input type="date" id="rpTo"></label>
+          <select id="rpProj"><option value="">كل المشاريع</option></select>
+          <button class="btn ghost" id="rpGo"><svg class="i"><use href="#i-reload"/></svg>تحديث</button>
+        </div>
+        <div class="note hide" id="rpNote"></div>
+        <div class="kp" id="rpKpi"></div>
+        <div class="card tbl"><table><thead id="rpHead"></thead><tbody id="rpBody"></tbody></table></div>
+        <div class="sub" id="rpFoot" style="margin-top:8px"></div>
       </main>
 
       <!-- ════════ الصلاحيات والتكامل ════════ -->
@@ -410,7 +454,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260923205924";
+  var BUILD = "20260923220049";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -514,23 +558,23 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       $('hi').textContent = nm ? ('أهلاً ' + nm.split(/\s+/)[0]) : 'أهلاً';
       try { $('hiSub').textContent = 'ملخّص العمليات · ' + new Date().toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { weekday:'long', day:'numeric', month:'long', year:'numeric' }); } catch(e){}
       document.querySelectorAll('#tabs button').forEach(function(b){ var n = b.getAttribute('data-need'); b.classList.toggle('hide', !!n && !can(n)); });
-      buildSystems();
+      buildSystems(); gsWire();
       var h = location.hash;
-      if (h === '#admin' && can('admin')) show('vAdm'); else if (h === '#review' && can('review')) show('vRev');
+      if (h === '#admin' && can('admin')) show('vAdm'); else if (h === '#review' && can('review')) show('vRev'); else if (h === '#reports') show('vRep');
       else { var last = null; try { last = localStorage.getItem('afmc_portal_sys'); } catch(e){}
              if (last === 'ninja' || last === 'keemart') openSys('couriers', last); else if (last && SYSTEMS.some(function(s){ return s.id === last && allowed(s); })) openSys(last); else show('vSys'); }
       badges(); live.start(); versionWatch(); ib.load(); loadProjects();
     }).catch(function(e){ if (!sess) { $('gate').classList.remove('hide'); return; } if (/no session/.test(e.message)) signOut(); else { $('gate').classList.remove('hide'); gateMsg('bad', 'تعذّر الاتصال بالقاعدة: ' + esc(e.message)); } });
   }
-  var TITLES = { vSys:'الرئيسية', vAdm:'الصلاحيات والتكامل', vRev:'مراجعة البيانات' };
+  var TITLES = { vSys:'الرئيسية', vRep:'التقارير', vAdm:'الصلاحيات والتكامل', vRev:'مراجعة البيانات' };
   function show(v, keepSys){
-    ['vSys','vAdm','vRev'].forEach(function(x){ $(x).classList.toggle('hide', x !== v); });
+    ['vSys','vRep','vAdm','vRev'].forEach(function(x){ $(x).classList.toggle('hide', x !== v); });
     document.querySelectorAll('#tabs button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-v') === v && !(v === 'vSys' && current)); });
     if (v !== 'vSys' || !keepSys) { current = null; sysUi(); }
     $('ttl').textContent = TITLES[v]; $('crumb').textContent = 'منصة AFMCO'; $('fbar').innerHTML = '';
-    history.replaceState(null, '', v === 'vAdm' ? '#admin' : v === 'vRev' ? '#review' : '#');
+    history.replaceState(null, '', v === 'vAdm' ? '#admin' : v === 'vRev' ? '#review' : v === 'vRep' ? '#reports' : '#');
     document.body.classList.remove('menu');
-    if (v === 'vAdm') loadAdmin(); if (v === 'vRev') loadReview();
+    if (v === 'vAdm') loadAdmin(); if (v === 'vRev') loadReview(); if (v === 'vRep') repInit();
     if (v === 'vSys' && !keepSys && me) homeMeta();
   }
   document.querySelectorAll('#tabs button').forEach(function(b){ b.onclick = function(){ var v = b.getAttribute('data-v'); if (v === 'vSys') { try { localStorage.removeItem('afmc_portal_sys'); } catch(e){} } show(v); }; });
@@ -572,6 +616,131 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       attRender();
     }).catch(function(){ set('housing', '<span>مربوط بوثيق</span>'); });
   }
+  /* ═══════════ بحث عام: لوحة · إقامة · اسم · رقم أمر ═══════════ */
+  var GS_SYS = { watheeq:'#q', fleet:'#gsearch', dbb:'#qAll', housing:'#rQ' };
+  var GS_KIND = { vehicle:'مركبة', employee:'موظف', maint:'أمر صيانة', resident:'نزيل سكن' };
+  var GS_SYSN = { watheeq:'وثيق', fleet:'الأسطول', ninja:'Ninja', keemart:'Keemart', dbb:'الصيانة', housing:'السكنات' };
+  var gsT = null, gsHits = [], gsSel = -1;
+  function gsClose(){ $('gsr').classList.add('hide'); gsSel = -1; }
+  function gsRender(hits){
+    gsHits = hits || []; gsSel = -1;
+    if (!gsHits.length) { $('gsr').innerHTML = '<div class="empty">لا نتائج</div>'; $('gsr').classList.remove('hide'); return; }
+    var last = '', h = '';
+    gsHits.forEach(function(x, i){
+      if (x.kind !== last) { h += '<div class="gh">' + (GS_KIND[x.kind] || x.kind) + '</div>'; last = x.kind; }
+      h += '<button data-i="' + i + '"><span class="tg">' + esc(GS_SYSN[x.sys] || x.sys) + '</span><span class="tx"><b>' + esc(x.title) + '</b><small>' + esc(x.sub || '') + '</small></span></button>';
+    });
+    $('gsr').innerHTML = h; $('gsr').classList.remove('hide');
+    $('gsr').querySelectorAll('button').forEach(function(b){ b.onclick = function(){ gsGo(gsHits[b.getAttribute('data-i')]); }; });
+  }
+  function gsGo(hit){
+    if (!hit) return;
+    gsClose(); $('gsq').value = '';
+    show('vSys'); openSys(hit.sys === 'ninja' || hit.sys === 'keemart' ? 'couriers' : hit.sys);
+    var sel = GS_SYS[hit.sys], key = hit.key || hit.title;
+    if (!sel) return;
+    var tries = 0, t = setInterval(function(){                       /* الإطار قد يكون ما زال يُحمّل */
+      tries++;
+      var f = document.querySelector('iframe[data-s="' + hit.sys + '"]'), w = null;
+      try { w = f && f.contentWindow; } catch(e){}
+      var el = null; try { el = w && w.document.querySelector(sel); } catch(e){}
+      if (el) {
+        clearInterval(t);
+        try { el.value = key; el.dispatchEvent(new w.Event('input', { bubbles:true })); el.dispatchEvent(new w.Event('keyup', { bubbles:true })); el.focus(); } catch(e){}
+        toast('بحثت عن «' + key + '» داخل ' + (GS_SYSN[hit.sys] || hit.sys));
+      } else if (tries > 40) { clearInterval(t); toast('افتح القسم ثم ابحث عن «' + key + '»'); }
+    }, 250);
+  }
+  function gsWire(){
+    var q = $('gsq');
+    q.addEventListener('input', function(){
+      clearTimeout(gsT); var v = q.value.trim();
+      if (v.length < 2) { gsClose(); return; }
+      gsT = setTimeout(function(){
+        rpc('afmc_search', { q:v }).then(gsRender).catch(function(){ gsClose(); });
+      }, 250);
+    });
+    q.addEventListener('keydown', function(e){
+      if (e.key === 'Escape') { gsClose(); q.blur(); return; }
+      if (!gsHits.length || $('gsr').classList.contains('hide')) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault(); gsSel = (gsSel + (e.key === 'ArrowDown' ? 1 : -1) + gsHits.length) % gsHits.length;
+        $('gsr').querySelectorAll('button').forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-i') == gsSel); });
+        var el = $('gsr').querySelector('button.sel'); if (el) el.scrollIntoView({ block:'nearest' });
+      } else if (e.key === 'Enter') { e.preventDefault(); gsGo(gsHits[gsSel < 0 ? 0 : gsSel]); }
+    });
+    document.addEventListener('click', function(e){ if (!e.target.closest('.gs')) gsClose(); });
+    document.addEventListener('keydown', function(e){
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); q.focus(); q.select(); }
+    });
+  }
+
+  /* ═══════════ مركز التقارير ═══════════ */
+  var RP_KINDS = [
+    ['exec',       'الملخّص التنفيذي', null],
+    ['fleet',      'الأسطول',          'fleet'],
+    ['fleet_idle', 'مركبات بلا سائق',  'fleet'],
+    ['hr',         'القوى العاملة',     'watheeq'],
+    ['maint',      'الصيانة',          'dbb'],
+    ['maint_top',  'أعلى الأصول تكلفة', 'dbb'],
+    ['housing',    'السكنات',          'housing'],
+    ['quality',    'جودة البيانات',     null]
+  ];
+  var rpKind = 'exec', rpData = null, rpReady = false;
+  function repInit(){
+    if (!rpReady) {
+      rpReady = true;
+      var mine = me.systems || [];
+      var list = RP_KINDS.filter(function(k){ return !k[2] || mine.indexOf(k[2]) >= 0; });
+      if (!list.length) list = [RP_KINDS[0]];
+      if (!list.some(function(k){ return k[0] === rpKind; })) rpKind = list[0][0];
+      $('rpKinds').innerHTML = list.map(function(k){ return '<button data-k="' + k[0] + '"' + (k[0] === rpKind ? ' class="on"' : '') + '>' + k[1] + '</button>'; }).join('');
+      $('rpKinds').querySelectorAll('button').forEach(function(b){ b.onclick = function(){
+        rpKind = b.getAttribute('data-k');
+        $('rpKinds').querySelectorAll('button').forEach(function(x){ x.classList.toggle('on', x === b); });
+        repLoad(); }; });
+      var to = new Date(), from = new Date(Date.now() - 30 * 864e5);
+      $('rpTo').value = to.toISOString().slice(0, 10); $('rpFrom').value = from.toISOString().slice(0, 10);
+      $('rpGo').onclick = repLoad; $('rpFrom').onchange = repLoad; $('rpTo').onchange = repLoad; $('rpProj').onchange = repLoad;
+      $('rpPrint').onclick = function(){ window.print(); };
+      $('rpCsv').onclick = repCsv;
+      api('GET', 'projects?select=code&order=code').then(function(r){
+        $('rpProj').innerHTML = '<option value="">كل المشاريع</option>' + (r || []).map(function(x){ return '<option>' + esc(x.code) + '</option>'; }).join('');
+      }).catch(function(){});
+    }
+    repLoad();
+  }
+  function repLoad(){
+    $('rpBody').innerHTML = '<tr><td class="empty">جارٍ التحميل…</td></tr>';
+    rpc('afmc_report', { p_kind:rpKind, p_from:$('rpFrom').value || null, p_to:$('rpTo').value || null, p_project:$('rpProj').value || null })
+      .then(function(r){ rpData = r; repRender(); })
+      .catch(function(e){ rpData = null; $('rpHead').innerHTML = ''; $('rpKpi').innerHTML = ''; $('rpNote').classList.add('hide');
+        $('rpBody').innerHTML = '<tr><td class="empty">' + esc(e.message) + '</td></tr>'; $('rpFoot').textContent = ''; });
+  }
+  function repRender(){
+    var r = rpData; if (!r) return;
+    var cols = r.cols || [], rows = r.rows || [];
+    $('rpKpi').innerHTML = (r.kpis || []).map(function(k){
+      return '<div class="b ' + (k.t || '') + '"><div class="l">' + esc(k.l) + '</div><div class="v">' + esc(typeof k.v === 'number' ? num(k.v) : k.v) + '</div></div>'; }).join('');
+    $('rpNote').textContent = r.note || ''; $('rpNote').classList.toggle('hide', !r.note);
+    $('rpHead').innerHTML = '<tr>' + cols.map(function(c){ return '<th>' + esc(c) + '</th>'; }).join('') + '</tr>';
+    $('rpBody').innerHTML = rows.length
+      ? rows.map(function(row){ return '<tr>' + row.map(function(c){ return '<td>' + esc(typeof c === 'number' ? num(c) : (c == null ? '—' : c)) + '</td>'; }).join('') + '</tr>'; }).join('')
+      : '<tr><td class="empty" colspan="' + Math.max(cols.length, 1) + '">لا بيانات في هذه الفترة</td></tr>';
+    var per = (r.kind === 'maint' || r.kind === 'maint_top') ? ('من ' + day(r.from) + ' إلى ' + day(r.to)) : 'حتى ' + day(r.to);
+    $('rpFoot').textContent = rows.length + ' سطر · ' + r.project + ' · ' + per;
+    $('rpMeta').textContent = r.title + ' — ' + r.project + ' · ' + per + ' · صدر في ' + new Date().toLocaleString('ar-SA-u-ca-gregory-nu-latn');
+    $('ttl').textContent = 'التقارير — ' + r.title;
+  }
+  function repCsv(){
+    if (!rpData) return;
+    var rows = [rpData.cols].concat(rpData.rows || []);
+    var csv = '﻿' + rows.map(function(r){ return r.map(function(c){ return '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"'; }).join(','); }).join('\r\n');
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' }));
+    a.download = 'afmc-' + rpData.kind + '-' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  }
+
   /* ---------- «يحتاج انتباهك»: مصدر واحد مرتّب حسب الخطورة ---------- */
   var ATT = [];
   function attAdd(sev, n, label, go){
