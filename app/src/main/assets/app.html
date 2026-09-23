@@ -75,9 +75,10 @@
 
 /* ═══════════════════════════════════════════════════════════════════════
    أقسام السيارات والسكنات — داخل نفس التطبيق، نفس الدخول ونفس الصلاحيات.
-   لا تلمس كود التطبيق: تُضاف تبويبتان وشاشتان فقط.
-   البلاغ ينزل أمر صيانة في القاعدة الموحّدة: يظهر للإدارة، ويحوّل المركبة إلى
-   «ورشة» في الأسطول، ويظهر في ملف الموظف في وثيق. الإغلاق النهائي للإدارة.
+   مسار السيارات: بلاغ المشرف (لوحة نشطة + إقامة السائق من وثيق + العطل)
+   ← الأسطول يستلم ← يستخرج أمر الصيانة ← يرفع ورقة الإصلاح ← المشرف يوجّه
+   المركبة للورشة ← الإغلاق والمتابعة المالية في وثيق.
+   مسار السكنات: بلاغ المشرف ← الإداري: تم طلب الصيانة ← تمت الصيانة.
    ═══════════════════════════════════════════════════════════════════════ */
 (function(){
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
@@ -88,18 +89,17 @@
       .then(function(r){ return r.text().then(function(t){ var j = t ? JSON.parse(t) : null; if (!r.ok) throw new Error((j && j.message) || ('HTTP ' + r.status)); return j; }); });
   }
   var SEC = {
-    veh: { kind:'vehicle', name:'السيارات', ic:'🚗', asset:'رقم اللوحة', hint:'البلاغ يحوّل المركبة إلى «ورشة» في الأسطول تلقائياً',
+    veh: { kind:'vehicle', name:'السيارات', ic:'🚗', asset:'رقم اللوحة',
            types:['فرامل','زيت وفلاتر','كهرباء','إطارات','تكييف','مكينة','قير','صدام / تلفيات','فحص دوري'] },
-    hsg: { kind:'housing', name:'السكنات', ic:'🏠', asset:'المبنى والغرفة', hint:'أعطال المباني والغرف — تصل إدارة الصيانة والسكنات',
+    hsg: { kind:'housing', name:'السكنات', ic:'🏠', asset:'المبنى والغرفة',
            types:['سباكة','كهرباء','مكيّف','أبواب ونوافذ','دهان','أثاث','نظافة عامة'] }
   };
-  var ST = { 'new':'مفتوح', in_progress:'في الورشة', waiting_parts:'بانتظار قطع', done:'مغلق', cancelled:'ملغي' };
   var ROLE_AR = { admin:'إداري', supervisor:'مشرف', mechanic:'ميكانيكي', viewer:'متابعة' };
   var D = { veh:null, hsg:null }, loading = {}, lastLoad = {}, cur = null;
 
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   function el(id){ return document.getElementById(id); }
-  function isOpen(o){ return ['new','in_progress','waiting_parts'].indexOf(o.status) >= 0; }
+  function isOpen(o){ return ['done','cancelled'].indexOf(o.status) < 0; }
   function dev(){ try { return localStorage.getItem('dbb_dev_id') || ''; } catch(e){ return ''; } }
   function meRec(){
     try { var db = JSON.parse(localStorage.getItem('dbb_maint_v1') || '{}'); var id = dev();
@@ -114,7 +114,7 @@
     if (!t) { t = document.createElement('div'); t.id = 'fldToast';
       t.style.cssText = 'position:fixed;bottom:86px;left:50%;transform:translateX(-50%);background:#17262C;color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;z-index:90;max-width:92vw;text-align:center';
       document.body.appendChild(t); }
-    t.textContent = m; t.style.display = 'block'; clearTimeout(tT); tT = setTimeout(function(){ t.style.display = 'none'; }, 3200);
+    t.textContent = m; t.style.display = 'block'; clearTimeout(tT); tT = setTimeout(function(){ t.style.display = 'none'; }, 3400);
   }
   function sheet(title, body, foot){
     closeSheet();
@@ -126,8 +126,8 @@
     ov.onclick = function(e){ if (e.target === ov) closeSheet(); };
   }
   function closeSheet(){ var o = el('fldSheet'); if (o) o.remove(); }
-
   function call(fn, args){ args = args || {}; args.p_token = APP_KEY; return rpc(fn, args); }
+
   function load(k, quiet){
     if (loading[k]) return loading[k];
     var s = SEC[k], m = meRec();
@@ -138,6 +138,22 @@
     return loading[k];
   }
 
+  /* مراحل المسار */
+  var STEPS = {
+    vehicle: [['new','بلاغ جديد'],['received','استلمه الأسطول'],['issued','أمر الصيانة'],['sheet','ورقة الإصلاح'],['at_workshop','في الورشة'],['done','مغلق']],
+    housing: [['new','بلاغ جديد'],['issued','تم طلب الصيانة'],['done','تمت الصيانة']]
+  };
+  function stepBar(kind, st){
+    var steps = STEPS[kind], at = 0;
+    steps.forEach(function(x, i){ if (x[0] === st) at = i; });
+    if (st === 'waiting_parts') at = 3;
+    return '<div style="display:flex;gap:4px;margin:8px 0 2px;flex-wrap:wrap">' + steps.map(function(x, i){
+      var on = i <= at;
+      return '<span style="flex:1;min-width:64px;text-align:center;font-size:11.5px;padding:4px 2px;border-radius:6px;white-space:nowrap;' +
+        (on ? 'background:#E1F0E8;color:#156B4C;font-weight:600' : 'background:#F2EEE6;color:#8B959B') + '">' + x[1] + '</span>';
+    }).join('') + '</div>';
+  }
+
   function board(k){
     var s = SEC[k], list = ((D[k] || {}).orders || []), op = list.filter(isOpen);
     var late = op.filter(function(o){ return days(o.opened) >= 7; }).length;
@@ -145,11 +161,16 @@
       '<div class="board-big ' + (late ? 'crit' : op.length ? '' : 'ok') + '"><div class="lbl">بلاغات ' + s.name + ' المفتوحة</div>' +
       '<div class="val num">' + op.length + '</div><div class="sub">' + (late ? late + ' متأخر أكثر من ٧ أيام' : 'لا يوجد متأخر') + '</div></div>' +
       '<div class="board-strip"></div></div><div class="board-mini">' +
-      '<div><div class="k">في الورشة</div><div class="v num">' + op.filter(function(o){ return o.status === 'in_progress'; }).length + '</div></div>' +
-      '<div><div class="k">بانتظار قطع</div><div class="v num">' + op.filter(function(o){ return o.status === 'waiting_parts'; }).length + '</div></div>' +
-      '<div><div class="k">طلبات إغلاق</div><div class="v num">' + op.filter(function(o){ return o.close_req; }).length + '</div></div>' +
+      (k === 'veh'
+        ? '<div><div class="k">بانتظار الأسطول</div><div class="v num">' + op.filter(function(o){ return o.status === 'new'; }).length + '</div></div>' +
+          '<div><div class="k">أمر صيانة / ورقة</div><div class="v num">' + op.filter(function(o){ return ['received','issued','sheet'].indexOf(o.status) >= 0; }).length + '</div></div>' +
+          '<div><div class="k">في الورشة</div><div class="v num">' + op.filter(function(o){ return ['at_workshop','waiting_parts'].indexOf(o.status) >= 0; }).length + '</div></div>'
+        : '<div><div class="k">بانتظار الإداري</div><div class="v num">' + op.filter(function(o){ return o.status === 'new'; }).length + '</div></div>' +
+          '<div><div class="k">تم طلب الصيانة</div><div class="v num">' + op.filter(function(o){ return o.status === 'issued'; }).length + '</div></div>' +
+          '<div><div class="k">طلبات إغلاق</div><div class="v num">' + op.filter(function(o){ return o.close_req; }).length + '</div></div>') +
       '<div><div class="k">بلاغاتي</div><div class="v num">' + list.filter(function(o){ return o.mine; }).length + '</div></div></div></div>';
   }
+
   function render(k){
     var host = el('scr-' + k); if (!host) return;
     var s = SEC[k], d = D[k];
@@ -159,81 +180,146 @@
     var list = (d.orders || []).filter(function(o){
       if (fv === 'open' ? !isOpen(o) : fv === 'mine' ? !o.mine : fv !== 'all' && o.status !== fv) return false;
       if (!qv.trim()) return true;
-      return ((o.no || '') + ' ' + (o.asset || '') + ' ' + (o.type || '') + ' ' + (o.desc || '') + ' ' + (o.reporter || '')).indexOf(qv.trim()) >= 0;
+      return ((o.no || '') + ' ' + (o.asset || '') + ' ' + (o.type || '') + ' ' + (o.desc || '') + ' ' + (o.driver || '') + ' ' + (o.reporter || '')).indexOf(qv.trim()) >= 0;
     });
     host.innerHTML = board(k) +
       '<h2 class="sec">بلاغات ' + s.name + '</h2>' +
-      '<div class="panel" style="margin-bottom:12px"><div class="mini-note" style="margin:0 0 9px">' + s.hint + ' — الإغلاق النهائي من إدارة الصيانة · صلاحيتك: ' + (ROLE_AR[role(k)] || role(k)) + '</div>' +
+      '<div class="panel" style="margin-bottom:12px"><div class="mini-note" style="margin:0 0 9px">' +
+        (k === 'veh' ? 'البلاغ يذهب للأسطول: يستلم ← يستخرج أمر الصيانة ← يرفع ورقة الإصلاح ← أنت توجّه المركبة للورشة.'
+                     : 'البلاغ يذهب لإداري السكنات: يستلم ← «تم طلب الصيانة» ← «تمت الصيانة».') +
+        ' · صلاحيتك: ' + (ROLE_AR[role(k)] || role(k)) + (d.device && d.device.site ? ' · ' + esc(d.device.site) : '') + '</div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
-      '<input id="fq-' + k + '" placeholder="بحث برقم البلاغ أو الأصل أو العطل…" value="' + esc(qv) + '" style="flex:1;min-width:150px;padding:9px 11px;border:1px solid var(--line);border-radius:var(--r-s)">' +
+      '<input id="fq-' + k + '" placeholder="بحث برقم البلاغ أو اللوحة أو السائق…" value="' + esc(qv) + '" style="flex:1;min-width:150px;padding:9px 11px;border:1px solid var(--line);border-radius:var(--r-s)">' +
       '<select id="ff-' + k + '" style="padding:9px 11px;border:1px solid var(--line);border-radius:var(--r-s);background:#fff">' +
-      [['open','المفتوحة'],['mine','بلاغاتي'],['all','الكل'],['in_progress','في الورشة'],['waiting_parts','بانتظار قطع'],['done','مغلق']]
+      [['open','المفتوحة'],['mine','بلاغاتي'],['all','الكل'],['new','بانتظار الاستلام'],['sheet','ورقة الإصلاح جاهزة'],['at_workshop','في الورشة'],['done','مغلق']]
         .map(function(x){ return '<option value="' + x[0] + '"' + (fv === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select>' +
       (canEdit(k) ? '<button class="btn amber" id="fnew-' + k + '">+ بلاغ جديد</button>' : '') +
       '<button class="btn ghost sm" id="fref-' + k + '">تحديث</button></div></div>' +
-      (list.length ? '<div class="tbl-wrap"><table><thead><tr><th>البلاغ</th><th>الأصل</th><th>العطل</th><th>الحالة</th><th>الفتح</th><th>المدة</th><th></th></tr></thead><tbody>' +
-        list.map(function(o){
-          return '<tr><td><b>' + esc(o.no) + '</b>' + (o.priority === 'high' ? ' <span class="tag red">عاجل</span>' : '') +
-            '<div style="font-size:12px;color:var(--ink3)">' + esc(o.reporter || '') + '</div></td>' +
-            '<td>' + esc(o.asset || '—') + '</td>' +
-            '<td class="wrap">' + esc(o.type || '—') + (o.desc ? '<div style="font-size:12.5px;color:var(--ink3)">' + esc(o.desc) + '</div>' : '') + '</td>' +
-            '<td>' + esc(ST[o.status] || o.status) + (o.close_req && isOpen(o) ? '<div style="font-size:12px;color:var(--green)">طلب إغلاق</div>' : '') + '</td>' +
-            '<td class="num">' + esc(o.opened) + '</td><td class="num">' + (isOpen(o) ? days(o.opened) + ' يوم' : days(o.opened, o.closed) + ' يوم') + '</td>' +
-            '<td>' + (canEdit(k) && isOpen(o) ? '<button class="rowbtn" data-fo="' + k + '|' + o.id + '">تحديث الحالة</button>' : '') + '</td></tr>';
-        }).join('') + '</tbody></table></div>'
+      (list.length ? list.map(function(o){ return card(k, o); }).join('')
         : '<div class="empty"><b>لا توجد بلاغات</b>' + (canEdit(k) ? 'سجّل أول بلاغ من زر «بلاغ جديد».' : 'صلاحيتك «متابعة» — عرض فقط.') + '</div>');
     var qi = el('fq-' + k); if (qi) qi.oninput = function(){ var v = qi.value, p = qi.selectionStart; render(k); var n = el('fq-' + k); if (n) { n.value = v; n.focus(); try { n.setSelectionRange(p, p); } catch(e){} } };
     var fi = el('ff-' + k); if (fi) fi.onchange = function(){ render(k); };
     var nb = el('fnew-' + k); if (nb) nb.onclick = function(){ newReport(k); };
     var rb = el('fref-' + k); if (rb) rb.onclick = function(){ load(k); };
-    host.querySelectorAll('[data-fo]').forEach(function(b){ b.onclick = function(){ var x = b.getAttribute('data-fo').split('|'); statusSheet(x[0], x[1]); }; });
+    host.querySelectorAll('[data-fo]').forEach(function(b){ b.onclick = function(){ var x = b.getAttribute('data-fo').split('|'); act(x[0], x[1], x[2]); }; });
   }
 
+  function card(k, o){
+    var kind = SEC[k].kind, opn = isOpen(o), btn = [];
+    if (canEdit(k) && opn) {
+      if (kind === 'vehicle') {
+        if (o.status === 'sheet') btn.push(['at_workshop', 'وجّه المركبة للورشة', 'btn']);
+        if (o.status === 'at_workshop') { btn.push(['waiting_parts', 'بانتظار قطع', 'btn ghost sm']); btn.push(['done', 'تم الإصلاح', 'btn green sm']); }
+        if (o.status === 'waiting_parts') { btn.push(['at_workshop', 'رجعت للورشة', 'btn ghost sm']); btn.push(['done', 'تم الإصلاح', 'btn green sm']); }
+        if (o.sheet) btn.push(['sheet-view', 'ورقة الإصلاح', 'btn ghost sm']);
+      } else {
+        if (role(k) === 'admin') {
+          if (o.status === 'new') btn.push(['issued', 'تم طلب الصيانة', 'btn']);
+          if (o.status === 'issued') btn.push(['done', 'تمت الصيانة', 'btn green']);
+        } else if (o.status === 'issued') btn.push(['done', 'تمت الصيانة', 'btn green sm']);
+      }
+    }
+    btn.push(['share', 'نسخ البلاغ', 'btn ghost sm']);
+    return '<div class="panel" style="margin-bottom:10px">' +
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+      '<b style="font-family:var(--font-h);font-size:17px">' + esc(o.asset || '—') + '</b>' +
+      (o.priority === 'high' ? '<span class="tag red">عاجل</span>' : '') +
+      '<span style="flex:1"></span><span style="font-size:12.5px;color:var(--ink3)">' + esc(o.no) + '</span></div>' +
+      '<div style="font-size:13px;color:var(--ink2);margin-top:2px">' + esc(o.type || '—') + (o.desc ? ' — ' + esc(o.desc) : '') + '</div>' +
+      (o.driver ? '<div style="font-size:12.5px;color:var(--ink3)">السائق: ' + esc(o.driver) + (o.driver_iqama ? ' · ' + esc(o.driver_iqama) : '') + '</div>' : '') +
+      '<div style="font-size:12.5px;color:var(--ink3)">' + esc(o.opened) + ' · ' + (opn ? days(o.opened) + ' يوم' : 'مغلق') + (o.reporter ? ' · ' + esc(o.reporter) : '') + (o.close_req && opn ? ' · بانتظار إغلاق الإدارة' : '') + '</div>' +
+      stepBar(kind, o.status) +
+      '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:8px">' +
+      btn.map(function(x){ return '<button class="' + x[2] + '" data-fo="' + k + '|' + o.id + '|' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div></div>';
+  }
+
+  /* بلاغ جديد */
+  var lkT = null;
   function newReport(k){
     var s = SEC[k], assets = (D[k] || {}).assets || [];
-    var pick = s.kind === 'housing'
+    var body = s.kind === 'housing'
       ? '<label class="f"><span>' + s.asset + '</span><select id="fA">' + assets.map(function(a){ return '<option value="' + esc(a.id) + '">' + esc(a.label) + '</option>'; }).join('') + '</select></label>'
-      : '<label class="f"><span>' + s.asset + '</span><input id="fA" list="fAL" placeholder="اكتب أو اختر"><datalist id="fAL">' +
-        assets.map(function(a){ return '<option value="' + esc(a.label) + '">' + esc(a.sub || '') + '</option>'; }).join('') + '</datalist></label>';
+      : '<label class="f"><span>رقم اللوحة (من المركبات النشطة في الأسطول)</span><select id="fA"><option value="">— اختر —</option>' +
+        assets.map(function(a){ return '<option value="' + esc(a.label) + '" data-iq="' + esc(a.driver_iqama || '') + '">' + esc(a.label) + (a.sub ? ' — ' + esc(a.sub) : '') + (a.driver ? ' — ' + esc(a.driver) : '') + '</option>'; }).join('') + '</select></label>' +
+        '<label class="f"><span>رقم إقامة السائق (بحث في وثيق)</span><input id="fIq" inputmode="numeric" placeholder="10 أرقام"></label>' +
+        '<div id="fIqH" class="mini-note" style="margin-top:-4px"></div>';
     sheet('بلاغ صيانة — ' + s.name,
-      pick +
-      '<label class="f"><span>نوع العطل</span><input id="fT" list="fTL" placeholder="' + esc(s.types[0]) + '"><datalist id="fTL">' + s.types.map(function(t){ return '<option value="' + esc(t) + '">'; }).join('') + '</datalist></label>' +
-      '<label class="f"><span>الوصف</span><textarea id="fD" rows="3" placeholder="اكتب وصفاً واضحاً يساعد الورشة"></textarea></label>' +
+      body +
+      '<label class="f"><span>العطل</span><input id="fT" list="fTL" placeholder="' + esc(s.types[0]) + '"><datalist id="fTL">' + s.types.map(function(t){ return '<option value="' + esc(t) + '">'; }).join('') + '</datalist></label>' +
+      '<label class="f"><span>تفاصيل الأعطال</span><textarea id="fD" rows="3" placeholder="اكتب كل الأعطال بوضوح"></textarea></label>' +
       '<label class="f"><span>الأولوية</span><select id="fP"><option value="normal">عادية</option><option value="high">عاجلة</option><option value="low">منخفضة</option></select></label>',
       '<button class="btn ghost" id="fNo">إلغاء</button><button class="btn amber" id="fYes">إرسال البلاغ</button>');
+    var iq = el('fIq'), sel = el('fA');
+    if (sel && s.kind === 'vehicle') sel.onchange = function(){
+      var o = sel.options[sel.selectedIndex], d = o && o.getAttribute('data-iq');
+      if (d && iq && !iq.value.trim()) { iq.value = d; lookup(); }
+    };
+    if (iq) iq.oninput = function(){ clearTimeout(lkT); lkT = setTimeout(lookup, 400); };
+    function lookup(){
+      var v = (iq.value || '').replace(/\D/g, ''), h = el('fIqH');
+      if (v.length < 10) { h.textContent = ''; return; }
+      h.textContent = 'جارٍ البحث في وثيق…';
+      call('fld_driver', { p_iqama: v }).then(function(r){
+        if (!r || !r.found) { h.textContent = 'غير موجود في وثيق'; return; }
+        h.innerHTML = '✓ ' + esc(r.name) + (r.project ? ' · ' + esc(r.project) : '') + (r.phone ? ' · ' + esc(r.phone) : '') + (r.plate ? ' · مركبته: ' + esc(r.plate) : '');
+        if (r.plate && sel && !sel.value) { for (var i = 0; i < sel.options.length; i++) if (sel.options[i].value === r.plate) sel.selectedIndex = i; }
+      }).catch(function(e){ h.textContent = e.message; });
+    }
     el('fNo').onclick = closeSheet;
     el('fYes').onclick = function(){
       var a = (el('fA').value || '').trim(), t = (el('fT').value || '').trim(), ds = (el('fD').value || '').trim();
       if (!a) return say('اختر ' + s.asset);
-      if (!t && !ds) return say('اكتب نوع العطل أو وصفه');
-      var id = a;
-      if (s.kind !== 'housing') { var m = ((D[k] || {}).assets || []).filter(function(x){ return x.label === a; })[0]; id = m ? m.id : a; }
+      if (!t && !ds) return say('اكتب العطل');
       var btn = el('fYes'); btn.disabled = true;
-      call('fld_report', { p_kind:s.kind, p_device:dev(), p_payload:{ asset:id, type:t, desc:ds, priority:el('fP').value, site:(meRec().site || '') } })
-        .then(function(){ closeSheet(); say('تم إرسال البلاغ'); return load(k); })
-        .catch(function(e){ btn.disabled = false; say(e.message); });
-    };
-  }
-  function statusSheet(k, id){
-    var s = SEC[k], o = ((D[k] || {}).orders || []).filter(function(x){ return x.id === id; })[0]; if (!o) return;
-    sheet('البلاغ ' + o.no + ' — ' + (o.asset || ''),
-      '<div class="mini-note" style="margin-top:0">' + esc(o.type || '') + (o.desc ? ' — ' + esc(o.desc) : '') + '</div>' +
-      '<label class="f"><span>الحالة</span><select id="fS">' +
-      [['in_progress','في الورشة'],['waiting_parts','بانتظار قطع'],['done','تم الإصلاح — طلب إغلاق']]
-        .map(function(x){ return '<option value="' + x[0] + '"' + (o.status === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select></label>' +
-      '<label class="f"><span>ملاحظة (اختياري)</span><input id="fN" placeholder="القطعة المطلوبة أو ملاحظة الإصلاح"></label>' +
-      '<div class="mini-note">الإغلاق النهائي من إدارة الصيانة — «تم الإصلاح» يصلهم كطلب إغلاق.</div>',
-      '<button class="btn ghost" id="fNo">إلغاء</button><button class="btn" id="fYes">حفظ</button>');
-    el('fNo').onclick = closeSheet;
-    el('fYes').onclick = function(){
-      var btn = el('fYes'); btn.disabled = true;
-      call('fld_update', { p_kind:s.kind, p_device:dev(), p_id:id, p_status:el('fS').value, p_note:(el('fN').value || '') })
-        .then(function(r){ closeSheet(); say(r && r.requested ? 'تم إرسال طلب الإغلاق للإدارة' : 'تم التحديث'); return load(k); })
+      call('fld_report', { p_kind:s.kind, p_device:dev(), p_payload:{ asset:a, iqama:(iq ? (iq.value || '').replace(/\D/g, '') : ''), type:t, desc:ds, priority:el('fP').value, site:(meRec().site || '') } })
+        .then(function(){ closeSheet(); say('تم إرسال البلاغ' + (s.kind === 'vehicle' ? ' — بانتظار استلام الأسطول' : ' — بانتظار إداري السكنات')); return load(k); })
         .catch(function(e){ btn.disabled = false; say(e.message); });
     };
   }
 
-  /* تبويبتان جديدتان في نفس شريط التنقل — بدون لمس كود التطبيق */
+  /* إجراءات البطاقة */
+  function act(k, id, what){
+    var o = ((D[k] || {}).orders || []).filter(function(x){ return x.id === id; })[0]; if (!o) return;
+    if (what === 'share') {
+      var txt = 'بلاغ صيانة ' + o.no + '\n' + (o.asset || '') + '\n' + (o.type || '') + (o.desc ? ' — ' + o.desc : '') +
+        (o.driver ? '\nالسائق: ' + o.driver : '') + '\nالحالة: ' + (o.status_ar || o.status) + '\nالتاريخ: ' + o.opened;
+      if (navigator.share) { navigator.share({ title: 'بلاغ ' + o.no, text: txt }).catch(function(){}); return; }
+      if (navigator.clipboard) navigator.clipboard.writeText(txt).then(function(){ say('نُسخ ملخص البلاغ'); }, function(){ say(txt); });
+      else say(txt);
+      return;
+    }
+    if (what === 'sheet-view') {
+      call('fld_sheet', { p_kind:SEC[k].kind, p_device:dev(), p_id:id }).then(function(r){
+        if (!r || !r.found) return say('لم تُرفع ورقة الإصلاح بعد');
+        sheet('ورقة الإصلاح — ' + o.no,
+          '<div class="mini-note" style="margin-top:0">رفعها: ' + esc(r.by || '—') + '</div>' +
+          (String(r.mime || '').indexOf('image') === 0
+            ? '<img src="data:' + esc(r.mime) + ';base64,' + r.data + '" style="width:100%;border-radius:8px;border:1px solid var(--line)">'
+            : '<a class="btn ghost" href="data:' + esc(r.mime || 'application/octet-stream') + ';base64,' + r.data + '" download="' + esc(r.name || 'sheet') + '">تنزيل الملف</a>'),
+          '<button class="btn" id="fNo">إغلاق</button>');
+        el('fNo').onclick = closeSheet;
+      }).catch(function(e){ say(e.message); });
+      return;
+    }
+    var note = '';
+    if (what === 'waiting_parts' || what === 'done') {
+      note = prompt(what === 'done' ? 'ملاحظة الإصلاح (اختياري) — الإغلاق النهائي من الإدارة' : 'القطعة المطلوبة (اختياري)') || '';
+    }
+    call('fld_update', { p_kind:SEC[k].kind, p_device:dev(), p_id:id, p_status:what, p_note:note })
+      .then(function(r){ say(r && r.requested ? 'تم إرسال طلب الإغلاق للإدارة' : 'تم التحديث'); return load(k); })
+      .catch(function(e){ say(e.message); });
+  }
+
+  /* الحقن: تبويبتان وشاشتان — وداخل المنصّة صفحة واحدة بلا ترويسة مكرّرة */
+  function embed(){
+    if (window.parent === window) return;
+    document.documentElement.classList.add('wf-embed');
+    if (el('wfEmbedCss')) return;
+    var st = document.createElement('style'); st.id = 'wfEmbedCss';
+    st.textContent = '.wf-embed .topbar{display:none!important}.wf-embed .nav{top:0!important}.wf-embed body{padding-bottom:16px}' +
+      '.wf-embed .tabbar{display:none!important}.wf-embed main{padding-top:10px}';
+    document.head.appendChild(st);
+  }
   function show(k){
     cur = k;
     document.querySelectorAll('.screen').forEach(function(x){ x.classList.toggle('on', x.id === 'scr-' + k); });
@@ -241,10 +327,11 @@
     var fab = el('fab'); if (fab) fab.classList.add('hide');
     window.scrollTo(0, 0);
     render(k);
-    if (!D[k] || Date.now() - (lastLoad[k] || 0) > 15000) load(k, true);
+    load(k, true);        /* كل فتح للتبويبة يجيب آخر حالة من القاعدة */
   }
   function inject(){
     var top = el('navTop'), bot = el('navBottom'), main = document.querySelector('main');
+    embed();
     if (!top || !main || el('scr-veh')) return !!el('scr-veh');
     Object.keys(SEC).forEach(function(k){
       var sec = document.createElement('section'); sec.className = 'screen'; sec.id = 'scr-' + k; main.appendChild(sec);
@@ -254,7 +341,6 @@
         b.innerHTML = '<span class="ic">' + SEC[k].ic + '</span>' + SEC[k].name;
         b.onclick = function(e){ e.stopPropagation(); show(k); }; bot.appendChild(b); }
     });
-    /* عند الرجوع لتبويبات التطبيق يتكفّل التطبيق بإخفاء شاشاتنا (كلها .screen) */
     document.addEventListener('click', function(e){
       var b = e.target.closest && e.target.closest('#navTop button, #navBottom button');
       if (b && !SEC[b.getAttribute('data-scr')]) { cur = null; var fab = el('fab'); if (fab) fab.classList.remove('hide'); }
@@ -788,7 +874,7 @@ details[open] > summary{margin-bottom:10px}
 (function(){
 'use strict';
 
-var APP_BUILD='2026-09-23-r1503';
+var APP_BUILD='2026-09-23-r1549';
 var LS_DATA='dbb_maint_v1', LS_USER='dbb_maint_user_v1';
 var LIVE=['مفتوح','في الورشة','بانتظار قطع'];
 var AGE_WARN=72, AGE_BAD=168; /* ساعات: 3 أيام / 7 أيام */
