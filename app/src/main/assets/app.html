@@ -72,6 +72,199 @@
   try { var bc = navigator.sendBeacon && navigator.sendBeacon.bind(navigator);
         if (bc) navigator.sendBeacon = function(u, d){ return CLOUD.test(String(u)) ? true : bc(u, d); }; } catch(e){}
 })();
+
+/* ═══════════════════════════════════════════════════════════════════════
+   أقسام السيارات والسكنات — داخل نفس التطبيق، نفس الدخول ونفس الصلاحيات.
+   لا تلمس كود التطبيق: تُضاف تبويبتان وشاشتان فقط.
+   البلاغ ينزل أمر صيانة في القاعدة الموحّدة: يظهر للإدارة، ويحوّل المركبة إلى
+   «ورشة» في الأسطول، ويظهر في ملف الموظف في وثيق. الإغلاق النهائي للإدارة.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
+  var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
+  var APP_KEY = '2peMGwCQLRSnr6282RtsRfsD81TThNJc';
+  function rpc(fn, args){
+    return fetch(SB_URL + '/rest/v1/rpc/' + fn, { method:'POST', headers:{ apikey:SB_KEY, 'Content-Type':'application/json' }, body: JSON.stringify(args) })
+      .then(function(r){ return r.text().then(function(t){ var j = t ? JSON.parse(t) : null; if (!r.ok) throw new Error((j && j.message) || ('HTTP ' + r.status)); return j; }); });
+  }
+  var SEC = {
+    veh: { kind:'vehicle', name:'السيارات', ic:'🚗', asset:'رقم اللوحة', hint:'البلاغ يحوّل المركبة إلى «ورشة» في الأسطول تلقائياً',
+           types:['فرامل','زيت وفلاتر','كهرباء','إطارات','تكييف','مكينة','قير','صدام / تلفيات','فحص دوري'] },
+    hsg: { kind:'housing', name:'السكنات', ic:'🏠', asset:'المبنى والغرفة', hint:'أعطال المباني والغرف — تصل إدارة الصيانة والسكنات',
+           types:['سباكة','كهرباء','مكيّف','أبواب ونوافذ','دهان','أثاث','نظافة عامة'] }
+  };
+  var ST = { 'new':'مفتوح', in_progress:'في الورشة', waiting_parts:'بانتظار قطع', done:'مغلق', cancelled:'ملغي' };
+  var ROLE_AR = { admin:'إداري', supervisor:'مشرف', mechanic:'ميكانيكي', viewer:'متابعة' };
+  var D = { veh:null, hsg:null }, loading = {}, lastLoad = {}, cur = null;
+
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function el(id){ return document.getElementById(id); }
+  function isOpen(o){ return ['new','in_progress','waiting_parts'].indexOf(o.status) >= 0; }
+  function dev(){ try { return localStorage.getItem('dbb_dev_id') || ''; } catch(e){ return ''; } }
+  function meRec(){
+    try { var db = JSON.parse(localStorage.getItem('dbb_maint_v1') || '{}'); var id = dev();
+      return ((db.devices || []).filter(function(d){ return d.id === id; })[0]) || {}; } catch(e){ return {}; }
+  }
+  function role(k){ return (D[k] && D[k].role) || meRec().role || 'viewer'; }
+  function canEdit(k){ return role(k) !== 'viewer'; }
+  function days(from, to){ if (!from) return 0; var t = to || new Date().toISOString().slice(0, 10);
+    return Math.max(Math.round((new Date(t + 'T00:00:00') - new Date(from + 'T00:00:00')) / 86400000), 0); }
+  var tT; function say(m){
+    var t = el('fldToast');
+    if (!t) { t = document.createElement('div'); t.id = 'fldToast';
+      t.style.cssText = 'position:fixed;bottom:86px;left:50%;transform:translateX(-50%);background:#17262C;color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;z-index:90;max-width:92vw;text-align:center';
+      document.body.appendChild(t); }
+    t.textContent = m; t.style.display = 'block'; clearTimeout(tT); tT = setTimeout(function(){ t.style.display = 'none'; }, 3200);
+  }
+  function sheet(title, body, foot){
+    closeSheet();
+    var ov = document.createElement('div'); ov.className = 'ov'; ov.id = 'fldSheet';
+    ov.innerHTML = '<div class="sheet"><div class="sheet-head"><b>' + esc(title) + '</b><button class="x" id="fldX">✕</button></div>' +
+      '<div class="sheet-body">' + body + '</div><div class="sheet-foot">' + foot + '</div></div>';
+    document.body.appendChild(ov);
+    el('fldX').onclick = closeSheet;
+    ov.onclick = function(e){ if (e.target === ov) closeSheet(); };
+  }
+  function closeSheet(){ var o = el('fldSheet'); if (o) o.remove(); }
+
+  function call(fn, args){ args = args || {}; args.p_token = APP_KEY; return rpc(fn, args); }
+  function load(k, quiet){
+    if (loading[k]) return loading[k];
+    var s = SEC[k], m = meRec();
+    loading[k] = call('fld_hello', { p_kind:s.kind, p_device:dev(), p_name:(m.name || ''), p_site:(m.site || ''), p_dbb_device:dev() })
+      .then(function(){ return call('fld_boot', { p_kind:s.kind, p_device:dev() }); })
+      .then(function(r){ D[k] = r; lastLoad[k] = Date.now(); loading[k] = null; if (cur === k) render(k); return r; })
+      .catch(function(e){ loading[k] = null; D[k] = { err:e.message }; if (cur === k) render(k); if (!quiet) say(e.message); });
+    return loading[k];
+  }
+
+  function board(k){
+    var s = SEC[k], list = ((D[k] || {}).orders || []), op = list.filter(isOpen);
+    var late = op.filter(function(o){ return days(o.opened) >= 7; }).length;
+    return '<div class="board"><div class="board-top">' +
+      '<div class="board-big ' + (late ? 'crit' : op.length ? '' : 'ok') + '"><div class="lbl">بلاغات ' + s.name + ' المفتوحة</div>' +
+      '<div class="val num">' + op.length + '</div><div class="sub">' + (late ? late + ' متأخر أكثر من ٧ أيام' : 'لا يوجد متأخر') + '</div></div>' +
+      '<div class="board-strip"></div></div><div class="board-mini">' +
+      '<div><div class="k">في الورشة</div><div class="v num">' + op.filter(function(o){ return o.status === 'in_progress'; }).length + '</div></div>' +
+      '<div><div class="k">بانتظار قطع</div><div class="v num">' + op.filter(function(o){ return o.status === 'waiting_parts'; }).length + '</div></div>' +
+      '<div><div class="k">طلبات إغلاق</div><div class="v num">' + op.filter(function(o){ return o.close_req; }).length + '</div></div>' +
+      '<div><div class="k">بلاغاتي</div><div class="v num">' + list.filter(function(o){ return o.mine; }).length + '</div></div></div></div>';
+  }
+  function render(k){
+    var host = el('scr-' + k); if (!host) return;
+    var s = SEC[k], d = D[k];
+    if (!d) { host.innerHTML = '<div class="empty"><b>جارٍ التحميل…</b>من القاعدة الموحّدة</div>'; return; }
+    if (d.err) { host.innerHTML = '<div class="empty"><b>تعذّر الاتصال</b>' + esc(d.err) + '</div>'; return; }
+    var qv = (el('fq-' + k) || {}).value || '', fv = (el('ff-' + k) || {}).value || 'open';
+    var list = (d.orders || []).filter(function(o){
+      if (fv === 'open' ? !isOpen(o) : fv === 'mine' ? !o.mine : fv !== 'all' && o.status !== fv) return false;
+      if (!qv.trim()) return true;
+      return ((o.no || '') + ' ' + (o.asset || '') + ' ' + (o.type || '') + ' ' + (o.desc || '') + ' ' + (o.reporter || '')).indexOf(qv.trim()) >= 0;
+    });
+    host.innerHTML = board(k) +
+      '<h2 class="sec">بلاغات ' + s.name + '</h2>' +
+      '<div class="panel" style="margin-bottom:12px"><div class="mini-note" style="margin:0 0 9px">' + s.hint + ' — الإغلاق النهائي من إدارة الصيانة · صلاحيتك: ' + (ROLE_AR[role(k)] || role(k)) + '</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+      '<input id="fq-' + k + '" placeholder="بحث برقم البلاغ أو الأصل أو العطل…" value="' + esc(qv) + '" style="flex:1;min-width:150px;padding:9px 11px;border:1px solid var(--line);border-radius:var(--r-s)">' +
+      '<select id="ff-' + k + '" style="padding:9px 11px;border:1px solid var(--line);border-radius:var(--r-s);background:#fff">' +
+      [['open','المفتوحة'],['mine','بلاغاتي'],['all','الكل'],['in_progress','في الورشة'],['waiting_parts','بانتظار قطع'],['done','مغلق']]
+        .map(function(x){ return '<option value="' + x[0] + '"' + (fv === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select>' +
+      (canEdit(k) ? '<button class="btn amber" id="fnew-' + k + '">+ بلاغ جديد</button>' : '') +
+      '<button class="btn ghost sm" id="fref-' + k + '">تحديث</button></div></div>' +
+      (list.length ? '<div class="tbl-wrap"><table><thead><tr><th>البلاغ</th><th>الأصل</th><th>العطل</th><th>الحالة</th><th>الفتح</th><th>المدة</th><th></th></tr></thead><tbody>' +
+        list.map(function(o){
+          return '<tr><td><b>' + esc(o.no) + '</b>' + (o.priority === 'high' ? ' <span class="tag red">عاجل</span>' : '') +
+            '<div style="font-size:12px;color:var(--ink3)">' + esc(o.reporter || '') + '</div></td>' +
+            '<td>' + esc(o.asset || '—') + '</td>' +
+            '<td class="wrap">' + esc(o.type || '—') + (o.desc ? '<div style="font-size:12.5px;color:var(--ink3)">' + esc(o.desc) + '</div>' : '') + '</td>' +
+            '<td>' + esc(ST[o.status] || o.status) + (o.close_req && isOpen(o) ? '<div style="font-size:12px;color:var(--green)">طلب إغلاق</div>' : '') + '</td>' +
+            '<td class="num">' + esc(o.opened) + '</td><td class="num">' + (isOpen(o) ? days(o.opened) + ' يوم' : days(o.opened, o.closed) + ' يوم') + '</td>' +
+            '<td>' + (canEdit(k) && isOpen(o) ? '<button class="rowbtn" data-fo="' + k + '|' + o.id + '">تحديث الحالة</button>' : '') + '</td></tr>';
+        }).join('') + '</tbody></table></div>'
+        : '<div class="empty"><b>لا توجد بلاغات</b>' + (canEdit(k) ? 'سجّل أول بلاغ من زر «بلاغ جديد».' : 'صلاحيتك «متابعة» — عرض فقط.') + '</div>');
+    var qi = el('fq-' + k); if (qi) qi.oninput = function(){ var v = qi.value, p = qi.selectionStart; render(k); var n = el('fq-' + k); if (n) { n.value = v; n.focus(); try { n.setSelectionRange(p, p); } catch(e){} } };
+    var fi = el('ff-' + k); if (fi) fi.onchange = function(){ render(k); };
+    var nb = el('fnew-' + k); if (nb) nb.onclick = function(){ newReport(k); };
+    var rb = el('fref-' + k); if (rb) rb.onclick = function(){ load(k); };
+    host.querySelectorAll('[data-fo]').forEach(function(b){ b.onclick = function(){ var x = b.getAttribute('data-fo').split('|'); statusSheet(x[0], x[1]); }; });
+  }
+
+  function newReport(k){
+    var s = SEC[k], assets = (D[k] || {}).assets || [];
+    var pick = s.kind === 'housing'
+      ? '<label class="f"><span>' + s.asset + '</span><select id="fA">' + assets.map(function(a){ return '<option value="' + esc(a.id) + '">' + esc(a.label) + '</option>'; }).join('') + '</select></label>'
+      : '<label class="f"><span>' + s.asset + '</span><input id="fA" list="fAL" placeholder="اكتب أو اختر"><datalist id="fAL">' +
+        assets.map(function(a){ return '<option value="' + esc(a.label) + '">' + esc(a.sub || '') + '</option>'; }).join('') + '</datalist></label>';
+    sheet('بلاغ صيانة — ' + s.name,
+      pick +
+      '<label class="f"><span>نوع العطل</span><input id="fT" list="fTL" placeholder="' + esc(s.types[0]) + '"><datalist id="fTL">' + s.types.map(function(t){ return '<option value="' + esc(t) + '">'; }).join('') + '</datalist></label>' +
+      '<label class="f"><span>الوصف</span><textarea id="fD" rows="3" placeholder="اكتب وصفاً واضحاً يساعد الورشة"></textarea></label>' +
+      '<label class="f"><span>الأولوية</span><select id="fP"><option value="normal">عادية</option><option value="high">عاجلة</option><option value="low">منخفضة</option></select></label>',
+      '<button class="btn ghost" id="fNo">إلغاء</button><button class="btn amber" id="fYes">إرسال البلاغ</button>');
+    el('fNo').onclick = closeSheet;
+    el('fYes').onclick = function(){
+      var a = (el('fA').value || '').trim(), t = (el('fT').value || '').trim(), ds = (el('fD').value || '').trim();
+      if (!a) return say('اختر ' + s.asset);
+      if (!t && !ds) return say('اكتب نوع العطل أو وصفه');
+      var id = a;
+      if (s.kind !== 'housing') { var m = ((D[k] || {}).assets || []).filter(function(x){ return x.label === a; })[0]; id = m ? m.id : a; }
+      var btn = el('fYes'); btn.disabled = true;
+      call('fld_report', { p_kind:s.kind, p_device:dev(), p_payload:{ asset:id, type:t, desc:ds, priority:el('fP').value, site:(meRec().site || '') } })
+        .then(function(){ closeSheet(); say('تم إرسال البلاغ'); return load(k); })
+        .catch(function(e){ btn.disabled = false; say(e.message); });
+    };
+  }
+  function statusSheet(k, id){
+    var s = SEC[k], o = ((D[k] || {}).orders || []).filter(function(x){ return x.id === id; })[0]; if (!o) return;
+    sheet('البلاغ ' + o.no + ' — ' + (o.asset || ''),
+      '<div class="mini-note" style="margin-top:0">' + esc(o.type || '') + (o.desc ? ' — ' + esc(o.desc) : '') + '</div>' +
+      '<label class="f"><span>الحالة</span><select id="fS">' +
+      [['in_progress','في الورشة'],['waiting_parts','بانتظار قطع'],['done','تم الإصلاح — طلب إغلاق']]
+        .map(function(x){ return '<option value="' + x[0] + '"' + (o.status === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select></label>' +
+      '<label class="f"><span>ملاحظة (اختياري)</span><input id="fN" placeholder="القطعة المطلوبة أو ملاحظة الإصلاح"></label>' +
+      '<div class="mini-note">الإغلاق النهائي من إدارة الصيانة — «تم الإصلاح» يصلهم كطلب إغلاق.</div>',
+      '<button class="btn ghost" id="fNo">إلغاء</button><button class="btn" id="fYes">حفظ</button>');
+    el('fNo').onclick = closeSheet;
+    el('fYes').onclick = function(){
+      var btn = el('fYes'); btn.disabled = true;
+      call('fld_update', { p_kind:s.kind, p_device:dev(), p_id:id, p_status:el('fS').value, p_note:(el('fN').value || '') })
+        .then(function(r){ closeSheet(); say(r && r.requested ? 'تم إرسال طلب الإغلاق للإدارة' : 'تم التحديث'); return load(k); })
+        .catch(function(e){ btn.disabled = false; say(e.message); });
+    };
+  }
+
+  /* تبويبتان جديدتان في نفس شريط التنقل — بدون لمس كود التطبيق */
+  function show(k){
+    cur = k;
+    document.querySelectorAll('.screen').forEach(function(x){ x.classList.toggle('on', x.id === 'scr-' + k); });
+    document.querySelectorAll('#navTop button, #navBottom button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-scr') === k); });
+    var fab = el('fab'); if (fab) fab.classList.add('hide');
+    window.scrollTo(0, 0);
+    render(k);
+    if (!D[k] || Date.now() - (lastLoad[k] || 0) > 15000) load(k, true);
+  }
+  function inject(){
+    var top = el('navTop'), bot = el('navBottom'), main = document.querySelector('main');
+    if (!top || !main || el('scr-veh')) return !!el('scr-veh');
+    Object.keys(SEC).forEach(function(k){
+      var sec = document.createElement('section'); sec.className = 'screen'; sec.id = 'scr-' + k; main.appendChild(sec);
+      var t = document.createElement('button'); t.setAttribute('data-scr', k); t.textContent = SEC[k].name;
+      t.onclick = function(e){ e.stopPropagation(); show(k); }; top.appendChild(t);
+      if (bot) { var b = document.createElement('button'); b.setAttribute('data-scr', k);
+        b.innerHTML = '<span class="ic">' + SEC[k].ic + '</span>' + SEC[k].name;
+        b.onclick = function(e){ e.stopPropagation(); show(k); }; bot.appendChild(b); }
+    });
+    /* عند الرجوع لتبويبات التطبيق يتكفّل التطبيق بإخفاء شاشاتنا (كلها .screen) */
+    document.addEventListener('click', function(e){
+      var b = e.target.closest && e.target.closest('#navTop button, #navBottom button');
+      if (b && !SEC[b.getAttribute('data-scr')]) { cur = null; var fab = el('fab'); if (fab) fab.classList.remove('hide'); }
+    }, true);
+    return true;
+  }
+  var t0 = setInterval(function(){ if (inject()) clearInterval(t0); }, 400);
+  document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible' && cur) load(cur, true); });
+})();
+
 </script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -595,7 +788,7 @@ details[open] > summary{margin-bottom:10px}
 (function(){
 'use strict';
 
-var APP_BUILD='2026-09-22-r15-db';
+var APP_BUILD='2026-09-23-r1503';
 var LS_DATA='dbb_maint_v1', LS_USER='dbb_maint_user_v1';
 var LIVE=['مفتوح','في الورشة','بانتظار قطع'];
 var AGE_WARN=72, AGE_BAD=168; /* ساعات: 3 أيام / 7 أيام */
