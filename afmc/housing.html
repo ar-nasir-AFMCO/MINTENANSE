@@ -683,7 +683,7 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
   function liveState(k, t){ var el = $('live'); el.className = 'live' + (k ? ' ' + k : ''); el.querySelector('span').textContent = t; }
   var rt = (function(){
     var TABLES = ['housing_buildings','housing_rooms','housing_contracts','housing_residents','employees'];
-    var TOPIC = 'realtime:afmc-housing', ws = null, hb = null, ref = 0, stopped = true, retry = 1000, t2 = null, poll = null;
+    var TOPIC = 'realtime:afmc-housing', ws = null, hb = null, ref = 0, stopped = true, retry = 1000, t2 = null;
     function send(o){ try { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); } catch(e){} }
     function open(){
       if (stopped || typeof WebSocket === 'undefined') return;
@@ -703,8 +703,8 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
       }).catch(function(){});
     }
     return {
-      start: function(){ if (!stopped) return; stopped = false; open(); clearInterval(poll); poll = setInterval(function(){ if (document.visibilityState === 'visible') load(); }, 120000); },
-      stop: function(){ stopped = true; clearInterval(hb); clearInterval(poll); try { if (ws) ws.close(); } catch(e){} ws = null; }
+      start: function(){ if (!stopped) return; stopped = false; open(); },
+      stop: function(){ stopped = true; clearInterval(hb); try { if (ws) ws.close(); } catch(e){} ws = null; }
     };
   })();
   document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible' && me) load(); });

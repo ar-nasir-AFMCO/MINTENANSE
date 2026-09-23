@@ -399,7 +399,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260922213427";
+  var BUILD = "20260923151038";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -524,7 +524,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     if (can('admin')) api('GET', 'profiles?select=id&approved=is.false').then(function(r){ var n = (r || []).length; $('pendCnt').textContent = n; $('pendCnt').classList.toggle('hide', !n); }).catch(function(){});
     if (can('review')) api('GET', 'v_data_review?select=severity&severity=eq.high').then(function(r){ var n = (r || []).length; $('revCnt').textContent = n; $('revCnt').classList.toggle('hide', !n); }).catch(function(){});
   }
-  setInterval(function(){ if (me) badges(); }, 180000);
+  setInterval(function(){ if (me && document.visibilityState === 'visible') badges(); }, 900000);
 
   /* ---------------- systems ---------------- */
   var current = null, sub = null, summary = {};
@@ -1016,7 +1016,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     $('inboxBtn').onclick = function(){ if ($('inbox').classList.contains('on')) close(); else open(); };
     $('ibClose').onclick = close; $('ibScrim').onclick = close; $('ibNew').onclick = compose; $('ibSt').onchange = list;
     document.querySelectorAll('#inbox .itabs button').forEach(function(b){ b.onclick = function(){ tab = b.getAttribute('data-t'); document.querySelectorAll('#inbox .itabs button').forEach(function(x){ x.classList.toggle('on', x === b); }); list(); }; });
-    setInterval(function(){ if (me) load(); }, 120000);
+    document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible' && me) load(); });
     return { load: load, open: open, detail: detail, items: function(){ return items; } };
   })();
   window.afmcInbox = ib;
@@ -1028,14 +1028,20 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     if (verT || BUILD.indexOf('__') === 0) return;
     var check = function(){
       fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).then(function(v){
-        if (!v || !v.build || v.build === BUILD) return;
+        if (!v || !v.build || v.build === BUILD || $('verBtn')) return;
         clearInterval(verT);
-        toast('نسخة جديدة من المنصّة، يتم التحديث الآن…', 8000);
-        $('frames').querySelectorAll('iframe').forEach(function(f){ try { var w = f.contentWindow; if (w.wfSupabase) w.wfSupabase.push(); if (w.wfSupabaseDash) w.wfSupabaseDash.flush(); } catch(e){} });
-        setTimeout(function(){ location.replace(location.pathname + '?v=' + encodeURIComponent(v.build) + location.hash); }, 3000);
+        var b = document.createElement('button');
+        b.id = 'verBtn'; b.className = 'tbtn'; b.style.cssText = 'border-color:#eadbbd;background:#fffaf0;color:#6f5424';
+        b.innerHTML = ico('reload') + 'نسخة جديدة — حدّث';
+        b.title = 'التحديث يتم عند ضغطك فقط، ولا يقاطع عملك';
+        b.onclick = function(){
+          $('frames').querySelectorAll('iframe').forEach(function(f){ try { var w = f.contentWindow; if (w.wfSupabase) w.wfSupabase.push(); if (w.wfSupabaseDash) w.wfSupabaseDash.flush(); } catch(e){} });
+          setTimeout(function(){ location.replace(location.pathname + '?v=' + encodeURIComponent(v.build) + location.hash); }, 600);
+        };
+        var bar = $('fbar'); if (bar) bar.parentNode.insertBefore(b, bar);
       }).catch(function(){});
     };
-    verT = setInterval(check, 120000);
+    verT = setInterval(check, 1800000);
     document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible') check(); });
   }
 
