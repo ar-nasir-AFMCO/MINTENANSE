@@ -156,6 +156,9 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 .pt .bar i{display:block;height:100%;border-radius:99px;background:var(--brand)}
 .pt.ok .v{color:var(--ok)}.pt.warn .v{color:var(--warn)}.pt.bad .v{color:var(--bad)}
 .pt.warn .bar i{background:var(--warn)}.pt.bad .bar i{background:var(--bad)}
+.fixrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--line-2)}
+.fixrow:first-of-type{border-top:0;padding-top:0}
+.btn.sm{padding:6px 12px;font-size:12.5px}
 .attn{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));margin-top:26px}
 .attn .lbl{grid-column:1/-1;font-size:13px;font-weight:600;color:var(--ink-2);margin-bottom:-2px}
 .att{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--line);background:var(--surface);border-radius:var(--r);text-align:right}
@@ -427,6 +430,15 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         <div class="head"><div><h2>مراجعة البيانات</h2><p>كل ما يحتاج تصحيحاً في الأنظمة المربوطة. القائمة تتحدث تلقائياً عند التصحيح.</p></div>
           <div style="display:flex;gap:8px"><button class="btn ghost" id="revRefresh"><svg class="i"><use href="#i-reload"/></svg>تحديث</button><button class="btn" id="revCsv"><svg class="i"><use href="#i-down"/></svg>تصدير CSV</button></div></div>
         <div class="tiles" id="tiles"></div>
+        <div class="card" id="fixBox" style="flex-direction:column;align-items:stretch;gap:12px">
+          <div><b>أدوات التصحيح</b><div class="sub">كل أداة تعرض معاينة أولاً، ولا تنفّذ إلا بضغطتك، ويمكن التراجع عنها.</div></div>
+          <div class="fixrow"><div><b>مطابقة الإسنادات مع الأسطول</b><div class="sub" id="fxAsgNote">سجلّ الأسطول هو المرجع: يضيف السائقين الناقصين ويُنهي الإسنادات التي لم تعد قائمة.</div></div>
+            <span style="flex:1"></span><button class="btn ghost sm" data-fx="asg-preview">معاينة</button><button class="btn sm hide" data-fx="asg-apply">تطبيق</button></div>
+          <div class="fixrow"><div><b>تصحيح المسمّى الوظيفي</b><div class="sub" id="fxJobNote">يفصل اسم المشروع عن المسمّى، ويأخذه من مهنة الإقامة أو نوع المركبة المسندة، ويترك الباقي فارغاً بدل اختراع مسمّى.</div></div>
+            <span style="flex:1"></span><button class="btn ghost sm" data-fx="job-preview">معاينة</button><button class="btn sm hide" data-fx="job-apply">تطبيق</button><button class="btn ghost sm hide" data-fx="job-undo">تراجع</button></div>
+          <div class="fixrow"><div><b>تواريخ الالتحاق</b><div class="sub" id="fxJoinNote">لا يُخترع تاريخ: ارفع كشفاً (إقامة، تاريخ الالتحاق) من ملفات الموارد البشرية ويُستورد كما هو.</div></div>
+            <span style="flex:1"></span><label class="btn ghost sm" style="cursor:pointer">اختيار ملف<input type="file" id="fxJoinFile" accept=".csv,.xlsx,.xls" hidden></label></div>
+        </div>
         <div class="card hide" id="applyBox">
           <div style="flex:1;min-width:240px"><b>قاعدة «الأسطول هو المرجع»</b><div class="sub">موظفون نشطون في وثيق ولا توجد لهم مركبة نشطة في الأسطول. التطبيق يحوّلهم إلى «متوقف عن العمل» في وثيق، ولا يُنفَّذ إلا بضغطتك.</div></div>
           <button class="btn" id="applyBtn">تطبيق على المعروضين</button>
@@ -454,7 +466,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260923220851";
+  var BUILD = "20260923223144";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -472,7 +484,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   var SUBS = { ninja:{ name:'Ninja', desc:'أداء الكباتن والـ SLA', src:'ninja.html' }, keemart:{ name:'Keemart', desc:'الحضور والتسوية والفواتير', src:'keemart.html' } };
   var AREA_AR = { employees:'الموظفون', vehicles:'المركبات', attendance:'الحضور', maintenance:'الصيانة' };
   var CODE_AR = { no_phone:'بلا جوال', dup_phone:'جوال مكرر', iqama_expired:'إقامة منتهية', iqama_soon:'إقامة قريبة الانتهاء', license_expired:'رخصة منتهية',
-                  no_project:'بلا مشروع', assigned_no_driver:'مسلّمة بلا سائق', workshop_long:'ورشة طويلة', rule:'تعارض قواعد', driver_not_in_hr:'سائق غير موجود في وثيق',
+                  no_project:'بلا مشروع', no_job_title:'بلا مسمّى وظيفي', no_join_date:'بلا تاريخ التحاق', assigned_no_driver:'مسلّمة بلا سائق', workshop_long:'ورشة طويلة', rule:'تعارض قواعد', driver_not_in_hr:'سائق غير موجود في وثيق',
                   captain_not_in_hr:'كابتن غير مربوط', bike_not_in_fleet:'دباب غير مسجّل', active_no_vehicle:'نشط بلا مركبة في الأسطول' };
   var SEV_AR = { high:'عالية', medium:'متوسطة', low:'منخفضة' };
 
@@ -1042,6 +1054,100 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     var b = $('applyBtn'); b.disabled = true;
     rpc('apply_offwork', { p_iqamas: keys }).then(function(n){ b.disabled = false; toast('تم تحديث ' + n + ' موظف، ويظهر في وثيق مباشرة'); loadReview(); })
       .catch(function(e){ b.disabled = false; toast('تعذّر: ' + e.message); });
+  };
+  /* ---------- أدوات التصحيح: معاينة ← تطبيق ← تراجع ---------- */
+  function fxBtn(k){ return document.querySelector('[data-fx="' + k + '"]'); }
+  function fxNum(n){ return num(n); }
+  document.querySelectorAll('[data-fx]').forEach(function(b){
+    b.onclick = function(){
+      var k = b.getAttribute('data-fx'); b.disabled = true;
+      var done = function(){ b.disabled = false; };
+      if (k === 'asg-preview') {
+        rpc('fleet_assign_rebuild', { p_apply:false }).then(function(r){
+          done();
+          var why = {}; (r.blocked_list || []).forEach(function(x){ why[x.why] = (why[x.why] || 0) + 1; });
+          $('fxAsgNote').innerHTML = 'سيُضاف ' + fxNum(r.to_add) + ' إسناد · سيُنهى ' + fxNum(r.to_release) + ' · متعذّر ' + fxNum(r.blocked)
+            + (Object.keys(why).length ? '<div style="margin-top:4px">' + Object.keys(why).map(function(w){ return esc(w) + ': ' + fxNum(why[w]); }).join(' · ') + '</div>' : '');
+          fxBtn('asg-apply').classList.toggle('hide', !(r.to_add || r.to_release));
+        }).catch(function(e){ done(); toast('تعذّر: ' + e.message); });
+      } else if (k === 'asg-apply') {
+        if (!confirm('تطبيق المطابقة مع سجل الأسطول؟')) { done(); return; }
+        rpc('fleet_assign_rebuild', { p_apply:true }).then(function(r){
+          done(); fxBtn('asg-apply').classList.add('hide');
+          toast('تمت المطابقة: أُضيف ' + fxNum(r.added) + ' وأُنهي ' + fxNum(r.released));
+          $('fxAsgNote').textContent = 'آخر تنفيذ: أُضيف ' + fxNum(r.added) + ' · أُنهي ' + fxNum(r.released) + ' · متعذّر ' + fxNum(r.blocked);
+          loadReview(); homeMeta();
+        }).catch(function(e){ done(); toast('تعذّر: ' + e.message); });
+      } else if (k === 'job-preview') {
+        rpc('hr_jobs_fix', { p_apply:false }).then(function(r){
+          done();
+          $('fxJobNote').textContent = fxNum(r.total) + ' سجل يحمل اسم المشروع بدل المسمّى — ' + fxNum(r.from_profession)
+            + ' من مهنة الإقامة، ' + fxNum(r.from_vehicle) + ' من نوع المركبة، و' + fxNum(r.left_blank) + ' يبقى فارغاً للمراجعة.';
+          fxBtn('job-apply').classList.toggle('hide', !r.total);
+        }).catch(function(e){ done(); toast('تعذّر: ' + e.message); });
+      } else if (k === 'job-apply') {
+        if (!confirm('تطبيق تصحيح المسمّى الوظيفي؟ يمكن التراجع بعدها.')) { done(); return; }
+        rpc('hr_jobs_fix', { p_apply:true }).then(function(r){
+          done(); fxBtn('job-apply').classList.add('hide'); fxBtn('job-undo').classList.remove('hide');
+          toast('تم تصحيح ' + fxNum(r.total) + ' مسمّى');
+          $('fxJobNote').textContent = 'آخر تنفيذ: ' + fxNum(r.from_profession) + ' من مهنة الإقامة · ' + fxNum(r.from_vehicle) + ' من نوع المركبة · ' + fxNum(r.left_blank) + ' فارغ للمراجعة.';
+          loadReview();
+        }).catch(function(e){ done(); toast('تعذّر: ' + e.message); });
+      } else if (k === 'job-undo') {
+        if (!confirm('التراجع عن آخر تصحيح للمسميات؟')) { done(); return; }
+        rpc('hr_jobs_undo', {}).then(function(r){
+          done(); fxBtn('job-undo').classList.add('hide');
+          toast('تم التراجع عن ' + fxNum(r.undone) + ' سجل'); loadReview();
+        }).catch(function(e){ done(); toast('تعذّر: ' + e.message); });
+      }
+    };
+  });
+  $('fxJoinFile').onchange = function(){
+    var f = this.value && this.files[0]; if (!f) return;
+    var fi = this;
+    var finish = function(map){
+      var n = Object.keys(map).length;
+      if (!n) { toast('لم أجد عمودي «الإقامة» و«تاريخ الالتحاق» في الملف'); fi.value = ''; return; }
+      if (!confirm('استيراد ' + n + ' تاريخ التحاق؟')) { fi.value = ''; return; }
+      rpc('hr_join_import', { p_rows: map }).then(function(r){
+        $('fxJoinNote').textContent = 'تم تحديث ' + fxNum(r.updated) + ' · تواريخ غير صالحة ' + fxNum(r.invalid_date) + ' · إقامات غير موجودة ' + fxNum(r.not_found);
+        toast('تم استيراد ' + fxNum(r.updated) + ' تاريخ'); fi.value = ''; loadReview();
+      }).catch(function(e){ toast('تعذّر: ' + e.message); fi.value = ''; });
+    };
+    var pick = function(rows){
+      if (!rows.length) return finish({});
+      var head = rows[0].map(function(h){ return String(h || '').trim(); });
+      var iIq = -1, iDt = -1;
+      head.forEach(function(h, i){
+        if (iIq < 0 && /إقامة|iqama|id/i.test(h)) iIq = i;
+        if (iDt < 0 && /التحاق|مباشرة|join|hire|date/i.test(h)) iDt = i;
+      });
+      if (iIq < 0 || iDt < 0) return finish({});
+      var map = {};
+      rows.slice(1).forEach(function(r){
+        var iq = String(r[iIq] == null ? '' : r[iIq]).replace(/\D/g, ''), dt = r[iDt];
+        if (iq.length >= 9 && dt) map[iq] = (dt instanceof Date) ? dt.toISOString().slice(0, 10) : String(dt).trim();
+      });
+      finish(map);
+    };
+    if (/\.csv$/i.test(f.name)) {
+      var fr = new FileReader();
+      fr.onload = function(){ pick(String(fr.result).split(/\r?\n/).filter(Boolean).map(function(l){ return l.split(','); })); };
+      fr.readAsText(f, 'utf-8');
+    } else {
+      var go = function(){
+        var fr2 = new FileReader();
+        fr2.onload = function(){
+          try {
+            var wb = XLSX.read(new Uint8Array(fr2.result), { type:'array', cellDates:true });
+            pick(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, raw:true }));
+          } catch(e){ toast('تعذّر قراءة الملف'); fi.value = ''; }
+        };
+        fr2.readAsArrayBuffer(f);
+      };
+      if (window.XLSX) go();
+      else { var sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; sc.onload = go; sc.onerror = function(){ toast('تعذّر تحميل قارئ Excel — استخدم CSV'); fi.value = ''; }; document.head.appendChild(sc); }
+    }
   };
   $('revRefresh').onclick = loadReview;
   $('revCsv').onclick = function(){
