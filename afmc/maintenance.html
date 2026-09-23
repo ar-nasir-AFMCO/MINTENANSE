@@ -58,6 +58,25 @@ main{max-width:1280px;margin:0 auto;padding:18px 16px 60px}
 .card h3 .sp{flex:1}
 .grid{display:grid;gap:12px}
 .kpis{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:14px}
+.cnt{background:var(--bad);color:#fff;border-radius:999px;font-size:11px;padding:1px 7px;margin-inline-start:6px}
+.kpi.pick{cursor:pointer;transition:transform .15s,border-color .15s}.kpi.pick:hover{transform:translateY(-2px);border-color:var(--brand)}
+.kpi.pick.on{border-color:var(--brand);box-shadow:0 0 0 2px var(--brand-ring)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-inline-start:4px;vertical-align:middle}
+.dot.pending{background:#cfc8b9}.dot.ok{background:var(--ok)}.dot.issue{background:var(--bad)}.dot.na{background:var(--line);border:1px solid #cfc8b9}
+.party{border:1px solid var(--line);border-radius:var(--r);padding:13px;background:var(--surface-2)}
+.party h4{margin:0 0 8px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+.party .who{font-size:11.5px;color:var(--muted);margin-bottom:8px;line-height:1.7}
+.tl{list-style:none;margin:0;padding:0}
+.tl li{border-inline-start:2px solid var(--line);padding:0 13px 13px;position:relative;font-size:12.5px;color:var(--ink-2)}
+.tl li:before{content:'';position:absolute;inset-inline-start:-5px;top:4px;width:8px;height:8px;border-radius:50%;background:var(--brand)}
+.tl li em{display:block;font-style:normal;color:var(--faint);font-size:11px;margin-top:2px}
+.kv{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:6px 0;border-bottom:1px dashed var(--line)}
+.kv:last-child{border-bottom:none}.kv span{color:var(--muted)}
+.mono{font-variant-numeric:tabular-nums;font-weight:600}
+.files{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.files img{max-height:74px;border-radius:8px;border:1px solid var(--line);cursor:pointer}
+.files a{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;text-decoration:none;color:var(--brand);border:1px solid var(--line);border-radius:8px;padding:5px 9px;background:var(--surface)}
+
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh)}
 .kpi b{display:block;font-size:24px;font-weight:700;letter-spacing:.3px}.kpi span{font-size:12.5px;color:var(--muted)}
 .kpi.bad b{color:var(--bad)}.kpi.warn b{color:var(--warn)}.kpi.ok b{color:var(--ok)}
@@ -132,7 +151,7 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
 </style></head>
 <body>
 <svg width="0" height="0" style="position:absolute">
-  <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0 5 5L21 12.6a6 6 0 0 1-8 1.9L6.4 21a2 2 0 0 1-2.8-2.8l6.5-6.6a6 6 0 0 1 1.9-8z"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V6H9z"/><path d="M9 11h6M9 15h4"/></symbol><symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0 5 5L21 12.6a6 6 0 0 1-8 1.9L6.4 21a2 2 0 0 1-2.8-2.8l6.5-6.6a6 6 0 0 1 1.9-8z"/></symbol>
   <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></symbol>
   <symbol id="i-car" viewBox="0 0 24 24"><path d="M5 17h14M3.5 17v-4.2L5.6 7.3A2 2 0 0 1 7.5 6h9a2 2 0 0 1 1.9 1.3l2.1 5.5V17"/><path d="M3.5 12.8h17"/><circle cx="7.5" cy="17" r="1.8"/><circle cx="16.5" cy="17" r="1.8"/></symbol>
   <symbol id="i-scooter" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M8 17.5h7.5l2-7H14M17.5 10.5 16 5h-2.5"/><path d="M3 13h5l2 4.5"/></symbol>
@@ -171,6 +190,7 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
     </div>
     <nav class="tabs" id="tabs">
       <button data-t="dash" class="on"><svg class="i"><use href="#i-home"/></svg>لوحة التحكم</button>
+      <button data-t="trk"><svg class="i"><use href="#i-clip"/></svg>متابعة الطلبات<span class="cnt hide" id="trkCnt"></span></button>
       <button data-t="rep"><svg class="i"><use href="#i-chart"/></svg>الأوامر والتكاليف</button>
       <button data-t="app"><svg class="i"><use href="#i-wrench"/></svg>تطبيق البلاغات</button>
     </nav>
@@ -187,6 +207,27 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
     </section>
 
     <section id="t-app" class="hide"></section>
+
+    <section id="t-trk" class="hide">
+      <div id="trkList">
+        <div class="grid kpis" id="trkKpis"></div>
+        <div class="card"><h3><svg class="i"><use href="#i-clip"/></svg>متابعة طلبات الصيانة<span class="sp"></span><span class="muted sm" id="trkSub"></span></h3>
+          <div class="muted sm" style="margin-bottom:10px">متابعة الطلب لدى الأطراف الثلاثة: السائق · المشرف · مكتب التأجير. كل طلب مرتبط برقم الإقامة ولوحة المركبة.</div>
+          <div class="tools">
+            <input id="trkQ" placeholder="بحث: لوحة · إقامة · اسم سائق · عطل · مرجع المكتب…" style="flex:1;min-width:200px">
+            <select id="trkSt"><option value="">كل الحالات</option></select>
+            <select id="trkParty"><option value="">كل الأطراف</option><option value="driver">بانتظار السائق</option><option value="supervisor">بانتظار المشرف</option><option value="office">بانتظار المكتب</option></select>
+            <select id="trkProj"><option value="">كل المشاريع</option></select>
+            <select id="trkPri"><option value="">كل الأولويات</option><option>عادي</option><option>عاجل</option><option>حرج</option></select>
+            <button class="btn sm" id="trkNew">طلب جديد</button>
+            <button class="btn ghost sm" id="trkCsv"><svg class="i"><use href="#i-down"/></svg>تصدير Excel</button>
+            <button class="btn ghost sm hide" id="trkImp">استيراد سجلات الأسطول</button>
+          </div>
+          <div class="tw"><table class="cards"><thead><tr><th>الطلب</th><th>اللوحة</th><th>السائق</th><th>العطل</th><th>الأولوية</th><th>الحالة</th><th>الأطراف</th><th>العمر</th><th></th></tr></thead><tbody id="trkBody"></tbody></table></div>
+        </div>
+      </div>
+      <div id="trkDetail" class="hide"></div>
+    </section>
 
     <section id="t-rep" class="hide">
       <div class="card"><h3><svg class="i"><use href="#i-wrench"/></svg>كل أوامر الصيانة<span class="sp"></span><span class="muted sm" id="allCount"></span></h3>
@@ -288,14 +329,14 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
     try { localStorage.removeItem(SKEY); } catch(e){} gate('');
   };
 
-  var canEdit = false, hasFleet = false, hasWatheeq = false, hasHousing = false;
+  var canEdit = false, canFin = false, canDel = false, canMan = false, hasFleet = false, hasWatheeq = false, hasHousing = false;
   function start(){
     if (!sess) { gate(''); return; }
     rpc('my_access').then(function(w){
       if (!w || !w.approved) { gate(w ? 'حسابك بانتظار موافقة المدير.' : ''); return; }
       me = w; var sy = w.systems || [];
       if (sy.indexOf('dbb') < 0) { gate('حسابك لا يملك صلاحية قسم الصيانة. اطلبها من مدير النظام.'); return; }
-      canEdit = !!(w.perms && w.perms.edit); hasFleet = sy.indexOf('fleet') >= 0; hasWatheeq = sy.indexOf('watheeq') >= 0; hasHousing = sy.indexOf('housing') >= 0;
+      canEdit = !!(w.perms && w.perms.edit); canFin = !!(w.perms && w.perms.finance); canDel = !!(w.perms && w.perms.delete); canMan = !!(w.perms && w.perms.manage); hasFleet = sy.indexOf('fleet') >= 0; hasWatheeq = sy.indexOf('watheeq') >= 0; hasHousing = sy.indexOf('housing') >= 0;
       $('gate').classList.add('hide'); $('app').classList.remove('hide');
       buildForms();
       try { var st0 = sessionStorage.getItem('maint_tab'); if (st0) setTab(st0); else maybeAssets(tab); } catch(e){ maybeAssets(tab); }
@@ -334,7 +375,8 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
   document.querySelectorAll('#tabs button').forEach(function(b){ b.onclick = function(){ setTab(b.getAttribute('data-t')); }; });
   function setTab(t){
     tab = t; document.querySelectorAll('#tabs button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-t') === t); });
-    ['dash','rep','app'].forEach(function(x){ $('t-' + x).classList.toggle('hide', x !== t); });
+    ['dash','trk','rep','app'].forEach(function(x){ $('t-' + x).classList.toggle('hide', x !== t); });
+    if (t === 'trk') trkLoad();
     try { sessionStorage.setItem('maint_tab', t); } catch(e){}
     maybeAssets(t);
     window.scrollTo(0, 0);
@@ -513,6 +555,259 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
       };
     }).catch(function(e){ toast(e.message, 5000); });
   }
+  /* ═══════════ متابعة طلبات الصيانة (جاءت من الأسطول) ═══════════ */
+  var TRK = [], trkCur = null, trkF = { st:'', party:'', proj:'', pri:'', q:'' };
+  var TRK_ST = [['new','جديد','mut'],['driver','بانتظار السائق','warn'],['supervisor','لدى المشرف','info'],
+                ['office','مُرسل لمكتب التأجير','info'],['workshop','في الورشة','warn'],
+                ['done','مكتمل','ok'],['rejected','مرفوض / ملغى','bad']];
+  var TRK_STATE = { pending:'بانتظار', ok:'تم / موافق', issue:'مشكلة', na:'لا ينطبق' };
+  var TRK_PARTY = [['driver','السائق'],['supervisor','المشرف'],['office','مكتب التأجير']];
+  var TRK_CATS = ['عطل ميكانيكي','عطل كهربائي','إطارات','فرامل','مكيّف','زيوت وصيانة دورية','بطارية','هيكل / صدمات','زجاج','أخرى'];
+  function trkStName(k){ var r = TRK_ST.filter(function(x){ return x[0] === k; })[0]; return r ? r[1] : k; }
+  function trkStCls(k){ var r = TRK_ST.filter(function(x){ return x[0] === k; })[0]; return r ? r[2] : 'mut'; }
+  function trkOpen(r){ return r.status !== 'done' && r.status !== 'rejected'; }
+  function trkLoad(){
+    return rpc('maint_track_list').then(function(r){
+      TRK = r || []; trkFillFilters(); trkRender(); trkBadge();
+      $('trkImp').classList.toggle('hide', !canMan);
+    }).catch(function(e){ $('trkBody').innerHTML = '<tr><td colspan="9" class="empty">' + esc(e.message) + '</td></tr>'; });
+  }
+  function trkBadge(){
+    var n = TRK.filter(trkOpen).length, el = $('trkCnt');
+    el.textContent = n; el.classList.toggle('hide', !n);
+  }
+  function trkFillFilters(){
+    if (!$('trkSt').dataset.done) {
+      $('trkSt').innerHTML = '<option value="">كل الحالات</option>' + TRK_ST.map(function(x){ return '<option value="' + x[0] + '">' + x[1] + '</option>'; }).join('');
+      $('trkSt').dataset.done = '1';
+    }
+    var ps = {}; TRK.forEach(function(r){ if (r.project) ps[r.project] = 1; });
+    var cur = $('trkProj').value;
+    $('trkProj').innerHTML = '<option value="">كل المشاريع</option>' + Object.keys(ps).sort().map(function(x){ return '<option' + (x === cur ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('');
+  }
+  function trkFiltered(){
+    var q = trkF.q.trim().toLowerCase();
+    return TRK.filter(function(r){
+      if (trkF.st && r.status !== trkF.st) return false;
+      if (trkF.proj && r.project !== trkF.proj) return false;
+      if (trkF.pri && r.priority !== trkF.pri) return false;
+      if (trkF.party) { var d = (r.parties || {})[trkF.party] || {}; if ((d.state || 'pending') !== 'pending' || !trkOpen(r)) return false; }
+      if (q) {
+        var hay = [r.plate, r.driver_id, r.driver_name, r.category, r['desc'], r.office, r.office_ref, r.no].join(' ').toLowerCase();
+        if (hay.indexOf(q) < 0) return false;
+      }
+      return true;
+    });
+  }
+  function trkRender(){
+    var counts = {}; TRK.forEach(function(r){ counts[r.status] = (counts[r.status] || 0) + 1; });
+    $('trkKpis').innerHTML = '<div class="kpi pick' + (trkF.st ? '' : ' on') + '" data-st=""><b>' + TRK.length + '</b><span>كل الطلبات</span></div>' +
+      TRK_ST.filter(function(x){ return counts[x[0]]; }).map(function(x){
+        return '<div class="kpi pick ' + x[2] + (trkF.st === x[0] ? ' on' : '') + '" data-st="' + x[0] + '"><b>' + counts[x[0]] + '</b><span>' + x[1] + '</span></div>'; }).join('');
+    $('trkKpis').querySelectorAll('.kpi').forEach(function(k){ k.onclick = function(){ trkF.st = k.getAttribute('data-st'); $('trkSt').value = trkF.st; trkRender(); }; });
+    var list = trkFiltered();
+    $('trkSub').textContent = list.length + ' من ' + TRK.length + ' · مفتوح ' + TRK.filter(trkOpen).length;
+    $('trkBody').innerHTML = list.length ? list.map(function(r){
+      var p = r.parties || {};
+      var dots = TRK_PARTY.map(function(x){ var st = ((p[x[0]] || {}).state) || 'pending';
+        return '<span class="dot ' + st + '" title="' + x[1] + ': ' + (TRK_STATE[st] || st) + '"></span>'; }).join('');
+      return '<tr data-id="' + r.id + '"><td>' + esc(r.no || '—') + '</td><td class="mono">' + esc(r.plate || '—') + '</td>' +
+        '<td>' + esc(r.driver_name || '—') + '<div class="muted sm mono">' + esc(r.driver_id || '') + '</div></td>' +
+        '<td>' + esc(r.category || '—') + '<div class="muted sm">' + esc(String(r['desc'] || '').slice(0, 40)) + '</div></td>' +
+        '<td>' + esc(PR[r.priority] || r.priority || '—') + '</td>' +
+        '<td><span class="pill ' + trkStCls(r.status) + '">' + esc(r.status_ar || trkStName(r.status)) + '</span></td>' +
+        '<td>' + dots + '</td><td>' + (r.days || 0) + ' يوم</td>' +
+        '<td><button class="btn ghost sm" data-go="' + r.id + '">فتح</button></td></tr>';
+    }).join('') : '<tr><td colspan="9" class="empty">لا توجد طلبات مطابقة</td></tr>';
+    $('trkBody').querySelectorAll('[data-go]').forEach(function(b){ b.onclick = function(){ trkShow(b.getAttribute('data-go')); }; });
+  }
+  function trkBack(){ trkCur = null; $('trkDetail').classList.add('hide'); $('trkList').classList.remove('hide'); }
+  function trkShow(id){
+    var r = TRK.filter(function(x){ return x.id === id; })[0]; if (!r) return;
+    trkCur = id; $('trkList').classList.add('hide'); $('trkDetail').classList.remove('hide');
+    var p = r.parties || {};
+    var fld = function(lbl, id2, val, ph){ return '<label class="f">' + lbl + '<input id="' + id2 + '" value="' + esc(val || '') + '" placeholder="' + esc(ph || '') + '"></label>'; };
+    var partyCard = function(k, label){
+      var d = p[k] || {}, st = d.state || 'pending';
+      var extra = k === 'supervisor'
+        ? '<div class="form">' + fld('اسم المشرف', 'tp_sup_name', d.name || r.sup_name) + fld('جواله', 'tp_sup_mobile', d.mobile || r.sup_mobile, '05xxxxxxxx') + '</div>'
+        : k === 'office'
+        ? '<div class="form">' + fld('اسم المكتب', 'tp_off_name', d.name || r.office) + fld('المرجع لدى المكتب', 'tp_off_ref', d.ref || r.office_ref) +
+          fld('الموعد المتوقع', 'tp_off_eta', d.eta || r.office_eta) + (canFin ? fld('تكلفة المكتب', 'tp_off_cost', d.cost || r.office_cost) : '') + '</div>'
+        : '';
+      return '<div class="party"><h4><span class="dot ' + st + '"></span>' + label + '</h4>' +
+        '<div class="who">' + (d.at ? ('آخر تحديث: ' + esc(String(d.at).slice(0, 16).replace('T', ' ')) + ' · ' + esc(d.by || '—')) : 'لم يُحدَّث بعد') + '</div>' +
+        extra +
+        '<div class="form"><label class="f">الحالة<select id="tp_' + k + '_state">' +
+        Object.keys(TRK_STATE).map(function(x){ return '<option value="' + x + '"' + (st === x ? ' selected' : '') + '>' + TRK_STATE[x] + '</option>'; }).join('') +
+        '</select></label><label class="f full">ملاحظة<input id="tp_' + k + '_note" value="' + esc(d.note || '') + '" placeholder="ما الذي تم؟"></label></div>' +
+        (canEdit ? '<div class="tools" style="margin-top:8px"><button class="btn sm" data-sp="' + k + '">حفظ متابعة ' + label + '</button></div>' : '');
+    };
+    $('trkDetail').innerHTML =
+      '<div class="card"><h3><svg class="i"><use href="#i-clip"/></svg>' + esc(r.no || 'طلب صيانة') + ' — ' + esc(r.plate || '') +
+      '<span class="sp"></span><span class="pill ' + trkStCls(r.status) + '">' + esc(r.status_ar || '') + '</span>' +
+      '<button class="btn ghost sm" id="trkBack" style="margin-inline-start:10px">رجوع للقائمة</button></h3>' +
+        '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr))">' +
+          '<div>' +
+            '<div class="kv"><span>المشروع / المنطقة</span><b>' + esc(r.project || '—') + ' · ' + esc(r.area || '—') + '</b></div>' +
+            '<div class="kv"><span>مكتب التأجير</span><b>' + esc(r.office || '—') + '</b></div>' +
+            '<div class="kv"><span>السائق</span><b>' + esc(r.driver_name || '—') + '</b></div>' +
+            '<div class="kv"><span>رقم الإقامة</span><b class="mono">' + esc(r.driver_id || '—') + '</b></div>' +
+            '<div class="kv"><span>جوال السائق</span><b dir="ltr">' + esc(r.driver_mobile || '—') + '</b></div>' +
+          '</div><div>' +
+            '<div class="kv"><span>نوع العطل</span><b>' + esc(r.category || '—') + '</b></div>' +
+            '<div class="kv"><span>الأولوية</span><b>' + esc(PR[r.priority] || '—') + '</b></div>' +
+            '<div class="kv"><span>العداد</span><b class="mono">' + esc(r.odometer || '—') + '</b></div>' +
+            '<div class="kv"><span>عمر الطلب</span><b>' + (r.days || 0) + ' يوم</b></div>' +
+            (canFin ? '<div class="kv"><span>التكلفة</span><b class="mono">' + (r.cost == null ? '—' : Number(r.cost).toLocaleString('en-US')) + '</b></div>' : '') +
+          '</div></div>' +
+        '<div class="kv" style="margin-top:10px"><span>وصف العطل</span><b>' + esc(r['desc'] || '—') + '</b></div>' +
+        '<div id="trkFiles" class="files"></div>' +
+        (canEdit ? '<div class="form" style="margin-top:10px"><label class="f full">إضافة مرفق (صورة)<input type="file" id="trkFile" accept="image/*"></label></div><div class="hint" id="trkFH"></div>' : '') +
+      '</div>' +
+      '<div class="card"><h3><svg class="i"><use href="#i-wrench"/></svg>متابعة الأطراف</h3>' +
+        '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">' +
+        TRK_PARTY.map(function(x){ return partyCard(x[0], x[1]); }).join('') + '</div></div>' +
+      (canEdit ? '<div class="card"><h3><svg class="i"><use href="#i-chart"/></svg>حالة الطلب</h3>' +
+        '<div class="form"><label class="f">الحالة<select id="trkNewSt">' +
+          TRK_ST.map(function(x){ return '<option value="' + x[0] + '"' + (r.status === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') +
+        '</select></label>' + (canFin ? '<label class="f">التكلفة النهائية<input id="trkCost" type="number" step="0.01" placeholder="عند الإغلاق"></label>' : '') +
+        '<label class="f full">ملاحظة<input id="trkNote" placeholder="سبب التغيير أو ملاحظة الإغلاق"></label></div>' +
+        '<div class="tools"><button class="btn" id="trkStSave">حفظ الحالة</button>' +
+        '<button class="btn ghost" id="trkCopy">نسخ ملخّص الطلب</button>' +
+        (canDel ? '<button class="btn warn" id="trkDel">حذف الطلب</button>' : '') + '</div></div>' : '') +
+      '<div class="card"><h3><svg class="i"><use href="#i-clip"/></svg>السجل الزمني</h3><ul class="tl" id="trkTl"></ul></div>';
+
+    $('trkTl').innerHTML = (r.timeline || []).slice().reverse().map(function(t){
+      return '<li><b>' + esc(t.text || '') + '</b><em>' + esc(String(t.at || '').slice(0, 16).replace('T', ' ')) + ' · ' + esc(t.by || '—') + '</em></li>'; }).join('')
+      || '<li class="muted">لا يوجد سجل</li>';
+    $('trkBack').onclick = trkBack;
+    $('trkDetail').querySelectorAll('[data-sp]').forEach(function(b){ b.onclick = function(){ trkSaveParty(r.id, b.getAttribute('data-sp')); }; });
+    var st = $('trkStSave'); if (st) st.onclick = function(){
+      var body = { op:'status', id:r.id, status:$('trkNewSt').value, note:$('trkNote').value || '' };
+      if (canFin && $('trkCost') && $('trkCost').value) body.cost = $('trkCost').value;
+      rpc('maint_track_save', { p: body }).then(function(){ toast('تم حفظ الحالة'); return trkLoad(); }).then(function(){ trkShow(r.id); })
+        .catch(function(e){ toast(e.message, 5000); });
+    };
+    var cp = $('trkCopy'); if (cp) cp.onclick = function(){
+      var txt = ['طلب صيانة ' + (r.no || ''), 'اللوحة: ' + (r.plate || ''), 'السائق: ' + (r.driver_name || '') + ' · ' + (r.driver_id || ''),
+        'العطل: ' + (r.category || '') + ' — ' + (r['desc'] || ''), 'الحالة: ' + (r.status_ar || ''),
+        'المكتب: ' + (r.office || '—') + (r.office_ref ? ' · مرجع ' + r.office_ref : '')].join('\n');
+      if (navigator.clipboard) navigator.clipboard.writeText(txt).then(function(){ toast('تم نسخ الملخّص'); }, function(){ toast(txt, 7000); });
+      else toast(txt, 7000);
+    };
+    var dl = $('trkDel'); if (dl) dl.onclick = function(){
+      if (!confirm('حذف الطلب نهائياً مع سجله ومرفقاته؟')) return;
+      rpc('maint_track_save', { p:{ op:'delete', id:r.id } }).then(function(){ toast('تم الحذف'); trkBack(); return trkLoad(); })
+        .catch(function(e){ toast(e.message, 5000); });
+    };
+    api('GET', 'maint_files?select=id,name,mime,data&order=created_at.desc&order_id=eq.' + r.id).then(function(fs){
+      $('trkFiles').innerHTML = (fs || []).map(function(f){
+        return /^image\//.test(f.mime || '')
+          ? '<img src="data:' + esc(f.mime) + ';base64,' + f.data + '" onclick="window.open().document.write(\'<img src=&quot;data:' + esc(f.mime) + ';base64,' + f.data + '&quot; style=&quot;max-width:100%&quot;>\')">'
+          : '<a href="data:' + esc(f.mime) + ';base64,' + f.data + '" download="' + esc(f.name || 'file') + '">' + esc(f.name || 'مرفق') + '</a>'; }).join('');
+    }).catch(function(){});
+    var fi = $('trkFile'); if (fi) fi.onchange = function(){
+      var file = fi.files[0]; if (!file) return;
+      $('trkFH').className = 'hint'; $('trkFH').textContent = 'جارٍ الرفع…';
+      shrink(file).then(function(x){
+        return api('POST', 'maint_files', { order_id:r.id, kind:'photo', name:x.name, mime:x.mime, data:x.data, size:x.size, by_name:(me && (me.name || me.email)) || null });
+      }).then(function(){ $('trkFH').className = 'hint ok'; $('trkFH').textContent = 'تم الرفع'; trkShow(r.id); })
+        .catch(function(e){ $('trkFH').className = 'hint bad'; $('trkFH').textContent = e.message; });
+    };
+  }
+  function trkSaveParty(id, k){
+    var g = function(x){ var el = $(x); return el ? String(el.value || '').trim() : ''; };
+    var body = { op:'party', id:id, party:k, state:g('tp_' + k + '_state'), note:g('tp_' + k + '_note') };
+    if (k === 'supervisor') { body.sup_name = g('tp_sup_name'); body.sup_mobile = g('tp_sup_mobile'); }
+    if (k === 'office') { body.office_name = g('tp_off_name'); body.office_ref = g('tp_off_ref'); body.office_eta = g('tp_off_eta'); body.office_cost = g('tp_off_cost'); }
+    rpc('maint_track_save', { p: body }).then(function(){ toast('تم حفظ المتابعة'); return trkLoad(); }).then(function(){ trkShow(id); })
+      .catch(function(e){ toast(e.message, 5000); });
+  }
+  function trkNewForm(){
+    $('trkList').classList.add('hide'); $('trkDetail').classList.remove('hide');
+    $('trkDetail').innerHTML = '<div class="card"><h3><svg class="i"><use href="#i-clip"/></svg>طلب صيانة جديد<span class="sp"></span>' +
+      '<button class="btn ghost sm" id="trkBack">رجوع</button></h3>' +
+      '<div class="form">' +
+        '<label class="f">لوحة المركبة *<input id="tnPlate" list="tnPlates" placeholder="ابحث برقم اللوحة"><datalist id="tnPlates"></datalist></label>' +
+        '<label class="f">نوع العطل<select id="tnCat">' + TRK_CATS.map(function(c){ return '<option>' + c + '</option>'; }).join('') + '</select></label>' +
+        '<label class="f">الأولوية<select id="tnPri"><option>عادي</option><option>عاجل</option><option>حرج</option></select></label>' +
+        '<label class="f">قراءة العداد<input id="tnOdo" type="number" placeholder="اختياري"></label>' +
+        '<label class="f">اسم المشرف<input id="tnSup" placeholder="المشرف المسؤول"></label>' +
+        '<label class="f">جوال المشرف<input id="tnSupT" placeholder="05xxxxxxxx" dir="ltr"></label>' +
+        '<label class="f full">وصف العطل<input id="tnDesc" placeholder="اشرح المشكلة كما وصفها السائق…"></label>' +
+      '</div><div id="tnVeh"></div>' +
+      '<div class="tools" style="margin-top:10px"><button class="btn" id="tnSave">حفظ الطلب</button></div><div class="hint" id="tnH"></div></div>';
+    $('trkBack').onclick = trkBack;
+    var VEH = [];
+    api('GET', 'vehicles?select=plate_no,project_code,rental_company,area&status=eq.active&deleted_at=is.null&order=plate_no&limit=2000')
+      .then(function(v){ VEH = (v || []).map(function(x){ return { plate:x.plate_no, project:x.project_code, office:x.rental_company, area:x.area }; }); })
+      .then(function(){
+      $('tnPlates').innerHTML = VEH.map(function(v){ return '<option value="' + esc(v.plate) + '">'; }).join('');
+    }).catch(function(){});
+    var pv = function(){
+      var pl = ($('tnPlate').value || '').trim().toUpperCase().replace(/[\s\-_.]/g, '');
+      var v = VEH.filter(function(x){ return String(x.plate || '').toUpperCase().replace(/[\s\-_.]/g, '') === pl; })[0];
+      $('tnVeh').innerHTML = v
+        ? '<div class="kv"><span>المشروع / المنطقة</span><b>' + esc(v.project || '—') + ' · ' + esc(v.area || '—') + '</b></div>' +
+          '<div class="kv"><span>مكتب التأجير</span><b>' + esc(v.office || '—') + '</b></div>'
+        : '<div class="muted sm">اختر لوحة صحيحة لعرض بيانات المركبة.</div>';
+    };
+    $('tnPlate').oninput = pv; pv();
+    $('tnSave').onclick = function(){
+      var body = { op:'new', plate:($('tnPlate').value || '').trim(), category:$('tnCat').value, priority:$('tnPri').value,
+                   'desc':$('tnDesc').value, odometer:$('tnOdo').value, sup_name:$('tnSup').value, sup_mobile:$('tnSupT').value };
+      if (!body.plate) { $('tnH').className = 'hint bad'; $('tnH').textContent = 'اكتب رقم اللوحة'; return; }
+      $('tnH').className = 'hint'; $('tnH').textContent = 'جارٍ الحفظ…';
+      rpc('maint_track_save', { p: body }).then(function(r){ toast('تم إنشاء الطلب ' + (r.no || ''));
+        return trkLoad().then(function(){ trkShow(r.id); }); })
+        .catch(function(e){ $('tnH').className = 'hint bad'; $('tnH').textContent = e.message; });
+    };
+  }
+  function trkCsv(){
+    var head = ['رقم الأمر','التاريخ','اللوحة','المشروع','المنطقة','مكتب التأجير','اسم السائق','رقم الإقامة','جوال السائق',
+      'نوع العطل','الأولوية','وصف العطل','العداد','الحالة',
+      'السائق: الحالة','السائق: ملاحظة','المشرف: الاسم','المشرف: الجوال','المشرف: الحالة','المشرف: ملاحظة',
+      'المكتب: الاسم','المكتب: المرجع','المكتب: الموعد','المكتب: الحالة','المكتب: ملاحظة',
+      'عمر الطلب (يوم)','تاريخ الإغلاق','ملاحظة الإغلاق','أنشأه'];
+    if (canFin) head.splice(25, 0, 'التكلفة');
+    var rows = [head];
+    trkFiltered().forEach(function(r){
+      var p = r.parties || {}, d = p.driver || {}, sp = p.supervisor || {}, of = p.office || {};
+      var line = [r.no || '', String(r.created_at || '').slice(0, 10), r.plate || '', r.project || '', r.area || '', r.office || '',
+        r.driver_name || '', r.driver_id || '', r.driver_mobile || '', r.category || '', PR[r.priority] || r.priority || '',
+        r['desc'] || '', r.odometer || '', r.status_ar || '',
+        TRK_STATE[d.state || 'pending'] || '', d.note || '',
+        sp.name || r.sup_name || '', sp.mobile || r.sup_mobile || '', TRK_STATE[sp.state || 'pending'] || '', sp.note || '',
+        of.name || r.office || '', of.ref || r.office_ref || '', of.eta || r.office_eta || '', TRK_STATE[of.state || 'pending'] || '', of.note || '',
+        r.days || 0, r.closed_at || '', r.close_note || '', r.created_by || ''];
+      if (canFin) line.splice(25, 0, r.cost == null ? '' : r.cost);
+      rows.push(line);
+    });
+    var csv = '﻿' + rows.map(function(r){ return r.map(function(c){ return '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"'; }).join(','); }).join('\r\n');
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' }));
+    a.download = 'afmc-maint-track-' + today() + '.csv'; document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  }
+  window.addEventListener('message', function(e){
+    var d = e.data; if (d && d.afmc === 'tab' && d.tab) setTab(d.tab);      /* نداء من المنصّة */
+  });
+  $('trkQ').oninput = function(){ trkF.q = this.value; trkRender(); };
+  $('trkSt').onchange = function(){ trkF.st = this.value; trkRender(); };
+  $('trkParty').onchange = function(){ trkF.party = this.value; trkRender(); };
+  $('trkProj').onchange = function(){ trkF.proj = this.value; trkRender(); };
+  $('trkPri').onchange = function(){ trkF.pri = this.value; trkRender(); };
+  $('trkImp').onclick = function(){
+    var b = $('trkImp'); b.disabled = true;
+    rpc('maint_track_import').then(function(r){
+      b.disabled = false;
+      toast('استيراد: ' + (r.imported || 0) + ' طلب' + (r.already ? ' · موجود مسبقاً ' + r.already : '') + (r.no_vehicle ? ' · بلا مركبة ' + r.no_vehicle : ''), 6000);
+      trkLoad();
+    }).catch(function(e){ b.disabled = false; toast(e.message, 5000); });
+  };
+  $('trkNew').onclick = trkNewForm;
+  $('trkCsv').onclick = trkCsv;
+
   function close(){ $('modal').classList.add('hide'); }
   $('modal').onclick = function(e){ if (e.target === $('modal')) close(); };
   $('copyGate').onclick = function(){

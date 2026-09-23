@@ -466,7 +466,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260923224742";
+  var BUILD = "20260923233608";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -663,6 +663,18 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       } else if (tries > 40) { clearInterval(t); toast('افتح القسم ثم ابحث عن «' + key + '»'); }
     }, 250);
   }
+  /* رسائل من الأنظمة المدمجة: «طلبات الصيانة» في الأسطول تفتح قسم الصيانة */
+  window.addEventListener('message', function(e){
+    var d = e.data; if (!d || d.afmc !== 'openSys' || !d.sys) return;
+    var ok = SYSTEMS.some(function(x){ return x.id === d.sys && allowed(x); });
+    if (!ok) { toast('لا تملك صلاحية هذا القسم'); return; }
+    show('vSys'); openSys(d.sys);
+    if (d.tab) setTimeout(function(){
+      var f = document.querySelector('iframe[data-s="' + d.sys + '"]');
+      try { if (f && f.contentWindow) f.contentWindow.postMessage({ afmc:'tab', tab:d.tab }, '*'); } catch(err){}
+    }, 1200);
+  });
+
   function gsWire(){
     var q = $('gsq');
     q.addEventListener('input', function(){
