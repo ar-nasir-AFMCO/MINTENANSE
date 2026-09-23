@@ -433,7 +433,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         <div class="card" id="fixBox" style="flex-direction:column;align-items:stretch;gap:12px">
           <div><b>أدوات التصحيح</b><div class="sub">كل أداة تعرض معاينة أولاً، ولا تنفّذ إلا بضغطتك، ويمكن التراجع عنها.</div></div>
           <div class="fixrow"><div><b>مطابقة الإسنادات مع الأسطول</b><div class="sub" id="fxAsgNote">سجلّ الأسطول هو المرجع: يضيف السائقين الناقصين ويُنهي الإسنادات التي لم تعد قائمة.</div></div>
-            <span style="flex:1"></span><button class="btn ghost sm" data-fx="asg-preview">معاينة</button><button class="btn sm hide" data-fx="asg-apply">تطبيق</button></div>
+            <span style="flex:1"></span><button class="btn ghost sm" data-fx="asg-preview">معاينة</button><button class="btn sm hide" data-fx="asg-apply">تطبيق</button><button class="btn ghost sm hide" data-fx="asg-undo">تراجع</button></div>
           <div class="fixrow"><div><b>تصحيح المسمّى الوظيفي</b><div class="sub" id="fxJobNote">يفصل اسم المشروع عن المسمّى، ويأخذه من مهنة الإقامة أو نوع المركبة المسندة، ويترك الباقي فارغاً بدل اختراع مسمّى.</div></div>
             <span style="flex:1"></span><button class="btn ghost sm" data-fx="job-preview">معاينة</button><button class="btn sm hide" data-fx="job-apply">تطبيق</button><button class="btn ghost sm hide" data-fx="job-undo">تراجع</button></div>
           <div class="fixrow"><div><b>تواريخ الالتحاق</b><div class="sub" id="fxJoinNote">لا يُخترع تاريخ: ارفع كشفاً (إقامة، تاريخ الالتحاق) من ملفات الموارد البشرية ويُستورد كما هو.</div></div>
@@ -466,7 +466,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260923223144";
+  var BUILD = "20260923224742";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -1073,9 +1073,16 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       } else if (k === 'asg-apply') {
         if (!confirm('تطبيق المطابقة مع سجل الأسطول؟')) { done(); return; }
         rpc('fleet_assign_rebuild', { p_apply:true }).then(function(r){
-          done(); fxBtn('asg-apply').classList.add('hide');
+          done(); fxBtn('asg-apply').classList.add('hide'); fxBtn('asg-undo').classList.remove('hide');
           toast('تمت المطابقة: أُضيف ' + fxNum(r.added) + ' وأُنهي ' + fxNum(r.released));
           $('fxAsgNote').textContent = 'آخر تنفيذ: أُضيف ' + fxNum(r.added) + ' · أُنهي ' + fxNum(r.released) + ' · متعذّر ' + fxNum(r.blocked);
+          loadReview(); homeMeta();
+        }).catch(function(e){ done(); toast('تعذّر: ' + e.message); });
+      } else if (k === 'asg-undo') {
+        if (!confirm('التراجع عن آخر مطابقة للإسنادات؟')) { done(); return; }
+        rpc('fleet_assign_undo', {}).then(function(r){
+          done(); fxBtn('asg-undo').classList.add('hide');
+          toast('تم التراجع: حُذف ' + fxNum(r.removed) + ' وأُعيد ' + fxNum(r.restored));
           loadReview(); homeMeta();
         }).catch(function(e){ done(); toast('تعذّر: ' + e.message); });
       } else if (k === 'job-preview') {
