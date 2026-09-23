@@ -123,6 +123,16 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 .sysc b{font-size:15px;font-weight:600;display:block}.sysc small{color:var(--muted);font-size:12px}
 .sysc .meta{display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid var(--line-2);padding-top:12px;font-size:12px;color:var(--muted)}
 .sysc .go{margin-inline-start:auto;color:var(--faint)}
+.pulse{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin:0 0 22px}
+.pt{border:1px solid var(--line);background:var(--surface);border-radius:var(--r);box-shadow:var(--sh);padding:16px 18px;text-align:right}
+.pt .k{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.pt .v{font-size:30px;font-weight:600;line-height:1.15;margin-top:6px;font-variant-numeric:tabular-nums}
+.pt .v small{font-size:15px;font-weight:500;color:var(--muted);margin-inline-start:3px}
+.pt .d{font-size:12px;color:var(--muted);margin-top:4px}
+.pt .bar{height:5px;border-radius:99px;background:var(--line-2);margin-top:10px;overflow:hidden}
+.pt .bar i{display:block;height:100%;border-radius:99px;background:var(--brand)}
+.pt.ok .v{color:var(--ok)}.pt.warn .v{color:var(--warn)}.pt.bad .v{color:var(--bad)}
+.pt.warn .bar i{background:var(--warn)}.pt.bad .bar i{background:var(--bad)}
 .attn{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));margin-top:26px}
 .attn .lbl{grid-column:1/-1;font-size:13px;font-weight:600;color:var(--ink-2);margin-bottom:-2px}
 .att{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--line);background:var(--surface);border-radius:var(--r);text-align:right}
@@ -319,7 +329,8 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         </div>
         <div class="frames hide" id="frames"></div>
         <div class="view" id="home" style="overflow:auto;width:100%">
-          <div class="hello"><div><h2 id="hi">أهلاً</h2><p>اختر النظام. كل الأنظمة تعمل على قاعدة بيانات واحدة وتتحدث مباشرة.</p></div></div>
+          <div class="hello"><div><h2 id="hi">أهلاً</h2><p id="hiSub">ملخّص العمليات — كل الأنظمة على قاعدة بيانات واحدة.</p></div></div>
+          <div class="pulse hide" id="pulse"></div>
           <div class="cards" id="homeCards"></div>
           <div class="attn hide" id="attn"></div>
         </div>
@@ -399,7 +410,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260923155854";
+  var BUILD = "20260923205924";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -410,9 +421,9 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   var SYSTEMS = [
     { id:'watheeq', ic:'users', name:'وثيق', desc:'الموظفون والعقود والرواتب', src:'watheeq.html' },
     { id:'fleet', ic:'car', name:'الأسطول', desc:'المركبات والتسليم والورش', src:'fleet.html' },
+    { id:'dbb', ic:'wrench', name:'الصيانة', desc:'سيارات · دبابات · سكنات', src:'maintenance.html' },
     { id:'couriers', ic:'scooter', name:'المناديب', desc:'Ninja · Keemart', group:['ninja','keemart'] },
-    { id:'housing', ic:'bed', name:'السكنات', desc:'المباني والغرف والنزلاء', src:'housing.html' },
-    { id:'dbb', ic:'wrench', name:'الصيانة', desc:'سيارات · دبابات · سكنات', src:'maintenance.html' }
+    { id:'housing', ic:'bed', name:'السكنات', desc:'المباني والغرف والنزلاء', src:'housing.html' }
   ];
   var SUBS = { ninja:{ name:'Ninja', desc:'أداء الكباتن والـ SLA', src:'ninja.html' }, keemart:{ name:'Keemart', desc:'الحضور والتسوية والفواتير', src:'keemart.html' } };
   var AREA_AR = { employees:'الموظفون', vehicles:'المركبات', attendance:'الحضور', maintenance:'الصيانة' };
@@ -498,7 +509,10 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       $('gate').classList.add('hide'); $('app').classList.remove('hide');
       $('meName').textContent = me.name || me.email; $('meRole').textContent = (me.label || ROLE_AR[me.role] || me.role) + (me.all_projects ? ' · كل المشاريع' : ' · ' + ((me.projects || []).join('، ') || 'بلا مشاريع'));
       $('meAv').textContent = (me.name || me.email || '؟').trim().charAt(0).toUpperCase();
-      $('hi').textContent = 'أهلاً ' + String(me.name || me.email || '').split(/[\s@]/)[0];
+      var nm = String(me.name || '').trim();
+      if (!nm || nm.indexOf('@') >= 0) nm = '';                       /* اسم فارغ أو بريد ⇐ لا نعرضه كاسم */
+      $('hi').textContent = nm ? ('أهلاً ' + nm.split(/\s+/)[0]) : 'أهلاً';
+      try { $('hiSub').textContent = 'ملخّص العمليات · ' + new Date().toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { weekday:'long', day:'numeric', month:'long', year:'numeric' }); } catch(e){}
       document.querySelectorAll('#tabs button').forEach(function(b){ var n = b.getAttribute('data-need'); b.classList.toggle('hide', !!n && !can(n)); });
       buildSystems();
       var h = location.hash;
@@ -545,14 +559,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     rpc('maint_summary').then(function(s){
       if (!s) return;
       set('dbb', '<span>' + num(s.open) + ' أمر مفتوح</span><span>·</span><span>سيارات ' + num(s.vehicle) + ' · دبابات ' + num(s.bike) + ' · سكنات ' + num(s.housing) + '</span>');
-      var add = [];
-      if (s.late) add.push(['bad', s.late, 'أوامر صيانة متأخرة أكثر من ٧ أيام']);
-      else if (s.open) add.push(['warn', s.open, 'أوامر صيانة مفتوحة']);
-      if (!add.length) return;
-      var a = $('attn'); if (!a.querySelector('.lbl')) a.innerHTML = '<div class="lbl">يحتاج انتباهك</div>';
-      a.insertAdjacentHTML('beforeend', add.map(function(x){ return '<button class="att ' + x[0] + '" data-go="dbb"><span class="n">' + num(x[1]) + '</span><span class="l">' + x[2] + '</span>' + ico('chev') + '</button>'; }).join(''));
-      a.classList.remove('hide');
-      a.querySelectorAll('.att[data-go="dbb"]').forEach(function(b){ b.onclick = function(){ openSys('dbb'); }; });
+      /* «يحتاج انتباهك» لأوامر الصيانة يأتي من afmc_pulse — لا تكرار هنا */
     }).catch(function(){});
   }
   function housingMeta(set){
@@ -560,30 +567,81 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     rpc('housing_summary').then(function(h){
       if (!h) return;
       set('housing', '<span>' + num(h.occupied) + ' من ' + num(h.beds) + ' سرير مشغول</span><span>·</span><span>' + num(h.buildings) + ' مبنى</span>');
-      var add = [];
-      if (h.flagged) add.push(['housing', 'bad', h.flagged, 'نزلاء في السكن تغيّرت حالتهم في وثيق (منتهي/موقوف)']);
-      if (h.overdue) add.push(['housing', 'warn', h.overdue, 'إيجارات سكن مستحقة للملاك']);
-      if (!add.length) return;
-      var a = $('attn'); if (!a.querySelector('.lbl')) a.innerHTML = '<div class="lbl">يحتاج انتباهك</div>';
-      a.insertAdjacentHTML('beforeend', add.map(function(x){ return '<button class="att ' + x[1] + '" data-go="housing"><span class="n">' + num(x[2]) + '</span><span class="l">' + x[3] + '</span>' + ico('chev') + '</button>'; }).join(''));
-      a.classList.remove('hide');
-      a.querySelectorAll('.att[data-go="housing"]').forEach(function(b){ b.onclick = function(){ openSys('housing'); }; });
+      if (h.flagged) attAdd('bad', h.flagged, 'نزيل في السكن تغيّرت حالته في وثيق (منتهي/موقوف)', 'housing');
+      if (h.overdue) attAdd('warn', h.overdue, 'إيجار سكن مستحق للمالك', 'housing');
+      attRender();
     }).catch(function(){ set('housing', '<span>مربوط بوثيق</span>'); });
   }
+  /* ---------- «يحتاج انتباهك»: مصدر واحد مرتّب حسب الخطورة ---------- */
+  var ATT = [];
+  function attAdd(sev, n, label, go){
+    var i, row = { sev:sev, n:n, l:label, go:go };
+    for (i = 0; i < ATT.length; i++) if (ATT[i].l === label) { ATT[i] = row; return; }   /* لا تكرار عند إعادة التحميل */
+    ATT.push(row);
+  }
+  function attRender(){
+    var rank = { bad:0, warn:1, ok:2 }, a = $('attn');
+    ATT.sort(function(x, y){ return (rank[x.sev] - rank[y.sev]) || (Number(y.n) || 0) - (Number(x.n) || 0); });
+    a.innerHTML = ATT.length ? '<div class="lbl">يحتاج انتباهك</div>' + ATT.map(function(x, i){
+      return '<button class="att ' + x.sev + '" data-i="' + i + '"><span class="n">' + (typeof x.n === 'string' ? x.n : num(x.n)) + '</span><span class="l">' + x.l + '</span>' + ico('chev') + '</button>';
+    }).join('') : '';
+    a.classList.toggle('hide', !ATT.length);
+    a.querySelectorAll('.att').forEach(function(b){ b.onclick = function(){ var g = ATT[b.getAttribute('data-i')].go; if (!g) return; if (g.charAt(0) === 'v') show(g); else openSys(g); }; });
+  }
+
+  /* ---------- نبض العمليات: الأرقام التي تُتّخذ عليها قرارات ---------- */
+  function tile(cls, key, val, unit, desc, pct){
+    return '<div class="pt ' + cls + '"><div class="k">' + key + '</div><div class="v">' + val + (unit ? '<small>' + unit + '</small>' : '')
+      + '</div><div class="d">' + desc + '</div>' + (pct == null ? '' : '<div class="bar"><i style="width:' + Math.max(0, Math.min(100, pct)) + '%"></i></div>') + '</div>';
+  }
+  function loadPulse(){
+    return rpc('afmc_pulse').then(function(p){
+      if (!p) return; var t = [], f = p.fleet, m = p.maint, h = p.house, a = p.att, hr = p.hr;
+      if (f && f.total) {
+        t.push(tile(f.util >= 90 ? 'ok' : f.util >= 75 ? 'warn' : 'bad', 'تشغيل الأسطول', (f.util == null ? '—' : f.util), '%',
+                    num(f.assigned) + ' من ' + num(f.active) + ' مركبة نشطة عليها سائق', f.util));
+        if (f.idle) attAdd(f.idle > 20 ? 'bad' : 'warn', f.idle, 'مركبة نشطة بلا سائق — إمّا تُسلَّم أو تُوقف عن الإيجار', 'fleet');
+        if (f.out)  t.push(tile(f.out > f.total * 0.25 ? 'bad' : 'warn', 'خارج الخدمة', num(f.out), 'مركبة',
+                    'من أصل ' + num(f.total) + ' — ' + Math.round(100 * f.out / f.total) + '% من الأسطول', 100 * f.out / f.total));
+        if (f.mismatch) attAdd('warn', f.mismatch, 'سائق على مركبة من مشروع آخر', 'fleet');
+      }
+      if (m) {
+        t.push(tile(m.late ? 'bad' : m.open ? 'warn' : 'ok', 'أوامر صيانة مفتوحة', num(m.open), '',
+                    m.late ? num(m.late) + ' منها متأخّرة أكثر من ٧ أيام' : 'سيارات ' + num(m.vehicle) + ' · دبابات ' + num(m.bike) + ' · سكنات ' + num(m.housing)));
+        if (m.late) attAdd('bad', m.late, 'أمر صيانة متأخّر أكثر من ٧ أيام', 'dbb');
+      }
+      if (h && h.beds) t.push(tile(h.free > h.beds * 0.5 ? 'warn' : 'ok', 'أسرّة شاغرة', num(h.free), ' من ' + num(h.beds),
+                    'الإشغال ' + Math.round(100 * h.used / h.beds) + '% — ' + num(h.used) + ' نزيل', 100 * h.used / h.beds));
+      if (a && a.last) {
+        var st = a.stale == null ? 0 : a.stale;
+        if (st > 3) { t.push(tile(st > 14 ? 'bad' : 'warn', 'آخر يوم حضور', day(a.last), '', 'متوقّف منذ ' + num(st) + ' يوماً · ' + num(a.projects) + ' مشروع'));
+                      attAdd(st > 14 ? 'bad' : 'warn', st + ' يوم', 'انقطاع في رفع الحضور — الرواتب والتسويات تُبنى عليه', 'watheeq'); }
+      }
+      if (hr) {
+        if (hr.bad_iqama)  attAdd('warn', hr.bad_iqama, 'رقم إقامة غير صحيح (ليس ١٠ أرقام) — يكسر الربط بين الأنظمة', 'watheeq');
+        if (hr.no_phone)   attAdd('warn', hr.no_phone, 'موظف نشط بلا رقم جوال', 'watheeq');
+        if (hr.bad_phone)  attAdd('warn', hr.bad_phone, 'رقم جوال بصيغة غير صحيحة', 'watheeq');
+        if (hr.no_project) attAdd('warn', hr.no_project, 'موظف نشط بلا مشروع', 'watheeq');
+      }
+      $('pulse').innerHTML = t.join('');
+      $('pulse').classList.toggle('hide', !t.length);
+    }).catch(function(){});
+  }
+
   function homeMeta(){
     var set = function(id, h){ var el = document.querySelector('[data-m="' + id + '"]'); if (el) el.innerHTML = h; };
+    ATT = [];
+    loadPulse().then(attRender);
     rpc('integration_status').then(function(s){
       var w = s.watheeq || {}, f = s.fleet || {}, m = s.maintenance || {};
       set('watheeq', '<span>' + num(w.count) + ' موظف</span><span>·</span><span>' + num(w.active) + ' نشط</span>');
       set('fleet', '<span>' + num(f.count) + ' مركبة</span><span>·</span><span>' + num(f.drivers) + ' سائق على مركبة</span>');
       set('dbb', '<span>' + num(m.orders) + ' أمر</span><span>·</span><span>' + num(m.open) + ' مفتوح</span>');
       maintMeta(set);
-      var u = s.users || {}, rv = s.review || {}, items = [];
-      if (can('admin')) items.push(['vAdm', u.pending ? 'warn' : 'ok', u.pending || 0, 'طلبات حسابات بانتظار الاعتماد']);
-      if (can('review')) items.push(['vRev', rv.high ? 'bad' : 'ok', rv.high || 0, 'ملاحظات عالية الأولوية في مراجعة البيانات']);
-      $('attn').innerHTML = items.length ? '<div class="lbl">يحتاج انتباهك</div>' + items.map(function(x){ return '<button class="att ' + x[1] + '" data-go="' + x[0] + '"><span class="n">' + num(x[2]) + '</span><span class="l">' + x[3] + '</span>' + ico('chev') + '</button>'; }).join('') : '';
-      $('attn').classList.toggle('hide', !items.length);
-      $('attn').querySelectorAll('.att').forEach(function(b){ b.onclick = function(){ var g = b.getAttribute('data-go'); if (g === 'dbb') openSys('dbb'); else show(g); }; });
+      var u = s.users || {}, rv = s.review || {};
+      if (can('admin') && u.pending) attAdd('warn', u.pending, 'طلب حساب بانتظار الاعتماد', 'vAdm');
+      if (can('review') && rv.high) attAdd('bad', rv.high, 'ملاحظة عالية الأولوية في مراجعة البيانات', 'vRev');
+      attRender();
       housingMeta(set);
     }).catch(function(){ ['watheeq','fleet','dbb'].forEach(function(id){ set(id, '<span>قاعدة بيانات موحّدة</span>'); }); maintMeta(set); housingMeta(set); });
     loadSummary().then(function(){
