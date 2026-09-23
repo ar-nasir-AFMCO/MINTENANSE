@@ -192,7 +192,7 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
       <div class="card"><h3><svg class="i"><use href="#i-wrench"/></svg>كل أوامر الصيانة<span class="sp"></span><span class="muted sm" id="allCount"></span></h3>
         <div class="tools">
           <select id="fKind"><option value="all">كل الأقسام</option><option value="vehicle">سيارات</option><option value="bike">دبابات</option><option value="housing">سكنات</option></select>
-          <select id="fSt"><option value="open">المفتوحة</option><option value="close_req">طلبات الإغلاق</option><option value="all">الكل</option><option value="new">مفتوح</option><option value="in_progress">في الورشة</option><option value="waiting_parts">بانتظار قطع</option><option value="done">مغلق</option><option value="cancelled">ملغي</option></select>
+          <select id="fSt"><option value="open">المفتوحة</option><option value="close_req">طلبات الإغلاق</option><option value="all">الكل</option><option value="new">مفتوح</option><option value="new">بلاغ جديد</option><option value="received">استُلم</option><option value="issued">أمر الصيانة</option><option value="sheet">ورقة الإصلاح</option><option value="at_workshop">في الورشة</option><option value="waiting_parts">بانتظار قطع</option><option value="done">مغلق</option><option value="cancelled">ملغي</option></select>
           <input id="qAll" placeholder="بحث برقم الأمر أو الأصل أو العطل…">
         </div>
         <div class="tw"><table class="cards"><thead><tr><th>الأمر</th><th>القسم</th><th>الأصل</th><th>العطل</th><th>الحالة</th><th>الفتح</th><th>المدة</th><th>التكلفة</th><th>على السائق</th><th></th></tr></thead><tbody id="b-all"></tbody></table></div></div>
@@ -222,12 +222,15 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
   var SKEY = 'wfsb_session';
   var EMBED = window.parent !== window;
   if (EMBED) document.body.classList.add('embed');
-  var ST = { new:'مفتوح', in_progress:'في الورشة', waiting_parts:'بانتظار قطع', done:'مغلق', cancelled:'ملغي' };
-  var ST_CLS = { new:'warn', in_progress:'info', waiting_parts:'warn', done:'ok', cancelled:'mut' };
+  var ST = { new:'بلاغ جديد', received:'استُلم', issued:'أمر الصيانة', sheet:'ورقة الإصلاح جاهزة', at_workshop:'في الورشة',
+             waiting_parts:'بانتظار قطع', in_progress:'قيد التنفيذ', done:'مغلق', cancelled:'ملغي' };
+  var ST_H = { new:'بلاغ جديد', received:'وصل الإداري', issued:'تم طلب الصيانة', done:'تمت الصيانة', cancelled:'ملغي' };
+  var ST_CLS = { new:'warn', received:'info', issued:'info', sheet:'info', at_workshop:'warn', waiting_parts:'warn', in_progress:'info', done:'ok', cancelled:'mut' };
+  function stName(o){ return (o.kind === 'housing' ? (ST_H[o.status] || ST[o.status]) : ST[o.status]) || o.status; }
   var PR = { high:'عالية', normal:'عادية', low:'منخفضة' };
   var KIND = { vehicle:'سيارات', bike:'دبابات', housing:'سكنات', other:'أخرى' };
   var SRC = { fleet:'الأسطول', dbb_app:'تطبيق البلاغات', maint:'الصيانة', housing:'السكنات' };
-  var OPEN = ['new','in_progress','waiting_parts'];
+  var OPEN = ['new','received','issued','sheet','at_workshop','waiting_parts','in_progress'];
 
   function $(id){ return document.getElementById(id); }
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
@@ -373,9 +376,10 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
       var tot = Number(o.cost || 0) + Number(o.parts_cost || 0);
       return '<tr><td data-l="الأمر"><b>' + esc(o.order_no) + '</b><div class="muted sm">' + (SRC[o.source] || '') + (o.reporter ? ' · ' + esc(o.reporter) : '') + (o.priority === 'high' ? ' · <span class="pill bad">عالية</span>' : '') + '</div></td>' +
         '<td data-l="القسم">' + (KIND[o.kind] || o.kind) + '</td>' +
-        '<td data-l="الأصل">' + esc(o.asset_label || '—') + (o.project || o.site ? '<div class="muted sm">' + esc(o.project || o.site) + '</div>' : '') + '</td>' +
+        '<td data-l="الأصل">' + esc(o.asset_label || '—') + (o.project || o.site ? '<div class="muted sm">' + esc(o.project || o.site) + '</div>' : '') +
+          (o.driver_name ? '<div class="muted sm">السائق: ' + esc(o.driver_name) + '</div>' : '') + '</td>' +
         '<td data-l="العطل">' + esc(o.fault_type || '—') + (o.description ? '<div class="muted sm">' + esc(o.description) + '</div>' : '') + '</td>' +
-        '<td data-l="الحالة"><span class="pill ' + ST_CLS[o.status] + '">' + ST[o.status] + '</span>' +
+        '<td data-l="الحالة"><span class="pill ' + ST_CLS[o.status] + '">' + stName(o) + '</span>' +
           (o.close_req && isOpen(o) ? '<div class="muted sm"><span class="pill ok">طلب إغلاق' + (o.close_req_by ? ' · ' + esc(o.close_req_by) : '') + '</span></div>' : '') + '</td>' +
         '<td data-l="الفتح">' + esc(o.opened_at) + '</td>' +
         '<td data-l="المدة">' + (isOpen(o) ? days(o.opened_at) + ' يوم' : days(o.opened_at, o.closed_at) + ' يوم') + '</td>' +
@@ -387,9 +391,17 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
   }
   function nextBtns(o){
     var b = o.close_req ? '<button class="btn ok sm" data-st="' + o.id + '|done">إغلاق الأمر</button>' : '';
-    if (o.status === 'new') b += '<button class="btn sm" data-st="' + o.id + '|in_progress">في الورشة</button>';
-    if (o.status === 'in_progress') b += '<button class="btn ghost sm" data-st="' + o.id + '|waiting_parts">بانتظار قطع</button>';
-    if (o.status === 'waiting_parts') b += '<button class="btn sm" data-st="' + o.id + '|in_progress">رجع للورشة</button>';
+    if (o.kind === 'vehicle') {
+      if (o.status === 'new') b += '<button class="btn sm" data-st="' + o.id + '|received">استلام البلاغ</button>';
+      if (o.status === 'received') b += '<button class="btn sm" data-st="' + o.id + '|issued">جاري استخراج أمر الصيانة</button>';
+      if (o.status === 'issued' || o.status === 'sheet') b += '<button class="btn sm" data-sheet="' + o.id + '">' + (o.status === 'sheet' ? 'ورقة الإصلاح' : 'رفع ورقة الإصلاح') + '</button>';
+    } else if (o.kind === 'housing') {
+      if (o.status === 'new' || o.status === 'received') b += '<button class="btn sm" data-st="' + o.id + '|issued">تم طلب الصيانة</button>';
+      if (o.status === 'issued') b += '<button class="btn ok sm" data-st="' + o.id + '|done">تمت الصيانة</button>';
+    } else {
+      if (o.status === 'new') b += '<button class="btn sm" data-st="' + o.id + '|at_workshop">في الورشة</button>';
+      if (o.status === 'at_workshop') b += '<button class="btn ghost sm" data-st="' + o.id + '|waiting_parts">بانتظار قطع</button>';
+    }
     b += '<button class="btn ok sm" data-open="' + o.id + '" data-close="1">إغلاق</button>';
     return b;
   }
@@ -401,6 +413,7 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
   function wire(){
     on('data-st', function(v, b){ var x = v.split('|'); save(b, api('PATCH', 'maint_orders?id=eq.' + x[0], { status: x[1] }), 'تم تحديث الحالة'); });
     on('data-open', function(id, b){ details(id, b.getAttribute('data-close') === '1'); });
+    on('data-sheet', function(id, b){ sheetBox(id, b); });
 
   }
   function details(id, closing){
@@ -409,13 +422,14 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
     $('mBox').innerHTML = '<h3>أمر ' + esc(o.order_no) + ' · ' + KIND[o.kind] + '</h3>' +
       '<div class="muted sm" style="margin-bottom:12px">' + esc(o.asset_label || '—') + ' · ' + (SRC[o.source] || '') + ' · فُتح ' + esc(o.opened_at) + ' (' + (isOpen(o) ? days(o.opened_at) + ' يوم' : 'مغلق ' + esc(o.closed_at || '')) + ')</div>' +
       '<div class="form">' +
-      '<label class="f">الحالة<select id="mSt"' + dis + '>' + Object.keys(ST).map(function(s){ return '<option value="' + s + '"' + ((closing && s === 'done') || (!closing && s === o.status) ? ' selected' : '') + '>' + ST[s] + '</option>'; }).join('') + '</select></label>' +
+      '<label class="f">الحالة<select id="mSt"' + dis + '>' + Object.keys(o.kind === 'housing' ? ST_H : ST).map(function(s){ return '<option value="' + s + '"' + ((closing && s === 'done') || (!closing && s === o.status) ? ' selected' : '') + '>' + (o.kind === 'housing' ? ST_H[s] : ST[s]) + '</option>'; }).join('') + '</select></label>' +
       '<label class="f">الأولوية<select id="mPr"' + dis + '>' + Object.keys(PR).map(function(s){ return '<option value="' + s + '"' + (s === o.priority ? ' selected' : '') + '>' + PR[s] + '</option>'; }).join('') + '</select></label>' +
       '<label class="f">نوع العطل<input id="mFt" value="' + esc(o.fault_type || '') + '"' + dis + '></label>' +
       '<label class="f">الفني / المسؤول<input id="mMe" value="' + esc(o.mechanic || '') + '"' + dis + '></label>' +
       '<label class="f full">الوصف<input id="mDs" value="' + esc(o.description || '') + '"' + dis + '></label>' +
       '<label class="f">الورشة / المورد<input id="mVn" value="' + esc(o.vendor || '') + '"' + dis + '></label>' +
       '<label class="f">رقم الفاتورة<input id="mIn" value="' + esc(o.invoice_no || '') + '"' + dis + '></label>' +
+      '<label class="f">تلفيات أو حادث<select id="mDm"' + dis + '><option value="0"' + (o.damage ? '' : ' selected') + '>لا</option><option value="1"' + (o.damage ? ' selected' : '') + '>نعم — تُخصم من الراتب</option></select></label>' +
       '<label class="f">تكلفة الإصلاح<input id="mCo" type="number" min="0" step="0.01" value="' + (o.cost || 0) + '"' + dis + '></label>' +
       '<label class="f">قطع الغيار<input id="mPa" type="number" min="0" step="0.01" value="' + (o.parts_cost || 0) + '"' + dis + '></label>' +
       (hasWatheeq ? '<label class="f">تحميل على السائق (الإقامة)<input id="mIq" value="' + esc(chg(o.id).iqama || '') + '"' + dis + '></label>' +
@@ -426,7 +440,11 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
       '<div class="ft">' + (ro ? '' : '<button class="btn" id="mOk">حفظ</button>') + '<button class="btn ghost" id="mNo2">إغلاق النافذة</button></div>';
     $('modal').classList.remove('hide');
     $('mNo2').onclick = close;
-    if (hasWatheeq && hasFleet && o.kind === 'vehicle' && !chg(o.id).iqama && !ro) {
+    if (hasWatheeq && o.driver_iqama && !chg(o.id).iqama && !ro && $('mIq')) {
+      $('mIq').value = o.driver_iqama;
+      if ($('mHint')) { $('mHint').className = 'full hint ok'; $('mHint').textContent = 'سائق البلاغ: ' + (o.driver_name || o.driver_iqama) + ' — المبلغ المحمّل يظهر في وثيق وفي الرواتب.'; }
+    }
+    if (hasWatheeq && hasFleet && o.kind === 'vehicle' && !chg(o.id).iqama && !o.driver_iqama && !ro) {
       rpc('maint_driver_hint', { p_plate: o.plate || o.asset_label }).then(function(h){
         if (h && h.iqama && $('mHint')) { $('mHint').className = 'full hint ok';
           $('mHint').innerHTML = 'السائق الحالي: ' + esc(h.name || '') + ' (' + esc(h.iqama) + ') <button class="btn ghost sm" id="mUse">تحميل عليه</button>';
@@ -436,7 +454,8 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
     if (!ro) $('mOk').onclick = function(){
       var body = { status: $('mSt').value, priority: $('mPr').value, fault_type: $('mFt').value.trim() || null, mechanic: $('mMe').value.trim() || null,
                    description: $('mDs').value.trim() || null, vendor: $('mVn').value.trim() || null, invoice_no: $('mIn').value.trim() || null,
-                   cost: +$('mCo').value || 0, parts_cost: +$('mPa').value || 0, notes: $('mNo').value.trim() || null };
+                   cost: +$('mCo').value || 0, parts_cost: +$('mPa').value || 0, notes: $('mNo').value.trim() || null,
+                   damage: $('mDm') ? $('mDm').value === '1' : false };
       var p = api('PATCH', 'maint_orders?id=eq.' + id, body);
       if (hasWatheeq) {
         var iq = normId($('mIq').value) || null, am = +$('mAm').value || 0;
@@ -447,6 +466,52 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
       }
       save($('mOk'), p, 'تم الحفظ').then(close);
     };
+  }
+  function shrink(file){
+    return new Promise(function(res, rej){
+      if (!/^image\//.test(file.type)) {
+        if (file.size > 1500000) return rej(new Error('الملف كبير — أرفق صورة أو PDF أصغر من 1.5 ميجا'));
+        var fr = new FileReader(); fr.onload = function(){ res({ mime:file.type || 'application/octet-stream', data:String(fr.result).split(',')[1], name:file.name, size:file.size }); };
+        fr.onerror = function(){ rej(new Error('تعذّرت قراءة الملف')); }; fr.readAsDataURL(file); return;
+      }
+      var img = new Image(), url = URL.createObjectURL(file);
+      img.onload = function(){
+        var mx = 1400, r = Math.min(1, mx / Math.max(img.width, img.height));
+        var c = document.createElement('canvas'); c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        var d = c.toDataURL('image/jpeg', 0.75); URL.revokeObjectURL(url);
+        res({ mime:'image/jpeg', data:d.split(',')[1], name:(file.name || 'sheet') + '.jpg', size:Math.round(d.length * 0.75) });
+      };
+      img.onerror = function(){ URL.revokeObjectURL(url); rej(new Error('تعذّرت قراءة الصورة')); };
+      img.src = url;
+    });
+  }
+  function sheetBox(id, btn){
+    var o = O.filter(function(x){ return x.id === id; })[0]; if (!o) return;
+    api('GET', 'maint_files?select=id,name,mime,data,by_name,created_at&order=created_at.desc&limit=1&kind=eq.sheet&order_id=eq.' + id).then(function(rows){
+      var f = (rows || [])[0];
+      $('mBox').innerHTML = '<h3>ورقة الإصلاح — ' + esc(o.order_no) + '</h3>' +
+        '<div class="muted sm" style="margin-bottom:10px">' + esc(o.asset_label || '') + (o.driver_name ? ' · السائق ' + esc(o.driver_name) : '') + '</div>' +
+        (f ? (/^image\//.test(f.mime || '') ? '<img src="data:' + esc(f.mime) + ';base64,' + f.data + '" style="width:100%;border-radius:10px;border:1px solid var(--line)">'
+              : '<a class="btn ghost" href="data:' + esc(f.mime) + ';base64,' + f.data + '" download="' + esc(f.name || 'sheet') + '">تنزيل الملف</a>') +
+             '<div class="muted sm" style="margin-top:8px">رفعها ' + esc(f.by_name || '') + ' · ' + esc(String(f.created_at).slice(0, 16).replace('T', ' ')) + '</div>'
+           : '<div class="muted sm">لم تُرفع ورقة الإصلاح بعد.</div>') +
+        (canEdit ? '<div class="form" style="margin-top:12px"><label class="f full">' + (f ? 'استبدال الورقة' : 'رفع ورقة الإصلاح (صورة أو PDF)') +
+          '<input type="file" id="mFile" accept="image/*,application/pdf"></label></div><div class="hint" id="mFH"></div>' : '') +
+        '<div class="ft"><button class="btn ghost" id="mNo2">إغلاق</button></div>';
+      $('modal').classList.remove('hide');
+      $('mNo2').onclick = close;
+      var fi = $('mFile');
+      if (fi) fi.onchange = function(){
+        var file = fi.files[0]; if (!file) return;
+        $('mFH').className = 'hint'; $('mFH').textContent = 'جارٍ الرفع…';
+        shrink(file).then(function(x){
+          return api('POST', 'maint_files', { order_id:id, kind:'sheet', name:x.name, mime:x.mime, data:x.data, size:x.size, by_name:(me && (me.name || me.email)) || null })
+            .then(function(){ return api('PATCH', 'maint_orders?id=eq.' + id, { status:'sheet' }); });
+        }).then(function(){ $('mFH').className = 'hint ok'; $('mFH').textContent = 'تم الرفع — المشرف يشوفها الآن ويقدر يوجّه المركبة للورشة'; load(); setTimeout(close, 1200); })
+          .catch(function(e){ $('mFH').className = 'hint bad'; $('mFH').textContent = e.message; });
+      };
+    }).catch(function(e){ toast(e.message, 5000); });
   }
   function close(){ $('modal').classList.add('hide'); }
   $('modal').onclick = function(e){ if (e.target === $('modal')) close(); };
