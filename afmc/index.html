@@ -436,6 +436,11 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
             <span style="flex:1"></span><button class="btn ghost sm" data-fx="asg-preview">معاينة</button><button class="btn sm hide" data-fx="asg-apply">تطبيق</button><button class="btn ghost sm hide" data-fx="asg-undo">تراجع</button></div>
           <div class="fixrow"><div><b>تصحيح المسمّى الوظيفي</b><div class="sub" id="fxJobNote">يفصل اسم المشروع عن المسمّى، ويأخذه من مهنة الإقامة أو نوع المركبة المسندة، ويترك الباقي فارغاً بدل اختراع مسمّى.</div></div>
             <span style="flex:1"></span><button class="btn ghost sm" data-fx="job-preview">معاينة</button><button class="btn sm hide" data-fx="job-apply">تطبيق</button><button class="btn ghost sm hide" data-fx="job-undo">تراجع</button></div>
+          <div class="fixrow"><div><b>معرّفات المناديب (نينجا · كيمارت)</b><div class="sub" id="fxIdNote">ارفع كشف المعرفات (Excel) لربط رقم الإقامة بمعرّف المنصّة — يُفتح كمعاينة أولاً، ولا يُستبدل معرّف قائم إلا بطلبك.</div></div>
+            <span style="flex:1"></span>
+            <select id="fxIdPlat" style="padding:6px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);font:inherit;font-size:12.5px"><option value="">كشف تلقائي</option><option value="NINJA">نينجا</option><option value="KEEMART">كيمارت</option><option value="KEETA">كيتا</option><option value="NOON">نون</option></select>
+            <label class="btn ghost sm" style="cursor:pointer">اختيار ملف<input type="file" id="fxIdFile" accept=".csv,.xlsx,.xls" hidden></label>
+            <button class="btn sm hide" data-fx="id-apply">تطبيق</button><button class="btn ghost sm hide" data-fx="id-replace">تطبيق مع استبدال المتعارض</button><button class="btn ghost sm hide" data-fx="id-undo">تراجع</button></div>
           <div class="fixrow"><div><b>تواريخ الالتحاق</b><div class="sub" id="fxJoinNote">لا يُخترع تاريخ: ارفع كشفاً (إقامة، تاريخ الالتحاق) من ملفات الموارد البشرية ويُستورد كما هو.</div></div>
             <span style="flex:1"></span><label class="btn ghost sm" style="cursor:pointer">اختيار ملف<input type="file" id="fxJoinFile" accept=".csv,.xlsx,.xls" hidden></label></div>
         </div>
@@ -466,7 +471,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260923233608";
+  var BUILD = "20260924143432";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -484,7 +489,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   var SUBS = { ninja:{ name:'Ninja', desc:'أداء الكباتن والـ SLA', src:'ninja.html' }, keemart:{ name:'Keemart', desc:'الحضور والتسوية والفواتير', src:'keemart.html' } };
   var AREA_AR = { employees:'الموظفون', vehicles:'المركبات', attendance:'الحضور', maintenance:'الصيانة' };
   var CODE_AR = { no_phone:'بلا جوال', dup_phone:'جوال مكرر', iqama_expired:'إقامة منتهية', iqama_soon:'إقامة قريبة الانتهاء', license_expired:'رخصة منتهية',
-                  no_project:'بلا مشروع', no_job_title:'بلا مسمّى وظيفي', no_join_date:'بلا تاريخ التحاق', assigned_no_driver:'مسلّمة بلا سائق', workshop_long:'ورشة طويلة', rule:'تعارض قواعد', driver_not_in_hr:'سائق غير موجود في وثيق',
+                  no_project:'بلا مشروع', no_job_title:'بلا مسمّى وظيفي', no_join_date:'بلا تاريخ التحاق', dup_platform_id:'معرّفان على نفس المنصّة', assigned_no_driver:'مسلّمة بلا سائق', workshop_long:'ورشة طويلة', rule:'تعارض قواعد', driver_not_in_hr:'سائق غير موجود في وثيق',
                   captain_not_in_hr:'كابتن غير مربوط', bike_not_in_fleet:'دباب غير مسجّل', active_no_vehicle:'نشط بلا مركبة في الأسطول' };
   var SEV_AR = { high:'عالية', medium:'متوسطة', low:'منخفضة' };
 
@@ -1097,6 +1102,14 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
           toast('تم التراجع: حُذف ' + fxNum(r.removed) + ' وأُعيد ' + fxNum(r.restored));
           loadReview(); homeMeta();
         }).catch(function(e){ done(); toast('تعذّر: ' + e.message); });
+      } else if (k === 'id-apply') { done(); idApply(false);
+      } else if (k === 'id-replace') { done(); idApply(true);
+      } else if (k === 'id-undo') {
+        if (!confirm('التراجع عن آخر نشر للمعرفات؟')) { done(); return; }
+        rpc('platform_ids_undo', {}).then(function(r){
+          done(); fxBtn('id-undo').classList.add('hide');
+          toast('تم التراجع عن ' + fxNum(r.removed) + ' ربط'); loadReview();
+        }).catch(function(e){ done(); toast(e.message, 5000); });
       } else if (k === 'job-preview') {
         rpc('hr_jobs_fix', { p_apply:false }).then(function(r){
           done();
@@ -1121,6 +1134,112 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       }
     };
   });
+  /* ---------- معرّفات المناديب: إقامة ← معرّف المنصّة ---------- */
+  var idRows = null, idPlat = '';
+  function withXlsx(cb, onFail){
+    if (window.XLSX) return cb();
+    var sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    sc.onload = cb; sc.onerror = onFail || function(){ toast('تعذّر تحميل قارئ Excel — استخدم CSV'); };
+    document.head.appendChild(sc);
+  }
+  function idDigits(v){
+    return String(v == null ? '' : v).replace(/[٠-٩]/g, function(d){ return '٠١٢٣٤٥٦٧٨٩'.indexOf(d); })
+      .replace(/[۰-۹]/g, function(d){ return '۰۱۲۳۴۵۶۷۸۹'.indexOf(d); }).replace(/\D/g, '');
+  }
+  function idPick(head, keys){
+    for (var i = 0; i < head.length; i++) { var h = String(head[i] || '').replace(/\s+/g, ' ').trim();
+      for (var k = 0; k < keys.length; k++) if (h.indexOf(keys[k]) >= 0) return i; }
+    return -1;
+  }
+  function idParse(rows, fname){
+    if (!rows.length) return null;
+    var head = rows[0].map(function(h){ return String(h == null ? '' : h); });
+    var cIq = idPick(head, ['الاقامة','الإقامة','الاقامه','iqama']);
+    var cId = idPick(head, ['الايداي','الايدي','الآيدي','ID NO','ID']);
+    var cNm = idPick(head, ['اسم السائق','اسم المندوب','الاسم','name']);
+    var cPh = idPick(head, ['الجوال','جوال','phone']);
+    var cNt = idPick(head, ['الجنسي']);
+    if (cIq < 0 || cId < 0) return null;
+    /* الكشف من الملف نفسه أولاً — القائمة مجرد بديل لو تعذّر الكشف */
+    var blob = (fname + ' ' + head.join(' ') + ' ' + rows.slice(1, 8).map(function(r){ return r.join(' '); }).join(' ')).toUpperCase();
+    var plat = /KEEMART|كيمارت/.test(blob) ? 'KEEMART' : /NINJA|نينجا/.test(blob) ? 'NINJA'
+             : /KEETA|كيتا/.test(blob) ? 'KEETA' : /NOON|نون/.test(blob) ? 'NOON' : ($('fxIdPlat').value || '');
+    var out = [];
+    rows.slice(1).forEach(function(r){
+      var iq = idDigits(r[cIq]), ex = String(r[cId] == null ? '' : r[cId]).trim();
+      if (!iq && !ex) return;
+      out.push({ iqama:iq, ext:ex, name:cNm >= 0 ? String(r[cNm] || '').trim() : '',
+                 phone:cPh >= 0 ? idDigits(r[cPh]) : '', nat:cNt >= 0 ? String(r[cNt] || '').trim() : '' });
+    });
+    return { plat:plat, rows:out };
+  }
+  function idPreview(){
+    if (!idRows || !idPlat) return;
+    rpc('platform_ids_import', { p_platform:idPlat, p_rows:idRows, p_apply:false }).then(function(r){
+      var PL = { NINJA:'نينجا', KEEMART:'كيمارت', KEETA:'كيتا', NOON:'نون' };
+      var h = '<b>' + esc(PL[r.platform] || r.platform) + '</b> — ' + fxNum(r.rows) + ' سطر: ' +
+        '<b style="color:var(--ok)">' + fxNum(r.new_links) + '</b> ربط جديد · ' + fxNum(r.already) + ' مربوط مسبقاً';
+      var notes = [];
+      if (r.conflict_employee) notes.push(fxNum(r.conflict_employee) + ' موظف له معرّف مختلف مسجّل');
+      if (r.conflict_id) notes.push(fxNum(r.conflict_id) + ' معرّف مملوك لموظف آخر');
+      if (r.not_in_watheeq) notes.push(fxNum(r.not_in_watheeq) + ' غير مسجّل في وثيق');
+      if (r.invalid) notes.push(fxNum(r.invalid) + ' سطر ناقص أو رقم إقامة غير صحيح');
+      if (r.nationality_fillable) notes.push(fxNum(r.nationality_fillable) + ' جنسية فارغة ستُملأ');
+      if (r.phone_differs) notes.push(fxNum(r.phone_differs) + ' جوال يختلف عن وثيق (لن يُكتب فوقه)');
+      if (notes.length) h += '<div style="margin-top:4px">' + notes.map(esc).join(' · ') + '</div>';
+      if ((r.missing_list || []).length) h += '<div style="margin-top:4px">غير مسجّلين: ' +
+        esc(r.missing_list.slice(0, 6).map(function(x){ return x.name || x.iqama; }).join('، ')) +
+        (r.missing_list.length > 6 ? ' وآخرون' : '') + '</div>';
+      $('fxIdNote').innerHTML = h;
+      fxBtn('id-apply').classList.toggle('hide', !r.new_links && !r.nationality_fillable);
+      fxBtn('id-replace').classList.toggle('hide', !(r.conflict_employee || r.conflict_id));
+    }).catch(function(e){ $('fxIdNote').textContent = 'تعذّر: ' + e.message; });
+  }
+  function idApply(replace){
+    if (!idRows || !idPlat) return;
+    var PLN = { NINJA:'نينجا', KEEMART:'كيمارت', KEETA:'كيتا', NOON:'نون' };
+    if (!confirm('نشر الكشف على منصّة «' + (PLN[idPlat] || idPlat) + '» — ' + idRows.length + ' سطر' +
+        (replace ? '، مع استبدال المعرفات المتعارضة؟' : '، بلا مساس بالمعرفات المتعارضة؟'))) return;
+    rpc('platform_ids_import', { p_platform:idPlat, p_rows:idRows, p_apply:true, p_replace:!!replace }).then(function(r){
+      toast('تم ربط ' + fxNum(r.linked) + ' معرّف' + (r.nationality_filled ? ' · وعُبّئت ' + fxNum(r.nationality_filled) + ' جنسية' : ''), 6000);
+      $('fxIdNote').textContent = 'آخر تنفيذ: ' + fxNum(r.linked) + ' ربط · ' + fxNum(r.already) + ' مربوط مسبقاً · ' +
+        fxNum(r.not_in_watheeq) + ' غير مسجّل في وثيق';
+      fxBtn('id-apply').classList.add('hide'); fxBtn('id-replace').classList.add('hide');
+      fxBtn('id-undo').classList.remove('hide');
+      loadReview();
+    }).catch(function(e){ toast(e.message, 6000); });
+  }
+  $('fxIdFile').onchange = function(){
+    var f = this.files[0], fi = this; if (!f) return;
+    idRows = null; idPlat = ''; $('fxIdPlat').value = '';          /* كل ملف يُكشف من جديد */
+    ['id-apply','id-replace','id-undo'].forEach(function(k){ fxBtn(k).classList.add('hide'); });
+    var go = function(rows){
+      var r = idParse(rows, f.name);
+      if (!r) { toast('لم أجد عمودي «الإقامة» و«المعرّف» في الملف'); fi.value = ''; return; }
+      if (!r.plat) { toast('حدّد المنصّة من القائمة ثم أعد اختيار الملف'); fi.value = ''; return; }
+      idRows = r.rows; idPlat = r.plat; fi.value = '';
+      $('fxIdPlat').value = r.plat;
+      idPreview();
+    };
+    if (/\.csv$/i.test(f.name)) {
+      var fr = new FileReader();
+      fr.onload = function(){ go(String(fr.result).split(/\r?\n/).filter(Boolean).map(function(l){ return l.split(','); })); };
+      fr.readAsText(f, 'utf-8');
+    } else {
+      withXlsx(function(){
+        var fr2 = new FileReader();
+        fr2.onload = function(){
+          try { var wb = XLSX.read(new Uint8Array(fr2.result), { type:'array' });
+                go(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, raw:true, defval:'' })); }
+          catch(e){ toast('تعذّر قراءة الملف'); fi.value = ''; }
+        };
+        fr2.readAsArrayBuffer(f);
+      }, function(){ toast('تعذّر تحميل قارئ Excel — احفظ الملف كـ CSV'); fi.value = ''; });
+    }
+  };
+  $('fxIdPlat').onchange = function(){ if (idRows) { idPlat = this.value || idPlat; idPreview(); } };
+
   $('fxJoinFile').onchange = function(){
     var f = this.value && this.files[0]; if (!f) return;
     var fi = this;
