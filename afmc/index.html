@@ -471,7 +471,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260924143432";
+  var BUILD = "20260924204915";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -1302,7 +1302,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   var live = (function(){
     var TABLES = ['employees','vehicles','vehicle_assignments','app_records','app_kv','attendance_daily','profiles','inbox_items','inbox_comments','housing_buildings','housing_rooms','housing_contracts','housing_residents','maint_orders'];
     var TOPIC = 'realtime:afmc-live', ws = null, hb = null, ref = 0, joined = false, stopped = true, retry = 1000, sentTok = null, tokT = null;
-    var pend = {}, apps = {}, flushT = null, revT = 0;
+    var pend = {}, apps = {}, flushT = null, revT = 0, metaT = 0;
     function state(k, t){ var el = $('live'); el.className = 'live' + (k ? ' ' + k : ''); el.querySelector('span').textContent = t; }
     function send(o){ try { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); } catch(e){} }
     function start(){
@@ -1331,7 +1331,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
           if (m.event === 'postgres_changes' && m.payload && m.payload.data) {
             var d = m.payload.data, rec = d.record || d.old_record || {};
             pend[d.table] = 1; if (rec.app) apps[rec.app] = 1;
-            clearTimeout(flushT); flushT = setTimeout(flush, 500);
+            clearTimeout(flushT); flushT = setTimeout(flush, 1500);   /* كان 500 — دفعة أوسع تعني استعلامات أقل أثناء الرفع الجماعي */
           }
           if (m.event === 'phx_error' || m.event === 'phx_close') { try { ws.close(); } catch(e){} }
         };
@@ -1363,8 +1363,8 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       if (p.profiles) badges();
       if (p.inbox_items || p.inbox_comments || a.wf) ib.load();
       if (p.attendance_daily || a.ninja || a.keemart) { if (current === 'couriers') loadSummary(); }
-      if (!$('vRev').classList.contains('hide') && (core || p.attendance_daily) && Date.now() - revT > 4000) { revT = Date.now(); loadReview(); }
-      if (!current && !$('vSys').classList.contains('hide') && (core || p.maint_orders || p.housing_residents || p.housing_contracts || p.housing_rooms || p.attendance_daily || p.inbox_items)) homeMeta();
+      if (!$('vRev').classList.contains('hide') && (core || p.attendance_daily) && Date.now() - revT > 20000) { revT = Date.now(); loadReview(); }   /* كان 4 ثوانٍ — أثقل استعلام في المنصة */
+      if (!current && !$('vSys').classList.contains('hide') && (core || p.maint_orders || p.housing_residents || p.housing_contracts || p.housing_rooms || p.attendance_daily || p.inbox_items) && Date.now() - metaT > 15000) { metaT = Date.now(); homeMeta(); }
     }
     return { start: start, stop: stop, flush: flush, _pend: function(t, app){ pend[t] = 1; if (app) apps[app] = 1; flush(); } };
   })();

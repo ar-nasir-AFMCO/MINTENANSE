@@ -405,6 +405,18 @@
   </div>
 </div>
 
+<!-- شريط الفترة — الشهر الحالي افتراضياً -->
+<div class="card" id="pd-bar" style="padding:12px 16px;margin-bottom:1rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;">
+  <b style="font-size:14px;">الفترة</b>
+  <span id="pd-label" style="font-weight:700;color:var(--accent);"></span>
+  <span id="pd-count" style="color:var(--text3);font-size:12px;"></span>
+  <span style="flex:1;min-width:8px;"></span>
+  <label style="display:flex;align-items:center;gap:6px;">من <input type="date" id="pd-from" style="font:inherit;font-size:16px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);"></label>
+  <label style="display:flex;align-items:center;gap:6px;">إلى <input type="date" id="pd-to" style="font:inherit;font-size:16px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);"></label>
+  <button class="btn btn-ghost" onclick="periodSet(document.getElementById('pd-from').value,document.getElementById('pd-to').value)">عرض</button>
+  <button class="btn btn-ghost" id="pd-reset" onclick="periodMonth()" style="display:none;">↩ الشهر الحالي</button>
+</div>
+
 <!-- Alert Bar -->
 <div id="alert-bar" style="display:none;background:var(--red-soft);border:1px solid var(--red);color:var(--red);border-radius:12px;padding:10px 16px;margin-bottom:1.5rem;font-size:13px;font-weight:600;align-items:center;gap:10px;">
   <span class="pulse">🚨</span><span id="alert-text"></span>
@@ -694,6 +706,78 @@ let goals = JSON.parse(localStorage.getItem('fleet_goals_v24')) || {
 let myChart = null;
 let currentStats = null;
 
+/* ═══════════════════════════════════════════════
+   نافذة الفترة — العرض للشهر الحالي حتى تختار «من–إلى»
+   كل قراءة للتواريخ في اللوحة تمرّ من هنا: periodDates()
+   الأشهر المنتهية لا تُعرض إلا باختيار صريح للفترة.
+═══════════════════════════════════════════════ */
+const PERIOD_KEY = 'fleet_period_v1';
+let PERIOD = (function(){
+  try { const s = JSON.parse(localStorage.getItem(PERIOD_KEY) || 'null');
+        if (s && s.custom && s.from && s.to) return s; } catch(e){}
+  return { custom:false, from:'', to:'' };
+})();
+const AR_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+function pd2(n){ return String(n).padStart(2,'0'); }
+function todayYMD(){ const d=new Date(); return d.getFullYear()+'-'+pd2(d.getMonth()+1)+'-'+pd2(d.getDate()); }
+function monthOf(ymd){
+  const y = +ymd.slice(0,4), m = +ymd.slice(5,7);
+  return { from: y+'-'+pd2(m)+'-01', to: y+'-'+pd2(m)+'-'+pd2(new Date(y, m, 0).getDate()) };
+}
+function periodBounds(){
+  if (PERIOD.custom && PERIOD.from && PERIOD.to) return { from:PERIOD.from, to:PERIOD.to, custom:true };
+  let b = monthOf(todayYMD());
+  const all = Object.keys(historyLog).sort();   /* المصدر الخام — لا يمرّ بـperiodDates حتى لا تتكرّر المناداة */
+  /* الشهر الحالي بلا بيانات → أحدث شهر فيه بيانات، حتى لا تكون الشاشة فارغة بلا سبب */
+  if (all.length && !all.some(d => d >= b.from && d <= b.to)) b = monthOf(all[all.length-1]);
+  return { from:b.from, to:b.to, custom:false };
+}
+function periodDates(){
+  const b = periodBounds();
+  return Object.keys(historyLog).filter(d => d >= b.from && d <= b.to).sort();
+}
+function periodLabel(){
+  const b = periodBounds();
+  if (b.custom) return b.from + ' ← ' + b.to;
+  return AR_MONTHS[+b.from.slice(5,7)-1] + ' ' + b.from.slice(0,4);
+}
+function periodSave(){ try { localStorage.setItem(PERIOD_KEY, JSON.stringify(PERIOD)); } catch(e){} }
+function periodRender(){
+  const lb = document.getElementById('pd-label'); if (!lb) return;
+  const b = periodBounds(), ds = periodDates(), all = Object.keys(historyLog).length;
+  lb.textContent = periodLabel();
+  const c = document.getElementById('pd-count');
+  if (c) c.textContent = ds.length + ' يوم معروض' + (all > ds.length ? ' · ' + (all - ds.length) + ' يوم خارج الفترة' : '');
+  const f = document.getElementById('pd-from'), t = document.getElementById('pd-to');
+  if (f) f.value = b.from; if (t) t.value = b.to;
+  const r = document.getElementById('pd-reset'); if (r) r.style.display = b.custom ? '' : 'none';
+}
+function periodRefresh(){
+  periodRender();
+  const ds = periodDates();
+  const last = ds.length ? historyLog[ds[ds.length-1]] : null;
+  restoreCaptainsFromStats(last);
+  refreshDateSelectors();
+  updateUI(last); updateChart(); updateTrendDots();
+  updateComparison(); updateLeaderboard(); updatePredictive();
+}
+function periodSet(from, to){
+  if (!from || !to) { alert('اختر تاريخ البداية والنهاية.'); return; }
+  if (from > to) { alert('تاريخ البداية بعد تاريخ النهاية.'); return; }
+  PERIOD = { custom:true, from:from, to:to }; periodSave(); periodRefresh();
+}
+function periodMonth(){ PERIOD = { custom:false, from:'', to:'' }; periodSave(); periodRefresh(); }
+/* بعد رفع ملف: لو يوم الملف خارج الفترة المعروضة، انقل الفترة إليه
+   حتى لا يختفي ما رُفع للتو من الشاشة. */
+function periodCover(d){
+  if (!d) return;
+  const b = periodBounds(); if (d >= b.from && d <= b.to) return;
+  const m = monthOf(d), cur = monthOf(todayYMD());
+  PERIOD = (m.from === cur.from) ? { custom:false, from:'', to:'' } : { custom:true, from:m.from, to:m.to };
+  periodSave();
+}
+
+
 /* ── metric catalogue ── */
 const metricsInfo = {
   totDlv:'إجمالي الطلبات',avgHrs:'متوسط الساعات',avgDlv:'متوسط الطلبات',
@@ -739,9 +823,10 @@ window.onload = () => {
   const saved = localStorage.getItem('fleet_theme');
   if(saved==='dark'){document.documentElement.setAttribute('data-theme','dark');document.getElementById('theme-btn').innerText='☀️';}
   buildSeriesChips();
+  periodRender();
   if(Object.keys(historyLog).length>0){
-    const dates=Object.keys(historyLog).sort();
-    const last=historyLog[dates[dates.length-1]];
+    const dates=periodDates();
+    const last=dates.length?historyLog[dates[dates.length-1]]:null;
     restoreCaptainsFromStats(last);   // يعيد بناء captainsMap + currentStats بعد أي reload
     refreshDateSelectors();
     updateUI(last);
@@ -872,8 +957,10 @@ function processData(data,fDate){
   historyLog[fDate]=stats;
   localStorage.setItem('fleet_hub_v24',JSON.stringify(historyLog));
   currentStats=stats;
+  periodCover(fDate);           /* اليوم المرفوع يجب أن يظهر ولو كان خارج الفترة */
+  periodRender();
   refreshDateSelectors();
-  const dates=Object.keys(historyLog).sort();
+  const dates=periodDates();
   const idx=dates.indexOf(fDate);
   document.getElementById('cmp-to').value=fDate;
   if(idx>0) document.getElementById('cmp-from').value=dates[idx-1];
@@ -937,7 +1024,7 @@ function fmtDot(k,v){
 const DOT_SIZES=[20,25,32];
 
 function updateTrendDots(){
-  const allDates=Object.keys(historyLog).sort();
+  const allDates=periodDates();
   const last3=allDates.slice(-3);
   Object.keys(metricsInfo).forEach(k=>{
     const el=document.getElementById('td-'+k);
@@ -989,7 +1076,7 @@ function buildSeriesChips(){
 }
 
 function updateChart(){
-  const dates=Object.keys(historyLog).sort();
+  const dates=periodDates();
   const ctx=document.getElementById('performanceChart').getContext('2d');
   if(myChart) myChart.destroy();
   const isDark=document.documentElement.getAttribute('data-theme')==='dark';
@@ -1037,7 +1124,7 @@ function updateChart(){
    Date selectors + comparison table
 ═══════════════════════════════════════════════ */
 function refreshDateSelectors(){
-  const dates=Object.keys(historyLog).sort();
+  const dates=periodDates();
   const fromEl=document.getElementById('cmp-from');
   const toEl=document.getElementById('cmp-to');
   const fv=fromEl.value,tv=toEl.value;
@@ -1127,7 +1214,7 @@ function updateLeaderboard(){
    Predictive
 ═══════════════════════════════════════════════ */
 function updatePredictive(){
-  const dates=Object.keys(historyLog).sort();
+  const dates=periodDates();
   const caps=Array.from(captainsMap.values());
   const el=document.getElementById('predict-list');
   if(!caps.length||dates.length<2){el.innerHTML='<div class="empty-state">ارفع ملفين على الأقل</div>';return;}
@@ -1260,7 +1347,7 @@ function toggleDark(){
 ═══════════════════════════════════════════════ */
 function exportExcel(){
   if(!currentStats){alert('ارفع ملف SLA أولاً');return;}
-  const dates=Object.keys(historyLog).sort();
+  const dates=periodDates();
   const date=dates[dates.length-1]||'N/A';
   const rows=Object.keys(metricsInfo).map(k=>[metricsInfo[k],currentStats[k]?.toFixed?currentStats[k].toFixed(1):currentStats[k]]);
   const ws=XLSX.utils.aoa_to_sheet([['المؤشر','القيمة'],...rows]);
@@ -1274,7 +1361,7 @@ function exportExcel(){
 ═══════════════════════════════════════════════ */
 function exportRedFlags(){
   if(!currentStats||!currentStats.captains){alert('ارفع ملف SLA أولاً');return;}
-  const dates=Object.keys(historyLog).sort();
+  const dates=periodDates();
   const date=dates[dates.length-1]||'N/A';
   const caps=currentStats.captains;
 
@@ -1308,12 +1395,12 @@ function exportRedFlags(){
 
 // تصدير الساعات: إجماليات + هدف لكل سائق (أيام الدوام × 12 ساعة) + المتبقي + صفحة بالتواريخ
 function exportHoursOrders(){
-  if(!Object.keys(historyLog).length){ alert('لا توجد بيانات — ارفع ملف SLA أولاً'); return; }
+  if(!periodDates().length){ alert('لا توجد بيانات في الفترة المعروضة (' + periodLabel() + ').'); return; }
   const TARGET_PER_DAY = 12;                            // الهدف: 12 ساعة لكل يوم دوام
   const num = v => parseFloat(v)||0;
   const r1  = v => Math.round(v*10)/10;                 // رقم بخانة عشرية واحدة
   const bar = p => { const f=Math.max(0,Math.min(10,Math.round(p/10))); return '█'.repeat(f)+'░'.repeat(10-f); };
-  const dates = Object.keys(historyLog).sort();
+  const dates = periodDates();
   const captains = [...buildCaptainIndex().values()]
     .sort((a,b)=>(a.name||a.id).localeCompare(b.name||b.id,'ar'));
 
@@ -1390,7 +1477,7 @@ function exportHoursOrders(){
    Clear
 ═══════════════════════════════════════════════ */
 function clearHistory(){
-  if(confirm('مسح كل سجلات الأداء؟ الأهداف المخصّصة ستبقى محفوظة. لا يمكن التراجع.')){
+  if(confirm('مسح سجلات الأداء من هذا الجهاز؟\n\nالمحفوظ في القاعدة لا يُمسح — يرجع تلقائياً عند إعادة التحميل وتُطبَّق أحدث نسخة.\nالأهداف المخصّصة تبقى محفوظة.')){
     localStorage.removeItem('fleet_hub_v24');
     // لا نمسح fleet_goals_v24 — الأهداف المخصّصة تبقى محفوظة عبر التصفير
     location.reload();
@@ -1420,7 +1507,7 @@ function buildCaptainIndex(){
 function getCaptainHistory(id){
   const target = String(id);
   const out = [];
-  Object.keys(historyLog).sort().forEach(date=>{
+  periodDates().forEach(date=>{
     const rec = (historyLog[date].captains||[]).find(c=>String(c.id)===target);
     if(rec) out.push(Object.assign({date}, rec));
   });
@@ -1544,7 +1631,7 @@ function openCaptainDetail(id){
 
   // ── الصف 3: التقدير والتوصية — مقابل الأهداف (الساعات + أيام الدوام + الطلبات) ──
   const gHrs = num(goals.avgHrs)||10, gOrd = num(goals.avgDlv)||25;
-  const totalDays = Object.keys(historyLog).length, daysWorked = n;
+  const totalDays = periodDates().length, daysWorked = n;
   const hrsOK = avg('hrs')>=gHrs, ordOK = avg('ord')>=gOrd, dayOK = totalDays>0 ? (daysWorked/totalDays)>=0.8 : true;
   const hrsAch = gHrs>0 ? Math.min(avg('hrs')/gHrs,1) : 1;
   const ordAch = gOrd>0 ? Math.min(avg('ord')/gOrd,1) : 1;
@@ -2145,7 +2232,7 @@ function downloadHTML(){
   if (window.__wfSbDash) return; window.__wfSbDash = true;
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
-  var SKEY = 'wfsb_session', PULL_EVERY = 60000;
+  var SKEY = 'wfsb_session', PULL_EVERY = 300000;   /* كان 60 ثانية — خُفّض لتقليل الضغط على القاعدة؛ العودة للتبويب تسحب فوراً */
 
   var APP = null;
   try { if (typeof captainsHist !== 'undefined' && typeof captainMeta !== 'undefined') APP = 'keemart'; } catch(e){}
@@ -2272,6 +2359,7 @@ function downloadHTML(){
       var changed = 0, newest = newestDate(), gotNewest = null;
       (rows || []).forEach(function(row){
         var d = row.key, r = row.data || {}; if (!r.hist) return;
+        if (queue[d]) return;   /* رفعٌ محلي لم يُحفظ بعد — المحلي هو الأحدث */
         var full = r.full; delete r.full;
         var h = hash(r); if (meta.days[d] === h && historyLog[d] && isMine(historyLog[d])) return;
         var local = dayRecord(d);
@@ -2287,6 +2375,7 @@ function downloadHTML(){
   }
   function applyLocal(full){
     try { localStorage.setItem('fleet_hub_v24', JSON.stringify(historyLog)); } catch(e){}
+    try { if (typeof periodRender === 'function') periodRender(); } catch(e){}
     var d = newestDate(), last = historyLog[d];
     try {
       if (APP === 'ninja') {
@@ -2410,7 +2499,15 @@ function downloadHTML(){
       if (!meta || meta.user !== sess.user_id) resetMeta();
       hookProcess(); setChip('sync');
       return pull().then(function(){ setChip('ok'); return firstUpload(); }).then(function(){
-        if (!timer) timer = setInterval(function(){ if (document.visibilityState !== 'hidden') pull().then(function(){ setChip('ok'); }).catch(function(e){ setChip('off', e.message); }); }, PULL_EVERY);
+        if (!timer) {
+          timer = setInterval(function(){ if (document.visibilityState !== 'hidden') pull().then(function(){ setChip('ok'); }).catch(function(e){ setChip('off', e.message); }); }, PULL_EVERY);
+          var lastSeen = Date.now();
+          document.addEventListener('visibilitychange', function(){
+            if (document.visibilityState === 'hidden') { lastSeen = Date.now(); return; }
+            if (!me || Date.now() - lastSeen < 20000) return;   /* تبديل سريع بين التبويبات لا يستدعي سحباً */
+            setChip('sync'); pull().then(function(){ setChip('ok'); }).catch(function(e){ setChip('off', e.message); });
+          });
+        }
       });
     }).catch(function(e){ if (!sess) showGate(); else { setChip('off', e.message); setTimeout(start, 20000); } });
   }
