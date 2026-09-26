@@ -181,6 +181,17 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 .kpi .v{display:flex;flex-direction:column;line-height:1.2}.kpi .v b{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}.kpi .v span{font-size:10.5px;color:var(--muted)}
 .frames{flex:1;position:relative;background:var(--surface);min-height:0}
 .frames iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff}
+.rvdlg{position:fixed;inset:0;z-index:60;background:rgba(8,25,24,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+.rvdlg.hide{display:none}
+.rvdlg .box{background:var(--surface);border-radius:var(--r);width:min(440px,100%);padding:18px 20px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.rvdlg h3{margin:0 0 4px;font-size:16px}
+.rvdlg .who{font-size:12.5px;color:var(--muted);margin-bottom:14px}
+.rvdlg label{display:block;font-size:12.5px;color:var(--ink-2);margin:10px 0 4px}
+.rvdlg select,.rvdlg textarea{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:16px}
+.rvdlg textarea{min-height:64px;resize:vertical}
+.rvdlg .act{display:flex;gap:8px;margin-top:16px}
+.rvdlg .act .btn{flex:1;min-height:44px}
+.rvbtn{min-height:34px;padding:5px 12px;font-size:12.5px}
 .loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:10px;color:var(--muted);background:var(--surface);z-index:1;font-size:13px}
 .spin{width:18px;height:18px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--brand);animation:sp 0.8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
@@ -452,10 +463,32 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
           <input id="revQ" placeholder="بحث بالاسم أو الإقامة أو اللوحة…">
           <select id="revSev"><option value="">كل الأولويات</option><option value="high">عالية</option><option value="medium">متوسطة</option><option value="low">منخفضة</option></select>
           <select id="revProj"><option value="">كل المشاريع</option></select>
+          <select id="revMode" aria-label="حالة الملاحظات"><option value="open">المفتوحة</option><option value="approved">المعتمدة</option></select>
         </div>
-        <div class="card tbl"><table><thead><tr><th>الأولوية</th><th>النوع</th><th>المرجع</th><th>الاسم</th><th>المشروع</th><th>الملاحظة</th></tr></thead><tbody id="revBody"></tbody></table></div>
+        <div class="card tbl"><table><thead><tr><th scope="col">الأولوية</th><th scope="col">النوع</th><th scope="col">المرجع</th><th scope="col">الاسم</th><th scope="col">المشروع</th><th scope="col">الملاحظة</th><th scope="col">الإجراء</th></tr></thead><tbody id="revBody"></tbody></table></div>
         <div class="sub" id="revFoot" style="margin-top:8px"></div>
       </main>
+    </div>
+  </div>
+</div>
+
+<div class="rvdlg hide" id="rvDlg" role="dialog" aria-modal="true" aria-labelledby="rvDlgT">
+  <div class="box">
+    <h3 id="rvDlgT">اعتماد ملاحظة</h3>
+    <div class="who" id="rvDlgWho"></div>
+    <label for="rvDlgDays">مدّة الاعتماد</label>
+    <select id="rvDlgDays">
+      <option value="30">٣٠ يوماً</option>
+      <option value="90" selected>٩٠ يوماً</option>
+      <option value="180">١٨٠ يوماً</option>
+      <option value="365">سنة</option>
+      <option value="0">بلا انتهاء</option>
+    </select>
+    <label for="rvDlgNote">السبب</label>
+    <textarea id="rvDlgNote" placeholder="لماذا هذه الحالة مقبولة؟"></textarea>
+    <div class="act">
+      <button class="btn" id="rvDlgOk">اعتماد</button>
+      <button class="btn ghost" id="rvDlgX">إلغاء</button>
     </div>
   </div>
 </div>
@@ -471,7 +504,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260924204915";
+  var BUILD = "20260926202012";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -1027,21 +1060,25 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   };
 
   /* ---------------- data review ---------------- */
-  var rev = [], revArea = '';
+  var rev = [], revArea = '', revMode = 'open';
+  function canApprove(){ return !!(me && me.perms && me.perms.manage); }
   function loadReview(){
-    if (!rev.length) $('revBody').innerHTML = '<tr><td colspan="6" class="empty">جارٍ التحميل…</td></tr>';
-    api('GET', 'v_data_review?select=area,code,severity,key,name,project,issue&limit=5000').then(function(r){
+    if (!rev.length) $('revBody').innerHTML = '<tr><td colspan="7" class="empty">جارٍ التحميل…</td></tr>';
+    var src = revMode === 'approved'
+      ? 'v_data_review_approved?select=area,code,severity,key,name,project,issue,approved_at,approved_by_name,expires_on,note&limit=5000'
+      : 'v_data_review?select=area,code,severity,key,name,project,issue&limit=5000';
+    api('GET', src).then(function(r){
       rev = r || []; var projs = {};
       rev.forEach(function(x){ if (x.project) projs[x.project] = 1; });
       var cur = $('revProj').value;
       $('revProj').innerHTML = '<option value="">كل المشاريع</option>' + Object.keys(projs).sort().map(function(p){ return '<option' + (p === cur ? ' selected' : '') + '>' + esc(p) + '</option>'; }).join('');
       tiles(); renderRev();
-    }).catch(function(e){ $('revBody').innerHTML = '<tr><td colspan="6" class="empty">تعذّر التحميل: ' + esc(e.message) + '</td></tr>'; });
+    }).catch(function(e){ $('revBody').innerHTML = '<tr><td colspan="7" class="empty">تعذّر التحميل: ' + esc(e.message) + '</td></tr>'; });
   }
   function tiles(){
     var by = {}; rev.forEach(function(x){ var k = x.area + '|' + x.code; by[k] = by[k] || { area:x.area, code:x.code, sev:x.severity, n:0 }; by[k].n++; });
     var arr = Object.keys(by).map(function(k){ return by[k]; }).sort(function(a, b){ return ({high:0,medium:1,low:2}[a.sev] - {high:0,medium:1,low:2}[b.sev]) || b.n - a.n; });
-    $('tiles').innerHTML = '<button class="tile' + (revArea ? '' : ' on') + '" data-k=""><div class="n">' + rev.length + '</div><div class="l">كل الملاحظات</div></button>'
+    $('tiles').innerHTML = '<button class="tile' + (revArea ? '' : ' on') + '" data-k=""><div class="n">' + rev.length + '</div><div class="l">' + (revMode === 'approved' ? 'كل المعتمدة' : 'كل الملاحظات') + '</div></button>'
       + arr.map(function(t){ var k = t.area + '|' + t.code; return '<button class="tile' + (revArea === k ? ' on' : '') + '" data-k="' + esc(k) + '"><div class="n">' + t.n + ' <span class="sev ' + t.sev + '">' + SEV_AR[t.sev] + '</span></div><div class="l">' + esc(CODE_AR[t.code] || t.code) + ' — ' + esc(AREA_AR[t.area] || t.area) + '</div></button>'; }).join('');
     $('tiles').querySelectorAll('.tile').forEach(function(b){ b.onclick = function(){ revArea = b.getAttribute('data-k'); tiles(); renderRev(); }; });
   }
@@ -1057,14 +1094,65 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   function renderRev(){
     var f = filtered(), shown = f.slice(0, 600);
     $('revBody').innerHTML = shown.length ? shown.map(function(x){
+      var act = '';
+      if (canApprove()) act = revMode === 'approved'
+        ? '<button class="btn ghost sm rvbtn" data-rv="off" data-c="' + esc(x.code) + '" data-k="' + esc(x.key) + '">سحب الاعتماد</button>'
+        : '<button class="btn ghost sm rvbtn" data-rv="on" data-c="' + esc(x.code) + '" data-k="' + esc(x.key) + '" data-n="' + esc(x.name || x.key) + '">اعتماد</button>';
+      var extra = revMode === 'approved'
+        ? '<div class="sub">اعتمدها ' + esc(x.approved_by_name || '—') + (x.expires_on ? ' · حتى ' + esc(x.expires_on) : ' · بلا انتهاء') + (x.note ? ' · ' + esc(x.note) : '') + '</div>' : '';
       return '<tr><td><span class="sev ' + x.severity + '">' + SEV_AR[x.severity] + '</span></td><td>' + esc(CODE_AR[x.code] || x.code) + '<div class="sub">' + esc(AREA_AR[x.area] || x.area) + '</div></td>'
-        + '<td style="direction:ltr;text-align:right">' + esc(x.key) + '</td><td>' + esc(x.name || '—') + '</td><td>' + esc(x.project || '—') + '</td><td>' + esc(x.issue) + '</td></tr>';
-    }).join('') : '<tr><td colspan="6" class="empty">لا توجد ملاحظات بهذه التصفية</td></tr>';
-    var showApply = revArea === 'employees|active_no_vehicle' && me && (me.role === 'admin' || me.role === 'manager') && f.length > 0;
+        + '<td style="direction:ltr;text-align:right">' + esc(x.key) + '</td><td>' + esc(x.name || '—') + '</td><td>' + esc(x.project || '—') + '</td><td>' + esc(x.issue) + extra + '</td><td>' + act + '</td></tr>';
+    }).join('') : '<tr><td colspan="7" class="empty">' + (revMode === 'approved' ? 'لا توجد ملاحظات معتمدة' : 'لا توجد ملاحظات بهذه التصفية') + '</td></tr>';
+    $('revBody').querySelectorAll('[data-rv]').forEach(function(b){
+      b.onclick = function(){
+        if (b.getAttribute('data-rv') === 'on') rvOpen(b.getAttribute('data-c'), b.getAttribute('data-k'), b.getAttribute('data-n'));
+        else rvRevoke(b.getAttribute('data-c'), b.getAttribute('data-k'));
+      };
+    });
+    var showApply = revMode === 'open' && revArea === 'employees|active_no_vehicle' && me && (me.role === 'admin' || me.role === 'manager') && f.length > 0;
     $('applyBox').classList.toggle('hide', !showApply); if (showApply) $('applyBtn').textContent = 'تطبيق على المعروضين (' + f.length + ')';
     $('revFoot').textContent = f.length > shown.length ? 'يُعرض أول ' + shown.length + ' من ' + f.length + '. صدّر CSV للقائمة كاملة.' : f.length + ' ملاحظة';
   }
   ['revQ','revSev','revProj'].forEach(function(id){ $(id).oninput = renderRev; });
+  $('revMode').onchange = function(){ revMode = this.value; rev = []; revArea = ''; loadReview(); };
+
+  /* ---------- اعتماد الملاحظات ---------- */
+  var rvCur = null, rvPrev = null;
+  function rvOpen(code, key, name){
+    rvCur = { code: code, key: key };
+    rvPrev = document.activeElement;
+    $('rvDlgWho').textContent = (CODE_AR[code] || code) + ' — ' + (name || key);
+    $('rvDlgNote').value = ''; $('rvDlgDays').value = '90';
+    $('rvDlg').classList.remove('hide');
+    $('rvDlgDays').focus();
+  }
+  function rvClose(){
+    $('rvDlg').classList.add('hide'); rvCur = null;
+    try { if (rvPrev && rvPrev.focus) rvPrev.focus(); } catch(e){}
+  }
+  $('rvDlgX').onclick = rvClose;
+  $('rvDlg').addEventListener('click', function(e){ if (e.target === $('rvDlg')) rvClose(); });
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Escape' || $('rvDlg').classList.contains('hide')) return;
+    e.stopPropagation(); rvClose();
+  }, true);
+  $('rvDlgOk').onclick = function(){
+    if (!rvCur) return;
+    var b = this; b.disabled = true;
+    rpc('review_approve', { p_code: rvCur.code, p_key: rvCur.key,
+                            p_days: parseInt($('rvDlgDays').value, 10) || 0,
+                            p_note: $('rvDlgNote').value })
+      .then(function(r){ b.disabled = false; rvClose();
+        toast(r && r.expires_on ? 'اعتُمدت حتى ' + r.expires_on : 'اعتُمدت بلا انتهاء');
+        rev = []; loadReview(); })
+      .catch(function(e){ b.disabled = false; toast('تعذّر: ' + e.message); });
+  };
+  function rvRevoke(code, key){
+    if (!confirm('سحب الاعتماد؟ سترجع الملاحظة إلى القائمة المفتوحة.')) return;
+    rpc('review_unapprove', { p_code: code, p_key: key })
+      .then(function(){ toast('سُحب الاعتماد'); rev = []; loadReview(); })
+      .catch(function(e){ toast('تعذّر: ' + e.message); });
+  }
   $('applyBtn').onclick = function(){
     var keys = filtered().map(function(x){ return x.key; });
     if (!keys.length || !confirm('تحويل ' + keys.length + ' موظف إلى «متوقف عن العمل» في وثيق؟')) return;
