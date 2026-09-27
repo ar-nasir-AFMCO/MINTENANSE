@@ -191,6 +191,66 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 .rvdlg textarea{min-height:64px;resize:vertical}
 .rvdlg .act{display:flex;gap:8px;margin-top:16px}
 .rvdlg .act .btn{flex:1;min-height:44px}
+/* ── الدوام مقابل التفويض (تبويب داخل «المناديب») ── */
+#attp{--dot:20px;--plum:#5b3d7a;--plumbg:#f3eef8}
+#attp .at-projs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 2px}
+#attp .at-proj{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:8px 17px;font:inherit;font-weight:600;font-size:13.5px;min-height:40px;color:var(--ink-2);cursor:pointer}
+#attp .at-proj[aria-selected="true"]{background:var(--brand);color:#fff;border-color:var(--brand)}
+#attp .at-proj .c{font-size:11.5px;opacity:.75;margin-inline-start:7px;font-variant-numeric:tabular-nums}
+#attp .at-bar{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin:12px 0}
+#attp .at-bar label{font-size:12.5px;color:var(--ink-2);display:flex;align-items:center;gap:6px}
+#attp input[type=date],#attp input[type=search],#attp select{padding:8px 11px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font:inherit;font-size:16px;min-height:40px}
+#attp input[type=search]{flex:1;min-width:190px}
+#attp .at-grow{flex:1}
+#attp .at-quick{display:flex;gap:6px}
+#attp .at-quick button{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 13px;font:inherit;font-size:12.5px;min-height:40px;color:var(--ink-2);cursor:pointer}
+#attp .at-quick button[aria-pressed="true"]{border-color:var(--brand);color:var(--brand);box-shadow:0 0 0 3px var(--brand-ring)}
+#attp .at-kpis{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin:12px 0}
+#attp .at-kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;box-shadow:var(--sh)}
+#attp .at-kpi .v{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
+#attp .at-kpi .l{font-size:12px;color:var(--muted);margin-top:2px}
+#attp .at-kpi.bad .v{color:var(--bad)}#attp .at-kpi.ok .v{color:var(--ok)}#attp .at-kpi.warn .v{color:var(--warn)}
+#attp .at-legend{display:flex;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-2);margin-bottom:10px}
+#attp .at-legend .item{display:inline-flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 13px 6px 9px;white-space:nowrap}
+#attp .key{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--line);flex:none;font-size:10px;font-weight:700;color:var(--faint);font-style:normal}
+#attp .k-ok{background:var(--okbg);border-color:var(--ok)}
+#attp .k-bad{background:var(--badbg);border-color:var(--bad)}
+#attp .k-warn{background:var(--warnbg);border-color:var(--warn)}
+#attp .k-first{box-shadow:0 0 0 2px var(--brand)}
+#attp .at-tbl{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:auto;scrollbar-gutter:stable;max-height:min(66vh,720px);box-shadow:var(--sh)}
+#attp table{border-collapse:separate;border-spacing:0;font-size:13px;width:100%}
+#attp th,#attp td{padding:8px 9px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+#attp th{background:var(--surface-2);font-size:12px;color:var(--ink-2);font-weight:600;position:sticky;top:0;z-index:3}
+#attp th:first-child,#attp td:first-child{position:sticky;right:0;z-index:2;width:196px;min-width:196px;background:var(--surface)}
+#attp th:nth-child(2),#attp td:nth-child(2){position:sticky;right:196px;z-index:2;width:170px;min-width:170px;background:var(--surface);box-shadow:-1px 0 0 var(--line)}
+#attp th:first-child,#attp th:nth-child(2){z-index:4;background:var(--surface-2)}
+#attp tbody tr:hover td,#attp tbody tr:hover td:first-child,#attp tbody tr:hover td:nth-child(2){background:var(--surface-2)}
+#attp td.num,#attp th.num{font-variant-numeric:tabular-nums}
+#attp tr:last-child td{border-bottom:0}
+#attp td.who{font-weight:600}
+#attp td.who small{display:block;font-weight:400;color:var(--muted);font-size:11.5px;direction:ltr;text-align:right}
+#attp .strip{display:flex;gap:2px;padding:2px 0}
+#attp .d{width:var(--dot);height:var(--dot);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-variant-numeric:tabular-nums;border:1.5px solid var(--line);color:var(--faint);flex:none;font-weight:600}
+#attp .d.ok{background:var(--okbg);border-color:var(--ok);color:var(--ok)}
+#attp .d.bad{background:var(--badbg);border-color:var(--bad);color:var(--bad)}
+#attp .d.warn{background:var(--warnbg);border-color:var(--warn);color:var(--warn)}
+#attp .d.first{box-shadow:0 0 0 2px var(--brand)}
+#attp .idcell{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+#attp .idcell .pill{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+#attp .pill{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:999px;font-weight:600}
+#attp .p-bad{background:var(--badbg);color:var(--bad)}
+#attp .p-ok{background:var(--okbg);color:var(--ok)}
+#attp .p-plum{background:var(--plumbg);color:var(--plum)}
+#attp .at-empty{text-align:center;color:var(--muted);padding:32px 12px;white-space:normal}
+#attp .at-note{font-size:12.5px;color:var(--muted);margin-top:9px}
+.rvdlg .idrow{display:flex;gap:7px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.rvdlg .idrow .pl{min-width:80px;font-weight:600;font-size:12.5px}
+.rvdlg .idrow input{flex:1;min-width:90px;width:auto;direction:ltr;text-align:right}
+.rvdlg .idrow .btn{min-height:38px}
+.rvdlg .add{display:flex;gap:7px;align-items:center;margin-top:14px;flex-wrap:wrap}
+.rvdlg .add input{flex:1;min-width:90px;width:auto;box-sizing:border-box;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:16px;direction:ltr;text-align:right}
+.rvdlg .add input#aidPlat{flex:0 0 132px;min-width:132px;text-transform:uppercase}
+.rvdlg .hint{font-size:12px;color:var(--muted);margin-top:10px}
 .rvbtn{min-height:34px;padding:5px 12px;font-size:12.5px}
 .loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:10px;color:var(--muted);background:var(--surface);z-index:1;font-size:13px}
 .spin{width:18px;height:18px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--brand);animation:sp 0.8s linear infinite}
@@ -367,6 +427,56 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
           <div class="kpis" id="kpis"></div>
         </div>
         <div class="frames hide" id="frames"></div>
+        <div class="view hide" id="attp" style="overflow:auto;width:100%">
+          <div class="at-projs" id="aProjs" role="tablist" aria-label="المشاريع"></div>
+          <div class="at-bar">
+            <label>من <input type="date" id="aFrom"></label>
+            <label>إلى <input type="date" id="aTo"></label>
+            <div class="at-quick" id="aQuick">
+              <button type="button" data-d="7" aria-pressed="false">٧ أيام</button>
+              <button type="button" data-d="14" aria-pressed="false">١٤</button>
+              <button type="button" data-d="30" aria-pressed="true">٣٠</button>
+              <button type="button" data-d="60" aria-pressed="false">٦٠</button>
+            </div>
+            <span class="at-grow"></span>
+            <button class="btn ghost sm" id="aReload">تحديث</button>
+          </div>
+          <div class="at-kpis" id="aKpis"></div>
+          <div class="at-legend" aria-label="دليل الألوان">
+            <span class="item"><i class="key k-ok">٥</i><b>مفوّض وداوم</b></span>
+            <span class="item"><i class="key k-bad">٥</i><b>مفوّض ولم يداوم</b></span>
+            <span class="item"><i class="key k-warn">٥</i><b>داوم بلا تفويض</b></span>
+            <span class="item"><i class="key">٥</i><b>لا تفويض ولا دوام</b></span>
+            <span class="item"><i class="key k-first">٥</i><b>أول يوم له</b></span>
+          </div>
+          <div class="at-bar">
+            <input type="search" id="aQ" placeholder="بحث بالاسم أو الإقامة أو المعرّف…" aria-label="بحث">
+            <select id="aOnly" aria-label="تصفية">
+              <option value="">الكل</option>
+              <option value="red">فيه أيام حمراء</option>
+              <option value="noauth">داوم بلا تفويض</option>
+              <option value="noid">بلا معرّف منصة</option>
+              <option value="never">لم يداوم إطلاقاً</option>
+            </select>
+            <span class="at-grow"></span>
+            <button class="btn ghost sm" id="aCsv">تصدير CSV</button>
+          </div>
+          <div class="at-tbl">
+            <table>
+              <thead><tr>
+                <th scope="col">المندوب</th>
+                <th scope="col">معرّف المنصة</th>
+                <th scope="col">أول يوم</th>
+                <th scope="col" class="num">تفويض</th>
+                <th scope="col" class="num">دوام</th>
+                <th scope="col" class="num">أحمر</th>
+                <th scope="col">الأيام</th>
+              </tr></thead>
+              <tbody id="aRows"></tbody>
+            </table>
+          </div>
+          <div class="at-note" id="aFoot" aria-live="polite"></div>
+        </div>
         <div class="view" id="home" style="overflow:auto;width:100%">
           <div class="hello"><div><h2 id="hi">أهلاً</h2><p id="hiSub">ملخّص العمليات — كل الأنظمة على قاعدة بيانات واحدة.</p></div></div>
           <div class="pulse hide" id="pulse"></div>
@@ -472,6 +582,21 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   </div>
 </div>
 
+<div class="rvdlg hide" id="aidDlg" role="dialog" aria-modal="true" aria-labelledby="aidDlgT">
+  <div class="box">
+    <h3 id="aidDlgT">معرّفات المنصات</h3>
+    <div class="who" id="aidDlgWho"></div>
+    <div id="aidList"></div>
+    <div class="add">
+      <input id="aidPlat" list="aidPlats" aria-label="المنصة" placeholder="المنصة" autocomplete="off">
+      <datalist id="aidPlats"></datalist>
+      <input id="aidVal" placeholder="المعرّف" aria-label="المعرّف" inputmode="numeric">
+      <button class="btn" id="aidAdd">إضافة</button>
+    </div>
+    <div class="hint">يُحفظ في وثيق فوراً ويظهر في كل الأنظمة. المعرّف الواحد لا يُربط بموظفين.</div>
+    <div class="act"><button class="btn ghost" id="aidDlgX">إغلاق</button></div>
+  </div>
+</div>
 <div class="rvdlg hide" id="rvDlg" role="dialog" aria-modal="true" aria-labelledby="rvDlgT">
   <div class="box">
     <h3 id="rvDlgT">اعتماد ملاحظة</h3>
@@ -504,7 +629,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260926202012";
+  var BUILD = "20260927194415";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -519,7 +644,10 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     { id:'couriers', ic:'scooter', name:'المناديب', desc:'Ninja · Keemart', group:['ninja','keemart'] },
     { id:'housing', ic:'bed', name:'السكنات', desc:'المباني والغرف والنزلاء', src:'housing.html' }
   ];
-  var SUBS = { ninja:{ name:'Ninja', desc:'أداء الكباتن والـ SLA', src:'ninja.html' }, keemart:{ name:'Keemart', desc:'الحضور والتسوية والفواتير', src:'keemart.html' } };
+  var SUBS = { ninja:{ name:'Ninja', desc:'أداء الكباتن والـ SLA', src:'ninja.html' }, keemart:{ name:'Keemart', desc:'الحضور والتسوية والفواتير', src:'keemart.html' } ,
+               attauth:{ name:'الدوام والتفويض', desc:'مقارنة أيام الدوام بأيام التفويض', local:true } };
+  /* تبويبات «المناديب»: الأنظمة المتاحة + شاشة المقارنة (شاشة داخل البوابة، لا إطار) */
+  function segSubs(){ var a = subsFor(); return a.length ? a.concat(['attauth']) : a; }
   var AREA_AR = { employees:'الموظفون', vehicles:'المركبات', attendance:'الحضور', maintenance:'الصيانة' };
   var CODE_AR = { no_phone:'بلا جوال', dup_phone:'جوال مكرر', iqama_expired:'إقامة منتهية', iqama_soon:'إقامة قريبة الانتهاء', license_expired:'رخصة منتهية',
                   no_project:'بلا مشروع', no_job_title:'بلا مسمّى وظيفي', no_join_date:'بلا تاريخ التحاق', dup_platform_id:'معرّفان على نفس المنصّة', assigned_no_driver:'مسلّمة بلا سائق', workshop_long:'ورشة طويلة', rule:'تعارض قواعد', driver_not_in_hr:'سائق غير موجود في وثيق',
@@ -612,7 +740,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       var h = location.hash;
       if (h === '#admin' && can('admin')) show('vAdm'); else if (h === '#review' && can('review')) show('vRev'); else if (h === '#reports') show('vRep');
       else { var last = null; try { last = localStorage.getItem('afmc_portal_sys'); } catch(e){}
-             if (last === 'ninja' || last === 'keemart') openSys('couriers', last); else if (last && SYSTEMS.some(function(s){ return s.id === last && allowed(s); })) openSys(last); else show('vSys'); }
+             if (last === 'ninja' || last === 'keemart' || last === 'attauth') openSys('couriers', last); else if (last && SYSTEMS.some(function(s){ return s.id === last && allowed(s); })) openSys(last); else show('vSys'); }
       badges(); live.start(); versionWatch(); ib.load(); loadProjects();
     }).catch(function(e){ if (!sess) { $('gate').classList.remove('hide'); return; } if (/no session/.test(e.message)) signOut(); else { $('gate').classList.remove('hide'); gateMsg('bad', 'تعذّر الاتصال بالقاعدة: ' + esc(e.message)); } });
   }
@@ -887,13 +1015,14 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     $('home').classList.toggle('hide', !!current); $('frames').classList.toggle('hide', !current);
     $('subhead').classList.toggle('hide', current !== 'couriers');
     if (!current) $('frames').querySelectorAll('iframe').forEach(function(x){ x.classList.add('hide'); });
+    if (!current) $('attp').classList.add('hide');
   }
   function openSys(id, which){
     var s = SYSTEMS.filter(function(x){ return x.id === id; })[0]; if (!s || !allowed(s)) return;
     show('vSys', true); current = id; sysUi();
     var key = id;
     if (s.group) {
-      var subs = subsFor(); sub = (which && subs.indexOf(which) >= 0) ? which : (sub && subs.indexOf(sub) >= 0 ? sub : subs[0]); key = sub;
+      var subs = segSubs(); sub = (which && subs.indexOf(which) >= 0) ? which : (sub && subs.indexOf(sub) >= 0 ? sub : subs[0]); key = sub;
       $('seg').innerHTML = subs.map(function(g){ return '<button data-s="' + g + '"' + (g === sub ? ' class="on"' : '') + '>' + SUBS[g].name + '</button>'; }).join('');
       $('seg').querySelectorAll('button').forEach(function(b){ b.onclick = function(){ openSys('couriers', b.getAttribute('data-s')); }; });
       renderKpis(); loadSummary();
@@ -901,6 +1030,17 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     try { localStorage.setItem('afmc_portal_sys', key); } catch(e){}
     var src = s.group ? SUBS[key].src : s.src, name = s.group ? s.name + ' · ' + SUBS[key].name : s.name;
     $('ttl').textContent = name; $('crumb').textContent = s.group ? SUBS[key].desc : s.desc;
+    if (s.group && SUBS[key].local) {                    /* شاشة داخل البوابة — لا إطار ولا نافذة مستقلة */
+      var fr0 = $('frames');
+      fr0.classList.add('hide');
+      fr0.querySelectorAll('iframe').forEach(function(x){ x.classList.add('hide'); });
+      var ld0 = fr0.querySelector('.loading'); if (ld0) ld0.remove();
+      $('attp').classList.remove('hide');
+      $('fbar').innerHTML = '';
+      atOpen();
+      return;
+    }
+    $('attp').classList.add('hide');
     var fr = $('frames'), f = fr.querySelector('iframe[data-s="' + key + '"]');
     fr.querySelectorAll('iframe').forEach(function(x){ x.classList.toggle('hide', x !== f); });
     var ld = fr.querySelector('.loading'); if (ld) ld.remove();
@@ -926,6 +1066,280 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     }).join('');
     $('kpis').querySelectorAll('.kpi').forEach(function(k){ k.onclick = function(){ openSys('couriers', k.getAttribute('data-s')); }; });
   }
+  /* ═══════════ الدوام مقابل التفويض — تبويب داخل «المناديب» ═══════════
+     يقارن أيام التفويض في الأسطول بأيام الدوام في جدول الحضور، لكل مندوب.
+     المشاريع تُشتقّ من أنظمة المناديب المتاحة للمستخدم، فأي مشروع جديد
+     يظهر هنا تلقائياً بلا تعديل. المعرّفات تُحرَّر وتُحفظ في وثيق مباشرة. */
+  var atProj = null, atRAW = null, atROWS = [], atDAYS = [], atInit = false;
+
+  function atPad(n){ return String(n).padStart(2, '0'); }
+  function atYmd(d){ return d.getFullYear() + '-' + atPad(d.getMonth() + 1) + '-' + atPad(d.getDate()); }
+  function atOf(s){ return new Date(s + 'T00:00:00'); }
+  function atProjects(){ return subsFor().map(function(g){ return { code: g.toUpperCase(), name: SUBS[g].name }; }); }
+  /* اقتراحات المنصّات: مشاريع المناديب + كل منصّة مستعملة فعلاً في وثيق.
+     الحقل حرّ، فمنصّة جديدة تُكتب مباشرة بلا انتظار تعديل في الكود. */
+  function atPlatforms(){
+    var base = atProjects().map(function(p){ return p.code; });
+    ((atRAW && atRAW.ids) || []).forEach(function(x){ if (x.platform && base.indexOf(x.platform) < 0) base.push(x.platform); });
+    (projects || []).forEach(function(c){ if (c && base.indexOf(c) < 0) base.push(c); });
+    return base.length ? base : ['NINJA', 'KEEMART'];
+  }
+  function atCanEdit(){ return !!(me && me.perms && (me.perms.edit || me.perms.manage)); }
+
+  function atOpen(){
+    if (!atInit) {
+      atInit = true;
+      atSetRange(30);
+      $('aQuick').querySelectorAll('button').forEach(function(b){
+        b.onclick = function(){ atSetRange(+b.getAttribute('data-d')); atLoad(); }; });
+      $('aFrom').onchange = $('aTo').onchange = function(){
+        $('aQuick').querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', 'false'); });
+        atLoad(); };
+      $('aReload').onclick = function(){ atLoad(); };
+      $('aQ').oninput = atRender; $('aOnly').onchange = atRender;
+      $('aCsv').onclick = atCsv;
+      atIdWire();
+      atLoad();
+    } else if (!atRAW) atLoad();
+  }
+
+  function atSetRange(n){
+    var t = new Date(), f = new Date(Date.now() - (n - 1) * 864e5);
+    $('aTo').value = atYmd(t); $('aFrom').value = atYmd(f);
+    $('aQuick').querySelectorAll('button').forEach(function(b){
+      b.setAttribute('aria-pressed', String(+b.getAttribute('data-d') === n)); });
+  }
+
+  function atPaintProjs(){
+    var ps = atProjects();
+    if (!atProj || !ps.some(function(p){ return p.code === atProj; })) atProj = ps.length ? ps[0].code : null;
+    $('aProjs').innerHTML = ps.map(function(p){
+      var c = atRAW && atRAW.count && atRAW.count[p.code];
+      return '<button type="button" class="at-proj" role="tab" data-p="' + esc(p.code) + '" aria-selected="'
+        + (atProj === p.code) + '">' + esc(p.name)
+        + (c != null ? '<span class="c">' + c + '</span>' : '') + '</button>'; }).join('');
+    $('aProjs').querySelectorAll('.at-proj').forEach(function(b){
+      b.onclick = function(){ atProj = b.getAttribute('data-p'); atPaintProjs(); atBuild(); }; });
+  }
+
+  function atLoad(){
+    var f = $('aFrom').value, t = $('aTo').value;
+    if (!f || !t || f > t) { toast('تحقّق من تاريخي البداية والنهاية.'); return; }
+    var ps = atProjects();
+    if (!ps.length) { $('aRows').innerHTML = '<tr><td colspan="7" class="at-empty">لا تملك صلاحية على أي مشروع مناديب.</td></tr>'; return; }
+    $('aFoot').textContent = 'جارٍ القراءة…';
+    $('aRows').innerHTML = '<tr><td colspan="7" class="at-empty">جارٍ التحميل…</td></tr>';
+    var codes = '(' + ps.map(function(p){ return p.code; }).join(',') + ')';
+    Promise.all([
+      api('GET', 'employees?select=id,iqama,full_name_ar,full_name_en,phone,project_code&status=eq.active&deleted_at=is.null&project_code=in.' + codes + '&limit=5000'),
+      api('GET', 'attendance_daily?select=employee_id,work_date,present&work_date=gte.' + f + '&work_date=lte.' + t + '&limit=60000'),
+      api('GET', 'vehicle_assignments?select=employee_id,vehicle_id,assigned_at,released_at&limit=20000'),
+      api('GET', 'employee_ids?select=employee_id,platform,external_id&limit=6000'),
+      api('GET', 'vehicles?select=id,plate_no&deleted_at=is.null&limit=3000')
+    ]).then(function(r){
+      atRAW = { emps:r[0] || [], att:r[1] || [], asg:r[2] || [], ids:r[3] || [], veh:r[4] || [], count:{} };
+      atRAW.emps.forEach(function(e){ atRAW.count[e.project_code] = (atRAW.count[e.project_code] || 0) + 1; });
+      atPaintProjs(); atBuild();
+    }).catch(function(e){
+      $('aFoot').textContent = 'تعذّر التحميل: ' + e.message;
+      $('aRows').innerHTML = '<tr><td colspan="7" class="at-empty">' + esc(e.message) + '</td></tr>'; });
+  }
+
+  function atBuild(){
+    if (!atRAW) return;
+    var f = $('aFrom').value, t = $('aTo').value;
+    atDAYS = [];
+    for (var d = atOf(f); d <= atOf(t); d = new Date(d.getTime() + 864e5)) atDAYS.push(atYmd(new Date(d)));
+
+    var plate = {}; atRAW.veh.forEach(function(v){ plate[v.id] = v.plate_no; });
+    var pid = {}; atRAW.ids.forEach(function(x){ (pid[x.employee_id] = pid[x.employee_id] || []).push({ p:x.platform, id:x.external_id }); });
+
+    var work = {}; atRAW.att.forEach(function(a){ if (!a.present) return;
+      (work[a.employee_id] = work[a.employee_id] || {})[a.work_date] = 1; });
+
+    var auth = {}, firstAuth = {};
+    atRAW.asg.forEach(function(a){
+      var s0 = (a.assigned_at || '').slice(0, 10), e0 = a.released_at ? a.released_at.slice(0, 10) : atDAYS[atDAYS.length - 1];
+      if (!s0) return;
+      if (!firstAuth[a.employee_id] || s0 < firstAuth[a.employee_id]) firstAuth[a.employee_id] = s0;
+      var from = s0 > f ? s0 : f, to = e0 < t ? e0 : t;
+      if (from > to) return;
+      var m = auth[a.employee_id] = auth[a.employee_id] || {};
+      for (var d = atOf(from); d <= atOf(to); d = new Date(d.getTime() + 864e5)) m[atYmd(new Date(d))] = plate[a.vehicle_id] || '—';
+    });
+
+    var firstWork = {};
+    atRAW.att.forEach(function(a){ if (!a.present) return;
+      if (!firstWork[a.employee_id] || a.work_date < firstWork[a.employee_id]) firstWork[a.employee_id] = a.work_date; });
+
+    atROWS = atRAW.emps.filter(function(e){ return e.project_code === atProj; }).map(function(e){
+      var w = work[e.id] || {}, au = auth[e.id] || {};
+      var cells = atDAYS.map(function(d){
+        var hasW = !!w[d], hasA = !!au[d];
+        return { d:d, n:+d.slice(8, 10),
+                 s: hasW && hasA ? 'ok' : hasA && !hasW ? 'bad' : hasW && !hasA ? 'warn' : '',
+                 plate: au[d] || '' };
+      });
+      var fa = firstAuth[e.id] || null, fw = firstWork[e.id] || null;
+      var first = fa && fw ? (fa < fw ? fa : fw) : (fa || fw);
+      return { id:e.id, nm:e.full_name_ar || e.full_name_en || '—', iq:e.iqama, ph:e.phone || '',
+        ids:(pid[e.id] || []), first:first,
+        nA:cells.filter(function(c){ return c.s === 'ok' || c.s === 'bad'; }).length,
+        nW:cells.filter(function(c){ return c.s === 'ok' || c.s === 'warn'; }).length,
+        nR:cells.filter(function(c){ return c.s === 'bad'; }).length,
+        nN:cells.filter(function(c){ return c.s === 'warn'; }).length,
+        cells:cells };
+    }).sort(function(a, b){ return b.nR - a.nR || b.nA - a.nA; });
+
+    atKpis(); atRender();
+  }
+
+  function atKpis(){
+    var s = { a:0, w:0, r:0, n:0 };
+    atROWS.forEach(function(r){ s.a += r.nA; s.w += r.nW; s.r += r.nR; s.n += r.nN; });
+    $('aKpis').innerHTML =
+       '<div class="at-kpi"><div class="v">' + num(atROWS.length) + '</div><div class="l">مندوب نشط</div></div>'
+      + '<div class="at-kpi"><div class="v">' + num(s.a) + '</div><div class="l">أيام تفويض</div></div>'
+      + '<div class="at-kpi ok"><div class="v">' + num(s.w) + '</div><div class="l">أيام دوام</div></div>'
+      + '<div class="at-kpi bad"><div class="v">' + num(s.r) + '</div><div class="l">مفوّض ولم يداوم</div></div>'
+      + '<div class="at-kpi warn"><div class="v">' + num(s.n) + '</div><div class="l">داوم بلا تفويض</div></div>';
+  }
+
+  function atFiltered(){
+    var q = $('aQ').value.trim().toLowerCase(), o = $('aOnly').value;
+    return atROWS.filter(function(r){
+      if (o === 'red' && !r.nR) return false;
+      if (o === 'noauth' && !r.nN) return false;
+      if (o === 'noid' && r.ids.length) return false;
+      if (o === 'never' && r.nW) return false;
+      if (q) { var hay = (r.nm + ' ' + r.iq + ' ' + r.ids.map(function(x){ return x.id; }).join(' ')).toLowerCase();
+        if (hay.indexOf(q) < 0) return false; }
+      return true; });
+  }
+
+  function atRender(){
+    var f = atFiltered(), ed = atCanEdit();
+    $('aRows').innerHTML = f.length ? f.map(function(r){
+      var strip = r.cells.map(function(c){
+        var tip = c.d + (c.s === 'ok' ? ' · مفوّض وداوم' : c.s === 'bad' ? ' · مفوّض ولم يداوم' : c.s === 'warn' ? ' · داوم بلا تفويض' : ' · لا شيء')
+          + (c.plate ? ' · ' + c.plate : '');
+        return '<span class="d ' + c.s + (c.d === r.first ? ' first' : '') + '" title="' + esc(tip) + '">' + c.n + '</span>';
+      }).join('');
+      var mine = r.ids.filter(function(x){ return x.p === atProj; })[0];
+      var others = r.ids.length - (mine ? 1 : 0);
+      var all = r.ids.map(function(x){ return x.p + ' ' + x.id; }).join(' · ') || 'بلا معرّفات';
+      var chips = mine ? '<span class="pill p-ok" style="direction:ltr">' + esc(mine.id) + '</span>'
+                       : '<span class="pill p-bad">بلا معرّف</span>';
+      if (others) chips += '<span class="pill p-plum">+' + others + '</span>';
+      var idCell = '<span class="idcell" title="' + esc(all) + '">' + chips
+        + (ed ? '<button class="btn ghost sm" data-aids="' + esc(r.id) + '" aria-label="إدارة معرّفات ' + esc(r.nm) + '">إدارة</button>' : '')
+        + '</span>';
+      return '<tr>'
+        + '<td class="who">' + esc(r.nm) + '<small>' + esc(r.iq) + '</small></td>'
+        + '<td>' + idCell + '</td>'
+        + '<td class="num">' + (r.first || '—') + '</td>'
+        + '<td class="num">' + r.nA + '</td>'
+        + '<td class="num">' + r.nW + '</td>'
+        + '<td class="num">' + (r.nR ? '<span class="pill p-bad">' + r.nR + '</span>' : '0') + '</td>'
+        + '<td><div class="strip">' + strip + '</div></td></tr>';
+    }).join('') : '<tr><td colspan="7" class="at-empty">لا نتائج بهذه التصفية</td></tr>';
+
+    $('aRows').querySelectorAll('[data-aids]').forEach(function(b){
+      b.onclick = function(){ atIdOpen(b.getAttribute('data-aids')); }; });
+    $('aFoot').textContent = f.length + ' مندوباً · ' + atDAYS.length + ' يوماً · ' + (atProj || '—');
+  }
+
+  /* ── معرّفات المنصات: إضافة · تعديل · حذف — تُحفظ في وثيق ── */
+  var atIdCur = null, atIdPrev = null;
+  function atIdWire(){
+    $('aidDlgX').onclick = atIdClose;
+    $('aidDlg').addEventListener('click', function(e){ if (e.target === $('aidDlg')) atIdClose(); });
+    document.addEventListener('keydown', function(e){
+      if (e.key !== 'Escape' || $('aidDlg').classList.contains('hide')) return;
+      e.stopPropagation(); atIdClose(); }, true);
+    $('aidAdd').onclick = atIdAdd;
+  }
+  function atIdOpen(empId){
+    atIdCur = atROWS.filter(function(r){ return r.id === empId; })[0];
+    if (!atIdCur) return;
+    atIdPrev = document.activeElement;
+    $('aidDlgWho').textContent = atIdCur.nm + ' · ' + atIdCur.iq;
+    $('aidVal').value = '';
+    $('aidPlats').innerHTML = atPlatforms().map(function(p){ return '<option value="' + esc(p) + '"></option>'; }).join('');
+    $('aidPlat').value = atProj || '';
+    atIdList();
+    $('aidDlg').classList.remove('hide');
+    $('aidPlat').focus();
+  }
+  function atIdClose(){ $('aidDlg').classList.add('hide'); atIdCur = null;
+    try { if (atIdPrev && atIdPrev.focus) atIdPrev.focus(); } catch(e){} }
+  function atIdList(){
+    $('aidList').innerHTML = atIdCur.ids.length ? atIdCur.ids.map(function(x, i){
+      return '<div class="idrow"><span class="pl">' + esc(x.p) + '</span>'
+        + '<input value="' + esc(x.id) + '" data-i="' + i + '" aria-label="معرّف ' + esc(x.p) + '">'
+        + '<button class="btn sm" data-upd="' + i + '">تحديث</button>'
+        + '<button class="btn ghost sm" data-del="' + i + '">حذف</button></div>'; }).join('')
+      : '<div class="hint">لا توجد معرّفات لهذا المندوب بعد.</div>';
+    $('aidList').querySelectorAll('[data-upd]').forEach(function(b){
+      b.onclick = function(){ atIdUpd(+b.getAttribute('data-upd'), b); }; });
+    $('aidList').querySelectorAll('[data-del]').forEach(function(b){
+      b.onclick = function(){ atIdDel(+b.getAttribute('data-del'), b); }; });
+  }
+  function atIdRefresh(){ atRender();
+    var r = atROWS.filter(function(x){ return x.id === atIdCur.id; })[0]; if (r) atIdCur = r; atIdList(); }
+  function atIdErr(e, v){
+    return /duplicate|conflict|unique/i.test(e.message) ? 'المعرّف ' + v + ' مرتبط بموظف آخر بالفعل.'
+         : /permission|denied|row-level/i.test(e.message) ? 'لا تملك صلاحية تعديل المعرّفات.'
+         : 'تعذّر الحفظ: ' + e.message;
+  }
+  function atIdAdd(){
+    var p = ($('aidPlat').value || '').trim().toUpperCase(), v = ($('aidVal').value || '').trim(), b = this;
+    if (!p) { $('aidPlat').focus(); return; }
+    if (!v) { $('aidVal').focus(); return; }
+    if (atIdCur.ids.some(function(x){ return x.p === p; })) { toast('يوجد معرّف لهذه المنصة — استخدم «تحديث».'); return; }
+    b.disabled = true;
+    api('POST', 'employee_ids', { employee_id: atIdCur.id, platform: p, external_id: v }, { Prefer:'return=representation' })
+      .then(function(){ atIdCur.ids.push({ p:p, id:v }); $('aidVal').value = '';
+        toast('أُضيف ' + p + ' ' + v + ' لـ' + atIdCur.nm); b.disabled = false; atIdRefresh(); })
+      .catch(function(e){ b.disabled = false; toast(atIdErr(e, v)); });
+  }
+  function atIdUpd(i, b){
+    var x = atIdCur.ids[i], inp = $('aidList').querySelector('input[data-i="' + i + '"]');
+    var v = (inp.value || '').trim();
+    if (!v || v === x.id) return;
+    if (!confirm('تغيير معرّف ' + x.p + ' من «' + x.id + '» إلى «' + v + '»؟')) return;
+    b.disabled = true;
+    api('PATCH', 'employee_ids?employee_id=eq.' + atIdCur.id + '&platform=eq.' + encodeURIComponent(x.p),
+        { external_id: v }, { Prefer:'return=representation' })
+      .then(function(){ x.id = v; toast('حُدّث معرّف ' + x.p); b.disabled = false; atIdRefresh(); })
+      .catch(function(e){ b.disabled = false; toast(atIdErr(e, v)); });
+  }
+  function atIdDel(i, b){
+    var x = atIdCur.ids[i];
+    if (!confirm('حذف معرّف ' + x.p + ' «' + x.id + '» من ' + atIdCur.nm + '؟')) return;
+    b.disabled = true;
+    api('DELETE', 'employee_ids?employee_id=eq.' + atIdCur.id + '&platform=eq.' + encodeURIComponent(x.p))
+      .then(function(){ atIdCur.ids.splice(i, 1); toast('حُذف معرّف ' + x.p); b.disabled = false; atIdRefresh(); })
+      .catch(function(e){ b.disabled = false;
+        toast(/permission|denied|row-level/i.test(e.message) ? 'الحذف للمدير ومدير النظام فقط.' : 'تعذّر الحذف: ' + e.message); });
+  }
+
+  function atCsv(){
+    var f = atFiltered();
+    if (!f.length) { toast('لا صفوف للتصدير.'); return; }
+    var q = function(v){ var s2 = String(v == null ? '' : v); return /[",\n]/.test(s2) ? '"' + s2.replace(/"/g, '""') + '"' : s2; };
+    var head = ['الاسم','الإقامة','المعرّف','أول يوم','أيام التفويض','أيام الدوام','مفوّض ولم يداوم','داوم بلا تفويض'].concat(atDAYS);
+    var body = f.map(function(r){
+      var base = [r.nm, r.iq, r.ids.map(function(x){ return x.p + ' ' + x.id; }).join(' · '), r.first || '', r.nA, r.nW, r.nR, r.nN];
+      var days = r.cells.map(function(c){ return c.s === 'ok' ? 'دوام' : c.s === 'bad' ? 'مفوّض بلا دوام' : c.s === 'warn' ? 'دوام بلا تفويض' : ''; });
+      return base.concat(days).map(q).join(','); });
+    var blob = new Blob(['﻿' + head.map(q).join(',') + '\n' + body.join('\n')], { type:'text/csv;charset=utf-8' });
+    var u = window.URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = u; a.download = 'الدوام-والتفويض-' + atProj + '-' + $('aFrom').value + '_' + $('aTo').value + '.csv';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ window.URL.revokeObjectURL(u); a.remove(); }, 4000);
+  }
+
   /* ---------------- permissions & integration ---------------- */
   var projects = [];
   function loadProjects(){ return api('GET', 'projects?select=code&is_active=is.true&order=code.asc').then(function(r){ if (!projects.length) projects = (r || []).map(function(p){ return p.code; }); }).catch(function(){}); }
