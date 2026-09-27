@@ -629,7 +629,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260927194415";
+  var BUILD = "20260927195303";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -1086,6 +1086,24 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   }
   function atCanEdit(){ return !!(me && me.perms && (me.perms.edit || me.perms.manage)); }
 
+  /* PostgREST يسقّف كل رد بألف سطر مهما بلغ limit المطلوب — ويردّ 200 بلا أي
+     تحذير. القراءة بصفحة واحدة كانت تحسب التقرير على شريحة عشوائية من
+     البيانات، فتظهر أيام دوام شبه معدومة. نقرأ على صفحات مرتّبة بالمعرّف
+     حتى نهاية الجدول. */
+  var AT_PAGE = 1000;
+  function atAll(path){
+    var out = [], off = 0, guard = 0;
+    function next(){
+      return api('GET', path + '&order=id.asc&limit=' + AT_PAGE + '&offset=' + off).then(function(r){
+        r = r || []; out = out.concat(r); off += r.length;
+        if (r.length < AT_PAGE || ++guard > 300) return out;
+        $('aFoot').textContent = 'جارٍ القراءة… ' + num(off) + ' سطر';
+        return next();
+      });
+    }
+    return next();
+  }
+
   function atOpen(){
     if (!atInit) {
       atInit = true;
@@ -1131,11 +1149,11 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     $('aRows').innerHTML = '<tr><td colspan="7" class="at-empty">جارٍ التحميل…</td></tr>';
     var codes = '(' + ps.map(function(p){ return p.code; }).join(',') + ')';
     Promise.all([
-      api('GET', 'employees?select=id,iqama,full_name_ar,full_name_en,phone,project_code&status=eq.active&deleted_at=is.null&project_code=in.' + codes + '&limit=5000'),
-      api('GET', 'attendance_daily?select=employee_id,work_date,present&work_date=gte.' + f + '&work_date=lte.' + t + '&limit=60000'),
-      api('GET', 'vehicle_assignments?select=employee_id,vehicle_id,assigned_at,released_at&limit=20000'),
-      api('GET', 'employee_ids?select=employee_id,platform,external_id&limit=6000'),
-      api('GET', 'vehicles?select=id,plate_no&deleted_at=is.null&limit=3000')
+      atAll('employees?select=id,iqama,full_name_ar,full_name_en,phone,project_code&status=eq.active&deleted_at=is.null&project_code=in.' + codes),
+      atAll('attendance_daily?select=employee_id,work_date,present&work_date=gte.' + f + '&work_date=lte.' + t + '&project_code=in.' + codes),
+      atAll('vehicle_assignments?select=employee_id,vehicle_id,assigned_at,released_at'),
+      atAll('employee_ids?select=employee_id,platform,external_id'),
+      atAll('vehicles?select=id,plate_no&deleted_at=is.null')
     ]).then(function(r){
       atRAW = { emps:r[0] || [], att:r[1] || [], asg:r[2] || [], ids:r[3] || [], veh:r[4] || [], count:{} };
       atRAW.emps.forEach(function(e){ atRAW.count[e.project_code] = (atRAW.count[e.project_code] || 0) + 1; });
