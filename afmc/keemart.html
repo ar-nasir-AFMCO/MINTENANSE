@@ -2805,12 +2805,41 @@ function downloadHTML(){
     w.__wfsb = true; window.processData = w;
   }
 
-  /* ---------- سحب الأيام من الأجهزة الأخرى ---------- */
+  /* ---------- سحب الأيام من الأجهزة الأخرى ----------
+     كان هذا السحب يجلب الجدول كاملاً ببياناته كل خمس دقائق:
+     1.1 ميجا لنينجا و 3.9 ميجا لكيمارت في كل دورة. تبويب واحد مفتوح
+     ثماني ساعات = نحو 11 جيجا شهرياً — وهو وحده سبب تجاوز حصّة النقل.
+
+     الآن على خطوتين: قائمة المفاتيح وتواريخ التعديل فقط (بضعة كيلوبايتات)،
+     ثم طلب بيانات الأيام التي تغيّرت فعلاً. القائمة تشمل كل الأيام في كل
+     دورة، فلا يمكن أن يفوت تعديل ولا أن يبقى فرق بين الجهاز والقاعدة. */
   function pull(){
     if (!me) return Promise.resolve(0);
-    return api('GET', 'app_records?select=key,data,updated_at&app=eq.' + APP + '&coll=eq.day&deleted_at=is.null&order=key.asc&limit=2000').then(function(rows){
+    if (!meta.seen) meta.seen = {};
+    return api('GET', 'app_records?select=key,updated_at,deleted_at&app=eq.' + APP + '&coll=eq.day&order=key.asc&limit=2000').then(function(list){
+      var want = [];
+      (list || []).forEach(function(row){
+        if (row.deleted_at) return;
+        if (queue[row.key]) return;                         /* رفعٌ محلي لم يُحفظ بعد */
+        if (meta.seen[row.key] === row.updated_at && historyLog[row.key]) return;
+        want.push(row.key);
+      });
+      if (!want.length) { saveMeta(); return 0; }
+      var got = [], p = Promise.resolve();
+      for (var i = 0; i < want.length; i += 30) (function(ch){
+        p = p.then(function(){
+          return api('GET', 'app_records?select=key,data,updated_at&app=eq.' + APP + '&coll=eq.day&deleted_at=is.null'
+                          + '&key=in.(' + ch.map(function(k){ return '"' + k + '"'; }).join(',') + ')')
+            .then(function(r){ got = got.concat(r || []); });
+        });
+      })(want.slice(i, i + 30));
+      return p.then(function(){ return applyPulled(got); });
+    });
+  }
+  function applyPulled(rows){
       var changed = 0, newest = newestDate(), gotNewest = null;
       (rows || []).forEach(function(row){
+        meta.seen[row.key] = row.updated_at;   /* سُحب — لا يُطلب ثانيةً حتى يتغيّر */
         var d = row.key, r = row.data || {}; if (!r.hist) return;
         if (queue[d]) return;   /* رفعٌ محلي لم يُحفظ بعد — المحلي هو الأحدث */
         var full = r.full; delete r.full;
@@ -2824,7 +2853,6 @@ function downloadHTML(){
       });
       if (changed) applyLocal(gotNewest);
       saveMeta(); return changed;
-    });
   }
   function applyLocal(full){
     try { localStorage.setItem('fleet_hub_v24', JSON.stringify(historyLog)); } catch(e){}
