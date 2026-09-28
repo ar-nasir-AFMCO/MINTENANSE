@@ -241,6 +241,8 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 #attp .p-bad{background:var(--badbg);color:var(--bad)}
 #attp .p-ok{background:var(--okbg);color:var(--ok)}
 #attp .p-plum{background:var(--plumbg);color:var(--plum)}
+#attp .p-warn{background:var(--warnbg);color:var(--warn)}
+#attp .flags{display:inline-flex;gap:4px;flex-wrap:wrap;margin-inline-start:6px;vertical-align:middle}
 #attp .at-empty{text-align:center;color:var(--muted);padding:32px 12px;white-space:normal}
 #attp .at-note{font-size:12.5px;color:var(--muted);margin-top:9px}
 .rvdlg .idrow{display:flex;gap:7px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
@@ -457,6 +459,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
               <option value="noauth">داوم بلا تفويض</option>
               <option value="noid">بلا معرّف منصة</option>
               <option value="never">لم يداوم إطلاقاً</option>
+              <option value="flagged">موقوف أو من مشروع آخر</option>
             </select>
             <span class="at-grow"></span>
             <button class="btn ghost sm" id="aCsv">تصدير CSV</button>
@@ -629,7 +632,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260928151805";
+  var BUILD = "20260928165559";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -1149,14 +1152,21 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     $('aRows').innerHTML = '<tr><td colspan="7" class="at-empty">جارٍ التحميل…</td></tr>';
     var codes = '(' + ps.map(function(p){ return p.code; }).join(',') + ')';
     Promise.all([
-      atAll('employees?select=id,iqama,full_name_ar,full_name_en,phone,project_code&status=eq.active&deleted_at=is.null&project_code=in.' + codes),
-      atAll('attendance_daily?select=employee_id,work_date,present&work_date=gte.' + f + '&work_date=lte.' + t + '&project_code=in.' + codes),
+      atAll('employees?select=id,iqama,full_name_ar,full_name_en,phone,project_code,status&deleted_at=is.null'),
+      atAll('attendance_daily?select=employee_id,work_date,present,project_code&work_date=gte.' + f + '&work_date=lte.' + t + '&project_code=in.' + codes),
       atAll('vehicle_assignments?select=employee_id,vehicle_id,assigned_at,released_at'),
       atAll('employee_ids?select=employee_id,platform,external_id'),
       atAll('vehicles?select=id,plate_no&deleted_at=is.null')
     ]).then(function(r){
       atRAW = { emps:r[0] || [], att:r[1] || [], asg:r[2] || [], ids:r[3] || [], veh:r[4] || [], count:{} };
-      atRAW.emps.forEach(function(e){ atRAW.count[e.project_code] = (atRAW.count[e.project_code] || 0) + 1; });
+      atRAW.byId = {}; atRAW.emps.forEach(function(e){ atRAW.byId[e.id] = e; });
+      atRAW.count = {};
+      atProjects().forEach(function(p){
+        var seen = {};
+        atRAW.emps.forEach(function(e){ if (e.project_code === p.code) seen[e.id] = 1; });
+        atRAW.att.forEach(function(a){ if (a.project_code === p.code && atRAW.byId[a.employee_id]) seen[a.employee_id] = 1; });
+        atRAW.count[p.code] = Object.keys(seen).length;
+      });
       atPaintProjs(); atBuild();
     }).catch(function(e){
       $('aFoot').textContent = 'تعذّر التحميل: ' + e.message;
@@ -1172,7 +1182,10 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     var plate = {}; atRAW.veh.forEach(function(v){ plate[v.id] = v.plate_no; });
     var pid = {}; atRAW.ids.forEach(function(x){ (pid[x.employee_id] = pid[x.employee_id] || []).push({ p:x.platform, id:x.external_id }); });
 
-    var work = {}; atRAW.att.forEach(function(a){ if (!a.present) return;
+    /* الحضور يخصّ المشروع الذي داوم فيه المندوب، لا المشروع المكتوب في وثيق.
+       مندوب داوم على نينجا ومسجّل في وثيق على كيمارت كان يختفي تماماً. */
+    var work = {}; atRAW.att.forEach(function(a){
+      if (!a.present || a.project_code !== atProj) return;
       (work[a.employee_id] = work[a.employee_id] || {})[a.work_date] = 1; });
 
     var auth = {}, firstAuth = {};
@@ -1187,10 +1200,18 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     });
 
     var firstWork = {};
-    atRAW.att.forEach(function(a){ if (!a.present) return;
+    atRAW.att.forEach(function(a){ if (!a.present || a.project_code !== atProj) return;
       if (!firstWork[a.employee_id] || a.work_date < firstWork[a.employee_id]) firstWork[a.employee_id] = a.work_date; });
 
-    atROWS = atRAW.emps.filter(function(e){ return e.project_code === atProj; }).map(function(e){
+    /* يُعرض في هذا المشروع:
+         • النشط المسجّل عليه في وثيق (كما كان)
+         • ومن له حضور مسجّل فيه ولو اختلف مشروعه في وثيق أو صار موقوفاً —
+           تاريخ الدوام حقيقة لا تُخفى بتغيّر الحالة
+         • والموقوف الذي ما زالت على اسمه مركبة — هذا خلل يجب أن يُرى
+       ولا يُعرض الموقوف الذي لا حضور له ولا مركبة، فلا يمتلئ التقرير بلا فائدة. */
+    atROWS = atRAW.emps.filter(function(e){
+      return (e.project_code === atProj && (e.status === 'active' || auth[e.id])) || work[e.id];
+    }).map(function(e){
       var w = work[e.id] || {}, au = auth[e.id] || {};
       var cells = atDAYS.map(function(d){
         var hasW = !!w[d], hasA = !!au[d];
@@ -1201,6 +1222,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       var fa = firstAuth[e.id] || null, fw = firstWork[e.id] || null;
       var first = fa && fw ? (fa < fw ? fa : fw) : (fa || fw);
       return { id:e.id, nm:e.full_name_ar || e.full_name_en || '—', iq:e.iqama, ph:e.phone || '',
+        st:e.status, pc:e.project_code,
         ids:(pid[e.id] || []), first:first,
         nA:cells.filter(function(c){ return c.s === 'ok' || c.s === 'bad'; }).length,
         nW:cells.filter(function(c){ return c.s === 'ok' || c.s === 'warn'; }).length,
@@ -1223,6 +1245,16 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       + '<div class="at-kpi warn"><div class="v">' + num(s.n) + '</div><div class="l">داوم بلا تفويض</div></div>';
   }
 
+  /* وسم يوضّح سبب ظهور المندوب: موقوف، أو مشروعه في وثيق غير هذا المشروع.
+     بلا هذا الوسم يبدو الصفّ خطأً في التقرير، وهو في الحقيقة أصحّ من إخفائه. */
+  var AT_ST = { stopped:'موقوف', salary_only:'راتب فقط', archived:'مؤرشف', pending:'بانتظار الاعتماد' };
+  function atFlags(r){
+    var out = '';
+    if (r.st && r.st !== 'active') out += '<span class="pill p-warn">' + esc(AT_ST[r.st] || r.st) + '</span>';
+    if (r.pc && r.pc !== atProj)   out += '<span class="pill p-plum">في وثيق: ' + esc(r.pc) + '</span>';
+    return out ? '<span class="flags">' + out + '</span>' : '';
+  }
+
   function atFiltered(){
     var q = $('aQ').value.trim().toLowerCase(), o = $('aOnly').value;
     return atROWS.filter(function(r){
@@ -1230,6 +1262,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       if (o === 'noauth' && !r.nN) return false;
       if (o === 'noid' && r.ids.length) return false;
       if (o === 'never' && r.nW) return false;
+      if (o === 'flagged' && (!r.st || r.st === 'active') && r.pc === atProj) return false;
       if (q) { var hay = (r.nm + ' ' + r.iq + ' ' + r.ids.map(function(x){ return x.id; }).join(' ')).toLowerCase();
         if (hay.indexOf(q) < 0) return false; }
       return true; });
@@ -1253,7 +1286,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         + (ed ? '<button class="btn ghost sm" data-aids="' + esc(r.id) + '" aria-label="إدارة معرّفات ' + esc(r.nm) + '">إدارة</button>' : '')
         + '</span>';
       return '<tr>'
-        + '<td class="who">' + esc(r.nm) + '<small>' + esc(r.iq) + '</small></td>'
+        + '<td class="who">' + esc(r.nm) + atFlags(r) + '<small>' + esc(r.iq) + '</small></td>'
         + '<td>' + idCell + '</td>'
         + '<td class="num">' + (r.first || '—') + '</td>'
         + '<td class="num">' + r.nA + '</td>'
