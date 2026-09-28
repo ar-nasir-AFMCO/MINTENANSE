@@ -5419,7 +5419,7 @@ async function handleAccidentFile(input){
     });
   }
   function stopEmployeeSilent(i){
-    try{ var e=state.employees[i]; if(e){ e.employment_status='stopped'; if(e.status_label!==undefined) e.status_label='متوقّف / مفوّض عليه'; } }catch(e){}
+    try{ var e=state.employees[i]; if(e){ e.employment_status='stopped'; if(e.status_label!==undefined) e.status_label='متوقف عن العمل'; } }catch(e){}
   }
   function stopEmployee(i){
     stopEmployeeSilent(i);

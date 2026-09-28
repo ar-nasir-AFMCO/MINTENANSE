@@ -499,7 +499,7 @@ section.view.on{display:block}
     <div class="toolbar">
       <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
         <input id="q" placeholder="بحث بالاسم أو رقم الإقامة أو الجوال…"></div>
-      <select id="fStatus"><option value="">كل الحالات</option><option value="active">موظف</option><option value="stopped">متوقّف / مفوّض</option><option value="salary_only">راتب فقط</option></select>
+      <select id="fStatus"><option value="">كل الحالات</option><option value="active">موظف</option><option value="stopped">متوقف عن العمل</option><option value="salary_only">راتب فقط</option></select>
       <select id="fProject"><option value="">كل المشاريع</option></select>
       <select id="fCat"><option value="">الكل (سيارة/دراجة)</option><option value="car">سائق سيارة</option><option value="motorcycle">سائق دراجة</option></select>
     </div>
@@ -562,7 +562,7 @@ function recomputeStats(){
 const STAT_DEFS=[
   {k:'totalEmployees',label:'إجمالي الموظفين',f:null},
   {k:'withVehicleActive',label:'على رأس العمل',f:{status:'active'}},
-  {k:'stopped',label:'متوقّف / مفوّض',f:{status:'stopped'}},
+  {k:'stopped',label:'متوقف عن العمل',f:{status:'stopped'}},
   {k:'salaryOnly',label:'راتب فقط',f:{status:'salary_only'}},
   {k:'withFinance',label:'لديهم كرت مالي',f:{fin:true}},
   {k:'cars',label:'سائقو السيارات',f:{cat:'car'}},
@@ -589,7 +589,7 @@ function bars(obj){const ent=Object.entries(obj);const mx=Math.max(1,...ent.map(
 
 function applyStat(f){ state.filter={status:'',project:'',cat:'',q:'',...(f||{})}; go('emp'); syncControls(); renderEmp(); setReturn(f); }
 function setReturn(f){const b=$('#returnBanner');if(!f){b.classList.remove('on');return;}
-  const map={status:{active:'على رأس العمل',stopped:'متوقّف / مفوّض',salary_only:'راتب فقط'},};
+  const map={status:{active:'على رأس العمل',stopped:'متوقف عن العمل',salary_only:'راتب فقط'},};
   let t='تصفية: ';if(f.status)t+=map.status[f.status];else if(f.cat)t+=(f.cat==='car'?'سائقو السيارات':'سائقو الدراجات');
   else if(f.fin)t+='لديهم كرت مالي';else if(f.multi)t+='أكثر من مركبة';else if(f.acc)t+='توالف وحوادث';else if(f.notes)t+='لديهم ملاحظات';
   $('#returnText').textContent=t;b.classList.add('on');}
@@ -612,7 +612,7 @@ function matchEmp(e,f){
 function statusChip(e){
   if(e.employment_status==='active')return '<span class="chip ok">موظف</span>';
   if(e.employment_status==='salary_only')return '<span class="chip sand">راتب فقط</span>';
-  return '<span class="chip line">متوقّف / مفوّض</span>';
+  return '<span class="chip line">متوقف عن العمل</span>';
 }
 function renderEmp(){
   const list=state.employees.filter(e=>matchEmp(e,state.filter));
@@ -982,7 +982,7 @@ boot();
   function daysUntil(d){if(!d)return null;var t=Date.parse(d);if(isNaN(t))return null;return Math.round((t-Date.now())/86400000);}
   function durLabel(v){var end=v.date_deliver|| (v.active?new Date().toISOString().slice(0,10):'');var n=daysBetween(v.date_receive,end);if(n==null)return '';return 'المدة: '+n+' يوم';}
 
-  var STATUS_MAP={active:{label:'على رأس العمل',salary_only:false},stopped:{label:'متوقّف / مفوّض عليه',salary_only:false},salary_only:{label:'راتب فقط',salary_only:true}};
+  var STATUS_MAP={active:{label:'على رأس العمل',salary_only:false},stopped:{label:'متوقف عن العمل',salary_only:false},salary_only:{label:'راتب فقط',salary_only:true}};
 
   /* ---------- finance periods model (multi-year, unlimited retention) ---------- */
   var ADVT=(typeof advTotal==='function')?advTotal:function(f){
@@ -1363,7 +1363,7 @@ boot();
   function ff(id,label,val,type){return '<div class="wf-field"><label>'+label+'</label><input id="'+id+'" type="'+(type||'text')+'" value="'+esc2(val||'')+'"></div>';}
   function ffFull(id,label,val){return '<div class="wf-field full"><label>'+label+'</label><textarea id="'+id+'">'+esc2(val||'')+'</textarea></div>';}
   function selStatus(val){
-    var opts=[['active','موظف (على رأس العمل)'],['stopped','متوقّف / مفوّض عليه'],['salary_only','راتب فقط']];
+    var opts=[['active','موظف (على رأس العمل)'],['stopped','متوقف عن العمل'],['salary_only','راتب فقط']];
     return '<div class="wf-field"><label>حالة التوظيف</label><select id="ef-status">'+opts.map(function(o){return '<option value="'+o[0]+'"'+(val===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select></div>';
   }
   function selCat(val){
@@ -2357,7 +2357,7 @@ boot();
     });
   }
   function stopEmployeeSilent(i){
-    try{ var e=state.employees[i]; if(e){ e.employment_status='stopped'; if(e.status_label!==undefined) e.status_label='متوقّف / مفوّض عليه'; } }catch(e){}
+    try{ var e=state.employees[i]; if(e){ e.employment_status='stopped'; if(e.status_label!==undefined) e.status_label='متوقف عن العمل'; } }catch(e){}
   }
   function stopEmployee(i){
     stopEmployeeSilent(i);
