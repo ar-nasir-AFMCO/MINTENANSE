@@ -113,6 +113,52 @@
       return realFetch(SB_URL + '/rest/v1/' + path, { method: method, headers: h, body: body == null ? undefined : JSON.stringify(body) });
     }).then(function(r){ return r.text().then(function(t){ var j = t ? JSON.parse(t) : null; if (!r.ok) throw new Error((j && j.message) || r.status); return j; }); });
   }
+  /* ── مخزن وثائق الموظفين ──────────────────────────────────────────
+     الصور كانت تُخزَّن base64 داخل السجل نفسه، فكل فتحة لوثيق أو الأسطول
+     تجرّ 33 ميجا. صارت في مخزن خاص، والسجل يحمل مسارها فقط.
+     المخزن غير عام: القراءة برابط موقّت قصير الأجل. */
+  var WF_BUCKET = 'emp-docs';
+  var signCache = {};
+  function storeSign(path, secs){
+    secs = secs || 3600;
+    var c = signCache[path];
+    if (c && c.exp > Date.now() + 60000) return Promise.resolve(c.url);
+    return tok().then(function(t){
+      return realFetch(SB_URL + '/storage/v1/object/sign/' + WF_BUCKET + '/' + path, {
+        method: 'POST',
+        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expiresIn: secs })
+      });
+    }).then(function(r){ return r.json(); }).then(function(j){
+      if (!j || !j.signedURL) throw new Error('sign failed');
+      var url = SB_URL + '/storage/v1' + j.signedURL;
+      signCache[path] = { url: url, exp: Date.now() + secs * 1000 };
+      return url;
+    });
+  }
+  function storeUpload(path, file){
+    return tok().then(function(t){
+      return realFetch(SB_URL + '/storage/v1/object/' + WF_BUCKET + '/' + path, {
+        method: 'POST',
+        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + t,
+                   'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true' },
+        body: file
+      });
+    }).then(function(r){
+      if (!r.ok) return r.text().then(function(t){ throw new Error(t.slice(0, 120)); });
+      delete signCache[path];
+      return true;
+    });
+  }
+  function storeRemove(path){
+    return tok().then(function(t){
+      return realFetch(SB_URL + '/storage/v1/object/' + WF_BUCKET + '/' + path, {
+        method: 'DELETE', headers: { apikey: SB_KEY, Authorization: 'Bearer ' + t }
+      });
+    }).then(function(){ delete signCache[path]; return true; }).catch(function(){ return false; });
+  }
+  window.WF_STORE = { sign: storeSign, upload: storeUpload, remove: storeRemove, bucket: WF_BUCKET };
+
   function reply(o){ return new Response(JSON.stringify(o), { status: 200, headers: { 'Content-Type': 'application/json' } }); }
   function getAll(path){ var out = []; function pg(off){ return api('GET', path + '&offset=' + off + '&limit=1000').then(function(r){ out = out.concat(r || []); return (r && r.length === 1000) ? pg(off + 1000) : out; }); } return pg(0); }
   function stable(v){
@@ -3232,7 +3278,37 @@ boot();
   var WF_DOC_KINDS=[['iqama','الإقامة','🪪'],['license','الرخصة','📋'],['contract','العقد','📄']];
   function wfLoadDocs(cb){ cloudGet(WF_DOC_KEY).then(function(r){ _wfDocs=(r&&r.data&&typeof r.data==='object')?r.data:{}; if(cb)cb(); }).catch(function(){ _wfDocs=_wfDocs||{}; if(cb)cb(); }); }
   function wfDocsFor(iq){ if(!_wfDocs) return null; var k=normId(iq); return _wfDocs[k]||null; }
+  /* الرفع يذهب إلى المخزن، والسجل يحمل المسار فقط لا الصورة.
+     إن تعذّر المخزن نعود للطريقة القديمة حتى لا تضيع وثيقة على المستخدم. */
+  function wfDocExt(file){
+    var t=(file.type||'').toLowerCase(), n=(file.name||'').toLowerCase();
+    if(t.indexOf('pdf')>=0 || /\.pdf$/.test(n)) return 'pdf';
+    if(t.indexOf('png')>=0) return 'png';
+    if(t.indexOf('webp')>=0) return 'webp';
+    if(t.indexOf('heic')>=0) return 'heic';
+    return 'jpg';
+  }
   function wfSaveDoc(iq, kind, file, cb){
+    var k=normId(iq); _wfDocs=_wfDocs||{};
+    var path=k+'/'+kind+'.'+wfDocExt(file);
+    var store=window.WF_STORE;
+    if(store && store.upload){
+      wfToast('⏳ جارٍ رفع '+kind+'…');
+      store.upload(path, file).then(function(){
+        _wfDocs[k]=_wfDocs[k]||{};
+        _wfDocs[k][kind]={ path:path, name:file.name||'', type:file.type||'', ts:new Date().toISOString(), by:wfUser() };
+        try{ cloudPost(WF_DOC_KEY, _wfDocs); }catch(_){}
+        wfToast('✅ تم رفع '+kind);
+        if(cb)cb();
+      }).catch(function(e){
+        wfToast('تعذّر الرفع للمخزن — يُحفظ بالطريقة القديمة');
+        wfSaveDocLegacy(iq, kind, file, cb);
+      });
+      return;
+    }
+    wfSaveDocLegacy(iq, kind, file, cb);
+  }
+  function wfSaveDocLegacy(iq, kind, file, cb){
     var k=normId(iq); _wfDocs=_wfDocs||{};
     wfReadDataURL(file).then(function(dataUrl){
       _wfDocs[k]=_wfDocs[k]||{};
@@ -3243,14 +3319,25 @@ boot();
     }).catch(function(){ wfToast('تعذّر قراءة الملف'); });
   }
   function wfDeleteDoc(iq, kind, cb){
-    var k=normId(iq); if(_wfDocs&&_wfDocs[k]&&_wfDocs[k][kind]){ delete _wfDocs[k][kind]; try{ cloudPost(WF_DOC_KEY,_wfDocs); }catch(_){} wfToast('تم حذف الوثيقة'); }
+    var k=normId(iq);
+    if(_wfDocs&&_wfDocs[k]&&_wfDocs[k][kind]){
+      var p=_wfDocs[k][kind].path;
+      if(p && window.WF_STORE && window.WF_STORE.remove){ try{ window.WF_STORE.remove(p); }catch(_){} }
+      delete _wfDocs[k][kind]; try{ cloudPost(WF_DOC_KEY,_wfDocs); }catch(_){} wfToast('تم حذف الوثيقة');
+    }
     if(cb)cb();
   }
   function wfDocBoxHTML(iq, kind, label, icon, readOnly){
     var d=wfDocsFor(iq); var f=d&&d[kind];
     var inner='';
-    if(f && f.data){
-      if((f.type||'').indexOf('pdf')>=0 || /\.pdf$/i.test(f.name||'')){
+    if(f && (f.path || f.data)){
+      var isPdf=(f.type||'').indexOf('pdf')>=0 || /\.pdf$/i.test(f.name||'');
+      if(f.path){
+        /* المصدر رابط موقّت يُجلب بعد الإدراج — لا صورة داخل السجل */
+        inner = isPdf
+          ? '<a class="wf-pdf" data-doc-path="'+wfEsc(f.path)+'" data-doc-pdf="1" download="'+wfEsc(f.name||(kind+'.pdf'))+'" target="_blank">📄 '+wfEsc(f.name||'ملف PDF')+'</a>'
+          : '<img data-doc-path="'+wfEsc(f.path)+'" data-lb="'+kind+'" alt="'+wfEsc(label)+'">';
+      } else if(isPdf){
         inner='<a class="wf-pdf" href="'+f.data+'" download="'+wfEsc(f.name||(kind+'.pdf'))+'" target="_blank">📄 '+wfEsc(f.name||'ملف PDF')+'</a>';
       } else {
         inner='<img src="'+f.data+'" data-lb="'+kind+'" alt="'+wfEsc(label)+'">';
@@ -3266,6 +3353,19 @@ boot();
     }
     return '<div class="wf-doc-box"><div class="wf-doc-label">'+icon+' '+wfEsc(label)+'</div>'+inner+'</div>';
   }
+  /* يحوّل كل عنصر يحمل data-doc-path إلى رابط موقّت. يُستدعى بعد الإدراج
+     في DOM، فلا شيء يُجلب إلا لبطاقة الموظف المفتوحة فعلاً. */
+  function wfSignDocs(scope){
+    if(!window.WF_STORE || !window.WF_STORE.sign) return;
+    (scope||document).querySelectorAll('[data-doc-path]').forEach(function(el){
+      var p=el.getAttribute('data-doc-path'); if(!p) return;
+      window.WF_STORE.sign(p).then(function(url){
+        if(el.getAttribute('data-doc-pdf')) el.setAttribute('href', url); else el.src=url;
+      }).catch(function(){
+        if(!el.getAttribute('data-doc-pdf')) el.alt='تعذّر تحميل الصورة';
+      });
+    });
+  }
   function wfDocsGridHTML(iq, readOnly){
     return '<div class="wf-doc-grid">'+WF_DOC_KINDS.map(function(k){ return wfDocBoxHTML(iq,k[0],k[1],k[2],readOnly); }).join('')+'</div>';
   }
@@ -3276,7 +3376,8 @@ boot();
     scope.querySelectorAll('[data-doc-del]').forEach(function(b){
       b.addEventListener('click',function(){ wfDeleteDoc(iq, b.getAttribute('data-doc-del'), rerender); });
     });
-    scope.querySelectorAll('[data-lb]').forEach(function(img){ img.addEventListener('click',function(){ wfLightbox(img.src); }); });
+    wfSignDocs(scope);
+    scope.querySelectorAll('[data-lb]').forEach(function(img){ img.addEventListener('click',function(){ if(img.src) wfLightbox(img.src); }); });
   }
 
   /* ════════════ (٣) الكفالة (وثيق) ════════════ */

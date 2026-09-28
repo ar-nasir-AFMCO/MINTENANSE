@@ -113,6 +113,52 @@
       return realFetch(SB_URL + '/rest/v1/' + path, { method: method, headers: h, body: body == null ? undefined : JSON.stringify(body) });
     }).then(function(r){ return r.text().then(function(t){ var j = t ? JSON.parse(t) : null; if (!r.ok) throw new Error((j && j.message) || r.status); return j; }); });
   }
+  /* ── مخزن وثائق الموظفين ──────────────────────────────────────────
+     الصور كانت تُخزَّن base64 داخل السجل نفسه، فكل فتحة لوثيق أو الأسطول
+     تجرّ 33 ميجا. صارت في مخزن خاص، والسجل يحمل مسارها فقط.
+     المخزن غير عام: القراءة برابط موقّت قصير الأجل. */
+  var WF_BUCKET = 'emp-docs';
+  var signCache = {};
+  function storeSign(path, secs){
+    secs = secs || 3600;
+    var c = signCache[path];
+    if (c && c.exp > Date.now() + 60000) return Promise.resolve(c.url);
+    return tok().then(function(t){
+      return realFetch(SB_URL + '/storage/v1/object/sign/' + WF_BUCKET + '/' + path, {
+        method: 'POST',
+        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expiresIn: secs })
+      });
+    }).then(function(r){ return r.json(); }).then(function(j){
+      if (!j || !j.signedURL) throw new Error('sign failed');
+      var url = SB_URL + '/storage/v1' + j.signedURL;
+      signCache[path] = { url: url, exp: Date.now() + secs * 1000 };
+      return url;
+    });
+  }
+  function storeUpload(path, file){
+    return tok().then(function(t){
+      return realFetch(SB_URL + '/storage/v1/object/' + WF_BUCKET + '/' + path, {
+        method: 'POST',
+        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + t,
+                   'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true' },
+        body: file
+      });
+    }).then(function(r){
+      if (!r.ok) return r.text().then(function(t){ throw new Error(t.slice(0, 120)); });
+      delete signCache[path];
+      return true;
+    });
+  }
+  function storeRemove(path){
+    return tok().then(function(t){
+      return realFetch(SB_URL + '/storage/v1/object/' + WF_BUCKET + '/' + path, {
+        method: 'DELETE', headers: { apikey: SB_KEY, Authorization: 'Bearer ' + t }
+      });
+    }).then(function(){ delete signCache[path]; return true; }).catch(function(){ return false; });
+  }
+  window.WF_STORE = { sign: storeSign, upload: storeUpload, remove: storeRemove, bucket: WF_BUCKET };
+
   function reply(o){ return new Response(JSON.stringify(o), { status: 200, headers: { 'Content-Type': 'application/json' } }); }
   function getAll(path){ var out = []; function pg(off){ return api('GET', path + '&offset=' + off + '&limit=1000').then(function(r){ out = out.concat(r || []); return (r && r.length === 1000) ? pg(off + 1000) : out; }); } return pg(0); }
   function stable(v){
