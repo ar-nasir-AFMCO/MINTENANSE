@@ -8602,19 +8602,81 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     document.head.appendChild(mcss);
 
     /* ---------- (١) تبويب «المنصّة» في ملف الموظف ---------- */
+    function idErr(err){
+      var m = err && err.message || '';
+      return /مسجّل لموظف آخر/.test(m) ? m
+           : /duplicate|unique/i.test(m) ? 'هذا المعرّف مسجّل لموظف آخر على نفس المنصّة'
+           : /خارج نطاق صلاحيتك|صلاحيتك لا تسمح|الحذف متاح/.test(m) ? m
+           : /permission|denied|row-level/i.test(m) ? 'لا تملك صلاحية على معرّفات هذا المشروع'
+           : 'تعذّر: ' + m;
+    }
+    function idState(st){
+      return st === 'ended'  ? '<span class="chip" style="background:#fdf2f0;color:#a3372b">منتهٍ</span>'
+           : st === 'future' ? '<span class="chip" style="background:#fdf8ef;color:#95570f">لم يبدأ</span>'
+           : '<span class="chip" style="background:#e7f3ec;color:#0e5e5c">نشط</span>';
+    }
+    function paintIds(e, pane, canEdit, canDel){
+      var box = pane.querySelector('#afxIds'); if (!box) return;
+      api('GET', 'v_employee_ids?select=id,platform,external_id,project_code,start_date,end_date,note,state,project_differs'
+          + '&iqama=eq.' + encodeURIComponent(normId(e.iqama)) + '&order=state.asc,start_date.desc.nullslast')
+        .then(function(rows){
+          rows = rows || [];
+          if (!rows.length){ box.innerHTML = '<span class="muted">لا توجد معرّفات بعد. تُضاف من ملفات الحضور عند تطابق الجوال، أو يدوياً هنا.</span>'; return; }
+          box.innerHTML = '<div class="scroll"><table><thead><tr><th>المنصّة</th><th>المعرّف</th><th>المشروع</th><th>من</th><th>إلى</th><th>الحالة</th>'
+            + (canEdit ? '<th></th>' : '') + '</tr></thead><tbody>'
+            + rows.map(function(x){
+                return '<tr data-row="' + esc(x.id) + '"><td>' + esc(x.platform) + '</td>'
+                  + '<td style="direction:ltr"><b>' + esc(x.external_id) + '</b></td>'
+                  + '<td>' + esc(x.project_code || '—') + (x.project_differs ? ' <span class="muted">(مشروعه الآن ' + esc(e.project || '—') + ')</span>' : '') + '</td>'
+                  + (canEdit
+                     ? '<td><input type="date" data-f="sd" value="' + esc(x.start_date || '') + '"></td>'
+                       + '<td><input type="date" data-f="ed" value="' + esc(x.end_date || '') + '"></td>'
+                     : '<td>' + esc(x.start_date || '—') + '</td><td>' + esc(x.end_date || 'مفتوح') + '</td>')
+                  + '<td>' + idState(x.state) + '</td>'
+                  + (canEdit ? '<td><button class="btnx gh" data-save="' + esc(x.id) + '">حفظ</button>'
+                       + (canDel ? ' <button class="btnx gh" data-del="' + esc(x.id) + '">حذف</button>' : '') + '</td>' : '')
+                  + '</tr>'; }).join('')
+            + '</tbody></table></div>';
+          Array.prototype.forEach.call(box.querySelectorAll('[data-save]'), function(b){
+            b.onclick = function(){
+              var tr = b.closest('tr'), rid = b.getAttribute('data-save');
+              b.disabled = true;
+              rpc('employee_id_save', { p: { id: rid,
+                  start_date: tr.querySelector('[data-f="sd"]').value || null,
+                  end_date:   tr.querySelector('[data-f="ed"]').value || null,
+                  external_id: tr.querySelector('td:nth-child(2) b').textContent,
+                  platform: tr.querySelector('td:nth-child(1)').textContent } })
+                .then(function(){ note('✅ حُفظت الفترة', 'green'); paintIds(e, pane, canEdit, canDel); })
+                .catch(function(err){ b.disabled = false; note(idErr(err), 'red'); });
+            };
+          });
+          Array.prototype.forEach.call(box.querySelectorAll('[data-del]'), function(b){
+            b.onclick = function(){
+              if (!confirm('حذف هذا المعرّف نهائياً؟\nلو المندوب تركه فقط، الأفضل تحديد «إلى».')) return;
+              b.disabled = true;
+              rpc('employee_id_delete', { p_id: b.getAttribute('data-del') })
+                .then(function(){ note('حُذف المعرّف', 'green'); paintIds(e, pane, canEdit, canDel); })
+                .catch(function(err){ b.disabled = false; note(idErr(err), 'red'); });
+            };
+          });
+        })
+        .catch(function(err){ box.innerHTML = '<span class="warn">تعذّر تحميل المعرّفات: ' + esc(err.message) + '</span>'; });
+    }
     function empPane(e, pane){
       pane.innerHTML = '<div class="afx muted">جارٍ التحميل من القاعدة…</div>';
       rpc('employee_overview', { p_iqama: normId(e.iqama) }).then(function(o){
         o = o || {}; var ids = o.ids || [], months = o.months || [], inc = o.incidents || [], ded = o.deductions || [];
         var canEdit = !!(me && me.perms && me.perms.edit), canDel = !!(me && (me.role === 'admin' || me.role === 'manager'));
         var h = '<div class="afx">';
-        // المعرّفات
-        h += '<h4>🪪 معرّفات الموظف في المشاريع</h4><div>' + (ids.length ? ids.map(function(x){
-          return '<span class="chip">' + esc(x.platform) + ' <b>' + esc(x.id) + '</b>' + (canDel ? ' <i data-rid="' + esc(x.rid) + '" title="حذف">✕</i>' : '') + '</span>'; }).join('')
-          : '<span class="muted">لا توجد معرّفات بعد. تُضاف تلقائياً من ملفات الحضور عند تطابق الجوال، أو يدوياً هنا.</span>') + '</div>';
+        // المعرّفات — مشروع وفترة لكل معرّف (تُملأ من v_employee_ids بعد الرسم)
+        h += '<h4>🪪 معرّفات المندوب في المشاريع</h4><div id="afxIds"><span class="muted">جارٍ التحميل…</span></div>';
         if (canEdit) h += '<div class="row"><select id="afxPl">' + PLATFORMS.concat(e.project && PLATFORMS.indexOf(String(e.project).toUpperCase()) < 0 ? [String(e.project).toUpperCase()] : [])
           .map(function(p){ return '<option' + (String(e.project || '').toUpperCase() === p ? ' selected' : '') + '>' + esc(p) + '</option>'; }).join('')
-          + '</select><input id="afxId" placeholder="رقم المعرّف في المشروع" style="direction:ltr"><button class="btnx" id="afxAdd">إضافة معرّف</button></div>';
+          + '</select><input id="afxId" placeholder="رقم المعرّف" style="direction:ltr;max-width:150px">'
+          + '<label class="muted">من <input type="date" id="afxSd"></label>'
+          + '<label class="muted">إلى <input type="date" id="afxEd"></label>'
+          + '<button class="btnx" id="afxAdd">إضافة معرّف</button></div>'
+          + '<div class="muted">لو ترك المندوب المشروع، حدّد «إلى» بدل الحذف — يبقى السجل كاملاً.</div>';
         // الحضور والتفويض
         var t = o.totals || {};
         h += '<h4>🗓️ الدوام والتفويض (آخر ٦ أشهر)</h4><div class="scroll"><table><thead><tr><th>الشهر</th><th>أيام الدوام</th><th>الساعات</th><th>الطلبات</th><th>أيام التفويض</th><th>الغياب</th><th>المشاريع</th></tr></thead><tbody>'
@@ -8640,20 +8702,21 @@ body.wx-card-open #wx4Pill{ display:none !important; }
           : pending ? '<span class="chip">✅ الطلب مُرسل للأسطول بانتظار إسناد مركبة</span>'
           : (canEdit && window.__wfReqSend ? '<button class="btnx" id="afxReq">🚗 إرسال طلب تفويض للأسطول</button><span class="muted">يصل «الصندوق الموحّد» عند المسؤول عن الإسناد، ويتحدث هنا تلقائياً.</span>' : '<span class="muted">لا يوجد طلب.</span>')) + '</div><div id="afxReqHist"></div>';
         pane.innerHTML = h + '</div>';
+        paintIds(e, pane, canEdit, canDel);
         var add = pane.querySelector('#afxAdd');
         if (add) add.onclick = function(){
           var pl = pane.querySelector('#afxPl').value, id = normId(pane.querySelector('#afxId').value);
           if (!id) return note('اكتب رقم المعرّف', 'amber');
           api('GET', 'employees?select=id&iqama=eq.' + encodeURIComponent(normId(e.iqama))).then(function(r){
             if (!r || !r[0]) throw new Error('الموظف غير موجود في القاعدة بعد');
-            return api('POST', 'employee_ids', { employee_id: r[0].id, platform: pl, external_id: id }, { Prefer: 'return=minimal' });
-          }).then(function(){ note('✅ أُضيف المعرّف ' + pl + ' ' + id, 'green'); empPane(e, pane); })
-            .catch(function(err){ note(/duplicate|unique/i.test(err.message) ? 'هذا المعرّف مسجّل لموظف آخر في نفس المشروع' : 'تعذّر: ' + err.message, 'red'); });
+            return rpc('employee_id_save', { p: { employee_id: r[0].id, platform: pl, external_id: id,
+              project_code: e.project || null,
+              start_date: pane.querySelector('#afxSd').value || null,
+              end_date:   pane.querySelector('#afxEd').value || null } });
+          }).then(function(){ note('✅ أُضيف المعرّف ' + pl + ' ' + id, 'green');
+              pane.querySelector('#afxId').value = ''; paintIds(e, pane, canEdit, canDel); })
+            .catch(function(err){ note(idErr(err), 'red'); });
         };
-        Array.prototype.forEach.call(pane.querySelectorAll('[data-rid]'), function(x){
-          x.onclick = function(){ if (!confirm('حذف هذا المعرّف؟')) return;
-            api('DELETE', 'employee_ids?id=eq.' + x.getAttribute('data-rid'), null, { Prefer: 'return=minimal' }).then(function(){ empPane(e, pane); }).catch(function(err){ note('تعذّر: ' + err.message, 'red'); }); };
-        });
         var ST = { 'new': 'جديد', in_progress: 'قيد التنفيذ', done: 'منجز', rejected: 'مرفوض' };
         api('GET', 'inbox_items?select=status,close_note,created_at,created_by_name&kind=eq.vehicle_request&ref->>iqama=eq.' + encodeURIComponent(normId(e.iqama)) + '&order=created_at.desc&limit=5').then(function(list){
           var box = pane.querySelector('#afxReqHist'); if (!box || !list || !list.length) return;
