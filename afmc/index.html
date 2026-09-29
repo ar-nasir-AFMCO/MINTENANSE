@@ -193,6 +193,8 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 .rvdlg .act .btn{flex:1;min-height:44px}
 /* ── الدوام مقابل التفويض (تبويب داخل «المناديب») ── */
 #attp,#samp{--dot:20px;--plum:#5b3d7a;--plumbg:#f3eef8}
+#samp .pulld{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink-2)}
+#samp .pulld input{width:auto;min-width:132px}
 #samp .sam-beta{margin:14px 0 2px;padding:10px 14px;border-radius:12px;background:var(--warnbg);color:var(--warn);border:1px solid var(--warn);font-size:13px;line-height:1.7}
 #attp .at-projs, #samp .at-projs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 2px}
 #attp .at-proj, #samp .at-proj{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:8px 17px;font:inherit;font-weight:600;font-size:13.5px;min-height:40px;color:var(--ink-2);cursor:pointer}
@@ -499,6 +501,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
               <button type="button" data-d="30" aria-pressed="false">٣٠</button>
             </div>
             <span class="at-grow"></span>
+            <label class="pulld">سحب يوم <input type="date" id="sDay"></label>
             <button class="btn sm" id="sPull">🔄 سحب الآن</button>
             <button class="btn ghost sm" id="sHow">الإضافة</button>
             <button class="btn ghost sm" id="sReload">تحديث</button>
@@ -702,7 +705,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260929195156";
+  var BUILD = "20260929205645";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -1525,6 +1528,8 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       $('sReload').onclick = function(){ smLoad(); };
       $('sHow').onclick = smHow;
       $('sPull').onclick = smPull;
+      $('sDay').value = smYmd(new Date(Date.now() - 864e5));   /* أمس: يوم مكتمل */
+      $('sDay').max   = smYmd(new Date());
       $('sQ').oninput = smRender; $('sSort').onchange = smRender;
       $('sCsv').onclick = smCsv;
       smLoad();
@@ -1657,7 +1662,8 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   function smPull(){
     var b = $('sPull'), old = b.textContent;
     if (!extThere()) { smHow(); return; }
-    var day = $('sTo').value || null;
+    var day = $('sDay').value || smYmd(new Date(Date.now() - 864e5));
+    if (day >= smYmd(new Date()) && !confirm('اليوم الجاري لم يكتمل — أرقامه ناقصة وتُستبدل عند سحبه غداً. تكمل؟')) return;
     b.disabled = true; b.textContent = 'جارٍ السحب…'; $('sFoot').textContent = 'الإضافة تسحب من Samurai و Keeta…';
     extCall('sync', { day: day }).then(function(r){
       b.disabled = false; b.textContent = old;
