@@ -195,6 +195,8 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 #attp,#samp{--dot:20px;--plum:#5b3d7a;--plumbg:#f3eef8}
 #samp .pulld{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink-2)}
 #samp .pulld input{width:auto;min-width:132px}
+#samp .sam-ext{margin:14px 0 2px;padding:10px 14px;border-radius:12px;background:var(--badbg);color:var(--bad);border:1px solid var(--bad);font-size:13px;line-height:1.7}
+#samp .sam-ext.hide{display:none}
 #samp .sam-beta{margin:14px 0 2px;padding:10px 14px;border-radius:12px;background:var(--warnbg);color:var(--warn);border:1px solid var(--warn);font-size:13px;line-height:1.7}
 #attp .at-projs, #samp .at-projs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 2px}
 #attp .at-proj, #samp .at-proj{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:8px 17px;font:inherit;font-weight:600;font-size:13.5px;min-height:40px;color:var(--ink-2);cursor:pointer}
@@ -491,6 +493,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
           <div class="at-note" id="aFoot" aria-live="polite"></div>
         </div>
         <div class="view hide" id="samp" style="overflow:auto;width:100%">
+          <div class="sam-ext hide" id="sExt"></div>
           <div class="sam-beta">🧪 <b>شاشة تجريبية</b> — لمدير النظام وحده. البيانات تُسحب من Samurai وKeeta عبر إضافة AFMCO Sync ولا تدخل في الرواتب بعد.</div>
           <div class="at-bar">
             <label>من <input type="date" id="sFrom"></label>
@@ -705,7 +708,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260929205645";
+  var BUILD = "20260929220556";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -1530,6 +1533,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       $('sPull').onclick = smPull;
       $('sDay').value = smYmd(new Date(Date.now() - 864e5));   /* أمس: يوم مكتمل */
       $('sDay').max   = smYmd(new Date());
+      extNote();
       $('sQ').oninput = smRender; $('sSort').onchange = smRender;
       $('sCsv').onclick = smCsv;
       smLoad();
@@ -1641,8 +1645,22 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
      الإضافة هي الوحيدة القادرة على قراءة Samurai و Keeta من داخل المنصة:
      المتصفّح يمنع الصفحة من قراءة نطاق آخر (CORS). الصفحة ترسل رسالة،
      والإضافة تسحب وتحفظ بجلسة المستخدم نفسها ثم تردّ. */
-  var EXT_N = 0, EXT_W = {};
+  var EXT_N = 0, EXT_W = {}, EXT_MIN = '1.2.0';
   function extThere(){ return !!document.documentElement.getAttribute('data-afmc-ext'); }
+  function extVer(){ return document.documentElement.getAttribute('data-afmc-ext') || ''; }
+  function extOld(){
+    var v = extVer(); if (!v) return false;
+    var a1 = v.split('.').map(Number), b1 = EXT_MIN.split('.').map(Number);
+    for (var i = 0; i < 3; i++){ if ((a1[i]||0) !== (b1[i]||0)) return (a1[i]||0) < (b1[i]||0); }
+    return false;
+  }
+  function extNote(){
+    var box = $('sExt'); if (!box) return;
+    if (!extThere()) { box.innerHTML = '⚠ <b>إضافة AFMCO Sync غير مثبّتة</b> — بدونها لا يعمل السحب. ثبّتها من ملف الإضافة الذي أُرسل لك.'; box.classList.remove('hide'); return; }
+    if (extOld()) { box.innerHTML = '⚠ <b>الإضافة قديمة (' + esc(extVer()) + ')</b> — Samurai يعمل، لكن <b>Keeta لا تُسحب</b> والسحب التراكمي غير متاح. حدّثها إلى ' + EXT_MIN + ' من chrome://extensions.'; box.classList.remove('hide'); return; }
+    box.classList.add('hide');
+  }
+  window.__extNote = extNote;   /* للفحص والتشخيص */
   function extCall(action, payload, ms){
     if (!extThere()) return Promise.reject(new Error('إضافة AFMCO Sync غير مثبّتة في هذا المتصفّح'));
     var id = 'x' + (++EXT_N);
@@ -1662,6 +1680,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   function smPull(){
     var b = $('sPull'), old = b.textContent;
     if (!extThere()) { smHow(); return; }
+    if (extOld()) toast('الإضافة قديمة — Samurai فقط سيُسحب، وKeeta لا. حدّثها إلى ' + EXT_MIN, 7000);
     var day = $('sDay').value || smYmd(new Date(Date.now() - 864e5));
     if (day >= smYmd(new Date()) && !confirm('اليوم الجاري لم يكتمل — أرقامه ناقصة وتُستبدل عند سحبه غداً. تكمل؟')) return;
     b.disabled = true; b.textContent = 'جارٍ السحب…'; $('sFoot').textContent = 'الإضافة تسحب من Samurai و Keeta…';
