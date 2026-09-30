@@ -557,7 +557,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
                 <button class="btn" id="stCsv"><svg class="i"><use href="#i-down"/></svg>تصدير Excel</button>
                 <span class="sub" id="stNote"></span>
               </div>
-              <div class="sub" style="margin-top:8px">«من الأسطول» = اعتماد طلب إيقاف أو تسليم مركبة بسبب «ترك العمل». «تجاوز مباشر» = أوقفه مدير النظام من وثيق. «أثر تلقائي» = تبعية لتغيير آخر. الفلتر الافتراضي يُظهر ما جاء من الأسطول فقط.</div>
+              <div class="sub" style="margin-top:8px">«من الأسطول» = اعتماد طلب إيقاف أو تسليم مركبة بسبب «ترك العمل». «تجاوز مباشر» = أوقفه مدير النظام من وثيق. «من النظام» = استيراد أو صيانة قاعدة بلا مستخدم. «قبل التطبيق» = إيقاف وقع قبل سريان قاعدة «الإيقاف من الأسطول»، فلا يصحّ نسبته لأحد. الفلتر الافتراضي يُظهر ما جاء من الأسطول فقط.</div>
             </div>
           </div>
           <div class="cards" id="homeCards"></div>
@@ -724,7 +724,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260930195244";
+  var BUILD = "20260930210846";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -1115,9 +1115,11 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   function stYday(){ var d = new Date(Date.now() + 3 * 3600000); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); }
   function stToday(){ return new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10); }
   function stSrcTag(x){
-    return x === 'من الأسطول' ? '<span class="tag" style="background:#eaf5ef;color:#186b4a">من الأسطول</span>'
+    return x === 'من الأسطول'  ? '<span class="tag" style="background:#eaf5ef;color:#186b4a">من الأسطول</span>'
          : x === 'تجاوز مباشر' ? '<span class="tag" style="background:#fbecea;color:#a3372b">تجاوز مباشر</span>'
-         : '<span class="tag">أثر تلقائي</span>';
+         : x === 'من النظام'   ? '<span class="tag" style="background:#fdf3e7;color:#8a5a10">من النظام</span>'
+         : x === 'قبل التطبيق' ? '<span class="tag">قبل التطبيق</span>'
+         : '<span class="tag">' + esc(x || '—') + '</span>';
   }
   function stRender(){
     var b = $('stopsBody');
