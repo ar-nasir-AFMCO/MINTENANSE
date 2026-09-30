@@ -8615,6 +8615,37 @@ body.wx-card-open #wx4Pill{ display:none !important; }
            : st === 'future' ? '<span class="chip" style="background:#fdf8ef;color:#95570f">لم يبدأ</span>'
            : '<span class="chip" style="background:#e7f3ec;color:#0e5e5c">نشط</span>';
     }
+    function paintStop(e, pane, canEdit){
+      var box = pane.querySelector('#afxStopBox'); if (!box) return;
+      var active = String(e.employment_status || '') === 'active';
+      if (!active){ box.innerHTML = '<span class="muted">المندوب ليس على رأس العمل — لا حاجة لطلب إيقاف.</span>'; return; }
+      if (!canEdit){ box.innerHTML = '<span class="muted">لا تملك صلاحية إرسال طلب إيقاف.</span>'; return; }
+      api('GET', 'employees?select=id&iqama=eq.' + encodeURIComponent(normId(e.iqama))).then(function(r){
+        if (!r || !r[0]) { box.innerHTML = '<span class="muted">الموظف غير موجود في القاعدة بعد.</span>'; return; }
+        var eid = r[0].id;
+        /* لا نُرشّح على حقل JSON في الخادم — نقرأ المفتوح ونطابق محلياً */
+        return api('GET', 'inbox_items?select=id,status,created_at,ref&kind=eq.stop_request&status=in.(new,in_progress)&order=created_at.desc&limit=200')
+          .then(function(list){
+            var mine = (list || []).filter(function(x){ return x.ref && String(x.ref.employee_id) === String(eid); });
+            if (mine.length){
+              box.innerHTML = '<span class="chip">⏳ طلب إيقاف مُرسل للأسطول بانتظار الاعتماد — ' + esc(String(mine[0].created_at).slice(0,10)) + '</span>';
+              return;
+            }
+            box.innerHTML = '<input id="afxStopWhy" placeholder="سبب الإيقاف (إلزامي)" style="flex:1;min-width:190px">'
+              + '<button class="btnx" id="afxStopGo">⛔ إرسال طلب إيقاف للأسطول</button>'
+              + '<div class="muted">الإيقاف يتم من الأسطول فقط — يُوقف المندوب وتُستلم مركبته معاً.</div>';
+            box.querySelector('#afxStopGo').onclick = function(){
+              var why = (box.querySelector('#afxStopWhy').value || '').trim();
+              if (!why) return note('اكتب سبب الإيقاف', 'amber');
+              this.disabled = true;
+              rpc('stop_request_create', { p_employee: eid, p_reason: why })
+                .then(function(x){ note('✅ وصل الطلب للأسطول' + (x && x.plates ? ' — المركبة: ' + x.plates : ''), 'green');
+                    paintStop(e, pane, canEdit); })
+                .catch(function(err){ note(idErr(err), 'red'); paintStop(e, pane, canEdit); });
+            };
+          });
+      }).catch(function(err){ box.innerHTML = '<span class="warn">' + esc(err.message) + '</span>'; });
+    }
     function paintIds(e, pane, canEdit, canDel){
       var box = pane.querySelector('#afxIds'); if (!box) return;
       api('GET', 'v_employee_ids?select=id,platform,external_id,project_code,start_date,end_date,note,state,project_differs'
@@ -8695,6 +8726,8 @@ body.wx-card-open #wx4Pill{ display:none !important; }
             return '<tr><td>' + (x.kind === 'vehicle' ? 'مركبته' : 'سكنه') + '</td><td>' + esc(x.asset || '—') + '</td><td>' + esc(x.type || x.desc || '—') + '</td><td>' + esc(st) + '</td><td>' + esc(x.opened || '—') + '</td><td>' + num(x.cost) + '</td><td class="warn">' + num(x.charge) + '</td></tr>'; }).join('')
           + '</tbody></table></div>' : '<div class="muted">لا توجد أوامر صيانة على مركبته أو سكنه.</div>');
         if (ded.length) h += '<div class="muted" style="margin-top:6px">خصومات مسجّلة في سجل المركبة: ' + ded.map(function(d){ return esc(d.plate) + ' = ' + esc(d.value); }).join(' · ') + '</div>';
+        // طلب الإيقاف — الإيقاف نفسه يقع من الأسطول
+        h += '<h4>⛔ إيقاف المندوب</h4><div class="row" id="afxStopBox"><span class="muted">جارٍ التحقّق…</span></div>';
         // طلب التفويض
         var pending = window.__wfReqPending && window.__wfReqPending(e.iqama);
         var hasVeh = (e.vehicles || []).some(function(v){ return v && (v.active === true || String(v.status || '').toLowerCase() === 'active'); });
@@ -8703,6 +8736,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
           : (canEdit && window.__wfReqSend ? '<button class="btnx" id="afxReq">🚗 إرسال طلب تفويض للأسطول</button><span class="muted">يصل «الصندوق الموحّد» عند المسؤول عن الإسناد، ويتحدث هنا تلقائياً.</span>' : '<span class="muted">لا يوجد طلب.</span>')) + '</div><div id="afxReqHist"></div>';
         pane.innerHTML = h + '</div>';
         paintIds(e, pane, canEdit, canDel);
+        paintStop(e, pane, canEdit);
         var add = pane.querySelector('#afxAdd');
         if (add) add.onclick = function(){
           var pl = pane.querySelector('#afxPl').value, id = normId(pane.querySelector('#afxId').value);
@@ -8959,6 +8993,123 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       var q = (window._wfFleetReqCache || [])[parseInt(b.getAttribute('data-asg'), 10)]; if (q) pick(q);
     }, true);
     window.wfAfmcFleet = { pick: pick, assign: assign };
+  })();
+
+  /* ═══════════ الأسطول: صندوق «طلبات الإيقاف» الواردة من وثيق ═══════════
+     وثيق لا يوقف — يرسل طلباً. هنا يظهر الطلب للأسطول: اعتماد يوقف المندوب
+     ويستلم مركبته معاً (في القاعدة وفي هذا التطبيق)، أو رفض بملاحظة. */
+  if (APP === 'fleet') (function(){
+    var CACHE = [];
+    function css(){
+      if (document.getElementById('wf-stop-style')) return;
+      var st = document.createElement('style'); st.id = 'wf-stop-style';
+      st.textContent =
+        '#wfStopPill{position:fixed;bottom:112px;right:12px;z-index:99998;cursor:pointer;border:none;'
+        + 'background:#a3372b;color:#fff;border-radius:999px;padding:9px 14px;font:700 13px system-ui,Tahoma;'
+        + 'box-shadow:0 4px 14px rgba(0,0,0,.25);direction:rtl;display:none;align-items:center;gap:6px}'
+        + '#wfStopPanel{position:fixed;bottom:156px;right:12px;z-index:99998;width:min(400px,92vw);max-height:62vh;'
+        + 'overflow:auto;background:#fff;border:1px solid #efebe3;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.25);'
+        + 'direction:rtl;display:none;padding:10px 12px}'
+        + '#wfStopPanel h4{margin:2px 0 8px;font-size:14px;color:#16211f}'
+        + '.wfs-row{border:1px solid #fbe9e6;border-radius:10px;padding:8px 10px;margin-bottom:8px;background:#ffffff}'
+        + '.wfs-row .nm{font-weight:700;font-size:13px;color:#16211f}'
+        + '.wfs-row .sub{color:#6b7674;font-size:12px;margin:2px 0}'
+        + '.wfs-row .why{font-size:12.5px;color:#a3372b;background:#fdf2f0;border-radius:8px;padding:5px 8px;margin:5px 0}'
+        + '.wfs-row .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}'
+        + '.wfs-row button{cursor:pointer;border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700}'
+        + '.wfs-ok{background:#a3372b;color:#fff}.wfs-no{background:#efebe3;color:#34403e}'
+        + '.wfs-row button[disabled]{opacity:.55;cursor:default}';
+      document.head.appendChild(st);
+    }
+    function today(){ var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+    function mayDecide(){ return !!(me && me.perms && (me.perms.assign || me.perms.manage)); }
+
+    /* يُطابق الإيقاف في هذا التطبيق حتى لا تعود المزامنة فتعيد التفويض */
+    function releaseLocal(q){
+      var iq = normId(q.ref && q.ref.iqama), hit = 0;
+      try {
+        (typeof vehicles !== 'undefined' ? (vehicles || []) : []).forEach(function(v){
+          if (!v || !v.current_driver) return;
+          if (normId(v.current_driver.driver_id) !== iq) return;
+          var i = (v.history || []).findIndex(function(h){ return normId(h.driver_id) === iq && String(h.status || '') === 'Active'; });
+          if (i >= 0){ v.history[i].status = 'Stopped'; v.history[i].date_deliver = today();
+                       v.history[i].reason = 'ترك العمل — اعتماد طلب إيقاف من وثيق'; }
+          v.current_driver = null; v.vehicle_status = 'available'; hit++;
+          try { if (typeof logEv === 'function') logEv('driver_stop', v.plate, { date: today(), reason: 'ترك العمل — اعتماد طلب إيقاف' }); } catch(_){}
+        });
+        if (hit){ try { window.persist(); } catch(_){} try { if (typeof applyFilters === 'function') applyFilters(); } catch(_){} }
+      } catch(_){}
+      return hit;
+    }
+    function decide(q, approve, btn){
+      var who = (q.ref && q.ref.name) || '';
+      var msg = approve ? ('اعتماد الإيقاف؟\n\n' + who + (q.ref && q.ref.plates ? '\nالمركبة: ' + q.ref.plates : '')
+                           + '\n\nسيُوقف في وثيق وتُستلم مركبته في الأسطول معاً.')
+                        : ('رفض طلب إيقاف «' + who + '»؟\nسيبقى على رأس العمل.');
+      if (!confirm(msg)) return;
+      var nt = approve ? null : (prompt('سبب الرفض (يظهر لمُرسل الطلب):') || '');
+      if (btn) btn.disabled = true;
+      rpc('stop_request_decide', { p_id: q.id, p_approve: !!approve, p_note: nt })
+        .then(function(res){
+          var n = approve ? releaseLocal(q) : 0;
+          note(approve ? ('⛔ أُوقف ' + who + (n ? ' — استُلمت مركبته' : '')) : ('↩︎ رُفض طلب إيقاف ' + who),
+               approve ? 'red' : 'amber');
+          poll();
+        })
+        .catch(function(err){ if (btn) btn.disabled = false; note('تعذّر: ' + err.message, 'red'); });
+    }
+    function render(list){
+      var panel = document.getElementById('wfStopPanel'); if (!panel) return;
+      var html = '<h4>⛔ طلبات إيقاف واردة من وثيق</h4>';
+      if (!list.length){ panel.innerHTML = html + '<div style="color:#6b7674;font-size:13px">لا توجد طلبات.</div>'; return; }
+      if (!mayDecide()) html += '<div style="color:#95570f;font-size:12px;margin-bottom:8px">الاعتماد لمن يملك «تسليم مركبات» في جدول الصلاحيات.</div>';
+      list.forEach(function(q, i){
+        var r = q.ref || {};
+        html += '<div class="wfs-row"><div class="nm">' + esc(r.name || '') + '</div>'
+          + '<div class="sub" style="direction:ltr;text-align:right">' + esc(r.iqama || '') + '</div>'
+          + '<div class="sub">' + esc(r.project || '—') + (r.plates ? ' · 🚗 ' + esc(r.plates) : ' · بلا مركبة') + '</div>'
+          + '<div class="why">' + esc(q.body || '—') + '</div>'
+          + '<div class="sub">أرسله: ' + esc(q.created_by_name || '—') + ' · ' + esc(String(q.created_at || '').slice(0, 10)) + '</div>'
+          + (mayDecide() ? '<div class="acts"><button class="wfs-ok" data-ok="' + i + '">✅ اعتماد الإيقاف واستلام المركبة</button>'
+                           + '<button class="wfs-no" data-no="' + i + '">✕ رفض</button></div>' : '')
+          + '</div>';
+      });
+      panel.innerHTML = html;
+      Array.prototype.forEach.call(panel.querySelectorAll('[data-ok]'), function(b){
+        b.onclick = function(){ decide(list[+b.getAttribute('data-ok')], true, b); }; });
+      Array.prototype.forEach.call(panel.querySelectorAll('[data-no]'), function(b){
+        b.onclick = function(){ decide(list[+b.getAttribute('data-no')], false, b); }; });
+    }
+    function poll(){
+      if (!ready) return;
+      api('GET', 'inbox_items?select=id,title,body,ref,created_at,created_by_name,status'
+            + '&kind=eq.stop_request&status=in.(new,in_progress)&order=created_at.asc&limit=200')
+        .then(function(list){
+          CACHE = list || []; window._wfStopCache = CACHE;
+          var pill = document.getElementById('wfStopPill'), panel = document.getElementById('wfStopPanel');
+          if (pill){
+            if (CACHE.length){ pill.style.display = 'inline-flex'; pill.innerHTML = '⛔ طلبات إيقاف (' + CACHE.length + ')'; }
+            else { pill.style.display = 'none'; if (panel) panel.style.display = 'none'; }
+          }
+          if (panel && panel.style.display !== 'none') render(CACHE);
+        }).catch(function(){});
+    }
+    function build(){
+      if (document.getElementById('wfStopPill') || !document.body) return;
+      css();
+      var pill = document.createElement('button'); pill.id = 'wfStopPill'; pill.innerHTML = '⛔ طلبات إيقاف';
+      document.body.appendChild(pill);
+      var panel = document.createElement('div'); panel.id = 'wfStopPanel';
+      panel.style.display = 'none';   /* لازم صراحةً: بدونه أول ضغطة تُقرأ «مفتوحة» فتُغلق */
+      document.body.appendChild(panel);
+      pill.onclick = function(){
+        if (panel.style.display !== 'none'){ panel.style.display = 'none'; return; }
+        panel.style.display = 'block'; render(CACHE);
+      };
+    }
+    setTimeout(function(){ try { build(); poll(); } catch(_){} }, 1800);
+    setInterval(function(){ try { build(); poll(); } catch(_){} }, 20000);
+    window.wfAfmcStop = { poll: poll, list: function(){ return CACHE; } };
   })();
 
   /* تحديث مباشر: المنصّة تُبلغ عند أي تغيير في القاعدة → سحب الفروقات فوراً (لا يقاطع رفعاً جارياً) */

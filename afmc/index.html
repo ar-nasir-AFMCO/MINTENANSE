@@ -544,6 +544,22 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         <div class="view" id="home" style="overflow:auto;width:100%">
           <div class="hello"><div><h2 id="hi">أهلاً</h2><p id="hiSub">ملخّص العمليات — كل الأنظمة على قاعدة بيانات واحدة.</p></div></div>
           <div class="pulse hide" id="pulse"></div>
+          <div class="sec hide" id="stopsSec" style="margin-top:0">
+            <h3><svg class="i"><use href="#i-shield"/></svg>مَن أُوقف — ملخّص الصباح <span class="tag" id="stopsN"></span></h3>
+            <div class="card" style="padding:14px 16px">
+              <div class="sub" id="stopsSub">…</div>
+              <div class="tbl" style="margin-top:10px;overflow:auto;max-height:46vh"><table><thead><tr><th>المندوب</th><th>الإقامة</th><th>المشروع</th><th>المركبة</th><th>مصدر الإيقاف</th><th>اليوم</th></tr></thead><tbody id="stopsBody"></tbody></table></div>
+              <div style="display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap">
+                <label class="sub" style="display:flex;align-items:center;gap:6px">من <input type="date" id="stFrom"></label>
+                <label class="sub" style="display:flex;align-items:center;gap:6px">إلى <input type="date" id="stTo"></label>
+                <label class="sub" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="stFleet" checked> من الأسطول فقط</label>
+                <button class="btn ghost" id="stGo"><svg class="i"><use href="#i-reload"/></svg>تحديث</button>
+                <button class="btn" id="stCsv"><svg class="i"><use href="#i-down"/></svg>تصدير Excel</button>
+                <span class="sub" id="stNote"></span>
+              </div>
+              <div class="sub" style="margin-top:8px">«من الأسطول» = اعتماد طلب إيقاف أو تسليم مركبة بسبب «ترك العمل». «تجاوز مباشر» = أوقفه مدير النظام من وثيق. «أثر تلقائي» = تبعية لتغيير آخر. الفلتر الافتراضي يُظهر ما جاء من الأسطول فقط.</div>
+            </div>
+          </div>
           <div class="cards" id="homeCards"></div>
           <div class="attn hide" id="attn"></div>
         </div>
@@ -708,7 +724,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260929220556";
+  var BUILD = "20260930195244";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -1086,11 +1102,78 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       attRender();
       housingMeta(set);
     }).catch(function(){ ['watheeq','fleet','dbb'].forEach(function(id){ set(id, '<span>قاعدة بيانات موحّدة</span>'); }); maintMeta(set); housingMeta(set); });
+    stopsHome();
     loadSummary().then(function(){
       var parts = subsFor().map(function(g){ var x = summary[g] || {}; return '<span>' + SUBS[g].name + ': ' + num(x.present) + ' حاضر · ' + day(x.latest) + '</span>'; });
       set('couriers', parts.join('<span>·</span>') || '<span>—</span>');
     });
   }
+  /* ═══════════ مَن أُوقف: ملخّص الصباح + تصدير «من الأسطول فقط» ═══════════
+     المصدر الوحيد: stops_export (مفلترة بالمشروع داخل القاعدة). الملخّص اليومي
+     يُولَّد مرة واحدة في اليوم من أول من يفتح المنصّة — والدالة آمنة للتكرار. */
+  var stRows = [];
+  function stYday(){ var d = new Date(Date.now() + 3 * 3600000); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); }
+  function stToday(){ return new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10); }
+  function stSrcTag(x){
+    return x === 'من الأسطول' ? '<span class="tag" style="background:#eaf5ef;color:#186b4a">من الأسطول</span>'
+         : x === 'تجاوز مباشر' ? '<span class="tag" style="background:#fbecea;color:#a3372b">تجاوز مباشر</span>'
+         : '<span class="tag">أثر تلقائي</span>';
+  }
+  function stRender(){
+    var b = $('stopsBody');
+    if (!stRows.length){ b.innerHTML = '<tr><td colspan="6" class="sub" style="padding:14px">لا إيقافات في هذه المدة.</td></tr>'; return; }
+    b.innerHTML = stRows.map(function(r){
+      return '<tr><td>' + esc(r.name || '—') + '</td><td style="direction:ltr">' + esc(r.iqama || '') + '</td><td>' + esc(r.project_code || '—')
+        + '</td><td>' + esc(r.plates || '—') + '</td><td>' + stSrcTag(r.source) + '</td><td>' + esc(String(r.work_date || '')) + '</td></tr>';
+    }).join('');
+  }
+  function stLoad(){
+    var f = $('stFrom').value || stYday(), t = $('stTo').value || stYday(), only = $('stFleet').checked;
+    $('stNote').textContent = 'جارٍ الجلب…';
+    return rpc('stops_export', { p_from: f, p_to: t, p_fleet_only: only }).then(function(r){
+      stRows = r || []; stRender();
+      $('stNote').textContent = stRows.length + ' إيقاف' + (only ? ' — من الأسطول فقط' : ' — كل المصادر');
+      $('stopsN').textContent = stRows.length + ' · ' + (f === t ? f : f + ' → ' + t);
+      return stRows;
+    }).catch(function(e){ $('stNote').textContent = 'تعذّر: ' + e.message; stRows = []; stRender(); });
+  }
+  function stCsvGo(){
+    if (!stRows.length) { toast('لا صفوف للتصدير.'); return; }
+    var q = function(v){ var x = String(v == null ? '' : v); return /[",\n]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x; };
+    var head = ['اليوم','الوقت','المندوب','الإقامة','المشروع','المركبة','من','إلى','مصدر الإيقاف','نفّذه'];
+    var body = stRows.map(function(r){ return [r.work_date, String(r.changed_at || '').slice(11, 16), r.name, r.iqama, r.project_code,
+      r.plates, r.st_old, r.st_new, r.source, r.by_email].map(q).join(','); });
+    var blob = new Blob(['﻿' + head.map(q).join(',') + '\n' + body.join('\n')], { type: 'text/csv;charset=utf-8' });
+    var u = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = u; a.download = 'الإيقافات-' + ($('stFleet').checked ? 'من-الأسطول-' : '') + ($('stFrom').value || stYday()) + '_' + ($('stTo').value || stYday()) + '.csv';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(u); a.remove(); }, 4000);
+  }
+  $('stGo').onclick = stLoad; $('stCsv').onclick = stCsvGo;
+  $('stFleet').onchange = stLoad; $('stFrom').onchange = stLoad; $('stTo').onchange = stLoad;
+  function stopsHome(){
+    var sec = $('stopsSec'); if (!sec || !me) return;
+    var y = stYday();
+    if (!$('stFrom').value){ $('stFrom').value = y; $('stTo').value = y; }
+    /* ملخّص الصباح في الصندوق الموحّد — مرة واحدة يومياً، والدالة نفسها لا تُكرّر */
+    try {
+      if (localStorage.getItem('afmc_digest_day') !== y){
+        rpc('stop_digest', { p_day: y }).then(function(){ try { localStorage.setItem('afmc_digest_day', y); } catch(e){} }).catch(function(){});
+      }
+    } catch(e){}
+    /* السطر العلوي يذكر كل المصادر حتى لا يختفي شيء، والجدول يفتح على
+       «من الأسطول فقط» لأنه ما يُعتدّ به في الأيام الماضية. */
+    rpc('stops_export', { p_from: y, p_to: y, p_fleet_only: false }).then(function(r){
+      var all = r || []; sec.classList.remove('hide');
+      $('stopsSub').innerHTML = all.length
+        ? 'أُوقف أمس (' + esc(y) + ') <b>' + all.length + '</b> مندوب — منهم <b>'
+          + all.filter(function(x){ return x.source === 'من الأسطول'; }).length + '</b> من الأسطول.'
+        : 'لا إيقافات أمس (' + esc(y) + ').';
+      $('stFleet').checked = true;
+      return stLoad();
+    }).catch(function(){ sec.classList.add('hide'); });
+  }
+
   function loadSummary(){ return rpc('couriers_summary').then(function(s){ summary = s || {}; renderKpis(); }).catch(function(){}); }
   function sysUi(){
     $('sysbar').querySelectorAll('.sys').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-s') === current); });
