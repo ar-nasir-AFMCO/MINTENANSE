@@ -232,6 +232,47 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 #attp tbody tr:hover td, #attp tbody tr:hover td:first-child, #attp tbody tr:hover td:nth-child(2), #samp tbody tr:hover td, #samp tbody tr:hover td:first-child, #samp tbody tr:hover td:nth-child(2){background:var(--surface-2)}
 #attp td.num, #attp th.num, #samp td.num, #samp th.num{font-variant-numeric:tabular-nums}
 #attp tr:last-child td, #samp tr:last-child td{border-bottom:0}
+/* لوحة كيتا التجريبية — نفس أنماط الدوام وSamurai */
+#keep,#keep{--dot:20px;--plum:#5b3d7a;--plumbg:#f3eef8}
+#keep .pulld{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink-2)}
+#keep .pulld input{width:auto;min-width:132px}
+#keep .sam-ext{margin:14px 0 2px;padding:10px 14px;border-radius:12px;background:var(--badbg);color:var(--bad);border:1px solid var(--bad);font-size:13px;line-height:1.7}
+#keep .sam-ext.hide{display:none}
+#keep .sam-beta{margin:14px 0 2px;padding:10px 14px;border-radius:12px;background:var(--warnbg);color:var(--warn);border:1px solid var(--warn);font-size:13px;line-height:1.7}
+#keep .at-projs, #keep .at-projs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 2px}
+#keep .at-proj, #keep .at-proj{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:8px 17px;font:inherit;font-weight:600;font-size:13.5px;min-height:40px;color:var(--ink-2);cursor:pointer}
+#keep .at-proj[aria-selected="true"], #keep .at-proj[aria-selected="true"]{background:var(--brand);color:#fff;border-color:var(--brand)}
+#keep .at-proj .c, #keep .at-proj .c{font-size:11.5px;opacity:.75;margin-inline-start:7px;font-variant-numeric:tabular-nums}
+#keep .at-bar, #keep .at-bar{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin:12px 0}
+#keep .at-bar label, #keep .at-bar label{font-size:12.5px;color:var(--ink-2);display:flex;align-items:center;gap:6px}
+#keep input[type=date], #keep input[type=search], #keep select, #keep input[type=date], #keep input[type=search], #keep select{padding:8px 11px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font:inherit;font-size:16px;min-height:40px}
+#keep input[type=search], #keep input[type=search]{flex:1;min-width:190px}
+#keep .at-grow, #keep .at-grow{flex:1}
+#keep .at-quick, #keep .at-quick{display:flex;gap:6px}
+#keep .at-quick button, #keep .at-quick button{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 13px;font:inherit;font-size:12.5px;min-height:40px;color:var(--ink-2);cursor:pointer}
+#keep .at-quick button[aria-pressed="true"], #keep .at-quick button[aria-pressed="true"]{border-color:var(--brand);color:var(--brand);box-shadow:0 0 0 3px var(--brand-ring)}
+#keep .at-kpis, #keep .at-kpis{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin:12px 0}
+#keep .at-kpi, #keep .at-kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;box-shadow:var(--sh)}
+#keep .at-kpi .v, #keep .at-kpi .v{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
+#keep .at-kpi .l, #keep .at-kpi .l{font-size:12px;color:var(--muted);margin-top:2px}
+#keep .at-kpi.bad .v, #keep .at-kpi.bad .v{color:var(--bad)}#keep .at-kpi.ok .v{color:var(--ok)}#keep .at-kpi.warn .v{color:var(--warn)}
+#keep .at-legend, #keep .at-legend{display:flex;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-2);margin-bottom:10px}
+#keep .at-legend .item, #keep .at-legend .item{display:inline-flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 13px 6px 9px;white-space:nowrap}
+#keep .key, #keep .key{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--line);flex:none;font-size:10px;font-weight:700;color:var(--faint);font-style:normal}
+#keep .k-ok, #keep .k-ok{background:var(--okbg);border-color:var(--ok)}
+#keep .k-bad, #keep .k-bad{background:var(--badbg);border-color:var(--bad)}
+#keep .k-warn, #keep .k-warn{background:var(--warnbg);border-color:var(--warn)}
+#keep .k-first, #keep .k-first{box-shadow:0 0 0 2px var(--brand)}
+#keep .at-tbl, #keep .at-tbl{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:auto;scrollbar-gutter:stable;max-height:min(66vh,720px);box-shadow:var(--sh)}
+#keep table, #keep table{border-collapse:separate;border-spacing:0;font-size:13px;width:100%}
+#keep th, #keep td, #keep th, #keep td{padding:8px 9px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+#keep th, #keep th{background:var(--surface-2);font-size:12px;color:var(--ink-2);font-weight:600;position:sticky;top:0;z-index:3}
+#keep th:first-child, #keep td:first-child, #keep th:first-child, #keep td:first-child{position:sticky;right:0;z-index:2;width:196px;min-width:196px;background:var(--surface)}
+#keep th:nth-child(2), #keep td:nth-child(2), #keep th:nth-child(2), #keep td:nth-child(2){position:sticky;right:196px;z-index:2;width:170px;min-width:170px;background:var(--surface);box-shadow:-1px 0 0 var(--line)}
+#keep th:first-child, #keep th:nth-child(2), #keep th:first-child, #keep th:nth-child(2){z-index:4;background:var(--surface-2)}
+#keep tbody tr:hover td, #keep tbody tr:hover td:first-child, #keep tbody tr:hover td:nth-child(2), #keep tbody tr:hover td, #keep tbody tr:hover td:first-child, #keep tbody tr:hover td:nth-child(2){background:var(--surface-2)}
+#keep td.num, #keep th.num, #keep td.num, #keep th.num{font-variant-numeric:tabular-nums}
+#keep tr:last-child td, #keep tr:last-child td{border-bottom:0}
 #attp td.who, #samp td.who{font-weight:600}
 #attp td.who small, #samp td.who small{display:block;font-weight:400;color:var(--muted);font-size:11.5px;direction:ltr;text-align:right}
 #attp .strip, #samp .strip{display:flex;gap:2px;padding:2px 0}
@@ -541,6 +582,51 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
           </div>
           <div class="at-note" id="sFoot" aria-live="polite"></div>
         </div>
+        <div class="view hide" id="keep" style="overflow:auto;width:100%">
+          <div class="sam-beta">🧪 <b>شاشة تجريبية</b> — لمدير النظام وحده. حضور مناديب كيتا كما هو في Keemart، ولا يدخل في الرواتب بعد.</div>
+          <div class="at-bar">
+            <label>من <input type="date" id="kFrom"></label>
+            <label>إلى <input type="date" id="kTo"></label>
+            <div class="at-quick" id="kQuick">
+              <button type="button" data-d="7" aria-pressed="true">٧ أيام</button>
+              <button type="button" data-d="14" aria-pressed="false">١٤</button>
+              <button type="button" data-d="30" aria-pressed="false">٣٠</button>
+            </div>
+            <span class="at-grow"></span>
+            <label class="pulld">سحب يوم <input type="date" id="kDay"></label>
+            <button class="btn sm" id="kPull">🔄 سحب الآن</button>
+            <button class="btn ghost sm" id="kHow">الزر</button>
+            <button class="btn ghost sm" id="kReload">تحديث</button>
+          </div>
+          <div class="at-kpis" id="kKpis"></div>
+          <div class="at-bar">
+            <input type="search" id="kQ" placeholder="بحث باسم المندوب أو رقمه أو إقامته…" aria-label="بحث">
+            <select id="kSort" aria-label="ترتيب">
+              <option value="orders">الأكثر طلبات</option>
+              <option value="hours">الأكثر ساعات</option>
+              <option value="days">الأكثر أياماً</option>
+              <option value="unlinked">غير المربوطين أولاً</option>
+            </select>
+            <span class="at-grow"></span>
+            <button class="btn ghost sm" id="kCsv">تصدير CSV</button>
+          </div>
+          <div class="at-tbl">
+            <table>
+              <thead><tr>
+                <th scope="col">المندوب في كيتا</th>
+                <th scope="col">في وثيق</th>
+                <th scope="col">المشروع</th>
+                <th scope="col">الموقع</th>
+                <th scope="col" class="num">أيام</th>
+                <th scope="col" class="num">ساعات</th>
+                <th scope="col" class="num">طلبات</th>
+                <th scope="col" class="num">طلبات/ساعة</th>
+              </tr></thead>
+              <tbody id="kBody"></tbody>
+            </table>
+          </div>
+          <div class="at-note" id="kFoot" aria-live="polite"></div>
+        </div>
         <div class="view" id="home" style="overflow:auto;width:100%">
           <div class="hello"><div><h2 id="hi">أهلاً</h2><p id="hiSub">ملخّص العمليات — كل الأنظمة على قاعدة بيانات واحدة.</p></div></div>
           <div class="pulse hide" id="pulse"></div>
@@ -692,6 +778,19 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     <div class="act"><button class="btn ghost" id="smDlgX">إغلاق</button></div>
   </div>
 </div>
+<div class="rvdlg hide" id="keDlg" role="dialog" aria-modal="true" aria-labelledby="keDlgT">
+  <div class="box">
+    <h3 id="keDlgT">زر السحب اليومي من Keemart</h3>
+    <div class="who">اسحبه مرّة واحدة إلى شريط المفضّلة في كروم</div>
+    <p style="margin:0 0 14px"><a id="keLink" class="btn" style="text-decoration:none;display:inline-block">⬇︎ سحب Keeta</a></p>
+    <div class="hint" style="font-size:12.5px;color:var(--muted);line-height:1.7">
+      كل يوم: افتح صفحة <b>Keemart</b> وإنت مسجّل دخول، واضغط الزر من المفضّلة.
+      يسحب حضور <b>أمس</b> (يوم مكتمل)، يفتح هذه الصفحة، ويحفظه تلقائياً.<br>
+      كيتا تتطلّب كوكيز جلستها، فلا تُسحب إلا من داخل صفحتها — ولا يمرّ أي مفتاح عبر المنصّة.
+    </div>
+    <div class="act"><button class="btn ghost" id="keDlgX">إغلاق</button></div>
+  </div>
+</div>
 <div class="rvdlg hide" id="rvDlg" role="dialog" aria-modal="true" aria-labelledby="rvDlgT">
   <div class="box">
     <h3 id="rvDlgT">اعتماد ملاحظة</h3>
@@ -724,7 +823,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260930213258";
+  var BUILD = "20260930220457";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -741,11 +840,12 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   ];
   var SUBS = { ninja:{ name:'Ninja', desc:'أداء الكباتن والـ SLA', src:'ninja.html' }, keemart:{ name:'Keemart', desc:'الحضور والتسوية والفواتير', src:'keemart.html' } ,
                attauth:{ name:'الدوام والتفويض', desc:'مقارنة أيام الدوام بأيام التفويض', local:true, panel:'attp', open:function(){ atOpen(); } },
-               samurai:{ name:'Samurai · تجريبي', desc:'تجريبي — لمدير النظام وحده. أداء المورّد والكباتن يُسحب من Samurai وKeeta يومياً.', local:true, panel:'samp', open:function(){ smOpen(); } } };
+               samurai:{ name:'Samurai · تجريبي', desc:'تجريبي — لمدير النظام وحده. أداء المورّد والكباتن يُسحب من Samurai وKeeta يومياً.', local:true, panel:'samp', open:function(){ smOpen(); } },
+               keeta:{ name:'Keeta · تجريبي', desc:'تجريبي — لمدير النظام وحده. حضور مناديب كيتا يُسحب من صفحة Keemart.', local:true, panel:'keep', open:function(){ keOpen(); } } };
   /* تبويبات «المناديب»: الأنظمة المتاحة + شاشة المقارنة (شاشة داخل البوابة، لا إطار) */
   function segSubs(){ var a = subsFor(); if (!a.length) return a;
     a = a.concat(['attauth']);
-    if (me && me.role === 'admin') a.push('samurai');   /* تجريبي — لمدير النظام وحده */
+    if (me && me.role === 'admin') { a.push('samurai'); a.push('keeta'); }   /* تجريبيتان — لمدير النظام وحده */
     return a; }
   var AREA_AR = { employees:'الموظفون', vehicles:'المركبات', attendance:'الحضور', maintenance:'الصيانة' };
   var CODE_AR = { no_phone:'بلا جوال', dup_phone:'جوال مكرر', iqama_expired:'إقامة منتهية', iqama_soon:'إقامة قريبة الانتهاء', license_expired:'رخصة منتهية',
@@ -1179,7 +1279,9 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       if (!solo) toast('⬇️ كيتا: وصلت بيانات ' + p.date + ' من صفحة Keemart');
     }
     rpc('keeta_ingest', { p_date:p.date, p_supplier:59, p_riders:p.riders || [], p_attendance:p.attendance || [] })
-      .then(function(r){ toast('✅ كيتا ' + p.date + ' — ' + nr + ' مندوب · ' + na + ' حضور'); back({ ok:true, date:p.date, result:r }); })
+      .then(function(r){ toast('✅ كيتا ' + p.date + ' — ' + nr + ' مندوب · ' + na + ' حضور'); back({ ok:true, date:p.date, result:r });
+        try { if (current === 'couriers' && sub === 'keeta') { keRAW = null; keLoad(); }
+              else if (me && me.role === 'admin') openSys('couriers', 'keeta'); } catch(e){} })
       .catch(function(e){ back({ error:e.message, date:p.date }); });
   });
 
@@ -1871,6 +1973,176 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       })
       .catch(function(err){ toast('تعذّر الحفظ: ' + err.message, 6000); });
   });
+
+  /* ---------------- Keeta: حضور المناديب (تجريبي) ----------------
+     كيتا تتطلّب كوكيز جلستها، فلا تُسحب إلا من داخل صفحة Keemart: إمّا
+     بإضافة AFMCO Sync، أو بزر المفضّلة أدناه الذي يسلّم النتيجة لهذه
+     الصفحة عبر postMessage. لا مفتاح ولا كلمة سر تمرّ من هنا. */
+  var keInit = false, keRAW = null, keROWS = [];
+  function keSetRange(n){
+    var t = new Date(), f = new Date(Date.now() - (n-1)*864e5);
+    $('kTo').value = smYmd(t); $('kFrom').value = smYmd(f);
+    $('kQuick').querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', String(+b.getAttribute('data-d') === n)); });
+  }
+  function keOpen(){
+    if (!keInit){
+      keInit = true; keSetRange(7);
+      $('kQuick').querySelectorAll('button').forEach(function(b){ b.onclick = function(){ keSetRange(+b.getAttribute('data-d')); keLoad(); }; });
+      $('kFrom').onchange = $('kTo').onchange = function(){
+        $('kQuick').querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed','false'); }); keLoad(); };
+      $('kReload').onclick = function(){ keRAW = null; keLoad(); };
+      $('kHow').onclick = keHow;
+      $('kPull').onclick = kePull;
+      $('kDay').value = smYmd(new Date(Date.now() - 864e5));
+      $('kDay').max   = smYmd(new Date());
+      $('kQ').oninput = keRender; $('kSort').onchange = keRender;
+      $('kCsv').onclick = keCsv;
+      keLoad();
+    } else if (!keRAW) keLoad();
+  }
+  function keLoad(){
+    var f = $('kFrom').value, t = $('kTo').value; if (!f || !t) return;
+    $('kFoot').textContent = 'جارٍ القراءة…';
+    api('GET', 'v_keeta_attendance_linked?select=*&work_date=gte.' + f + '&work_date=lte.' + t + '&order=work_date.asc&limit=20000')
+      .then(function(r){ keRAW = r || []; keBuild(); keKpis(); keRender(); })
+      .catch(function(e){ $('kFoot').textContent = 'تعذّرت القراءة: ' + e.message; });
+  }
+  function keBuild(){
+    var by = {};
+    keRAW.forEach(function(c){
+      var k = c.rider_id, r = by[k];
+      if (!r) r = by[k] = { id:k, nm:c.rider_name || ('#'+k), site:c.site_name || '', days:0, hours:0, orders:0,
+                            iq:c.iqama, ar:c.full_name_ar, proj:c.project_code, st:c.emp_status };
+      r.days++; r.hours += (+c.hours || 0); r.orders += (+c.orders || 0);
+      if (!r.iq && c.iqama){ r.iq = c.iqama; r.ar = c.full_name_ar; r.proj = c.project_code; r.st = c.emp_status; }
+      if (!r.site && c.site_name) r.site = c.site_name;
+    });
+    keROWS = Object.keys(by).map(function(k){ var r = by[k]; r.oph = r.hours ? r.orders / r.hours : null; return r; });
+  }
+  function keKpis(){
+    var host = $('kKpis');
+    if (!keRAW.length){ host.innerHTML = ''; return; }
+    var days = {}, hours = 0, orders = 0, linked = 0;
+    keRAW.forEach(function(c){ days[c.work_date] = 1; hours += (+c.hours || 0); orders += (+c.orders || 0); });
+    keROWS.forEach(function(r){ if (r.iq) linked++; });
+    var un = keROWS.length - linked;
+    host.innerHTML =
+        '<div class="at-kpi"><div class="v">' + num(keROWS.length) + '</div><div class="l">مندوب في المدة</div></div>'
+      + '<div class="at-kpi"><div class="v">' + num(Object.keys(days).length) + '</div><div class="l">أيام محفوظة</div></div>'
+      + '<div class="at-kpi"><div class="v">' + num(Math.round(hours)) + '</div><div class="l">إجمالي الساعات</div></div>'
+      + '<div class="at-kpi"><div class="v">' + num(orders) + '</div><div class="l">إجمالي الطلبات</div></div>'
+      + '<div class="at-kpi ok"><div class="v">' + num(linked) + '</div><div class="l">مربوط بوثيق</div></div>'
+      + '<div class="at-kpi' + (un ? ' bad' : '') + '"><div class="v">' + num(un) + '</div><div class="l">بلا ربط</div></div>';
+  }
+  function keFiltered(){
+    var q = ($('kQ').value || '').trim().toLowerCase(), s = $('kSort').value;
+    var a = keROWS.filter(function(r){
+      if (!q) return true;
+      return (r.nm + ' ' + r.id + ' ' + (r.iq || '') + ' ' + (r.ar || '')).toLowerCase().indexOf(q) >= 0; });
+    a.sort(function(x, y){
+      if (s === 'hours')    return y.hours - x.hours;
+      if (s === 'days')     return y.days - x.days;
+      if (s === 'unlinked') return (x.iq ? 1 : 0) - (y.iq ? 1 : 0) || y.orders - x.orders;
+      return y.orders - x.orders; });
+    return a;
+  }
+  function keRender(){
+    var a = keFiltered();
+    $('kBody').innerHTML = a.length ? a.map(function(r){
+      return '<tr><td><b>' + esc(r.nm) + '</b><br><small class="sub" style="direction:ltr">' + esc(r.id) + '</small></td>'
+        + '<td>' + (r.iq ? esc(r.ar || r.iq) + '<br><small class="sub" style="direction:ltr">' + esc(r.iq) + '</small>'
+                         : '<span class="tag" style="background:var(--badbg);color:var(--bad)">بلا ربط</span>') + '</td>'
+        + '<td>' + esc(r.proj || '—') + '</td><td>' + esc(r.site || '—') + '</td>'
+        + '<td class="num">' + num(r.days) + '</td><td class="num">' + num(Math.round(r.hours * 10) / 10) + '</td>'
+        + '<td class="num">' + num(r.orders) + '</td>'
+        + '<td class="num">' + (r.oph == null ? '—' : (Math.round(r.oph * 100) / 100)) + '</td></tr>';
+    }).join('') : '<tr><td colspan="8" class="sub" style="padding:16px">لا بيانات في هذه المدة — اسحب يوماً أولاً.</td></tr>';
+    $('kFoot').textContent = a.length + ' مندوب · ' + keRAW.length + ' صف حضور · ' + $('kFrom').value + ' → ' + $('kTo').value;
+  }
+  function keCsv(){
+    var a = keFiltered(); if (!a.length) { toast('لا صفوف للتصدير.'); return; }
+    var q = function(v){ var x = String(v == null ? '' : v); return /[",\n]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x; };
+    var head = ['المندوب','رقمه في كيتا','الاسم في وثيق','الإقامة','المشروع','الموقع','أيام','ساعات','طلبات','طلبات/ساعة'];
+    var body = a.map(function(r){ return [r.nm, r.id, r.ar || '', r.iq || '', r.proj || '', r.site || '',
+      r.days, Math.round(r.hours * 10) / 10, r.orders, r.oph == null ? '' : Math.round(r.oph * 100) / 100].map(q).join(','); });
+    var blob = new Blob(['﻿' + head.map(q).join(',') + '\n' + body.join('\n')], { type:'text/csv;charset=utf-8' });
+    var u = URL.createObjectURL(blob), el = document.createElement('a');
+    el.href = u; el.download = 'كيتا-' + $('kFrom').value + '_' + $('kTo').value + '.csv';
+    document.body.appendChild(el); el.click();
+    setTimeout(function(){ URL.revokeObjectURL(u); el.remove(); }, 4000);
+  }
+  function kePull(){
+    var b = $('kPull'), old = b.textContent, day = $('kDay').value;
+    if (!day) { toast('اختر يوماً'); return; }
+    if (extOld()) { toast('الإضافة قديمة — Keeta لا تُسحب منها. استخدم «الزر».', 7000); keHow(); return; }
+    if (day >= smYmd(new Date()) && !confirm('اليوم الجاري لم يكتمل — أرقامه ناقصة. تكمل؟')) return;
+    b.disabled = true; b.textContent = 'جارٍ السحب…';
+    extCall('sync', { day: day }).then(function(r){
+      b.disabled = false; b.textContent = old;
+      if (!r || !r.ok) { toast('تعذّر السحب: ' + ((r && r.error) || 'لا رد'), 6000); return; }
+      var x = r.result;
+      toast('✅ ' + x.date + ' — Keeta ' + ((x.keeta && x.keeta.attendance) || 0) + ' سجل', 7000);
+      keRAW = null; keLoad();
+    }).catch(function(e){ b.disabled = false; b.textContent = old; toast(e.message, 6000); });
+  }
+
+  /* زر المفضّلة: يعمل داخل صفحة Keemart ويسلّم الحضور لهذه الصفحة */
+  function keBookmarklet(){
+    var target = location.origin + location.pathname;
+    var fn = function(){
+      var T = '@@TARGET@@', O = '@@ORIGIN@@', S = '59';
+      if (location.host.indexOf('courier-keemart') < 0) { alert('افتح صفحة Keemart أولاً ثم اضغط الزر'); return; }
+      var P = function(path, body){
+        return fetch('/api/s/peisong/' + path, { method:'POST', credentials:'same-origin',
+          headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) })
+          .then(function(r){ return r.json(); })
+          .then(function(j){ if (j.code !== 0) throw new Error(j.msg || ('code ' + j.code)); return j.data; });
+      };
+      var pad = function(n){ return String(n).padStart(2,'0'); };
+      var d = new Date(Date.now() - 864e5);
+      var ymd = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+      var ms = new Date(ymd + 'T00:00:00Z').getTime() - 3 * 3600000;
+      var riders = [], att = [];
+      var rp = function(off){
+        return P('supplier/rider/list', { dutyStatus:1, supplierId:S, paging:{ needPagination:true, offset:off, limit:100 } })
+          .then(function(x){ var l = (x && x.list) || []; riders = riders.concat(l);
+                             return l.length === 100 && off < 4000 ? rp(off + l.length) : null; });
+      };
+      var ap = function(off, sites){
+        return P('rideroms/atten/statistics/list', { siteIds:sites, riderName:'', supplierId:S, vehicleType:null,
+                 startDate:ms, endDate:ms, paging:{ limit:100, offset:off } })
+          .then(function(x){ var l = (x && x.attendanceStatisticsSingleDayInfos) || []; att = att.concat(l);
+                             return l.length === 100 && off < 6000 ? ap(off + l.length, sites) : null; });
+      };
+      rp(0).then(function(){
+        var sites = riders.map(function(x){ return x.workSiteId; }).filter(Boolean);
+        sites = sites.filter(function(v, i){ return sites.indexOf(v) === i; });
+        return ap(0, sites.length ? sites : null);
+      }).then(function(){
+        var w = window.open(T + '#keeta-ingest', 'afmc_keeta');
+        if (!w) { alert('اسمح للنوافذ المنبثقة من هذا الموقع ثم أعد المحاولة'); return; }
+        var pay = { afmc:'keeta', payload:{ date:ymd, riders:riders, attendance:att } };
+        var n = 0, iv = setInterval(function(){
+          n++; try { w.postMessage(pay, O); } catch(e){}
+          if (n > 90) { clearInterval(iv); }
+        }, 700);
+        window.addEventListener('message', function(e){
+          if (e.origin !== O) return; var r = e.data;
+          if (r && r.afmc === 'keeta' && (r.ok || r.error)) {
+            clearInterval(iv);
+            if (r.error) alert('تعذّر الحفظ: ' + r.error);
+          }
+        });
+      }).catch(function(e){ alert('تعذّر السحب: ' + e.message); });
+    };
+    return 'javascript:' + encodeURIComponent('(' + fn.toString()
+      .replace('@@TARGET@@', target).replace('@@ORIGIN@@', location.origin) + ')()');
+  }
+  function keHow(){
+    $('keLink').href = keBookmarklet();
+    $('keDlg').classList.remove('hide');
+    $('keDlgX').onclick = function(){ $('keDlg').classList.add('hide'); };
+  }
 
   /* ---------------- permissions & integration ---------------- */
   var projects = [];
