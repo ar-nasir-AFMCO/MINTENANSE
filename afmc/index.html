@@ -724,7 +724,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260930210846";
+  var BUILD = "20260930212740";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -1153,6 +1153,31 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   }
   $('stGo').onclick = stLoad; $('stCsv').onclick = stCsvGo;
   $('stFleet').onchange = stLoad; $('stFrom').onchange = stLoad; $('stTo').onchange = stLoad;
+  /* ═══════════ جسر كيتا بلا إضافة ═══════════
+     كيتا تتطلّب كوكيز جلستها، فلا تُسحب إلا من داخل صفحة Keemart نفسها.
+     الإضافة تفعل ذلك بمحتوى مُحقَن؛ ولمن لم يحدّثها: صفحة Keemart تفتح
+     المنصّة وتسلّمها البيانات عبر postMessage، والمنصّة وحدها تكتب في
+     القاعدة بجلسة صاحبها — فلا يخرج أي مفتاح من هنا أبداً.
+     مقفول على أصل Keemart وحده، وبتأكيد صريح من المستخدم أول مرّة. */
+  var KEE_ORIGIN = 'https://courier-keemart.mykeeta.com', keeOk = false;
+  window.addEventListener('message', function(ev){
+    if (ev.origin !== KEE_ORIGIN) return;                      /* الأصل أولاً، قبل أي قراءة */
+    var d = ev.data; if (!d || d.afmc !== 'keeta') return;
+    var back = function(m){ try { ev.source.postMessage(Object.assign({ afmc:'keeta' }, m), KEE_ORIGIN); } catch(e){} };
+    if (d.hello) return back({ ready:true, user: me ? me.email : null });
+    var p = d.payload; if (!p || !p.date) return;
+    if (!me) return back({ error:'سجّل الدخول في المنصّة أولاً', date:p.date });
+    var nr = (p.riders || []).length, na = (p.attendance || []).length;
+    if (!keeOk){
+      if (!confirm('صفحة Keemart تطلب حفظ بيانات كيتا في المنصّة.\n\nيوم ' + p.date + ': ' + nr + ' مندوب · ' + na + ' صف حضور\n\nتسمح؟ (يُسأل مرّة واحدة لهذه الجلسة)'))
+        return back({ error:'رفضه المستخدم', date:p.date });
+      keeOk = true;
+    }
+    rpc('keeta_ingest', { p_date:p.date, p_supplier:59, p_riders:p.riders || [], p_attendance:p.attendance || [] })
+      .then(function(r){ toast('✅ كيتا ' + p.date + ' — ' + nr + ' مندوب · ' + na + ' حضور'); back({ ok:true, date:p.date, result:r }); })
+      .catch(function(e){ back({ error:e.message, date:p.date }); });
+  });
+
   function stopsHome(){
     var sec = $('stopsSec'); if (!sec || !me) return;
     var y = stYday();
