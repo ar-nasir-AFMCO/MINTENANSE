@@ -584,6 +584,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         </div>
         <div class="view hide" id="keep" style="overflow:auto;width:100%">
           <div class="sam-beta">🧪 <b>شاشة تجريبية</b> — لمدير النظام وحده. حضور مناديب كيتا كما هو في Keemart، ولا يدخل في الرواتب بعد.</div>
+          <div class="sam-ext hide" id="kMiss"></div>
           <div class="at-bar">
             <label>من <input type="date" id="kFrom"></label>
             <label>إلى <input type="date" id="kTo"></label>
@@ -823,7 +824,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20260930220457";
+  var BUILD = "20261001190219";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -1264,7 +1265,13 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     if (ev.origin !== KEE_ORIGIN) return;                      /* الأصل أولاً، قبل أي قراءة */
     var d = ev.data; if (!d || d.afmc !== 'keeta') return;
     var back = function(m){ try { ev.source.postMessage(Object.assign({ afmc:'keeta' }, m), KEE_ORIGIN); } catch(e){} };
-    if (d.hello) return back({ ready:true, user: me ? me.email : null });
+    if (d.hello){
+      /* نسلّم الزرّ قائمة الأيام الناقصة ليسحبها كلها بضغطة واحدة */
+      if (!me) return back({ ready:true, user:null, missing:[] });
+      return api('GET', 'keeta_attendance?select=work_date&order=work_date.desc&limit=5000')
+        .then(function(rows){ back({ ready:true, user: me.email, missing: keMissingDays(rows, 30) }); })
+        .catch(function(){ back({ ready:true, user: me.email, missing: [] }); });
+    }
     var p = d.payload; if (!p || !p.date) return;
     if (!me) return back({ error:'سجّل الدخول في المنصّة أولاً', date:p.date });
     var nr = (p.riders || []).length, na = (p.attendance || []).length;
@@ -1997,8 +2004,41 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       $('kDay').max   = smYmd(new Date());
       $('kQ').oninput = keRender; $('kSort').onchange = keRender;
       $('kCsv').onclick = keCsv;
-      keLoad();
+      keLoad(); keAuto();
     } else if (!keRAW) keLoad();
+  }
+  function keMissingDays(rows, n){
+    var have = {}; (rows || []).forEach(function(r){ have[r.work_date] = 1; });
+    var out = [], d = new Date(Date.now() + 3 * 3600000);
+    d.setUTCDate(d.getUTCDate() - 1);                     /* نبدأ من أمس: اليوم لم يكتمل */
+    for (var i = 0; i < n; i++){
+      var k = d.toISOString().slice(0, 10);
+      if (!have[k]) out.push(k);
+      d = new Date(d.getTime() - 864e5);
+    }
+    return out;
+  }
+  function keChain(days, host){
+    if (!days.length){ host.innerHTML = '✅ اكتملت الأيام الناقصة'; keRAW = null; keLoad(); return; }
+    var d = days[0];
+    host.innerHTML = '⏳ جارٍ سحب ' + esc(d) + ' تلقائياً… (' + days.length + ' متبقٍ)';
+    extCall('sync', { day: d })
+      .then(function(){ keChain(days.slice(1), host); })
+      .catch(function(e){ host.innerHTML = '✖ توقّف عند ' + esc(d) + ': ' + esc(e.message); });
+  }
+  function keAuto(){
+    var host = $('kMiss'); if (!host) return;
+    api('GET', 'keeta_attendance?select=work_date&order=work_date.desc&limit=5000').then(function(rows){
+      var miss = keMissingDays(rows, 14);
+      if (!miss.length){ host.classList.add('hide'); return; }
+      host.classList.remove('hide');
+      /* extOld() ترجع false أيضاً حين لا تكون الإضافة مثبّتة أصلاً،
+         فنشترط وجود نسختها قبل أن نطلب منها السحب. */
+      if (extVer() && !extOld()) keChain(miss.slice(0, 7), host);   /* إضافة حديثة: تسحبها بلا تدخّل */
+      else host.innerHTML = '⚠ ناقص <b>' + miss.length + '</b> يوم (أقدمها ' + esc(miss[miss.length - 1]) + ') — '
+         + (extVer() ? 'الإضافة قديمة (' + esc(extVer()) + ') ولا تسحب كيتا. ' : '')
+         + 'اضغط «الزر» مرّة واحدة في صفحة Keemart وهو يسحبها كلها.';
+    }).catch(function(){});
   }
   function keLoad(){
     var f = $('kFrom').value, t = $('kTo').value; if (!f || !t) return;
@@ -2086,7 +2126,8 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     }).catch(function(e){ b.disabled = false; b.textContent = old; toast(e.message, 6000); });
   }
 
-  /* زر المفضّلة: يعمل داخل صفحة Keemart ويسلّم الحضور لهذه الصفحة */
+  /* زر المفضّلة: يعمل داخل صفحة Keemart، يسأل المنصّة عن الأيام الناقصة
+     ويسحبها كلها بضغطة واحدة — لا يوم واحد فقط. */
   function keBookmarklet(){
     var target = location.origin + location.pathname;
     var fn = function(){
@@ -2099,41 +2140,54 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
           .then(function(j){ if (j.code !== 0) throw new Error(j.msg || ('code ' + j.code)); return j.data; });
       };
       var pad = function(n){ return String(n).padStart(2,'0'); };
-      var d = new Date(Date.now() - 864e5);
-      var ymd = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
-      var ms = new Date(ymd + 'T00:00:00Z').getTime() - 3 * 3600000;
-      var riders = [], att = [];
+      var yd = new Date(Date.now() - 864e5);
+      var ymd = yd.getFullYear() + '-' + pad(yd.getMonth()+1) + '-' + pad(yd.getDate());
+      var riders = [], sites = null, rep = {}, days = null;
       var rp = function(off){
         return P('supplier/rider/list', { dutyStatus:1, supplierId:S, paging:{ needPagination:true, offset:off, limit:100 } })
           .then(function(x){ var l = (x && x.list) || []; riders = riders.concat(l);
                              return l.length === 100 && off < 4000 ? rp(off + l.length) : null; });
       };
-      var ap = function(off, sites){
+      var ap = function(day, off, acc){
+        var ms = new Date(day + 'T00:00:00Z').getTime() - 3 * 3600000;
         return P('rideroms/atten/statistics/list', { siteIds:sites, riderName:'', supplierId:S, vehicleType:null,
                  startDate:ms, endDate:ms, paging:{ limit:100, offset:off } })
-          .then(function(x){ var l = (x && x.attendanceStatisticsSingleDayInfos) || []; att = att.concat(l);
-                             return l.length === 100 && off < 6000 ? ap(off + l.length, sites) : null; });
+          .then(function(x){ var l = (x && x.attendanceStatisticsSingleDayInfos) || []; acc = acc.concat(l);
+                             return l.length === 100 && off < 6000 ? ap(day, off + l.length, acc) : acc; });
       };
-      rp(0).then(function(){
-        var sites = riders.map(function(x){ return x.workSiteId; }).filter(Boolean);
-        sites = sites.filter(function(v, i){ return sites.indexOf(v) === i; });
-        return ap(0, sites.length ? sites : null);
-      }).then(function(){
-        var w = window.open(T + '#keeta-ingest', 'afmc_keeta');
-        if (!w) { alert('اسمح للنوافذ المنبثقة من هذا الموقع ثم أعد المحاولة'); return; }
-        var pay = { afmc:'keeta', payload:{ date:ymd, riders:riders, attendance:att } };
-        var n = 0, iv = setInterval(function(){
-          n++; try { w.postMessage(pay, O); } catch(e){}
-          if (n > 90) { clearInterval(iv); }
-        }, 700);
-        window.addEventListener('message', function(e){
-          if (e.origin !== O) return; var r = e.data;
-          if (r && r.afmc === 'keeta' && (r.ok || r.error)) {
-            clearInterval(iv);
-            if (r.error) alert('تعذّر الحفظ: ' + r.error);
-          }
+      var w = window.open(T + '#keeta-ingest', 'afmc_keeta');
+      if (!w) { alert('اسمح للنوافذ المنبثقة من هذا الموقع ثم أعد المحاولة'); return; }
+      window.addEventListener('message', function(e){
+        if (e.origin !== O) return; var r = e.data; if (!r || r.afmc !== 'keeta') return;
+        if (r.ready && days === null) days = (r.missing && r.missing.length) ? r.missing : [ymd];
+        if (r.date) rep[r.date] = r;
+      });
+      var hs = setInterval(function(){ try { w.postMessage({ afmc:'keeta', hello:true }, O); } catch(e){} }, 800);
+      var hold = function(f, ms){ return new Promise(function(res){ var t0 = Date.now();
+        var iv = setInterval(function(){ if (f() || Date.now() - t0 > ms){ clearInterval(iv); res(); } }, 400); }); };
+      hold(function(){ return days !== null; }, 90000).then(function(){
+        clearInterval(hs);
+        if (days === null) { alert('المنصّة لم تجهز — سجّل الدخول فيها ثم أعد المحاولة'); return; }
+        return rp(0).then(function(){
+          var ss = riders.map(function(x){ return x.workSiteId; }).filter(Boolean);
+          sites = ss.filter(function(v, i){ return ss.indexOf(v) === i; });
+          if (!sites.length) sites = null;
+          var i = 0, ok = 0, bad = 0, first = true;
+          var step = function(){
+            if (i >= days.length) { alert('كيتا: حُفظ ' + ok + ' يوم' + (bad ? ' · تعذّر ' + bad : '')); return; }
+            var day = days[i++];
+            return ap(day, 0, []).then(function(att){
+              w.postMessage({ afmc:'keeta', payload:{ date:day, riders:(first ? riders : []), attendance:att } }, O);
+              first = false;
+              return hold(function(){ return rep[day]; }, 90000).then(function(){
+                if (rep[day] && rep[day].ok) ok++; else bad++;
+                return step();
+              });
+            });
+          };
+          return step();
         });
-      }).catch(function(e){ alert('تعذّر السحب: ' + e.message); });
+      }).catch(function(e){ clearInterval(hs); alert('تعذّر السحب: ' + e.message); });
     };
     return 'javascript:' + encodeURIComponent('(' + fn.toString()
       .replace('@@TARGET@@', target).replace('@@ORIGIN@@', location.origin) + ')()');
