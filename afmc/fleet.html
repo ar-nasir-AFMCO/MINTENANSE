@@ -7095,7 +7095,7 @@ async function handleAccidentFile(input){
       list: function(){ return state.employees; },
       key: function(e){ return normId(e && e.iqama); },
       toRow: function(e){
-        var rec = {}; for (var k in e) if (k !== 'finance' && k !== 'vehicles' && k !== 'iban') rec[k] = e[k];
+        var rec = {}; for (var k in e) if (k !== 'finance' && k !== 'vehicles' && k !== 'iban' && k !== 'approved_at') rec[k] = e[k];
         var pay = (e.finance || e.iban) ? { finance: e.finance || null, iban: e.iban || '' } : null;
         return { iqama: normId(e.iqama), rec: rec, pay: pay };
       },
@@ -7105,6 +7105,7 @@ async function handleAccidentFile(input){
         o.finance = pay ? (pay.finance || null) : null;
         o.iban = pay ? (pay.iban || '') : '';
         o.vehicles = derivedVeh[normId(row.iqama)] || (local && local.vehicles) || [];
+        o.approved_at = row.approved_at || null;     /* v47: بانتظار اعتماد المدير حين تكون فارغة */
         return o;
       },
       rowKey: function(row){ return normId(row.iqama); },
@@ -7514,6 +7515,19 @@ async function handleAccidentFile(input){
 
   /* ═════════════════════ التشغيل ═════════════════════ */
   var started = false;
+  /* v47: عمود الاعتماد قد لا يكون مطبّقاً بعد على القاعدة. نفحصه مرّة واحدة
+     عند الإقلاع ونبني الاستعلام عليه، فلا يرتبط رفع الواجهة بترتيب تطبيق SQL. */
+  var HAS_APPROVAL = false;
+  window.__wfHasApproval = function(){ return HAS_APPROVAL; };
+  function probeApproval(){
+    if (APP !== 'watheeq') return Promise.resolve();
+    return api('GET', 'employees?select=approved_at&limit=1').then(function(){
+      HAS_APPROVAL = true;
+      COLLS.forEach(function(c){
+        if (c.id === 'employees') c.select = c.select.replace('select=iqama,data,', 'select=iqama,data,approved_at,');
+      });
+    }).catch(function(){ HAS_APPROVAL = false; });
+  }
   function start(){
     if (started) return;
     rpc('my_access').then(function(w){
@@ -7531,7 +7545,7 @@ async function handleAccidentFile(input){
       var unveil = function(){ if (veil) { veil.remove(); veil = null; } };
       COLLS.forEach(function(c){ c.force = {}; loadMeta(c); });
       var firstRun = COLLS.some(function(c){ return c.meta.first; });
-      return pullKv().then(function(){ return pullAll(true); }).then(function(){
+      return probeApproval().then(function(){ return pullKv(); }).then(function(){ return pullAll(true); }).then(function(){
         ready = true;
         /* القاعدة فارغة؟ المدير يرفع بيانات هذا الجهاز لأول مرة */
         return api('GET', COLLS[0].select.split('?')[0] + '?select=updated_at&limit=1').then(function(r){
@@ -7584,6 +7598,48 @@ async function handleAccidentFile(input){
       return st === 'ended'  ? '<span class="chip" style="background:#fdf2f0;color:#a3372b">منتهٍ</span>'
            : st === 'future' ? '<span class="chip" style="background:#fdf8ef;color:#95570f">لم يبدأ</span>'
            : '<span class="chip" style="background:#e7f3ec;color:#0e5e5c">نشط</span>';
+    }
+    /* v47: الموظف الذي يرفعه المشرف يبقى معلّقاً حتى يعتمده المدير،
+       ولا يُفوَّض مركبة قبل ذلك. الاعتماد يُسجَّل باسم من اعتمده ووقته. */
+    function paintApproval(e, pane){
+      var box = pane.querySelector('#afxApp'); if (!box) return;
+      if (!HAS_APPROVAL){ var h4 = box.previousElementSibling; if (h4) h4.remove(); box.remove(); return; }
+      var canManage = !!(me && me.perms && me.perms.manage);
+      api('GET', 'employees?select=id,approved_at,data&iqama=eq.' + encodeURIComponent(normId(e.iqama))).then(function(r){
+        var row = r && r[0]; if (!row) { box.innerHTML = '<span class="muted">غير موجود في القاعدة بعد.</span>'; return; }
+        if (row.approved_at){
+          box.innerHTML = '<span class="chip" style="background:#e7f3ec;color:#0e5e5c">✅ معتمد — '
+            + esc(String(row.approved_at).slice(0, 10)) + '</span>';
+          return;
+        }
+        var rej = row.data && row.data.approval_rejected;
+        var head = '<span class="chip" style="background:#fdf8ef;color:#95570f">⏳ بانتظار اعتماد المدير</span>'
+          + (rej ? '<span class="chip" style="background:#fdf2f0;color:#a3372b">مرفوض: ' + esc(rej.reason || '') + '</span>' : '');
+        if (!canManage){
+          box.innerHTML = head + '<div class="muted">لا يُفوَّض مركبة قبل اعتماد المدير.</div>';
+          return;
+        }
+        box.innerHTML = head + '<button class="btnx" id="afxAppOk">✅ اعتماد</button>'
+          + '<button class="btnx gh" id="afxAppNo">✕ رفض</button>'
+          + '<div class="muted">الاعتماد يفتح له التفويض في الأسطول.</div>';
+        box.querySelector('#afxAppOk').onclick = function(){
+          this.disabled = true;
+          rpc('employee_approve', { p_id: row.id })
+            .then(function(){
+              note('✅ اعتُمد الموظف — صار يُطلب له تفويض', 'green');
+              e.approved_at = new Date().toISOString();   /* حتى يفتح قسم التفويض فوراً بلا انتظار المزامنة */
+              try { if (typeof renderAll === 'function') renderAll(); } catch(_){}
+              empPane(e, pane);
+            })
+            .catch(function(err){ note(idErr(err), 'red'); paintApproval(e, pane); });
+        };
+        box.querySelector('#afxAppNo').onclick = function(){
+          var why = prompt('سبب الرفض (يبقى السجل ولا يُحذف):'); if (!why) return;
+          rpc('employee_reject', { p_id: row.id, p_reason: why })
+            .then(function(){ note('سُجّل الرفض — السجل باقٍ', 'amber'); paintApproval(e, pane); })
+            .catch(function(err){ note(idErr(err), 'red'); });
+        };
+      }).catch(function(err){ box.innerHTML = '<span class="warn">' + esc(err.message) + '</span>'; });
     }
     function paintStop(e, pane, canEdit){
       var box = pane.querySelector('#afxStopBox'); if (!box) return;
@@ -7697,15 +7753,21 @@ async function handleAccidentFile(input){
           + '</tbody></table></div>' : '<div class="muted">لا توجد أوامر صيانة على مركبته أو سكنه.</div>');
         if (ded.length) h += '<div class="muted" style="margin-top:6px">خصومات مسجّلة في سجل المركبة: ' + ded.map(function(d){ return esc(d.plate) + ' = ' + esc(d.value); }).join(' · ') + '</div>';
         // طلب الإيقاف — الإيقاف نفسه يقع من الأسطول
+        h += '<h4>✅ اعتماد الموظف</h4><div class="row" id="afxApp"><span class="muted">جارٍ التحقّق…</span></div>';
         h += '<h4>⛔ إيقاف المندوب</h4><div class="row" id="afxStopBox"><span class="muted">جارٍ التحقّق…</span></div>';
-        // طلب التفويض
+        // طلب التفويض — للمدير وحده، وبعد اعتماد الموظف (v47)
+        var canManage = !!(me && me.perms && me.perms.manage);
+        var notApproved = HAS_APPROVAL && (e.approved_at === null || e.approved_at === undefined);
         var pending = window.__wfReqPending && window.__wfReqPending(e.iqama);
         var hasVeh = (e.vehicles || []).some(function(v){ return v && (v.active === true || String(v.status || '').toLowerCase() === 'active'); });
         h += '<h4>🔑 طلب تفويض مركبة</h4><div class="row">' + (hasVeh ? '<span class="chip">🚗 لديه مركبة نشطة في الأسطول — لا يحتاج طلب</span>'
           : pending ? '<span class="chip">✅ الطلب مُرسل للأسطول بانتظار إسناد مركبة</span>'
+          : notApproved ? '<span class="chip" style="background:#fdf8ef;color:#95570f">⏳ لا يُطلب تفويض قبل اعتماد المدير</span>'
+          : (HAS_APPROVAL && !canManage) ? '<span class="muted">طلب التفويض يرسله المدير.</span>'
           : (canEdit && window.__wfReqSend ? '<button class="btnx" id="afxReq">🚗 إرسال طلب تفويض للأسطول</button><span class="muted">يصل «الصندوق الموحّد» عند المسؤول عن الإسناد، ويتحدث هنا تلقائياً.</span>' : '<span class="muted">لا يوجد طلب.</span>')) + '</div><div id="afxReqHist"></div>';
         pane.innerHTML = h + '</div>';
         paintIds(e, pane, canEdit, canDel);
+        paintApproval(e, pane);
         paintStop(e, pane, canEdit);
         var add = pane.querySelector('#afxAdd');
         if (add) add.onclick = function(){
