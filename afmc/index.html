@@ -832,7 +832,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261003044217";
+  var BUILD = "20261003175123";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -1312,7 +1312,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         if (!rows.length){ sec.classList.add('hide'); return; }
         sec.classList.remove('hide');
         $('penN').textContent = rows.length;
-        var canManage = !!(me.perms && me.perms.manage);
+        var canManage = !!(me && (me.role === 'admin' || me.role === 'manager' || (me.perms && me.perms.manage)));   /* v52: الاعتماد للمدير ومدير النظام */
         $('penSub').innerHTML = canManage
           ? 'موظفون جدد رفعهم المشرفون وينتظرون اعتمادك — الاعتماد يفتح لهم طلب التفويض في الأسطول.'
           : 'موظفون جدد بانتظار اعتماد المدير. لا يُفوَّض لهم مركبة قبل الاعتماد.';
@@ -2800,8 +2800,10 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         loading = false; badge(); if ($('inbox').classList.contains('on')) { if (cur) detail(cur, true); else list(); }
       }).catch(function(){ loading = false; });
     }
+    /* v52: ملخّصات الإيقاف اليومية تبقى في الصندوق ولا تصبغ الجرس — فهي للعلم لا للإجراء */
+    function isDigest(x){ return x.kind === 'message' && x.ref && x.ref.digest_day; }
     function badge(){
-      var n = items.filter(function(x){ return unread(x) && (isOpen(x) || x.kind === 'message'); }).length;
+      var n = items.filter(function(x){ return !isDigest(x) && unread(x) && (isOpen(x) || x.kind === 'message'); }).length;
       $('inboxCnt').textContent = n; $('inboxCnt').classList.toggle('hide', !n);
     }
     function markRead(id){ reads[id] = new Date().toISOString(); badge();

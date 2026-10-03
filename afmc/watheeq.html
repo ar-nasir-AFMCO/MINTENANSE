@@ -3029,7 +3029,7 @@ boot();
     }catch(e2){}
   }
   function wfCanManage(){
-    try { var m = window.wfSupabase && wfSupabase.me(); return !!(m && m.perms && m.perms.manage); } catch(e){ return false; }
+    try { var m = window.wfSupabase && wfSupabase.me(); return !!(m && (m.role === 'admin' || m.role === 'manager' || (m.perms && m.perms.manage))); } catch(e){ return false; }   /* v52 */
   }
   function wfDecorateCards(){
     if(typeof APP === 'undefined' || APP !== 'watheeq') return;
@@ -8648,7 +8648,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     function paintApproval(e, pane){
       var box = pane.querySelector('#afxApp'); if (!box) return;
       if (!HAS_APPROVAL){ var h4 = box.previousElementSibling; if (h4) h4.remove(); box.remove(); return; }
-      var canManage = !!(me && me.perms && me.perms.manage);
+      var canManage = !!(me && (me.role === 'admin' || me.role === 'manager' || (me.perms && me.perms.manage)));   /* v52 */
       api('GET', 'employees?select=id,approved_at,data&iqama=eq.' + encodeURIComponent(normId(e.iqama))).then(function(r){
         var row = r && r[0]; if (!row) { box.innerHTML = '<span class="muted">غير موجود في القاعدة بعد.</span>'; return; }
         if (row.approved_at){
@@ -8800,7 +8800,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
         h += '<h4>✅ اعتماد الموظف</h4><div class="row" id="afxApp"><span class="muted">جارٍ التحقّق…</span></div>';
         h += '<h4>⛔ إيقاف المندوب</h4><div class="row" id="afxStopBox"><span class="muted">جارٍ التحقّق…</span></div>';
         // طلب التفويض — للمدير وحده، وبعد اعتماد الموظف (v47)
-        var canManage = !!(me && me.perms && me.perms.manage);
+        var canManage = !!(me && (me.role === 'admin' || me.role === 'manager' || (me.perms && me.perms.manage)));   /* v52 */
         /* null = معلّق فعلاً. undefined = سجل محليّ قديم قبل v47، فلا يُعدّ معلّقاً. */
         var notApproved = HAS_APPROVAL && e.approved_at === null;
         var pending = window.__wfReqPending && window.__wfReqPending(e.iqama);
