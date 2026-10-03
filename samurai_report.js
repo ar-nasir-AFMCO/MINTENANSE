@@ -93,21 +93,25 @@
     (D.caps||[]).forEach(function(c){ var a=c.attributes;
       cap[String(c.id)]={ id:String(c.id), iq:a.idNumber||'', nm:a.name||'', mob:a.mobileNumber||'',
         st:a.status||'', sus:!!a.suspended, ws:a.workingStatus||'', last:(a.lastDeliveredOrderAt||'').slice(0,10),
-        v:0, amt:0, vlist:{}, sN:0, sWhy:[], d:0, h:0, o:0 }; });
-    function row(id){ id=String(id); return cap[id] || (cap[id]={ id:id, iq:'', nm:'(خارج القائمة)', mob:'', st:'', sus:false, ws:'', last:'', v:0, amt:0, vlist:{}, sN:0, sWhy:[], d:0, h:0, o:0 }); }
-    var nIn=0, amt=0;
+        v:0, amtP:0, amtN:0, vlist:{}, sN:0, sWhy:[], d:0, h:0, o:0 }; });
+    function row(id){ id=String(id); return cap[id] || (cap[id]={ id:id, iq:'', nm:'(خارج القائمة)', mob:'', st:'', sus:false, ws:'', last:'', v:0, amtP:0, amtN:0, vlist:{}, sN:0, sWhy:[], d:0, h:0, o:0 }); }
+    /* الموجب خصم فعلي، والسالب إلغاء أو ردّ — يُحسبان منفصلين ولا يُدمجان */
+    var nIn=0, amtP=0, amtN=0, nP=0, nN=0;
     (D.notes||[]).forEach(function(x){ var a=x.attributes; var at=String(a.createdAt||'').slice(0,7);
       if (at!==m) return; nIn++;
-      var r=row(a.ownerId); r.v++; var v=parseFloat(a.transactionAmount)||0; r.amt+=v; amt+=v;
+      var r=row(a.ownerId); r.v++; var v=parseFloat(a.transactionAmount)||0;
+      if (v>0){ r.amtP+=v; amtP+=v; nP++; } else if (v<0){ r.amtN+=-v; amtN+=-v; nN++; }
       var t=typ[a.noteTypeSettingId]||'مخالفة'; r.vlist[t]=(r.vlist[t]||0)+1; });
     var sN=0;
     (D.susp||[]).forEach(function(x){ var a=x.attributes; var r=row(a.ownerId);
       if (a.action==='SUSPEND'){ r.sN++; sN++; var c=cat[a.categoryId]; if(c && r.sWhy.indexOf(c)<0) r.sWhy.push(c); } });
     if (D.perf) Object.keys(D.perf).forEach(function(id){ var p=D.perf[id], r=row(id); r.d=p.d; r.h=n1(p.h); r.o=p.o; });
     var rows=Object.keys(cap).map(function(k){ return cap[k]; })
-      .sort(function(a,b){ return (b.amt-a.amt) || (b.v-a.v) || (b.o-a.o); });
+      .sort(function(a,b){ return (b.amtP-a.amtP) || (b.v-a.v) || (b.o-a.o); });
+    var r2=function(x){ return Math.round(x*100)/100; };
     return { rows:rows, kpi:{ caps:(D.caps||[]).length, susNow:(D.caps||[]).filter(function(c){return c.attributes.suspended;}).length,
-      susM:sN, notes:nIn, amt:Math.round(amt*100)/100, cats:(D.cats||[]).length, range:D.range } };
+      susM:sN, notes:nIn, amtP:r2(amtP), amtN:r2(amtN), net:r2(amtP-amtN), nP:nP, nN:nN,
+      cats:(D.cats||[]).length, range:D.range } };
   }
 
   /* ---------- تصدير ---------- */
@@ -150,14 +154,15 @@
     var A=agg(), k=A.kpi;
     var h='<div class="tiles">'
       + [['كباتن',fmt(k.caps)],['موقوف الآن',fmt(k.susNow)],['حالات حظر في الشهر',fmt(k.susM)],
-         ['مخالفات الشهر',fmt(k.notes)],['إجمالي الخصومات',fmt(k.amt)+' ر.س'],['فئات الأسباب',fmt(k.cats)]]
+         ['مخالفات الشهر',fmt(k.notes)],['خصومات (موجب)',fmt(k.amtP)+' ر.س'],['إلغاءات (سالب)',fmt(k.amtN)+' ر.س'],
+         ['الصافي',fmt(k.net)+' ر.س'],['فئات الأسباب',fmt(k.cats)]]
         .map(function(t){ return '<div class="tile"><b class="num">'+esc(t[1])+'</b><span>'+esc(t[0])+'</span></div>'; }).join('')
       + '</div>';
     h += '<div class="card"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">'
       + '<b>الكباتن — '+esc(S.month)+'</b><span class="note">'+esc(k.range||'')+'</span>'
       + '<span style="flex:1"></span><button id="smrCsv">⬇ Excel (CSV)</button><button id="smrJson">⬇ JSON</button></div>'
       + '<div class="scroll"><table><thead><tr>'
-      + ['الإقامة','الاسم','الجوال','الحالة','موقوف؟','مخالفات','خصومات (ر.س)','أنواع المخالفات','حالات حظر','أسباب الحظر']
+      + ['الإقامة','الاسم','الجوال','الحالة','موقوف؟','مخالفات','خصومات +','إلغاءات −','الصافي','أنواع المخالفات','حالات حظر','أسباب الحظر']
           .concat(S.perf?['أيام','ساعات','طلبات']:[])
           .map(function(t){ return '<th>'+t+'</th>'; }).join('')
       + '</tr></thead><tbody>'
@@ -165,19 +170,23 @@
           var vt=Object.keys(r.vlist).map(function(t){ return t+' ('+r.vlist[t]+')'; }).join(' · ');
           return '<tr><td class="num">'+esc(r.iq||'—')+'</td><td>'+esc(r.nm)+'</td><td class="num">'+esc(r.mob)+'</td>'
             + '<td>'+esc(r.st)+'</td><td>'+(r.sus?'<span class="sus">موقوف</span>':'<span class="ok">يعمل</span>')+'</td>'
-            + '<td class="num">'+(r.v||'')+'</td><td class="num">'+(r.amt?fmt(Math.round(r.amt*100)/100):'')+'</td>'
+            + '<td class="num">'+(r.v||'')+'</td>'
+            + '<td class="num">'+(r.amtP?fmt(Math.round(r.amtP*100)/100):'')+'</td>'
+            + '<td class="num">'+(r.amtN?'−'+fmt(Math.round(r.amtN*100)/100):'')+'</td>'
+            + '<td class="num">'+((r.amtP||r.amtN)?fmt(Math.round((r.amtP-r.amtN)*100)/100):'')+'</td>'
             + '<td>'+esc(vt)+'</td><td class="num">'+(r.sN||'')+'</td><td>'+esc(r.sWhy.join(' · '))+'</td>'
             + (S.perf?('<td class="num">'+(r.d||'')+'</td><td class="num">'+(r.h||'')+'</td><td class="num">'+(r.o||'')+'</td>'):'')
             + '</tr>';
         }).join('')
       + '</tbody></table></div>'
-      + '<div class="note" style="margin-top:8px">الصفوف مرتّبة بأكبر خصومات. «موقوف؟» حالته الآن في ساموراي، و«حالات حظر» عدد مرات الإيقاف المسجّلة (كل الفترة، لا الشهر وحده). الإقامة هي مفتاح الربط مع وثيق.</div></div>';
+      + '<div class="note" style="margin-top:8px">«خصومات +» المبالغ الموجبة، و«إلغاءات −» المبالغ السالبة (ردّ أو تصحيح)، والصافي الفرق بينهما — لا تُدمج. الصفوف مرتّبة بأكبر خصومات موجبة. «موقوف؟» حالته الآن في ساموراي، و«حالات حظر» عدد مرات الإيقاف المسجّلة (كل الفترة، لا الشهر وحده). الإقامة هي مفتاح الربط مع وثيق.</div></div>';
     body.innerHTML=h;
     body.querySelector('#smrCsv').onclick=function(){
       var A2=agg();
       csv('ساموراي-'+S.month+'.csv',
-        ['الإقامة','الاسم','الجوال','الحالة','موقوف','مخالفات','خصومات','أنواع المخالفات','حالات حظر','أسباب الحظر','أيام','ساعات','طلبات'],
-        A2.rows.map(function(r){ return [r.iq,r.nm,r.mob,r.st,r.sus?'نعم':'لا',r.v,Math.round(r.amt*100)/100,
+        ['الإقامة','الاسم','الجوال','الحالة','موقوف','مخالفات','خصومات موجبة','إلغاءات سالبة','الصافي','أنواع المخالفات','حالات حظر','أسباب الحظر','أيام','ساعات','طلبات'],
+        A2.rows.map(function(r){ return [r.iq,r.nm,r.mob,r.st,r.sus?'نعم':'لا',r.v,
+          Math.round(r.amtP*100)/100, Math.round(r.amtN*100)/100, Math.round((r.amtP-r.amtN)*100)/100,
           Object.keys(r.vlist).map(function(t){return t+' ('+r.vlist[t]+')';}).join(' · '),r.sN,r.sWhy.join(' · '),r.d,r.h,r.o]; }));
     };
     body.querySelector('#smrJson').onclick=function(){
