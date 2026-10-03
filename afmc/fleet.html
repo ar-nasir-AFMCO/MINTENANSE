@@ -7757,7 +7757,8 @@ async function handleAccidentFile(input){
         h += '<h4>⛔ إيقاف المندوب</h4><div class="row" id="afxStopBox"><span class="muted">جارٍ التحقّق…</span></div>';
         // طلب التفويض — للمدير وحده، وبعد اعتماد الموظف (v47)
         var canManage = !!(me && me.perms && me.perms.manage);
-        var notApproved = HAS_APPROVAL && (e.approved_at === null || e.approved_at === undefined);
+        /* null = معلّق فعلاً. undefined = سجل محليّ قديم قبل v47، فلا يُعدّ معلّقاً. */
+        var notApproved = HAS_APPROVAL && e.approved_at === null;
         var pending = window.__wfReqPending && window.__wfReqPending(e.iqama);
         var hasVeh = (e.vehicles || []).some(function(v){ return v && (v.active === true || String(v.status || '').toLowerCase() === 'active'); });
         h += '<h4>🔑 طلب تفويض مركبة</h4><div class="row">' + (hasVeh ? '<span class="chip">🚗 لديه مركبة نشطة في الأسطول — لا يحتاج طلب</span>'

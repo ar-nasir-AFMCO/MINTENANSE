@@ -631,6 +631,14 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         <div class="view" id="home" style="overflow:auto;width:100%">
           <div class="hello"><div><h2 id="hi">أهلاً</h2><p id="hiSub">ملخّص العمليات — كل الأنظمة على قاعدة بيانات واحدة.</p></div></div>
           <div class="pulse hide" id="pulse"></div>
+          <div class="sec hide" id="penSec" style="margin-top:0">
+            <h3><svg class="i"><use href="#i-shield"/></svg>بانتظار اعتماد المدير <span class="tag" id="penN"></span></h3>
+            <div class="card" style="padding:14px 16px">
+              <div class="sub" id="penSub">…</div>
+              <div class="tbl" style="margin-top:10px;overflow:auto;max-height:46vh"><table><thead><tr><th>الموظف</th><th>الإقامة</th><th>المشروع</th><th>الوظيفة</th><th>أضافه</th><th>التاريخ</th><th></th></tr></thead><tbody id="penBody"></tbody></table></div>
+              <div class="sub" style="margin-top:8px">المشرف يرفع الموظف، والمدير يعتمده من هنا أو من ملفه في وثيق. قبل الاعتماد لا يُطلب له تفويض مركبة. الرفض لا يحذف السجل — يُحفظ السبب ويبقى الموظف معلّقاً حتى يُعتمد.</div>
+            </div>
+          </div>
           <div class="sec hide" id="stopsSec" style="margin-top:0">
             <h3><svg class="i"><use href="#i-shield"/></svg>مَن أُوقف — ملخّص الصباح <span class="tag" id="stopsN"></span></h3>
             <div class="card" style="padding:14px 16px">
@@ -824,7 +832,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261001195758";
+  var BUILD = "20261003044217";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -1204,6 +1212,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       housingMeta(set);
     }).catch(function(){ ['watheeq','fleet','dbb'].forEach(function(id){ set(id, '<span>قاعدة بيانات موحّدة</span>'); }); maintMeta(set); housingMeta(set); });
     stopsHome();
+    penHome();
     loadSummary().then(function(){
       var parts = subsFor().map(function(g){ var x = summary[g] || {}; return '<span>' + SUBS[g].name + ': ' + num(x.present) + ' حاضر · ' + day(x.latest) + '</span>'; });
       set('couriers', parts.join('<span>·</span>') || '<span>—</span>');
@@ -1291,6 +1300,50 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
               else if (me && me.role === 'admin') openSys('couriers', 'keeta'); } catch(e){} })
       .catch(function(e){ back({ error:e.message, date:p.date }); });
   });
+
+  /* ═══════════ بانتظار اعتماد المدير ═══════════
+     المشرف يرفع الموظف فيُولد معلّقاً (v47)، والمدير يعتمده من هنا مباشرة.
+     لو لم تُطبَّق v47 بعد، لا يوجد العرض فيختفي القسم بلا ضجيج. */
+  function penHome(){
+    var sec = $('penSec'); if (!sec || !me) return;
+    api('GET', 'v_pending_employees?select=id,iqama,name,project_code,job_title,created_at,added_by,rejected_reason&order=created_at.desc&limit=200')
+      .then(function(rows){
+        rows = rows || [];
+        if (!rows.length){ sec.classList.add('hide'); return; }
+        sec.classList.remove('hide');
+        $('penN').textContent = rows.length;
+        var canManage = !!(me.perms && me.perms.manage);
+        $('penSub').innerHTML = canManage
+          ? 'موظفون جدد رفعهم المشرفون وينتظرون اعتمادك — الاعتماد يفتح لهم طلب التفويض في الأسطول.'
+          : 'موظفون جدد بانتظار اعتماد المدير. لا يُفوَّض لهم مركبة قبل الاعتماد.';
+        $('penBody').innerHTML = rows.map(function(r){
+          return '<tr><td>' + esc(r.name || '—')
+            + (r.rejected_reason ? ' <span class="sub">(سبق رفضه: ' + esc(r.rejected_reason) + ')</span>' : '')
+            + '</td><td>' + esc(r.iqama || '') + '</td><td>' + esc(r.project_code || '')
+            + '</td><td>' + esc(r.job_title || '') + '</td><td>' + esc(r.added_by || '')
+            + '</td><td>' + esc(String(r.created_at || '').slice(0, 10)) + '</td><td>'
+            + (canManage ? '<button class="btn" data-ok="' + esc(r.id) + '">اعتماد</button> '
+                         + '<button class="btn ghost" data-no="' + esc(r.id) + '">رفض</button>' : '')
+            + '</td></tr>';
+        }).join('');
+        if (!canManage) return;
+        $('penBody').querySelectorAll('[data-ok]').forEach(function(b){
+          b.onclick = function(){ b.disabled = true;
+            rpc('employee_approve', { p_id: b.getAttribute('data-ok') })
+              .then(function(){ toast('✅ اعتُمد الموظف'); penHome(); })
+              .catch(function(e){ b.disabled = false; toast('تعذّر: ' + e.message); }); };
+        });
+        $('penBody').querySelectorAll('[data-no]').forEach(function(b){
+          b.onclick = function(){
+            var why = prompt('سبب الرفض؟ (يُحفظ في ملف الموظف ولا يُحذف السجل)');
+            if (!why || !why.trim()) return;
+            b.disabled = true;
+            rpc('employee_reject', { p_id: b.getAttribute('data-no'), p_reason: why.trim() })
+              .then(function(){ toast('سُجّل الرفض — الموظف يبقى معلّقاً'); penHome(); })
+              .catch(function(e){ b.disabled = false; toast('تعذّر: ' + e.message); }); };
+        });
+      }).catch(function(){ sec.classList.add('hide'); });
+  }
 
   function stopsHome(){
     var sec = $('stopsSec'); if (!sec || !me) return;
