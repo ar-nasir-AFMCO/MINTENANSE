@@ -442,7 +442,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       <label><span>كلمة المرور</span><input id="gPass" type="password" required autocomplete="current-password"></label>
       <button class="btn" id="gGo" type="submit">دخول</button>
     </form>
-    <div class="alt"><a href="#" id="gForgot">نسيت كلمة المرور؟</a></div>
+    <div class="alt">نسيت كلمة المرور؟ اطلب من المدير كلمة مؤقّتة.</div>
     <div class="alt">ليس لديك حساب؟ <a href="../register.html">اطلب حساباً</a></div>
   </div></div>
 </div>
@@ -887,13 +887,12 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     <div class="who" id="pwWho"></div>
     <div id="pwStep1">
       <div class="sub" style="line-height:1.8;margin-bottom:12px">
-        <b>كلمة مؤقّتة:</b> تُولَّد في متصفّحك، تظهر لك مرّة واحدة فقط، وتسلّمها بنفسك. تعمل مع كل الحسابات.<br>
-        <b>رابط بالبريد:</b> يصل بريد المستخدم — يحتاج بريداً صحيحاً وإعدادات بريد مضبوطة.<br>
-        في الحالتين: جلسات المستخدم القائمة تنتهي فوراً، ويُجبر على تغييرها أوّل دخول.
+        كلمة مؤقّتة تُولَّد في متصفّحك، تظهر لك <b>مرّة واحدة فقط</b>، وتسلّمها للمستخدم بنفسك.
+        تعمل مع كل الحسابات بلا بريد ولا شبكة ثالثة.<br>
+        جلسات المستخدم القائمة تنتهي فوراً، ويُجبر على تغييرها أوّل دخول.
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn" id="pwGen">🔑 ولّد كلمة مؤقّتة</button>
-        <button class="btn ghost" id="pwMail">✉️ أرسل رابطاً للبريد</button>
       </div>
       <div class="note hide" id="pwErr" style="margin-top:12px"></div>
     </div>
@@ -953,7 +952,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261012222004";
+  var BUILD = "20261012235016";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -2539,11 +2538,6 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     return out;
   }
   function pwOk(p){ return typeof p === 'string' && p.length >= 10 && /[0-9]/.test(p) && /[A-Za-z]/.test(p); }
-  function authPost(path, body){
-    return fetch(SB_URL + '/auth/v1/' + path, { method:'POST', headers:{ apikey:SB_KEY, 'Content-Type':'application/json' }, body: JSON.stringify(body) })
-      .then(function(r){ return r.text().then(function(t){ var j = t ? JSON.parse(t) : null;
-        if (!r.ok) throw new Error((j && (j.msg || j.message || j.error_description)) || ('HTTP ' + r.status)); return j; }); });
-  }
   var pwTarget = null;
   function pwErr(m){ var e = $('pwErr'); e.textContent = m || ''; e.classList.toggle('hide', !m); }
   function pwOpen(u){
@@ -2565,22 +2559,6 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       b.disabled = false; loadPwLog();
     }).catch(function(e){ b.disabled = false; pwErr('تعذّر: ' + e.message); });
   };
-  $('pwMail').onclick = function(){
-    if (!pwTarget) return;
-    var u = pwTarget, b = this; b.disabled = true; pwErr('');
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(u.email || '')){
-      b.disabled = false; pwErr('بريد هذا الحساب غير صالح (' + (u.email || '—') + ') — استعمل الكلمة المؤقّتة.'); return;
-    }
-    authPost('recover', { email: u.email }).then(function(){
-      return rpc('log_password_email', { p_user: u.id }).catch(function(){});
-    }).then(function(){
-      b.disabled = false;
-      $('pwStep1').classList.add('hide'); $('pwStep2').classList.remove('hide');
-      $('pwOut').textContent = '✉️';
-      $('pwHand').innerHTML = 'أُرسل الرابط إلى <b>' + esc(u.email) + '</b>. إن لم يصل خلال دقائق فالبريد الافتراضي محدود — استعمل الكلمة المؤقّتة.';
-      loadPwLog();
-    }).catch(function(e){ b.disabled = false; pwErr('تعذّر الإرسال: ' + e.message); });
-  };
   $('pwCopy').onclick = function(){
     var t = $('pwOut').textContent; if (!t || t === '✉️') return;
     try { navigator.clipboard.writeText(t); toast('نُسخت — سلّمها ولا تتركها مكتوبة'); } catch(e){ toast('انسخها يدوياً'); }
@@ -2589,7 +2567,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     var b = $('pwLogBody'); if (!b || !canResetPw()) return;
     rpc('password_reset_log', { p_limit: 40 }).then(function(r){
       var rows = (r && r.rows) || [];
-      var M = { temp:'كلمة مؤقّتة', email:'رابط بالبريد', self:'غيّرها بنفسه' };
+      var M = { temp:'كلمة مؤقّتة', email:'رابط بالبريد (أُلغي)', self:'غيّرها بنفسه' };
       b.innerHTML = rows.length ? rows.map(function(x){
         return '<tr><td class="sub">' + esc(String(x.at).slice(0, 16).replace('T', ' ')) + '</td>'
           + '<td><b>' + esc(x.name || '—') + '</b><div class="sub">' + esc(x.email || '') + '</div></td>'
@@ -2626,15 +2604,6 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     }).then(function(){ return rpc('password_changed_self').catch(function(){}); })
       .then(function(){ b.disabled = false; $('mcDlg').classList.add('hide'); mcForce = false; toast('تم تغيير كلمة المرور'); })
       .catch(function(err){ b.disabled = false; bad('تعذّر: ' + err.message); });
-  };
-  $('gForgot').onclick = function(ev){
-    ev.preventDefault();
-    var em = ($('gEmail').value || '').trim() || prompt('اكتب بريدك لإرسال رابط إعادة الضبط:');
-    if (!em) return;
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { gateMsg('warn', 'اكتب بريداً صحيحاً.'); return; }
-    authPost('recover', { email: em.trim() })
-      .then(function(){ gateMsg('warn', 'إن كان البريد مسجّلاً فسيصل رابط. لو ما وصل خلال دقائق، اطلب من المدير كلمة مؤقّتة.'); })
-      .catch(function(e){ gateMsg('bad', 'تعذّر الإرسال: ' + esc(e.message)); });
   };
 
   /* ═══════════ v53 · العقود والمالية ═══════════ */
