@@ -351,6 +351,62 @@
   document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible' && cur) load(cur, true); });
 })();
 
+/* ══════════════════════════════════════════════════════════════════════
+   v53 — صلاحيات تطبيق الصيانة تتبع صلاحيات المنصة.
+
+   ما كان: الدور يُحدَّد لكل جهاز يدوياً من «جهاز الإدارة» ويُخزَّن في
+   المتصفح وحده، فلا علاقة له بمصفوفة أدوار المنصة — من يُرفَّع أو
+   يُخفَّض في المنصة يبقى على صلاحيته القديمة هنا.
+
+   ما صار: الجهاز يُربط مرّة واحدة بحساب في المنصة (من تبويبة الصلاحيات)،
+   وبعدها الدور يأتي من role_matrix في كل فتح.
+
+   تسجيل الدخول لم يتغيّر: نفس بوابة الاسم والورشة، ونفس إذن الأجهزة،
+   ولا حساب جديد ولا كلمة مرور. الدور وحده هو ما صار من المنصة.
+   والجهاز غير المربوط يبقى على دوره المحلي كما هو.
+
+   هذه الطبقة تجلب الجواب وتعرضه على window.__wfDbbPlat()، والتطبيق
+   يقرأه في myRole/mySiteRaw/gateCheck (v53 داخل app.html).
+   ══════════════════════════════════════════════════════════════════════ */
+(function(){
+  if (window.__wfDbbRole) return; window.__wfDbbRole = true;
+  var SB_URL  = 'https://coueubvyaokyycqpmirs.supabase.co';
+  var SB_KEY  = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
+  var APP_KEY = '2peMGwCQLRSnr6282RtsRfsD81TThNJc';
+  var PLAT = null, lastTry = 0;
+  try { PLAT = JSON.parse(sessionStorage.getItem('dbb_plat_role') || 'null') || null; } catch(e){}
+  window.__wfDbbPlat = function(){ return PLAT; };
+
+  function rpc(fn, args){
+    return fetch(SB_URL + '/rest/v1/rpc/' + fn, { method:'POST',
+      headers:{ apikey:SB_KEY, 'Content-Type':'application/json' }, body: JSON.stringify(args) })
+      .then(function(r){ return r.text().then(function(t){ var j = t ? JSON.parse(t) : null;
+        if (!r.ok) throw new Error((j && j.message) || ('HTTP ' + r.status)); return j; }); });
+  }
+  function devId(){ try { return localStorage.getItem('dbb_dev_id') || ''; } catch(e){ return ''; } }
+  function repaint(){ try { if (window.__dbbRepaint) window.__dbbRepaint(); } catch(e){} }
+
+  function pull(){
+    var id = devId(); if (!id) return;
+    var now = Date.now(); if (now - lastTry < 20000) return; lastTry = now;
+    rpc('dbb_role', { p_token: APP_KEY, p_device: id }).then(function(r){
+      var was = PLAT && PLAT.role, isP = r && r.source === 'platform';
+      PLAT = isP ? r : null;                       /* بلا ربط: لا نتدخّل إطلاقاً */
+      try { sessionStorage.setItem('dbb_plat_role', JSON.stringify(PLAT)); } catch(e){}
+      if ((PLAT && PLAT.role) !== was) repaint();
+    }).catch(function(){ /* بلا شبكة: يبقى آخر جواب في هذه الجلسة، ولا يسقط أحد */ });
+  }
+
+  function boot(){
+    pull(); repaint();
+    setInterval(function(){ if (document.visibilityState === 'visible') pull(); }, 180000);
+    try { document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible') pull(); }); } catch(e){}
+    try { window.addEventListener('online', function(){ lastTry = 0; pull(); }); } catch(e){}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(boot, 500); });
+  else setTimeout(boot, 500);
+})();
+
 </script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -874,7 +930,7 @@ details[open] > summary{margin-bottom:10px}
 (function(){
 'use strict';
 
-var APP_BUILD='2026-09-28-r1751';
+var APP_BUILD='2026-10-12-r2049';
 var LS_DATA='dbb_maint_v1', LS_USER='dbb_maint_user_v1';
 var LIVE=['مفتوح','في الورشة','بانتظار قطع'];
 var AGE_WARN=72, AGE_BAD=168; /* ساعات: 3 أيام / 7 أيام */
@@ -1137,7 +1193,11 @@ function go(s){
 function render(){
   var rn=$('#roleName');
   if(rn){ var rd=devRec();
-    rn.textContent=(ROLES[myRole()]||'—')+((rd&&rd.site)? ' · '+rd.site : ''); }
+    var pr=platRole();
+    rn.textContent=(ROLES[myRole()]||'—')
+      + (pr ? ' · من المنصة' : '')
+      + ((pr && pr.site) ? ' · '+pr.site : ((rd&&rd.site)? ' · '+rd.site : ''));
+    rn.title = pr ? ('الصلاحية تأتي من حسابك في منصة AFMCO'+(pr.name?' ('+pr.name+')':'')) : ''; }
   $('#userName').textContent=(user&&user.name)||'—';
   var openCount=scoped(db.orders.filter(isLive)).length;
   var nb=$('#navBadge');
@@ -2538,7 +2598,11 @@ function devRec(){
   return null;
 }
 var ROLES={ admin:'إداري', supervisor:'مشرف', mechanic:'مكانيكي', viewer:'متابعة' };
-function myRole(){ var d=devRec(); return (d&&d.role)||'viewer' }
+/* v53: الصلاحية من المنصة حين يكون الجهاز مربوطاً بحساب فيها.
+   الدخول لم يتغيّر — هذا الدور وحده. وغير المربوط يبقى على دوره المحلي. */
+function platRole(){ try{ var p = window.__wfDbbPlat && window.__wfDbbPlat();
+  return (p && p.source==='platform' && p.role) ? p : null; }catch(e){ return null } }
+function myRole(){ var p=platRole(); if(p) return p.role; var d=devRec(); return (d&&d.role)||'viewer' }
 function isAdminDevice(){ return myRole()==='admin' }
 function canEdit(){ var r=myRole(); return r==='admin'||r==='mechanic' }
 function canDelete(){ return myRole()==='admin' }
@@ -2546,7 +2610,8 @@ function canStock(){ return myRole()==='admin' }
 function canData(){ return myRole()==='admin' }
 function canBoard(){ var r=myRole(); return r==='admin'||r==='viewer' }
 function canBikes(){ return myRole()==='admin' }
-function mySiteRaw(){ var d=devRec(); return (d&&d.site)||'' }
+function mySiteRaw(){ var p=platRole(); if(p){ if(p.all_sites) return ''; if(p.site) return p.site; }
+  var d=devRec(); return (d&&d.site)||'' }
 function canAllSites(){ return myRole()==='admin' || !mySiteRaw() }
 /* العزل: الإداري يرى الكل، المشرف ورشته، المكانيكي عمله هو */
 function inScope(o){
@@ -2624,6 +2689,13 @@ function devEdit(id){
     '<b>مكانيكي:</b> تسجيل وتعديل أوامر ورشته بلا حذف ولا مخزون. <b>متابعة:</b> قراءة فقط.</div>',
     '<button class="btn ghost" id="mCancel">إلغاء</button><button class="btn amber" id="dvSave">حفظ</button>');
   $('#mCancel').onclick=closeModal;
+  if(id===devId() && platRole()){                                   /* v53 */
+    var rs=$('#dvRole');
+    if(rs){ rs.value=myRole(); rs.disabled=true;
+      var nt=document.createElement('div'); nt.className='mini-note';
+      nt.textContent='صلاحية هذا الجهاز مربوطة بحسابه في المنصة — تُعدَّل من تبويبة «الصلاحيات والتكامل» هناك، لا من هنا.';
+      rs.parentNode.parentNode.insertBefore(nt, rs.parentNode.nextSibling); }
+  }
   $('#dvSave').onclick=function(){
     var before=d.role+'/'+(d.site||'—');
     d.name=($('#dvName').value||'').trim()||d.name;
@@ -2900,7 +2972,7 @@ function gateCheck(){
     fillGateSites();
     return;
   }
-  if(d && (d.status==='مأذون' || d.role==='admin')){
+  if(platRole() || (d && (d.status==='مأذون' || d.role==='admin'))){   /* v53 */
     $('#gate').classList.add('hide');
     return;
   }
@@ -2990,6 +3062,7 @@ function init(){
   });
   document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeModal() });
 }
+window.__dbbRepaint=function(){ try{ render(); gateCheck(); }catch(e){} };   /* v53 */
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
 })();
 </script>
