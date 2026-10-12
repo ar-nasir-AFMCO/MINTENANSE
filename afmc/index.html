@@ -952,7 +952,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261012235016";
+  var BUILD = "20261013003105";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -1018,6 +1018,24 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     }).then(function(r){ return r.text().then(function(t){ var j = t ? JSON.parse(t) : null; if (!r.ok) throw new Error((j && j.message) || ('HTTP ' + r.status)); return j; }); });
   }
   function rpc(fn, a){ return api('POST', 'rpc/' + fn, a || {}); }
+  /* v57: PostgREST مضبوط على ١٠٠٠ صف كحدّ أقصى، ويقصّ ما زاد **بصمت** —
+     بلا خطأ ولا تحذير. فحصناه: طلب ٥٠٠٠ صف من جدول فيه ٨٠٢١ رجع ١٠٠٠ بالضبط.
+     كل قراءة قد تتجاوز الألف تمرّ من هنا: صفحات بترتيب ثابت حتى آخر صف.
+     الترتيب لا بد أن يكون **فريداً** وإلا تكرّرت صفوف أو سقطت بين الصفحات. */
+  var PAGE_ROWS = 1000;
+  function pageAll(path, order, onProg){
+    var out = [], off = 0, guard = 0;
+    var sep = path.indexOf('?') < 0 ? '?' : '&';
+    function next(){
+      return api('GET', path + sep + 'order=' + order + '&limit=' + PAGE_ROWS + '&offset=' + off).then(function(r){
+        r = r || []; out = out.concat(r); off += r.length;
+        if (onProg) { try { onProg(off); } catch(e){} }
+        if (r.length < PAGE_ROWS || ++guard > 500) return out;
+        return next();
+      });
+    }
+    return next();
+  }
   function arErr(m){
     if (/invalid login|invalid credentials/i.test(m)) return 'البريد أو كلمة المرور غير صحيحة.';
     if (/email not confirmed/i.test(m)) return 'البريد غير مؤكَّد. تواصل مع المدير.';
@@ -1403,7 +1421,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     if (d.hello){
       /* نسلّم الزرّ قائمة الأيام الناقصة ليسحبها كلها بضغطة واحدة */
       if (!me) return back({ ready:true, user:null, missing:[] });
-      return api('GET', 'keeta_attendance?select=work_date&order=work_date.desc&limit=5000')
+      return pageAll('keeta_attendance?select=work_date', 'work_date.desc,rider_id.asc')   /* v57 */
         .then(function(rows){ back({ ready:true, user: me.email, missing: keMissingDays(rows, 30) }); })
         .catch(function(){ back({ ready:true, user: me.email, missing: [] }); });
     }
@@ -1577,18 +1595,8 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
      تحذير. القراءة بصفحة واحدة كانت تحسب التقرير على شريحة عشوائية من
      البيانات، فتظهر أيام دوام شبه معدومة. نقرأ على صفحات مرتّبة بالمعرّف
      حتى نهاية الجدول. */
-  var AT_PAGE = 1000;
-  function atAll(path){
-    var out = [], off = 0, guard = 0;
-    function next(){
-      return api('GET', path + '&order=id.asc&limit=' + AT_PAGE + '&offset=' + off).then(function(r){
-        r = r || []; out = out.concat(r); off += r.length;
-        if (r.length < AT_PAGE || ++guard > 300) return out;
-        $('aFoot').textContent = 'جارٍ القراءة… ' + num(off) + ' سطر';
-        return next();
-      });
-    }
-    return next();
+  function atAll(path){   /* v57: صار يستعمل pageAll العامة */
+    return pageAll(path, 'id.asc', function(off){ $('aFoot').textContent = 'جارٍ القراءة… ' + num(off) + ' سطر'; });
   }
 
   function atOpen(){
@@ -1949,7 +1957,9 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     $('sFoot').textContent = 'جارٍ القراءة…';
     Promise.all([
       api('GET', 'samurai_daily?select=work_date,supplier_id,kpis,pulled_at&work_date=gte.' + f + '&work_date=lte.' + t + '&order=work_date.desc'),
-      api('GET', 'v_samurai_captain_days?select=*&work_date=gte.' + f + '&work_date=lte.' + t + '&order=work_date.asc&limit=20000')
+      pageAll('v_samurai_captain_days?select=*&work_date=gte.' + f + '&work_date=lte.' + t,
+              'work_date.asc,supplier_id.asc,captain_id.asc',
+              function(off){ $('sFoot').textContent = 'جارٍ القراءة… ' + num(off) + ' سطر'; })   /* v57 */
     ]).then(function(r){ smRAW = { days:r[0]||[], caps:r[1]||[] }; smBuild(); smKpis(); smRender(); })
       .catch(function(e){ $('sFoot').textContent = 'تعذّرت القراءة: ' + e.message; });
   }
@@ -2207,7 +2217,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   }
   function keAuto(){
     var host = $('kMiss'); if (!host) return;
-    api('GET', 'keeta_attendance?select=work_date&order=work_date.desc&limit=5000').then(function(rows){
+    pageAll('keeta_attendance?select=work_date', 'work_date.desc,rider_id.asc').then(function(rows){   /* v57 */
       var miss = keMissingDays(rows, 14);
       if (!miss.length){ host.classList.add('hide'); return; }
       host.classList.remove('hide');
@@ -2222,7 +2232,9 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   function keLoad(){
     var f = $('kFrom').value, t = $('kTo').value; if (!f || !t) return;
     $('kFoot').textContent = 'جارٍ القراءة…';
-    api('GET', 'v_keeta_attendance_linked?select=*&work_date=gte.' + f + '&work_date=lte.' + t + '&order=work_date.asc&limit=20000')
+    pageAll('v_keeta_attendance_linked?select=*&work_date=gte.' + f + '&work_date=lte.' + t,
+            'work_date.asc,supplier_id.asc,rider_id.asc',
+            function(off){ $('kFoot').textContent = 'جارٍ القراءة… ' + num(off) + ' سطر'; })   /* v57 */
       .then(function(r){ keRAW = r || []; keBuild(); keKpis(); keRender(); })
       .catch(function(e){ $('kFoot').textContent = 'تعذّرت القراءة: ' + e.message; });
   }
@@ -2815,9 +2827,9 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   function loadReview(){
     if (!rev.length) $('revBody').innerHTML = '<tr><td colspan="7" class="empty">جارٍ التحميل…</td></tr>';
     var src = revMode === 'approved'
-      ? 'v_data_review_approved?select=area,code,severity,key,name,project,issue,approved_at,approved_by_name,expires_on,note&limit=5000'
-      : 'v_data_review?select=area,code,severity,key,name,project,issue&limit=5000';
-    api('GET', src).then(function(r){
+      ? 'v_data_review_approved?select=area,code,severity,key,name,project,issue,approved_at,approved_by_name,expires_on,note'
+      : 'v_data_review?select=area,code,severity,key,name,project,issue';
+    pageAll(src, 'area.asc,code.asc,key.asc').then(function(r){   /* v57 */
       rev = r || []; var projs = {};
       rev.forEach(function(x){ if (x.project) projs[x.project] = 1; });
       var cur = $('revProj').value;

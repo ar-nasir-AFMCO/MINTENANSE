@@ -308,6 +308,18 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
       return fetch(SB_URL + '/rest/v1/' + path, { method:method, headers:h, body: body == null ? undefined : JSON.stringify(body) });
     }).then(function(r){ return r.text().then(function(t){ var j = null; try { j = t ? JSON.parse(t) : null; } catch(e){} if (!r.ok) throw new Error(arDb((j && j.message) || ('HTTP ' + r.status))); return j; }); });
   }
+  /* v57: PostgREST يقصّ عند ١٠٠٠ صف بصمت — كل قراءة قد تتجاوزها تمرّ من هنا */
+  function pageAll(path, order){
+    var out = [], off = 0, guard = 0, sep = path.indexOf('?') < 0 ? '?' : '&';
+    function next(){
+      return api('GET', path + sep + 'order=' + order + '&limit=1000&offset=' + off).then(function(r){
+        r = r || []; out = out.concat(r); off += r.length;
+        if (r.length < 1000 || ++guard > 500) return out;
+        return next();
+      });
+    }
+    return next();
+  }
   function rpc(fn, a){ return api('POST', 'rpc/' + fn, a || {}); }
   function arDb(m){
     if (/row-level security|permission denied/i.test(m)) return 'لا تملك صلاحية التعديل في قسم الصيانة';
@@ -740,7 +752,7 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
       '<div class="tools" style="margin-top:10px"><button class="btn" id="tnSave">حفظ الطلب</button></div><div class="hint" id="tnH"></div></div>';
     $('trkBack').onclick = trkBack;
     var VEH = [];
-    api('GET', 'vehicles?select=plate_no,project_code,rental_company,area&status=eq.active&deleted_at=is.null&order=plate_no&limit=2000')
+    pageAll('vehicles?select=plate_no,project_code,rental_company,area&status=eq.active&deleted_at=is.null', 'plate_no.asc,id.asc')   /* v57 */
       .then(function(v){ VEH = (v || []).map(function(x){ return { plate:x.plate_no, project:x.project_code, office:x.rental_company, area:x.area }; }); })
       .then(function(){
       $('tnPlates').innerHTML = VEH.map(function(v){ return '<option value="' + esc(v.plate) + '">'; }).join('');
