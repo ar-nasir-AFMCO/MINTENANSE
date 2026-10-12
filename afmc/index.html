@@ -442,6 +442,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       <label><span>كلمة المرور</span><input id="gPass" type="password" required autocomplete="current-password"></label>
       <button class="btn" id="gGo" type="submit">دخول</button>
     </form>
+    <div class="alt"><a href="#" id="gForgot">نسيت كلمة المرور؟</a></div>
     <div class="alt">ليس لديك حساب؟ <a href="../register.html">اطلب حساباً</a></div>
   </div></div>
 </div>
@@ -779,6 +780,12 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         </div>
 
         <div class="sec">
+          <h3><svg class="i"><use href="#i-shield"/></svg>سجل إعادة ضبط كلمات المرور</h3>
+          <div class="card tbl"><table><thead><tr><th>متى</th><th>الحساب</th><th>الدور</th><th>الطريقة</th><th>من أعاد الضبط</th></tr></thead><tbody id="pwLogBody"></tbody></table></div>
+          <div class="sub" style="margin-top:8px">كل عملية تُسجَّل ولا تُحذف. كلمة المرور نفسها لا تُحفظ في أي مكان — تُبنى في متصفّح من أعاد الضبط، وتُخزَّن مشفّرة فقط.</div>
+        </div>
+
+        <div class="sec">
           <h3><svg class="i"><use href="#i-wrench"/></svg>أجهزة تطبيق الصيانة — الصلاحية من المنصة</h3>
           <div class="card tbl"><table><thead><tr><th>الجهاز</th><th>الورشة</th><th>آخر ظهور</th><th>الدور المحلي</th><th>الحساب في المنصة</th><th>الصلاحية الفعلية</th><th></th></tr></thead><tbody id="dbbDevBody"></tbody></table></div>
           <div class="sub" style="margin-top:8px">تطبيق الصيانة يحتفظ بدخوله كما هو — اسم المشرف والورشة وإذن الجهاز، بلا حساب جديد ولا كلمة مرور. ما يتغيّر هو <b>الصلاحية</b>: الجهاز المربوط بحساب هنا يأخذ دوره من جدول الصلاحيات أعلاه تلقائياً في كل فتح، ولا يُعدَّل من داخل التطبيق. الجهاز غير المربوط يبقى على دوره المحلي.<br>الخريطة الافتراضية: مدير النظام والمدير ⇐ إداري · الصيانة والمشرف ⇐ مشرف ورشته · المالية والمتابعة ⇐ قراءة فقط.</div>
@@ -874,6 +881,46 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     <div class="act"><button class="btn ghost" id="keDlgX">إغلاق</button></div>
   </div>
 </div>
+<div class="rvdlg hide" id="pwDlg" role="dialog" aria-modal="true" aria-labelledby="pwDlgT">
+  <div class="box">
+    <h3 id="pwDlgT">إعادة ضبط كلمة المرور</h3>
+    <div class="who" id="pwWho"></div>
+    <div id="pwStep1">
+      <div class="sub" style="line-height:1.8;margin-bottom:12px">
+        <b>كلمة مؤقّتة:</b> تُولَّد في متصفّحك، تظهر لك مرّة واحدة فقط، وتسلّمها بنفسك. تعمل مع كل الحسابات.<br>
+        <b>رابط بالبريد:</b> يصل بريد المستخدم — يحتاج بريداً صحيحاً وإعدادات بريد مضبوطة.<br>
+        في الحالتين: جلسات المستخدم القائمة تنتهي فوراً، ويُجبر على تغييرها أوّل دخول.
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" id="pwGen">🔑 ولّد كلمة مؤقّتة</button>
+        <button class="btn ghost" id="pwMail">✉️ أرسل رابطاً للبريد</button>
+      </div>
+      <div class="note hide" id="pwErr" style="margin-top:12px"></div>
+    </div>
+    <div id="pwStep2" class="hide">
+      <div class="note" style="margin-bottom:10px">هذه هي المرّة الوحيدة التي تظهر فيها. انسخها الآن.</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <code id="pwOut" style="flex:1;font-size:19px;letter-spacing:1px;padding:12px;background:var(--line-2);border-radius:10px;text-align:center;user-select:all"></code>
+        <button class="btn sm" id="pwCopy">نسخ</button>
+      </div>
+      <div class="sub" style="margin-top:10px;line-height:1.8" id="pwHand"></div>
+    </div>
+    <div class="act"><button class="btn ghost" id="pwDlgX">إغلاق</button></div>
+  </div>
+</div>
+<div class="rvdlg hide" id="mcDlg" role="dialog" aria-modal="true" aria-labelledby="mcDlgT">
+  <div class="box">
+    <h3 id="mcDlgT">غيّر كلمة مرورك</h3>
+    <div class="who" id="mcWho">أُعيد ضبط كلمة مرورك. اختر كلمة جديدة تعرفها وحدك قبل المتابعة.</div>
+    <label for="mcP1">كلمة المرور الجديدة</label>
+    <input id="mcP1" type="password" autocomplete="new-password" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:16px">
+    <label for="mcP2">أعدها مرّة أخرى</label>
+    <input id="mcP2" type="password" autocomplete="new-password" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:16px">
+    <div class="sub" style="margin-top:8px">عشر خانات على الأقل، فيها حروف وأرقام.</div>
+    <div class="note hide" id="mcErr" style="margin-top:10px"></div>
+    <div class="act"><button class="btn ghost" id="mcLater">خروج</button><button class="btn" id="mcSave">حفظ ومتابعة</button></div>
+  </div>
+</div>
 <div class="rvdlg hide" id="rvDlg" role="dialog" aria-modal="true" aria-labelledby="rvDlgT">
   <div class="box">
     <h3 id="rvDlgT">اعتماد ملاحظة</h3>
@@ -906,7 +953,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261012195456";
+  var BUILD = "20261012213938";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -1026,6 +1073,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       else { var last = null; try { last = localStorage.getItem('afmc_portal_sys'); } catch(e){}
              if (last === 'ninja' || last === 'keemart' || last === 'attauth') openSys('couriers', last); else if (last && SYSTEMS.some(function(s){ return s.id === last && allowed(s); })) openSys(last); else show('vSys'); }
       badges(); live.start(); versionWatch(); ib.load(); loadProjects();
+      rpc('must_change_password').then(function(x){ if (x === true) mcOpen(true); }).catch(function(){});   /* v54 */
     }).catch(function(e){ if (!sess) { $('gate').classList.remove('hide'); return; } if (/no session/.test(e.message)) signOut(); else { $('gate').classList.remove('hide'); gateMsg('bad', 'تعذّر الاتصال بالقاعدة: ' + esc(e.message)); } });
   }
   var TITLES = { vSys:'الرئيسية', vRep:'التقارير', vAdm:'الصلاحيات والتكامل', vRev:'مراجعة البيانات',
@@ -2344,6 +2392,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     ]).then(function(r){
       var SYS_AR = { watheeq:'وثيق', fleet:'الأسطول', ninja:'Ninja', keemart:'Keemart', dbb:'الصيانة', housing:'السكنات' }, ord = ROLES.map(function(x){ return x[0]; });
       try { loadDbbDevices(r[0] || []); } catch(_){}   /* v53 */
+      try { loadPwLog(); } catch(_){}                   /* v54 */
       var yes = function(b){ return b ? '<span class="yes">✓</span>' : '<span class="no">—</span>'; };
       var ed = me.role === 'admin';
       var cb = function(role, k, v){ var lock = !ed || (role === 'admin' && (k === 'can_manage' || k === 'all_projects'));
@@ -2393,7 +2442,10 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     return '<tr data-id="' + u.id + '"><td>' + who + (info ? '<div class="sub">' + info + '</div>' : '') + '</td><td>' + roleSel + '</td><td class="pj">' + projTags(sel) + '</td>'
       + '<td class="sy">' + sysTags(u.systems || ROLE_SYS[role] || []) + (u.systems ? '<div class="sub">مخصّصة</div>' : '') + '</td>'
       + '<td><label class="sw"><input type="checkbox" class="ap" checked' + (self ? ' disabled' : '') + '><span></span></label></td>'
-      + '<td>' + (self ? '<span class="sub">حسابك</span>' : '<button class="btn sm" data-act="save">حفظ</button>') + '</td></tr>';
+      + '<td style="white-space:nowrap">' + (self
+          ? '<button class="btn ghost sm" data-act="mypw">كلمة مروري</button>'
+          : '<button class="btn sm" data-act="save">حفظ</button>'
+            + (canResetPw() ? ' <button class="btn ghost sm" data-act="pw" title="إعادة ضبط كلمة المرور">🔑</button>' : '')) + '</td></tr>';   /* v54 */
   }
   function wireRows(){
     document.querySelectorAll('#vAdm .tag[data-p], #vAdm .tag[data-y]').forEach(function(t){ t.onclick = function(){ if (t.closest('tr').querySelector('.role').disabled) return; t.classList.toggle('on'); }; });
@@ -2401,6 +2453,14 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     document.querySelectorAll('#vAdm button[data-act]').forEach(function(b){
       b.onclick = function(){
         var tr = b.closest('tr'), id = tr.getAttribute('data-id'), act = b.getAttribute('data-act');
+        if (act === 'mypw'){ mcOpen(false); return; }                                     /* v54 */
+        if (act === 'pw'){
+          var nm = (tr.querySelector('td b') || {}).textContent || '';
+          var sb = tr.querySelector('td .sub');
+          var em = sb ? String(sb.textContent).split(' · ')[0] : '';
+          pwOpen({ id:id, name:nm, email:em, role: tr.querySelector('.role').value });
+          return;
+        }
         var codes = [].map.call(tr.querySelectorAll('.tag[data-p].on'), function(t){ return t.getAttribute('data-p'); });
         var body = { role: tr.querySelector('.role').value };
         var ys = [].map.call(tr.querySelectorAll('.tag[data-y].on'), function(t){ return t.getAttribute('data-y'); });
@@ -2464,6 +2524,118 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       .catch(function(e){ toast('تعذّر: ' + e.message); });
   };
 
+
+
+  /* ═══════════ v54 · كلمات المرور ═══════════ */
+  function canResetPw(){ return !!(me && (me.role === 'admin' || me.role === 'manager')); }
+  /* حروف بلا التباس: لا 0/O ولا 1/l/I */
+  var PW_CH = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+  function pwMake(len){
+    var a = new Uint32Array(len || 12); crypto.getRandomValues(a);
+    var out = ''; for (var i = 0; i < a.length; i++) out += PW_CH.charAt(a[i] % PW_CH.length);
+    /* نضمن حرفاً ورقماً */
+    if (!/[0-9]/.test(out)) out = out.slice(0, -1) + '2456789'.charAt(a[0] % 7);
+    if (!/[A-Za-z]/.test(out)) out = 'K' + out.slice(1);
+    return out;
+  }
+  function pwOk(p){ return typeof p === 'string' && p.length >= 10 && /[0-9]/.test(p) && /[A-Za-z]/.test(p); }
+  function authPost(path, body){
+    return fetch(SB_URL + '/auth/v1/' + path, { method:'POST', headers:{ apikey:SB_KEY, 'Content-Type':'application/json' }, body: JSON.stringify(body) })
+      .then(function(r){ return r.text().then(function(t){ var j = t ? JSON.parse(t) : null;
+        if (!r.ok) throw new Error((j && (j.msg || j.message || j.error_description)) || ('HTTP ' + r.status)); return j; }); });
+  }
+  var pwTarget = null;
+  function pwErr(m){ var e = $('pwErr'); e.textContent = m || ''; e.classList.toggle('hide', !m); }
+  function pwOpen(u){
+    pwTarget = u;
+    $('pwWho').innerHTML = '<b>' + esc(u.name) + '</b> · ' + esc(u.email) + ' · ' + esc(ROLE_AR[u.role] || u.role);
+    $('pwStep1').classList.remove('hide'); $('pwStep2').classList.add('hide'); pwErr('');
+    $('pwOut').textContent = ''; $('pwHand').textContent = '';
+    $('pwDlg').classList.remove('hide');
+  }
+  function pwClose(){ $('pwDlg').classList.add('hide'); $('pwOut').textContent = ''; pwTarget = null; }
+  $('pwDlgX').onclick = pwClose;
+  $('pwGen').onclick = function(){
+    if (!pwTarget) return;
+    var u = pwTarget, pwd = pwMake(12), b = this; b.disabled = true; pwErr('');
+    rpc('admin_reset_password', { p_user: u.id, p_password: pwd }).then(function(){
+      $('pwOut').textContent = pwd;
+      $('pwHand').innerHTML = 'سلّمها لـ <b>' + esc(u.name) + '</b> بنفسك. جلساته القائمة انتهت الآن، وسيُطلب منه تغييرها أوّل دخول.';
+      $('pwStep1').classList.add('hide'); $('pwStep2').classList.remove('hide');
+      b.disabled = false; loadPwLog();
+    }).catch(function(e){ b.disabled = false; pwErr('تعذّر: ' + e.message); });
+  };
+  $('pwMail').onclick = function(){
+    if (!pwTarget) return;
+    var u = pwTarget, b = this; b.disabled = true; pwErr('');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(u.email || '')){
+      b.disabled = false; pwErr('بريد هذا الحساب غير صالح (' + (u.email || '—') + ') — استعمل الكلمة المؤقّتة.'); return;
+    }
+    authPost('recover', { email: u.email }).then(function(){
+      return rpc('log_password_email', { p_user: u.id }).catch(function(){});
+    }).then(function(){
+      b.disabled = false;
+      $('pwStep1').classList.add('hide'); $('pwStep2').classList.remove('hide');
+      $('pwOut').textContent = '✉️';
+      $('pwHand').innerHTML = 'أُرسل الرابط إلى <b>' + esc(u.email) + '</b>. إن لم يصل خلال دقائق فالبريد الافتراضي محدود — استعمل الكلمة المؤقّتة.';
+      loadPwLog();
+    }).catch(function(e){ b.disabled = false; pwErr('تعذّر الإرسال: ' + e.message); });
+  };
+  $('pwCopy').onclick = function(){
+    var t = $('pwOut').textContent; if (!t || t === '✉️') return;
+    try { navigator.clipboard.writeText(t); toast('نُسخت — سلّمها ولا تتركها مكتوبة'); } catch(e){ toast('انسخها يدوياً'); }
+  };
+  function loadPwLog(){
+    var b = $('pwLogBody'); if (!b || !canResetPw()) return;
+    rpc('password_reset_log', { p_limit: 40 }).then(function(r){
+      var rows = (r && r.rows) || [];
+      var M = { temp:'كلمة مؤقّتة', email:'رابط بالبريد', self:'غيّرها بنفسه' };
+      b.innerHTML = rows.length ? rows.map(function(x){
+        return '<tr><td class="sub">' + esc(String(x.at).slice(0, 16).replace('T', ' ')) + '</td>'
+          + '<td><b>' + esc(x.name || '—') + '</b><div class="sub">' + esc(x.email || '') + '</div></td>'
+          + '<td>' + esc(ROLE_AR[x.role] || x.role || '—') + '</td>'
+          + '<td>' + esc(M[x.method] || x.method) + '</td><td class="sub">' + esc(x.by || '—') + '</td></tr>'; }).join('')
+        : '<tr><td colspan="5" class="empty">لا عمليات بعد.</td></tr>';
+    }).catch(function(){ b.innerHTML = '<tr><td colspan="5" class="empty">—</td></tr>'; });
+  }
+  /* تغيير كلمتي — ولمن أُعيد ضبطها: إجباري قبل المتابعة */
+  var mcForce = false;
+  function mcOpen(force){
+    mcForce = !!force;
+    $('mcWho').textContent = force
+      ? 'أُعيد ضبط كلمة مرورك. اختر كلمة جديدة تعرفها وحدك قبل المتابعة.'
+      : 'اختر كلمة مرور جديدة لحسابك.';
+    $('mcLater').textContent = force ? 'خروج' : 'إلغاء';
+    $('mcP1').value = ''; $('mcP2').value = '';
+    $('mcErr').classList.add('hide'); $('mcDlg').classList.remove('hide');
+    setTimeout(function(){ $('mcP1').focus(); }, 60);
+  }
+  $('mcLater').onclick = function(){ if (mcForce) signOut('غيّر كلمة مرورك عند الدخول القادم.'); else $('mcDlg').classList.add('hide'); };
+  $('mcSave').onclick = function(){
+    var p1 = $('mcP1').value, p2 = $('mcP2').value, e = $('mcErr'), b = this;
+    function bad(m){ e.textContent = m; e.classList.remove('hide'); }
+    if (p1 !== p2) return bad('الكلمتان غير متطابقتين.');
+    if (!pwOk(p1)) return bad('عشر خانات على الأقل، فيها حروف وأرقام.');
+    b.disabled = true; e.classList.add('hide');
+    token().then(function(t){
+      return fetch(SB_URL + '/auth/v1/user', { method:'PUT',
+        headers:{ apikey:SB_KEY, Authorization:'Bearer ' + t, 'Content-Type':'application/json' },
+        body: JSON.stringify({ password: p1 }) })
+        .then(function(r){ return r.text().then(function(x){ var j = x ? JSON.parse(x) : null;
+          if (!r.ok) throw new Error((j && (j.msg || j.message)) || ('HTTP ' + r.status)); return j; }); });
+    }).then(function(){ return rpc('password_changed_self').catch(function(){}); })
+      .then(function(){ b.disabled = false; $('mcDlg').classList.add('hide'); mcForce = false; toast('تم تغيير كلمة المرور'); })
+      .catch(function(err){ b.disabled = false; bad('تعذّر: ' + err.message); });
+  };
+  $('gForgot').onclick = function(ev){
+    ev.preventDefault();
+    var em = ($('gEmail').value || '').trim() || prompt('اكتب بريدك لإرسال رابط إعادة الضبط:');
+    if (!em) return;
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { gateMsg('warn', 'اكتب بريداً صحيحاً.'); return; }
+    authPost('recover', { email: em.trim() })
+      .then(function(){ gateMsg('warn', 'إن كان البريد مسجّلاً فسيصل رابط. لو ما وصل خلال دقائق، اطلب من المدير كلمة مؤقّتة.'); })
+      .catch(function(e){ gateMsg('bad', 'تعذّر الإرسال: ' + esc(e.message)); });
+  };
 
   /* ═══════════ v53 · العقود والمالية ═══════════ */
   var finCfg = null, finRows = null;
