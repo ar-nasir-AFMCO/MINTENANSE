@@ -455,6 +455,8 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         <button data-v="vRep"><span class="ic"><svg class="i"><use href="#i-chart"/></svg></span><span class="tx"><b>التقارير</b></span></button>
         <button data-v="vAdm" data-need="admin"><span class="ic"><svg class="i"><use href="#i-shield"/></svg></span><span class="tx"><b>الصلاحيات والتكامل</b></span><span class="cnt hide" id="pendCnt"></span></button>
         <button data-v="vRev" data-need="review"><span class="ic"><svg class="i"><use href="#i-search"/></svg></span><span class="tx"><b>مراجعة البيانات</b></span><span class="cnt hide" id="revCnt"></span></button>
+        <button data-v="vFin" data-need="finance"><span class="ic"><svg class="i"><use href="#i-grid"/></svg></span><span class="tx"><b>العقود والمالية</b></span></button>
+        <button data-v="vLab" data-need="admin"><span class="ic"><svg class="i"><use href="#i-bolt"/></svg></span><span class="tx"><b>التجريبي</b></span></button>
       </nav></div>
       <div class="grp"><div class="lb">الأنظمة</div><nav class="nav" id="sysbar"></nav></div>
     </div>
@@ -679,6 +681,72 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         <div class="sub" id="rpFoot" style="margin-top:8px"></div>
       </main>
 
+      <!-- ════════ العقود والمالية ════════ -->
+      <main id="vFin" class="view hide">
+        <div class="head"><div><h2>العقود والمالية</h2><p>عقود المشاريع ومستخرج الرواتب ومراجعة فواتير المورّدين — في مكان واحد خارج شاشات التشغيل.</p></div>
+          <button class="btn ghost" id="finRefresh"><svg class="i"><use href="#i-reload"/></svg>تحديث</button></div>
+
+        <div class="sec" style="margin-top:0">
+          <h3><svg class="i"><use href="#i-grid"/></svg>عقود المشاريع</h3>
+          <div class="card tbl"><table><thead><tr><th>المشروع</th><th>ساعات مطلوبة</th><th>طلبات مطلوبة</th><th>أيام</th><th>بونص اليوم</th><th>بونص الطلب</th><th>معادلة خاصة</th><th>آخر تعديل</th><th></th></tr></thead><tbody id="finCtrBody"></tbody></table></div>
+          <div class="sub" style="margin-top:8px">هذه هي نفس أرقام العقد التي يستعملها مستخرج الرواتب في وثيق — تُقرأ وتُحفظ في القاعدة، فالتعديل هنا يظهر هناك فوراً. التعديل لمن يملك «الرواتب» أو «الإدارة».</div>
+        </div>
+
+        <div class="sec">
+          <h3><svg class="i"><use href="#i-chart"/></svg>رواتب شهر</h3>
+          <div class="bar2">
+            <select id="finProj"><option value="">اختر المشروع</option></select>
+            <input type="month" id="finMonth">
+            <button class="btn" id="finGo"><svg class="i"><use href="#i-reload"/></svg>احسب من الحضور</button>
+            <span style="flex:1"></span>
+            <button class="btn ghost" id="finCsv"><svg class="i"><use href="#i-down"/></svg>تصدير</button>
+          </div>
+          <div class="note hide" id="finNote"></div>
+          <div class="grid" id="finKpi" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px"></div>
+          <div class="card tbl"><table><thead id="finHead"></thead><tbody id="finBody"></tbody></table></div>
+        </div>
+
+        <div class="sec">
+          <h3><svg class="i"><use href="#i-ext"/></svg>فواتير المورّدين — ما هو مفتوح الآن</h3>
+          <div class="card" style="padding:16px 18px">
+            <div id="finOpen"></div>
+            <div class="sub" style="margin-top:10px">المراجعة الحسابية للفواتير تُبنى خارج المنصة بأدوات مستقلة (لا تمسّ بيانات التشغيل)، ونتيجتها تُسجَّل هنا. KEETA وKEEMART مشروعان منفصلان — أرقامهما لا تُجمع في أي شاشة.</div>
+          </div>
+        </div>
+      </main>
+
+      <!-- ════════ التجريبي ════════ -->
+      <main id="vLab" class="view hide">
+        <div class="head"><div><h2>التجريبي</h2><p>صفحات وأدوات قيد التجربة — منفصلة عن شاشات التشغيل، لا تكتب في بيانات المنصة إلا بعد اعتمادها.</p></div></div>
+
+        <div class="sec" style="margin-top:0">
+          <h3><svg class="i"><use href="#i-send"/></svg>شرائح الغسيل — تعبئة النموذج من المنصة</h3>
+          <div class="card" style="padding:16px 18px">
+            <div class="bar2" style="margin-top:0">
+              <input id="labQ" type="search" placeholder="ابحث بالإقامة أو الاسم أو رقم اللوحة" style="min-width:260px">
+              <button class="btn ghost" id="labFind"><svg class="i"><use href="#i-search"/></svg>بحث</button>
+            </div>
+            <div id="labHits" class="sub" style="margin-top:8px"></div>
+            <div class="card tbl hide" id="labPick" style="margin-top:10px"><table><thead><tr><th>المندوب</th><th>الإقامة</th><th>المشروع</th><th>المنطقة</th><th>اللوحة</th><th></th></tr></thead><tbody id="labBody"></tbody></table></div>
+            <div class="sub" style="margin-top:10px">النموذج يُفتح معبّأً بالاسم والإقامة ومشروعه ومنطقته ولوحته وبريدك — تراجعها وترسلها بنفسك. لا شيء يُرسل من المنصة تلقائياً.</div>
+          </div>
+        </div>
+
+        <div class="sec">
+          <h3><svg class="i"><use href="#i-bolt"/></svg>الأدوات والصفحات التجريبية</h3>
+          <div class="grid" id="labCards" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))"></div>
+        </div>
+
+        <div class="sec">
+          <h3><svg class="i"><use href="#i-plug"/></svg>الوقود — AppSheet</h3>
+          <div class="card" style="padding:16px 18px">
+            <div class="sub" style="margin-bottom:10px">تطبيق الوقود على AppSheet لا يقبل التعبئة من الرابط: AppSheet لا يفتح حقول نموذج بقيم من query string. البابان الممكنان: (أ) إضافة <code>LINKTOFORM</code> داخل التطبيق نفسه — يحتاج صلاحية تعديل عليه، (ب) الكتابة في الجدول الذي يقف خلفه. إلى أن نفتح أحدهما، نسخ الصف جاهزاً هو أسرع طريق.</div>
+            <div class="bar2" style="margin-top:0"><button class="btn ghost" id="labFuelCopy">نسخ صف المندوب المختار</button><a class="btn ghost" id="labFuelOpen" target="_blank" rel="noopener">فتح تطبيق الوقود</a></div>
+            <pre id="labFuelRow" class="sub" style="white-space:pre-wrap;margin-top:10px"></pre>
+          </div>
+        </div>
+      </main>
+
       <!-- ════════ الصلاحيات والتكامل ════════ -->
       <main id="vAdm" class="view hide">
         <div class="head"><div><h2>الصلاحيات والتكامل</h2><p>اعتماد الحسابات، الأدوار والمشاريع، وحالة ربط الأنظمة.</p></div>
@@ -708,6 +776,12 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
             <div class="grid" id="reconGrid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))"></div>
             <div style="display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap"><button class="btn" id="reconApply">تطبيق المطابقة</button><button class="btn ghost hide" id="reconUndo">تراجع عن آخر مطابقة</button><span class="sub" id="reconNote"></span></div>
           </div>
+        </div>
+
+        <div class="sec">
+          <h3><svg class="i"><use href="#i-wrench"/></svg>أجهزة تطبيق الصيانة — الصلاحية من المنصة</h3>
+          <div class="card tbl"><table><thead><tr><th>الجهاز</th><th>الورشة</th><th>آخر ظهور</th><th>الدور المحلي</th><th>الحساب في المنصة</th><th>الصلاحية الفعلية</th><th></th></tr></thead><tbody id="dbbDevBody"></tbody></table></div>
+          <div class="sub" style="margin-top:8px">تطبيق الصيانة يحتفظ بدخوله كما هو — اسم المشرف والورشة وإذن الجهاز، بلا حساب جديد ولا كلمة مرور. ما يتغيّر هو <b>الصلاحية</b>: الجهاز المربوط بحساب هنا يأخذ دوره من جدول الصلاحيات أعلاه تلقائياً في كل فتح، ولا يُعدَّل من داخل التطبيق. الجهاز غير المربوط يبقى على دوره المحلي.<br>الخريطة الافتراضية: مدير النظام والمدير ⇐ إداري · الصيانة والمشرف ⇐ مشرف ورشته · المالية والمتابعة ⇐ قراءة فقط.</div>
         </div>
 
         <div class="sec">
@@ -832,7 +906,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261003175123";
+  var BUILD = "20261012195456";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -927,6 +1001,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     if (!me) return false;
     if (need === 'admin') return !!(me.perms && me.perms.manage);
     if (need === 'review') return ['admin','manager','finance'].indexOf(me.role) >= 0;
+    if (need === 'finance') return !!(me.perms && (me.perms.finance || me.perms.manage));   /* v53 */
     return true;
   }
   function allowed(s){ var sy = me.systems || []; return s.group ? s.group.some(function(g){ return sy.indexOf(g) >= 0; }) : sy.indexOf(s.id) >= 0; }
@@ -947,20 +1022,24 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       buildSystems(); gsWire();
       var h = location.hash;
       if (h === '#admin' && can('admin')) show('vAdm'); else if (h === '#review' && can('review')) show('vRev'); else if (h === '#reports') show('vRep');
+      else if (h === '#finance' && can('finance')) show('vFin'); else if (h === '#lab' && can('admin')) show('vLab');   /* v53 */
       else { var last = null; try { last = localStorage.getItem('afmc_portal_sys'); } catch(e){}
              if (last === 'ninja' || last === 'keemart' || last === 'attauth') openSys('couriers', last); else if (last && SYSTEMS.some(function(s){ return s.id === last && allowed(s); })) openSys(last); else show('vSys'); }
       badges(); live.start(); versionWatch(); ib.load(); loadProjects();
     }).catch(function(e){ if (!sess) { $('gate').classList.remove('hide'); return; } if (/no session/.test(e.message)) signOut(); else { $('gate').classList.remove('hide'); gateMsg('bad', 'تعذّر الاتصال بالقاعدة: ' + esc(e.message)); } });
   }
-  var TITLES = { vSys:'الرئيسية', vRep:'التقارير', vAdm:'الصلاحيات والتكامل', vRev:'مراجعة البيانات' };
+  var TITLES = { vSys:'الرئيسية', vRep:'التقارير', vAdm:'الصلاحيات والتكامل', vRev:'مراجعة البيانات',
+                 vFin:'العقود والمالية', vLab:'التجريبي' };   /* v53 */
   function show(v, keepSys){
-    ['vSys','vRep','vAdm','vRev'].forEach(function(x){ $(x).classList.toggle('hide', x !== v); });
+    ['vSys','vRep','vAdm','vRev','vFin','vLab'].forEach(function(x){ $(x).classList.toggle('hide', x !== v); });   /* v53 */
     document.querySelectorAll('#tabs button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-v') === v && !(v === 'vSys' && current)); });
     if (v !== 'vSys' || !keepSys) { current = null; sysUi(); }
     $('ttl').textContent = TITLES[v]; $('crumb').textContent = 'منصة AFMCO'; $('fbar').innerHTML = '';
-    history.replaceState(null, '', v === 'vAdm' ? '#admin' : v === 'vRev' ? '#review' : v === 'vRep' ? '#reports' : '#');
+    history.replaceState(null, '', v === 'vAdm' ? '#admin' : v === 'vRev' ? '#review' : v === 'vRep' ? '#reports'
+      : v === 'vFin' ? '#finance' : v === 'vLab' ? '#lab' : '#');   /* v53 */
     document.body.classList.remove('menu');
     if (v === 'vAdm') loadAdmin(); if (v === 'vRev') loadReview(); if (v === 'vRep') repInit();
+    if (v === 'vFin') finInit(); if (v === 'vLab') labInit();   /* v53 */
     if (v === 'vSys' && !keepSys && me) homeMeta();
   }
   document.querySelectorAll('#tabs button').forEach(function(b){ b.onclick = function(){ var v = b.getAttribute('data-v'); if (v === 'vSys') { try { localStorage.removeItem('afmc_portal_sys'); } catch(e){} } show(v); }; });
@@ -2264,6 +2343,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       api('GET', 'role_matrix?select=*')
     ]).then(function(r){
       var SYS_AR = { watheeq:'وثيق', fleet:'الأسطول', ninja:'Ninja', keemart:'Keemart', dbb:'الصيانة', housing:'السكنات' }, ord = ROLES.map(function(x){ return x[0]; });
+      try { loadDbbDevices(r[0] || []); } catch(_){}   /* v53 */
       var yes = function(b){ return b ? '<span class="yes">✓</span>' : '<span class="no">—</span>'; };
       var ed = me.role === 'admin';
       var cb = function(role, k, v){ var lock = !ed || (role === 'admin' && (k === 'can_manage' || k === 'all_projects'));
@@ -2383,6 +2463,210 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     rpc('fleet_reconcile_undo', { p_batch: lastBatch }).then(function(n){ toast('تم التراجع عن ' + n + ' موظف'); lastBatch = null; $('reconUndo').classList.add('hide'); $('reconNote').textContent = ''; recon(false); })
       .catch(function(e){ toast('تعذّر: ' + e.message); });
   };
+
+
+  /* ═══════════ v53 · العقود والمالية ═══════════ */
+  var finCfg = null, finRows = null;
+  function finMoney(v){ return (v == null || v === '') ? '—' : Number(v).toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
+  function finCanEdit(){ return !!(me && me.perms && (me.perms.finance || me.perms.manage)); }
+  function finInit(){
+    if (!$('finMonth').value){ var d = new Date(); d.setMonth(d.getMonth() - 1);
+      $('finMonth').value = d.toISOString().slice(0, 7); }
+    finProjOpts(); finContracts(); finOpenItems();
+  }
+  function finProjOpts(){
+    var ps = (me && me.all_projects) ? projects : ((me && me.projects) || []);
+    if (!ps.length) ps = projects;
+    $('finProj').innerHTML = '<option value="">اختر المشروع</option>' + ps.map(function(p){ return '<option>' + esc(p) + '</option>'; }).join('');
+  }
+  function finContracts(){
+    $('finCtrBody').innerHTML = '<tr><td colspan="9" class="empty">جارٍ التحميل…</td></tr>';
+    Promise.all([
+      api('GET', 'app_kv?select=data,updated_at&app=eq.wf&key=eq.projcfg'),
+      projects.length ? Promise.resolve(null) : loadProjects()
+    ]).then(function(r){
+      finCfg = (r[0] && r[0][0] && r[0][0].data) || {};
+      var ps = projects.slice();
+      Object.keys(finCfg).forEach(function(k){ if (ps.indexOf(k) < 0) ps.push(k); });
+      if (!ps.length){ $('finCtrBody').innerHTML = '<tr><td colspan="9" class="empty">لا مشاريع.</td></tr>'; return; }
+      var ed = finCanEdit();
+      $('finCtrBody').innerHTML = ps.map(function(p){
+        var c = finCfg[p] || {}, num0 = function(x){ return Number(x) || 0; };
+        var inp = function(k, v){ return ed ? '<input data-k="' + k + '" value="' + esc(num0(v)) + '" style="width:80px;padding:5px 7px;border:1px solid var(--line);border-radius:7px;font:inherit">' : num(num0(v)); };
+        return '<tr data-p="' + esc(p) + '"><td><b>' + esc(p) + '</b></td>'
+          + '<td>' + inp('hours', c.hours) + '</td><td>' + inp('orders', c.orders) + '</td><td>' + inp('days', c.days) + '</td>'
+          + '<td>' + inp('bonusPerDay', c.bonusPerDay) + '</td><td>' + inp('bonusPerOrder', c.bonusPerOrder) + '</td>'
+          + '<td>' + (ed ? '<input data-k="formula" value="' + esc(c.formula || '') + '" placeholder="افتراضية" style="width:200px;padding:5px 7px;border:1px solid var(--line);border-radius:7px;font:inherit">' : esc(c.formula || 'افتراضية')) + '</td>'
+          + '<td class="sub">' + (c.at ? esc(String(c.at).slice(0, 10)) + (c.by ? ' · ' + esc(c.by) : '') : '—') + '</td>'
+          + '<td>' + (ed ? '<button class="btn sm" data-save="1">حفظ</button>' : '') + '</td></tr>';
+      }).join('');
+      if (!ed) return;
+      $('finCtrBody').querySelectorAll('tr[data-p]').forEach(function(tr){
+        tr.querySelector('[data-save]').onclick = function(){
+          var p = tr.getAttribute('data-p'), o = {};
+          tr.querySelectorAll('[data-k]').forEach(function(i){ var k = i.getAttribute('data-k');
+            o[k] = k === 'formula' ? i.value.trim() : (Number(i.value) || 0); });
+          o.by = (me && (me.name || me.email)) || ''; o.at = new Date().toISOString();
+          finCfg[p] = o;
+          api('POST', 'app_kv?on_conflict=app,key', [{ app:'wf', key:'projcfg', data: finCfg }],
+              { Prefer:'resolution=merge-duplicates,return=minimal' })
+            .then(function(){ toast('حُفظ عقد ' + p + ' — يظهر في وثيق فوراً'); finContracts(); })
+            .catch(function(e){ toast('تعذّر الحفظ: ' + e.message); });
+        };
+      });
+    }).catch(function(e){ $('finCtrBody').innerHTML = '<tr><td colspan="9" class="empty">تعذّر: ' + esc(e.message) + '</td></tr>'; });
+  }
+  function finPay(){
+    var p = $('finProj').value, m = $('finMonth').value;
+    if (!p || !m){ toast('اختر المشروع والشهر'); return; }
+    $('finNote').classList.add('hide'); $('finKpi').innerHTML = '';
+    $('finBody').innerHTML = '<tr><td colspan="8" class="empty">جارٍ الحساب…</td></tr>'; $('finHead').innerHTML = '';
+    rpc('payroll_month', { p_project: p, p_month: m + '-01' }).then(function(r){
+      finRows = r || null;
+      var rows = (r && (r.rows || r.employees)) || [];
+      if (!rows.length){ $('finBody').innerHTML = '<tr><td colspan="8" class="empty">لا صفوف لهذا الشهر.</td></tr>'; return; }
+      var AR = { iqama:'الإقامة', name:'الاسم', full_name_ar:'الاسم', days:'أيام الحضور', hours:'الساعات',
+                 orders:'الطلبات', auth_days:'أيام التفويض', absence:'الغياب', project:'المشروع',
+                 base:'الأساسي', bonus:'البونص', total:'الإجمالي', deductions:'الخصومات', net:'الصافي' };
+      var cols = Object.keys(rows[0]);
+      $('finHead').innerHTML = '<tr>' + cols.map(function(c){ return '<th>' + esc(AR[c] || c) + '</th>'; }).join('') + '</tr>';
+      $('finBody').innerHTML = rows.map(function(x){ return '<tr>' + cols.map(function(c){
+        var v = x[c]; return '<td>' + (typeof v === 'number' ? num(v) : esc(v == null ? '—' : v)) + '</td>'; }).join('') + '</tr>'; }).join('');
+      var tot = [['عدد المناديب', rows.length]];
+      ['days','hours','orders','auth_days','absence'].forEach(function(k){
+        if (rows[0] && k in rows[0]) tot.push([AR[k] || k, rows.reduce(function(a, x){ return a + (Number(x[k]) || 0); }, 0)]); });
+      $('finKpi').innerHTML = tot.map(function(p){
+        return tile('', p[0], num(Math.round(p[1] * 100) / 100), '', ''); }).join('');
+    }).catch(function(e){ $('finBody').innerHTML = '';
+      $('finNote').textContent = 'تعذّر الحساب: ' + e.message; $('finNote').classList.remove('hide'); });
+  }
+  function finOpenItems(){
+    var items = [
+      ['سعر ساعة عقد ساموراي', 'السعر المستعمل في الفاتورة ١٤.٤٢ ر.س/ساعة = ٤٥٠٠ ÷ ٣١٢ ساعة، وحدّ المكافأة في العقد ٢٨٦ ساعة. الفرق بين المقامين يحتاج تثبيتاً كتابياً من المورّد قبل اعتماد أي شهر.', 'high'],
+      ['فاتورة سبتمبر — ساموراي', 'فُحصت كلها: ٣٤٢٣ صفاً، صفر خطأ حسابي، والساعات والطلبات تطابق ساموراي في الثلاثين يوماً (أعلى فرق يومي ٠٫٠١ ساعة). الكمّية سليمة؛ المفتوح هو السعر أعلاه.', 'ok'],
+      ['KEETA وKEEMART', 'مشروعان منفصلان. لا تُجمع أرقامهما في أي شاشة ولا في أي تقرير.', 'ok'],
+      ['مستحقات من ساموراي', 'لا يوجد في واجهة ساموراي أي نقطة تُرجع المستحقات أو الأرباح — الكمّية تُحتسب عندنا وتُقابل بفاتورتهم.', 'info']
+    ];
+    $('finOpen').innerHTML = '<div class="grid" style="grid-template-columns:1fr;gap:10px">' + items.map(function(x){
+      var col = x[2] === 'high' ? 'var(--bad)' : x[2] === 'ok' ? 'var(--ok)' : 'var(--line)';
+      return '<div style="border-inline-start:3px solid ' + col + ';padding:8px 12px"><b>' + esc(x[0]) + '</b>'
+           + '<div class="sub" style="margin-top:4px">' + esc(x[1]) + '</div></div>'; }).join('') + '</div>';
+  }
+  $('finGo').onclick = finPay;
+  $('finRefresh').onclick = function(){ finCfg = null; finInit(); };
+  $('finCsv').onclick = function(){
+    var rows = (finRows && (finRows.rows || finRows.employees)) || [];
+    if (!rows.length){ toast('لا بيانات للتصدير'); return; }
+    var cols = Object.keys(rows[0]);
+    var csv = '﻿' + cols.join(',') + '\n' + rows.map(function(x){ return cols.map(function(c){
+      var v = x[c] == null ? '' : String(x[c]); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(','); }).join('\n');
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv' }));
+    a.download = 'payroll-' + $('finProj').value + '-' + $('finMonth').value + '.csv'; a.click();
+  };
+
+  /* ═══════════ v53 · التجريبي ═══════════ */
+  var LAB_FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSc45otbZY6bqJfJYl2VZLXT73KlRttn_i67Y5lADtM9G4k5ww/viewform';
+  var LAB_F = { name:'1156777051', iqama:'1970767550', email:'1619132559', plate:'1581913447',
+                plate_ar:'1046381303', project:'129957825', area:'820389940', office:'1414804338', notes:'2049263354' };
+  var LAB_FUEL = 'https://www.appsheet.com/start/0fcc64c6-f3fb-4be7-9002-2fd17dd57ebf?platform=desktop';
+  var labCard = null;
+  function labInit(){
+    $('labFuelOpen').href = LAB_FUEL;
+    $('labCards').innerHTML = [
+      ['شرائح الغسيل · نموذج جوجل', 'النموذج الحالي الذي يُعبّأ يدوياً. من هنا يُفتح معبّأً بتسعة حقول.', LAB_FORM],
+      ['الوقود · AppSheet', 'تطبيق الوقود. لا يقبل التعبئة من الرابط — انظر القسم أدناه.', LAB_FUEL],
+      ['Samurai · تجريبي', 'أداء المورّد والكباتن. داخل «المناديب» لمدير النظام.', ''],
+      ['Keeta · تجريبي', 'حضور مناديب كيتا من صفحة Keemart.', ''],
+      ['تقرير استخدام المركبات', 'عدد أيام الاستخدام لكل مركبة ولكل مشروع — أداة مستقلة خارج المنصة.', '']
+    ].map(function(x){
+      return '<div class="card" style="padding:14px 16px"><b>' + esc(x[0]) + '</b>'
+        + '<div class="sub" style="margin:6px 0 10px">' + esc(x[1]) + '</div>'
+        + (x[2] ? '<a class="btn ghost sm" target="_blank" rel="noopener" href="' + esc(x[2]) + '"><svg class="i"><use href="#i-ext"/></svg>فتح</a>'
+                : '<span class="sub">داخل المنصة</span>') + '</div>';
+    }).join('');
+  }
+  function labSearch(){
+    var q = $('labQ').value.trim();
+    if (q.length < 2){ $('labHits').textContent = 'اكتب حرفين على الأقل.'; return; }
+    $('labHits').textContent = 'جارٍ البحث…'; $('labPick').classList.add('hide');
+    rpc('courier_find', { p_q: q }).then(function(r){
+      var rows = (r && r.rows) || [];
+      if (!rows.length){ $('labHits').textContent = 'لا نتائج في نطاق مشاريعك.'; return; }
+      $('labHits').textContent = rows.length + ' نتيجة — اختر المندوب:';
+      $('labBody').innerHTML = rows.map(function(x){
+        return '<tr data-iq="' + esc(x.iqama) + '"><td>' + esc(x.name || '—') + '</td><td>' + esc(x.iqama) + '</td>'
+          + '<td>' + esc(x.project || '—') + '</td><td class="sub" data-ar>…</td><td class="sub" data-pl>…</td>'
+          + '<td><button class="btn sm" data-go="1">اختَر</button></td></tr>'; }).join('');
+      $('labPick').classList.remove('hide');
+      $('labBody').querySelectorAll('tr[data-iq]').forEach(function(tr){
+        tr.querySelector('[data-go]').onclick = function(){ labPickOne(tr.getAttribute('data-iq'), tr); };
+      });
+    }).catch(function(e){ $('labHits').textContent = 'تعذّر البحث: ' + e.message; });
+  }
+  function labPickOne(iq, tr){
+    rpc('courier_card', { p_iqama: iq }).then(function(c){
+      if (!c || !c.found){ toast('غير موجود'); return; }
+      labCard = c;
+      if (tr){ tr.querySelector('[data-ar]').textContent = c.area || '—';
+               tr.querySelector('[data-pl]').textContent = c.plate || 'بلا مركبة نشطة'; }
+      var q = [['usp','pp_url'],
+        ['entry.' + LAB_F.name, c.name || ''], ['entry.' + LAB_F.iqama, c.iqama || ''],
+        ['entry.' + LAB_F.email, (me && me.email) || ''], ['entry.' + LAB_F.plate, c.plate || ''],
+        ['entry.' + LAB_F.project, c.project || ''], ['entry.' + LAB_F.area, c.area || '']]
+        .filter(function(p){ return p[1] !== ''; })
+        .map(function(p){ return encodeURIComponent(p[0]) + '=' + encodeURIComponent(p[1]); }).join('&');
+      var url = LAB_FORM + '?' + q;
+      var box = $('labHits');
+      box.innerHTML = 'المختار: <b>' + esc(c.name || '') + '</b> · ' + esc(c.iqama)
+        + ' · ' + esc(c.project || '—') + ' · ' + esc(c.plate || 'بلا مركبة نشطة')
+        + ' <a class="btn sm" target="_blank" rel="noopener" href="' + esc(url) + '">افتح النموذج معبّأً</a>'
+        + (c.plate ? '' : ' <span class="sub">— بلا لوحة: اكتبها في النموذج يدوياً.</span>');
+      $('labFuelRow').textContent = [
+        'الاسم: ' + (c.name || ''), 'الإقامة: ' + c.iqama, 'المشروع: ' + (c.project || ''),
+        'المنطقة: ' + (c.area || ''), 'اللوحة: ' + (c.plate || ''), 'الجوال: ' + (c.mobile || '')
+      ].join('\n');
+    }).catch(function(e){ toast('تعذّر: ' + e.message); });
+  }
+  $('labFind').onclick = labSearch;
+  $('labQ').addEventListener('keydown', function(e){ if (e.key === 'Enter'){ e.preventDefault(); labSearch(); } });
+  $('labFuelCopy').onclick = function(){
+    var t = $('labFuelRow').textContent; if (!t.trim()){ toast('اختر مندوباً أولاً'); return; }
+    try { navigator.clipboard.writeText(t); toast('نُسخ صف المندوب'); } catch(e){ toast('انسخه يدوياً'); }
+  };
+
+  /* ═══════════ v53 · أجهزة تطبيق الصيانة ═══════════ */
+  var DBB_ROLE_AR = { admin:'إداري', supervisor:'مشرف ورشته', mechanic:'مكانيكي', viewer:'قراءة فقط' };
+  function loadDbbDevices(profs){
+    var body = $('dbbDevBody'); if (!body) return;
+    body.innerHTML = '<tr><td colspan="7" class="empty">جارٍ التحميل…</td></tr>';
+    rpc('dbb_devices').then(function(r){
+      var ds = (r && r.devices) || [];
+      if (!ds.length){ body.innerHTML = '<tr><td colspan="7" class="empty">لا أجهزة ظهرت في ملفات الصيانة بعد.</td></tr>'; return; }
+      var opts = '<option value="">— غير مربوط —</option>' + (profs || []).filter(function(p){ return p.approved; })
+        .map(function(p){ return '<option value="' + esc(p.id) + '">' + esc(p.full_name || p.email) + ' · ' + esc(ROLE_AR[p.role] || p.role) + '</option>'; }).join('');
+      body.innerHTML = ds.map(function(d){
+        return '<tr data-d="' + esc(d.device_id) + '"><td><b>' + esc(d.device_name || '—') + '</b><div class="sub">' + esc(String(d.device_id).slice(-8)) + ' · ' + esc(d.status || '—') + '</div></td>'
+          + '<td>' + esc(d.site || 'كل الورش') + '</td><td class="sub">' + (d.seen_at ? esc(String(d.seen_at).slice(0, 10)) : '—') + '</td>'
+          + '<td>' + esc(DBB_ROLE_AR[d.local_role] || d.local_role || '—') + '</td>'
+          + '<td><select data-pf style="max-width:220px">' + opts + '</select></td>'
+          + '<td>' + (d.source === 'platform'
+                ? '<span class="tag on">' + esc(DBB_ROLE_AR[d.effective_role] || d.effective_role) + ' · من المنصة</span>'
+                : '<span class="tag">' + esc(DBB_ROLE_AR[d.effective_role] || d.effective_role || '—') + ' · محلي</span>') + '</td>'
+          + '<td><button class="btn sm" data-lk="1">حفظ</button></td></tr>';
+      }).join('');
+      body.querySelectorAll('tr[data-d]').forEach(function(tr, i){
+        var d = ds[i], sel = tr.querySelector('[data-pf]');
+        if (d.profile_id) sel.value = d.profile_id;
+        tr.querySelector('[data-lk]').onclick = function(){
+          rpc('dbb_device_link', { p_device: d.device_id, p_profile: sel.value || null,
+                                   p_site: d.site || null, p_name: d.device_name || null })
+            .then(function(x){ toast(x && x.linked ? 'رُبط الجهاز — صلاحيته الآن ' + (DBB_ROLE_AR[x.role] || x.role) : 'فُصل الربط — يعود لدوره المحلي');
+                 loadDbbDevices(profs); })
+            .catch(function(e){ toast('تعذّر: ' + e.message); });
+        };
+      });
+    }).catch(function(e){ body.innerHTML = '<tr><td colspan="7" class="empty">تعذّر: ' + esc(e.message) + '</td></tr>'; });
+  }
 
   /* ---------------- data review ---------------- */
   var rev = [], revArea = '', revMode = 'open';

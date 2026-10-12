@@ -2993,7 +2993,8 @@ boot();
   /* ---------------- جانب وثيق ---------------- */
   var _wfPendingReq = {};
   window.__wfReqSend = function(idx){ try{ wfRequestVehicle(idx); }catch(_){} }; window.__wfReqPending = function(iq){ try{ return !!_wfPendingReq[normId(iq)]; }catch(_){ return false; } };
-  window.__wfReqRefresh = function(){ try{ if(typeof APP!=='undefined' && APP==='watheeq') wfLoadPendingReq(wfDecorateCards); else if(typeof APP!=='undefined' && APP==='fleetos'){ wfBuildFleetReqWidget(); wfFleetReqPoll(); } }catch(_){} };  /* AFMC Cloud: تحديث مباشر للطلبات */
+  window.__wfPaintCards = function(){ try{ if(typeof wfDecorateCards==='function') wfDecorateCards(); }catch(_){} };   /* v53 */
+  window.__wfReqRefresh = function(){ try{ if(window.__wfMgrPendingLoad) window.__wfMgrPendingLoad(); }catch(_){} try{ if(typeof APP!=='undefined' && APP==='watheeq') wfLoadPendingReq(wfDecorateCards); else if(typeof APP!=='undefined' && APP==='fleetos'){ wfBuildFleetReqWidget(); wfFleetReqPoll(); } }catch(_){} };  /* AFMC Cloud: تحديث مباشر للطلبات */
   function wfLoadPendingReq(cb){
     try{
       cloudGet(_wfReqKey).then(function(r){
@@ -3023,7 +3024,7 @@ boot();
         });
         try{ cloudPost(_wfReqKey, list); }catch(_){}
         _wfPendingReq[nid] = true;
-        try{ toast('🚗 تم إرسال طلب تفويض مركبة إلى الأسطول'); }catch(_){}
+        try{ toast(wfCanManage() ? '🚗 أُرسل طلب التفويض إلى الأسطول' : '🚗 أُرسل الطلب إلى المدير للاعتماد'); }catch(_){}   /* v53 */
         wfDecorateCards();
       }).catch(function(){ try{ toast('تعذّر إرسال الطلب — تأكد من الاتصال'); }catch(_){} });
     }catch(e2){}
@@ -3049,7 +3050,7 @@ boot();
         if (!badge){ badge = document.createElement('span'); badge.className = 'wf-pend';
           badge.textContent = '⏳ بانتظار اعتماد المدير'; meta.appendChild(badge); }
       } else if (badge) badge.remove();
-      var needs = !pend && (!hasApp || wfCanManage()) && !wfHasActiveVehicle(e);   /* AFMC Cloud: الطلب لمن ليس لديه مركبة نشطة، وللمدير وحده، وبعد اعتماد الموظف */ /* أي غير «موظف» = متوقف عن العمل */
+      var needs = !pend && (!hasApp || wfCanManage() || wfCanEdit()) && !wfHasActiveVehicle(e);   /* v53: الطلب لمن ليس لديه مركبة نشطة — يفتحه المشرف ويعتمده المدير */ /* أي غير «موظف» = متوقف عن العمل */
       var existing = meta.querySelector('.wf-reqbtn');
       if(!needs){ if(existing) existing.remove(); return; }
       var nid = normId(e.iqama), pending = !!_wfPendingReq[nid];
@@ -3058,13 +3059,14 @@ boot();
         b.className = 'wf-reqbtn'; b.setAttribute('role', 'button');
         b.addEventListener('click', function(ev){
           ev.stopPropagation(); ev.preventDefault();
-          if(b.getAttribute('data-pending') === '1'){ try{ toast('الطلب قيد الانتظار في الأسطول'); }catch(_){} return; }
+          if(b.getAttribute('data-pending') === '1'){ try{ toast(window.__wfMgrPending && window.__wfMgrPending[normId(e.iqama)] ? 'الطلب عند المدير — ينتقل للأسطول باعتماده' : 'الطلب قيد الانتظار في الأسطول'); }catch(_){} return; }   /* v53 */
           wfRequestVehicle(idx);
         });
         meta.appendChild(b); existing = b;
       }
+      var atMgr = !!(window.__wfMgrPending && window.__wfMgrPending[nid]);   /* v53 */
       existing.setAttribute('data-pending', pending ? '1' : '0');
-      existing.textContent = pending ? '✅ تم طلب التفويض' : '🚗 طلب تفويض';
+      existing.textContent = atMgr ? '⏳ عند المدير للاعتماد' : pending ? '✅ عند الأسطول' : (wfCanManage() ? '🚗 طلب تفويض' : '🚗 طلب مركبة');
       existing.classList.toggle('wf-reqbtn-on', pending);
     });
   }
@@ -8114,7 +8116,10 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       return fetch(SB_URL + '/rest/v1/' + path, { method: method, headers: h, body: body == null ? undefined : JSON.stringify(body) });
     }).then(function(r){
       if (r.status === 401) { logout(true); throw new Error('401'); }
-      return r.text().then(function(t){ var j = t ? JSON.parse(t) : null; if (!r.ok) throw new Error((j && (j.message || j.hint)) || ('HTTP ' + r.status)); return j; });
+      return r.text().then(function(t){ var j = t ? JSON.parse(t) : null;
+        if (!r.ok) { var _e = new Error((j && (j.message || j.hint)) || ('HTTP ' + r.status));   /* v53: نحمل detail/hint */
+                     if (j) { _e.details = j.details; _e.hint = j.hint; _e.code = j.code; } throw _e; }
+        return j; });
     });
   }
   function rpc(fn, args){ return api('POST', 'rpc/' + fn, args || {}); }
@@ -8563,10 +8568,22 @@ body.wx-card-open #wx4Pill{ display:none !important; }
      عند الإقلاع ونبني الاستعلام عليه، فلا يرتبط رفع الواجهة بترتيب تطبيق SQL. */
   var HAS_APPROVAL = false;
   window.__wfHasApproval = function(){ return HAS_APPROVAL; };
+  /* v53: الطلبات الواقفة عند المدير — تُستعمل في شريحة البطاقة وفي كرت الموظف،
+     فيفرّق المشرف بين «عند المدير» و«عند الأسطول» بلا أن يفتح الصندوق. */
+  window.__wfMgrPending = {};
+  function loadMgrPending(cb){
+    api('GET', "inbox_items?select=ref&kind=eq.vehicle_request&status=eq.pending_manager&limit=500")
+      .then(function(r){ var m = {}; (r || []).forEach(function(x){ var iq = x && x.ref && x.ref.iqama; if (iq) m[normId(iq)] = true; });
+             window.__wfMgrPending = m; if (cb) cb(); })
+      .catch(function(){ if (cb) cb(); });
+  }
+  window.__wfMgrPendingLoad = loadMgrPending;
   function probeApproval(){
     if (APP !== 'watheeq') return Promise.resolve();
     return api('GET', 'employees?select=approved_at&limit=1').then(function(){
       HAS_APPROVAL = true;
+      loadMgrPending();                                   /* v53 */
+      setInterval(function(){ if (document.visibilityState === 'visible') loadMgrPending(function(){ try{ if (window.__wfPaintCards) window.__wfPaintCards(); }catch(_){} }); }, 120000);
       COLLS.forEach(function(c){
         if (c.id === 'employees') c.select = c.select.replace('select=iqama,data,', 'select=iqama,data,approved_at,');
       });
@@ -8632,11 +8649,41 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     /* ---------- (١) تبويب «المنصّة» في ملف الموظف ---------- */
     function idErr(err){
       var m = err && err.message || '';
-      return /مسجّل لموظف آخر/.test(m) ? m
+      var hd = idHolder(err);                                  /* v53 */
+      if (hd) return 'المعرّف ' + hd.external_id + ' على ' + hd.platform + ' مسجّل عند ' + (hd.name || 'موظف آخر');
+      return /مسجّل لـ|مسجّل لموظف آخر/.test(m) ? m
            : /duplicate|unique/i.test(m) ? 'هذا المعرّف مسجّل لموظف آخر على نفس المنصّة'
            : /خارج نطاق صلاحيتك|صلاحيتك لا تسمح|الحذف متاح/.test(m) ? m
            : /permission|denied|row-level/i.test(m) ? 'لا تملك صلاحية على معرّفات هذا المشروع'
            : 'تعذّر: ' + m;
+    }
+    /* v53: صاحب المعرّف — القاعدة ترجّعه في detail بصيغة JSON، فنعرضه كرتاً
+       باسمه وإقامته ومشروعه وفترته وحالته، مع زرّي الانتقال والنقل. */
+    function idHolder(err){
+      try { var d = err && err.details; if (!d) return null;
+            var j = typeof d === 'string' ? JSON.parse(d) : d; return (j && j.found) ? j : null; } catch(_){ return null; }
+    }
+    function idHolderCard(hd, onGo, onMove){
+      var st = hd.state === 'ended' ? 'منتهٍ' : hd.state === 'future' ? 'لم يبدأ' : 'نشط';
+      var box = document.createElement('div');
+      box.className = 'afx';
+      box.style.cssText = 'border:1px solid #f2cdc7;background:#fdf2f0;border-radius:10px;padding:10px;margin-top:8px';
+      box.innerHTML = '<div style="font-weight:700;color:#a3372b">المعرّف ' + esc(hd.external_id) + ' على ' + esc(hd.platform) + ' مسجّل عند:</div>'
+        + '<table style="margin-top:6px"><tbody>'
+        + '<tr><th>المندوب</th><td><b>' + esc(hd.name || '—') + '</b></td></tr>'
+        + '<tr><th>الإقامة</th><td>' + esc(hd.iqama || '—') + '</td></tr>'
+        + '<tr><th>المشروع</th><td>' + esc(hd.emp_project || hd.id_project || '—') + '</td></tr>'
+        + '<tr><th>الفترة</th><td>' + esc(hd.start_date || '—') + ' ← ' + esc(hd.end_date || 'مفتوحة') + ' · ' + st + '</td></tr>'
+        + '<tr><th>حالته في وثيق</th><td>' + esc(hd.emp_status || '—') + (hd.approved ? ' · معتمد' : ' · غير معتمد') + '</td></tr>'
+        + '</tbody></table>'
+        + '<div class="row"><button class="btnx gh" id="afxHgo">↪ افتح ملفه</button>'
+        + '<button class="btnx" id="afxHmv">⇄ انقل الرقم إلى هذا الموظف</button></div>'
+        + '<div class="muted">النقل يُنهي فترة صاحبه الحالي ويحفظها في السجل — لا يُحذف شيء.</div>';
+      box.querySelector('#afxHgo').onclick = function(){ onGo(hd); };
+      var mv = box.querySelector('#afxHmv');
+      if (hd.same_scope === false) { mv.disabled = true; mv.textContent = '⇄ النقل يحتاج مديراً يرى المشروعين'; }
+      else mv.onclick = function(){ onMove(hd); };
+      return box;
     }
     function idState(st){
       return st === 'ended'  ? '<span class="chip" style="background:#fdf2f0;color:#a3372b">منتهٍ</span>'
@@ -8801,6 +8848,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
         h += '<h4>⛔ إيقاف المندوب</h4><div class="row" id="afxStopBox"><span class="muted">جارٍ التحقّق…</span></div>';
         // طلب التفويض — للمدير وحده، وبعد اعتماد الموظف (v47)
         var canManage = !!(me && (me.role === 'admin' || me.role === 'manager' || (me.perms && me.perms.manage)));   /* v52 */
+        var canApprove = !!(me && (me.role === 'admin' || me.role === 'manager'));   /* v53: نفس can_approve_emp في القاعدة */
         /* null = معلّق فعلاً. undefined = سجل محليّ قديم قبل v47، فلا يُعدّ معلّقاً. */
         var notApproved = HAS_APPROVAL && e.approved_at === null;
         var pending = window.__wfReqPending && window.__wfReqPending(e.iqama);
@@ -8808,8 +8856,13 @@ body.wx-card-open #wx4Pill{ display:none !important; }
         h += '<h4>🔑 طلب تفويض مركبة</h4><div class="row">' + (hasVeh ? '<span class="chip">🚗 لديه مركبة نشطة في الأسطول — لا يحتاج طلب</span>'
           : pending ? '<span class="chip">✅ الطلب مُرسل للأسطول بانتظار إسناد مركبة</span>'
           : notApproved ? '<span class="chip" style="background:#fdf8ef;color:#95570f">⏳ لا يُطلب تفويض قبل اعتماد المدير</span>'
-          : (HAS_APPROVAL && !canManage) ? '<span class="muted">طلب التفويض يرسله المدير.</span>'
-          : (canEdit && window.__wfReqSend ? '<button class="btnx" id="afxReq">🚗 إرسال طلب تفويض للأسطول</button><span class="muted">يصل «الصندوق الموحّد» عند المسؤول عن الإسناد، ويتحدث هنا تلقائياً.</span>' : '<span class="muted">لا يوجد طلب.</span>')) + '</div><div id="afxReqHist"></div>';
+          /* v53: المشرف يفتح الطلب، والمدير يعتمده قبل أن يصل الأسطول */
+          : (canEdit && window.__wfReqSend
+              ? '<button class="btnx" id="afxReq">🚗 ' + (canApprove ? 'إرسال طلب تفويض للأسطول' : 'إرسال طلب للمدير') + '</button>'
+                + '<span class="muted">' + (canApprove
+                    ? 'يصل «الصندوق الموحّد» عند المسؤول عن الإسناد مباشرة، ويتحدث هنا تلقائياً.'
+                    : 'يصل المدير أولاً. باعتماده وحده ينتقل الطلب للأسطول — وتتابع حالته هنا.') + '</span>'
+              : '<span class="muted">لا يوجد طلب.</span>')) + '</div><div id="afxReqHist"></div>';
         pane.innerHTML = h + '</div>';
         paintIds(e, pane, canEdit, canDel);
         paintApproval(e, pane);
@@ -8826,12 +8879,61 @@ body.wx-card-open #wx4Pill{ display:none !important; }
               end_date:   pane.querySelector('#afxEd').value || null } });
           }).then(function(){ note('✅ أُضيف المعرّف ' + pl + ' ' + id, 'green');
               pane.querySelector('#afxId').value = ''; paintIds(e, pane, canEdit, canDel); })
-            .catch(function(err){ note(idErr(err), 'red'); });
+            .catch(function(err){
+              note(idErr(err), 'red');
+              var hd = idHolder(err); if (!hd) return;                     /* v53 */
+              var old = pane.querySelector('#afxDup'); if (old) old.remove();
+              var card = idHolderCard(hd,
+                function(h2){ try { if (window.__wfOpenByIqama) window.__wfOpenByIqama(h2.iqama); else note('الإقامة ' + h2.iqama + ' — ابحث بها في وثيق', 'amber'); } catch(_){} },
+                function(h2){
+                  if (!confirm('نقل المعرّف ' + h2.external_id + ' من ' + (h2.name || '—') + ' إلى ' + (e.name_ar || e.name || '') + '؟')) return;
+                  api('GET', 'employees?select=id&iqama=eq.' + encodeURIComponent(normId(e.iqama))).then(function(r){
+                    if (!r || !r[0]) throw new Error('الموظف غير موجود في القاعدة بعد');
+                    return rpc('employee_id_transfer', { p: { platform: h2.platform, external_id: h2.external_id,
+                      to_employee: r[0].id, reason: 'نقل من ملف الموظف في وثيق' } });
+                  }).then(function(){ note('✅ نُقل المعرّف — الفترة السابقة محفوظة في السجل', 'green');
+                      var c = pane.querySelector('#afxDup'); if (c) c.remove();
+                      paintIds(e, pane, canEdit, canDel); })
+                    .catch(function(e2){ note(idErr(e2), 'red'); });
+                });
+              card.id = 'afxDup';
+              var anchor = pane.querySelector('#afxAdd'); if (anchor && anchor.parentNode) anchor.parentNode.parentNode.insertBefore(card, anchor.parentNode.nextSibling);
+              else pane.appendChild(card);
+            });
         };
-        var ST = { 'new': 'جديد', in_progress: 'قيد التنفيذ', done: 'منجز', rejected: 'مرفوض' };
-        api('GET', 'inbox_items?select=status,close_note,created_at,created_by_name&kind=eq.vehicle_request&ref->>iqama=eq.' + encodeURIComponent(normId(e.iqama)) + '&order=created_at.desc&limit=5').then(function(list){
+        var ST = { 'new': 'عند الأسطول', in_progress: 'قيد التنفيذ', done: 'منجز', rejected: 'مرفوض', pending_manager: 'بانتظار اعتماد المدير' };   /* v53 */
+        api('GET', 'inbox_items?select=id,status,close_note,created_at,created_by_name&kind=eq.vehicle_request&ref->>iqama=eq.' + encodeURIComponent(normId(e.iqama)) + '&order=created_at.desc&limit=5').then(function(list){
           var box = pane.querySelector('#afxReqHist'); if (!box || !list || !list.length) return;
-          box.innerHTML = '<div class="muted" style="margin-top:6px">سجل الطلبات:</div>' + list.map(function(x){ return '<div class="chip" style="display:flex">' + esc(String(x.created_at).slice(0, 10)) + ' · <b>' + esc(ST[x.status] || x.status) + '</b>' + (x.close_note ? ' — ' + esc(x.close_note) : '') + '</div>'; }).join('');
+          var waiting = list.filter(function(x){ return x.status === 'pending_manager'; })[0];   /* v53 */
+          box.innerHTML = '<div class="muted" style="margin-top:6px">سجل الطلبات:</div>' + list.map(function(x){
+            var col = x.status === 'pending_manager' ? ';background:#fdf8ef;color:#95570f' : '';
+            return '<div class="chip" style="display:flex' + col + '">' + esc(String(x.created_at).slice(0, 10))
+                 + ' · <b>' + esc(ST[x.status] || x.status) + '</b>'
+                 + (x.created_by_name ? ' — فتحه ' + esc(x.created_by_name) : '')
+                 + (x.close_note ? ' — ' + esc(x.close_note) : '') + '</div>'; }).join('')
+            + (waiting && canApprove
+                ? '<div class="row" id="afxMgr"><button class="btnx" id="afxMgrOk">✅ اعتماد الطلب وإرساله للأسطول</button>'
+                  + '<button class="btnx gh" id="afxMgrNo">✕ رفض</button>'
+                  + '<span class="muted">سلطة التعميد لك: الأسطول لا يرى الطلب قبل اعتمادك.</span></div>'
+                : waiting ? '<div class="muted">الطلب عند المدير — ينتقل للأسطول باعتماده.</div>' : '');
+          if (waiting && canApprove){
+            box.querySelector('#afxMgrOk').onclick = function(){
+              this.disabled = true;
+              rpc('vehicle_request_decide', { p_id: waiting.id, p_approve: true })
+                .then(function(){ note('✅ اعتُمد الطلب — وصل الأسطول', 'green');
+                    try { if (window.__wfReqRefresh) window.__wfReqRefresh(); } catch(_){}
+                    empPane(e, pane); })
+                .catch(function(err){ note(idErr(err), 'red'); empPane(e, pane); });
+            };
+            box.querySelector('#afxMgrNo').onclick = function(){
+              var why = prompt('سبب الرفض — يُسجَّل ويظهر للمشرف:'); if (!why || !why.trim()) return;
+              rpc('vehicle_request_decide', { p_id: waiting.id, p_approve: false, p_note: why.trim() })
+                .then(function(){ note('سُجّل الرفض', 'amber');
+                    try { if (window.__wfReqRefresh) window.__wfReqRefresh(); } catch(_){}
+                    empPane(e, pane); })
+                .catch(function(err){ note(idErr(err), 'red'); });
+            };
+          }
         }).catch(function(){});
         var rq = pane.querySelector('#afxReq');
         if (rq) rq.onclick = function(){ var idx = state.employees.indexOf(e); if (idx >= 0) window.__wfReqSend(idx); setTimeout(function(){ empPane(e, pane); }, 1500); };
