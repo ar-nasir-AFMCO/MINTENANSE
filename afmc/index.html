@@ -283,11 +283,11 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 #attp .d.first, #samp .d.first{box-shadow:0 0 0 2px var(--brand)}
 #attp .idcell, #samp .idcell{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
 #attp .idcell .pill, #samp .idcell .pill{max-width:100%;overflow:hidden;text-overflow:ellipsis}
-#attp .pill, #samp .pill{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:999px;font-weight:600}
-#attp .p-bad, #samp .p-bad{background:var(--badbg);color:var(--bad)}
-#attp .p-ok, #samp .p-ok{background:var(--okbg);color:var(--ok)}
+#attp .pill, #samp .pill, #dbbSec .pill{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:999px;font-weight:600}
+#attp .p-bad, #samp .p-bad, #dbbSec .p-bad{background:var(--badbg);color:var(--bad)}
+#attp .p-ok, #samp .p-ok, #dbbSec .p-ok{background:var(--okbg);color:var(--ok)}
 #attp .p-plum, #samp .p-plum{background:var(--plumbg);color:var(--plum)}
-#attp .p-warn, #samp .p-warn{background:var(--warnbg);color:var(--warn)}
+#attp .p-warn, #samp .p-warn, #dbbSec .p-warn{background:var(--warnbg);color:var(--warn)}
 #attp .flags, #samp .flags{display:inline-flex;gap:4px;flex-wrap:wrap;margin-inline-start:6px;vertical-align:middle}
 #attp .at-empty, #samp .at-empty{text-align:center;color:var(--muted);padding:32px 12px;white-space:normal}
 #attp .at-note, #samp .at-note{font-size:12.5px;color:var(--muted);margin-top:9px}
@@ -746,6 +746,30 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
             <pre id="labFuelRow" class="sub" style="white-space:pre-wrap;margin-top:10px"></pre>
           </div>
         </div>
+
+        <div class="sec" id="dbbSec">
+          <h3><svg class="i"><use href="#i-shield"/></svg>أجهزة الصيانة — الحالة واستعادة الملفات</h3>
+          <div class="card" style="padding:16px 18px">
+            <div class="bar2" style="margin-top:0">
+              <button class="btn ghost" id="dbbRefresh"><svg class="i"><use href="#i-reload"/></svg>تحديث</button>
+              <span class="sub" id="dbbSum">—</span>
+            </div>
+            <div class="card tbl" style="margin-top:10px"><table><thead><tr>
+              <th>الجهاز</th><th>الملف</th><th>آخر كتابة</th><th>كتابات</th><th>نسخة التطبيق</th><th></th>
+            </tr></thead><tbody id="dbbBody"></tbody></table></div>
+            <div class="sub" style="margin-top:8px">كل كتابة تحفظ النسخة السابقة قبل استبدالها — فالكتابة فوق ملف ورشة لم تعد تُتلف شيئاً.
+            «نسخة قديمة» تعني أن الجهاز لم يأخذ تحديث التطبيق بعد، فما يزال لا يُصرّح بمعرّفه.</div>
+          </div>
+
+          <div class="card hide" id="dbbVerWrap" style="padding:16px 18px;margin-top:10px">
+            <div class="bar2" style="margin-top:0"><b id="dbbVerTitle"></b>
+              <button class="btn ghost sm" id="dbbVerClose">إغلاق</button></div>
+            <div class="card tbl" style="margin-top:10px"><table><thead><tr>
+              <th>وقت الاستبدال</th><th>الحجم</th><th>كتبها</th><th></th>
+            </tr></thead><tbody id="dbbVerBody"></tbody></table></div>
+            <div class="sub" style="margin-top:8px">الاستعادة تحفظ النسخة الحالية قبلها — حتى التراجع لا يُتلف شيئاً، ولك أن تتراجع عن التراجع.</div>
+          </div>
+        </div>
       </main>
 
       <!-- ════════ الصلاحيات والتكامل ════════ -->
@@ -952,7 +976,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261013004003";
+  var BUILD = "20261013021512";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -2725,6 +2749,10 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   var labCard = null;
   function labInit(){
     $('labFuelOpen').href = LAB_FUEL;
+    if (!labInit.__dbb){ labInit.__dbb = 1;
+      $('dbbRefresh').onclick = dbbLoad;
+      $('dbbVerClose').onclick = function(){ $('dbbVerWrap').classList.add('hide'); }; }
+    dbbLoad();
     $('labCards').innerHTML = [
       ['شرائح الغسيل · نموذج جوجل', 'النموذج الحالي الذي يُعبّأ يدوياً. من هنا يُفتح معبّأً بتسعة حقول.', LAB_FORM],
       ['الوقود · AppSheet', 'تطبيق الوقود. لا يقبل التعبئة من الرابط — انظر القسم أدناه.', LAB_FUEL],
@@ -2738,6 +2766,75 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
                 : '<span class="sub">داخل المنصة</span>') + '</div>';
     }).join('');
   }
+  /* ═══ v59: أجهزة الصيانة — الحالة واستعادة الملفات (v55) ═══ */
+  var dbbFile = '';
+  function dbbWhen(iso){ if (!iso) return '—';
+    var d = new Date(iso); if (isNaN(d)) return esc(iso);
+    return d.toLocaleString('ar-SA-u-ca-gregory-nu-latn',
+      { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }); }
+  function dbbKB(n){ return n == null ? '—' : (n < 1024 ? n + ' ب' : Math.round(n/1024) + ' ك.ب'); }
+
+  function dbbLoad(){
+    $('dbbSum').textContent = 'جارٍ القراءة…';
+    $('dbbVerWrap').classList.add('hide');
+    return rpc('dbb_push_stats').then(function(r){
+      r = r || {}; var rows = r.devices || [];
+      var old = rows.filter(function(x){ return x.legacy_last; }).length;
+      $('dbbSum').textContent = num(r.files) + ' ملف جهاز · ' + rows.length + ' جهاز كتب منذ التحديث · '
+        + old + ' ما زال على نسخة قديمة · ' + num(r.history_rows) + ' نسخة محفوظة';
+      $('dbbBody').innerHTML = rows.length ? rows.map(function(x){
+        return '<tr><td style="direction:ltr">' + esc(x.device || '—') + '</td>'
+          + '<td class="sub" style="direction:ltr">' + esc(x.file) + '</td>'
+          + '<td class="sub">' + dbbWhen(x.last) + '</td>'
+          + '<td>' + num(x.pushes) + '</td>'
+          + '<td>' + (x.legacy_last ? '<span class="pill p-warn">نسخة قديمة</span>'
+                                    : '<span class="pill p-ok">محدّث</span>') + '</td>'
+          + '<td><button class="btn sm ghost" data-dbbf="' + esc(x.file) + '">النسخ المحفوظة</button></td></tr>';
+      }).join('')
+      : '<tr><td colspan="6" class="sub">لا جهاز كتب بعد. تظهر الأجهزة هنا أول ما تحفظ.</td></tr>';
+      $('dbbBody').querySelectorAll('[data-dbbf]').forEach(function(b){
+        b.onclick = function(){ dbbVersions(b.getAttribute('data-dbbf')); };
+      });
+    }).catch(function(e){
+      $('dbbSum').textContent = 'تعذّرت القراءة — ' + ((e && e.message) || 'غير معروف');
+      $('dbbBody').innerHTML = '';
+    });
+  }
+
+  function dbbVersions(file){
+    dbbFile = file;
+    $('dbbVerWrap').classList.remove('hide');
+    $('dbbVerTitle').textContent = 'النسخ المحفوظة · ' + file;
+    $('dbbVerBody').innerHTML = '<tr><td colspan="4" class="sub">جارٍ القراءة…</td></tr>';
+    rpc('dbb_devfile_versions', { p_file: file }).then(function(r){
+      var rows = r || [];
+      $('dbbVerBody').innerHTML = rows.length ? rows.map(function(x){
+        return '<tr><td>' + dbbWhen(x.at) + '</td><td class="sub">' + dbbKB(x.bytes) + '</td>'
+          + '<td class="sub" style="direction:ltr">' + esc(x.device || '—') + '</td>'
+          + '<td><button class="btn sm ghost" data-dbbr="' + esc(x.id) + '">استعادة</button></td></tr>';
+      }).join('')
+      : '<tr><td colspan="4" class="sub">لا نسخة محفوظة لهذا الملف بعد — أي كتابة قادمة تحفظ السابقة.</td></tr>';
+      $('dbbVerBody').querySelectorAll('[data-dbbr]').forEach(function(b){
+        b.onclick = function(){ dbbRestore(b.getAttribute('data-dbbr'), b); };
+      });
+    }).catch(function(e){
+      $('dbbVerBody').innerHTML = '<tr><td colspan="4" class="sub">تعذّرت القراءة — '
+        + esc((e && e.message) || '') + '</td></tr>';
+    });
+  }
+
+  function dbbRestore(id, btn){
+    if (!confirm('استعادة هذه النسخة إلى ' + dbbFile + '؟\nالنسخة الحالية تُحفظ قبلها، فيمكن التراجع.')) return;
+    btn.disabled = true; btn.textContent = 'جارٍ…';
+    rpc('dbb_devfile_restore', { p_file: dbbFile, p_id: Number(id) }).then(function(){
+      toast('استُعيدت النسخة. الأجهزة تأخذها في المزامنة القادمة.');
+      dbbVersions(dbbFile); dbbLoad();
+    }).catch(function(e){
+      btn.disabled = false; btn.textContent = 'استعادة';
+      toast('تعذّرت الاستعادة — ' + ((e && e.message) || ''));
+    });
+  }
+
   function labSearch(){
     var q = $('labQ').value.trim();
     if (q.length < 2){ $('labHits').textContent = 'اكتب حرفين على الأقل.'; return; }
