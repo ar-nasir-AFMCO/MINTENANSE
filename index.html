@@ -33,7 +33,10 @@
       var o = {}; try { o = JSON.parse((init && init.body) || '{}'); } catch(e){}
       if (!o.file) return Promise.resolve(reply({ ok: false }));
       var payload = o.payload; try { if (typeof payload === 'string') payload = JSON.parse(payload); } catch(e){}
-      return rpc('dbb_push', { p_token: APP_KEY, p_file: String(o.file), p_payload: payload }).then(reply);
+      /* v55: نُصرّح بمعرّف الجهاز، فترفض القاعدة الكتابة على ملف جهاز آخر */
+      var __dev = ''; try { __dev = localStorage.getItem('dbb_dev_id') || ''; } catch(e){}
+      return rpc('dbb_push', { p_token: APP_KEY, p_file: String(o.file), p_payload: payload,
+                               p_device: __dev || null }).then(reply);
     }
     var q = {}; (url.split('?')[1] || '').split('&').forEach(function(p){ var kv = p.split('='); if (kv[0]) q[kv[0]] = decodeURIComponent(kv[1] || ''); });
     if (q.mode === 'list') return rpc('dbb_list', { p_token: APP_KEY }).then(reply);
@@ -930,7 +933,7 @@ details[open] > summary{margin-bottom:10px}
 (function(){
 'use strict';
 
-var APP_BUILD='2026-10-12-r2049';
+var APP_BUILD='2026-10-13-r0208';
 var LS_DATA='dbb_maint_v1', LS_USER='dbb_maint_user_v1';
 var LIVE=['مفتوح','في الورشة','بانتظار قطع'];
 var AGE_WARN=72, AGE_BAD=168; /* ساعات: 3 أيام / 7 أيام */
