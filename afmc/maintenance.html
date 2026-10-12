@@ -362,9 +362,9 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
   function load(){
     if (loadingP) return loadingP;
     loadingP = Promise.all([
-      api('GET', 'maint_orders?select=*&deleted_at=is.null&order=opened_at.desc&limit=500'),
+      pageAll('maint_orders?select=*&deleted_at=is.null', 'opened_at.desc,id.asc')   /* v58 */,
       rpc('maint_summary').catch(function(){ return {}; }),
-      hasWatheeq ? api('GET', 'maint_charges?select=*').catch(function(){ return []; }) : Promise.resolve([])
+      hasWatheeq ? pageAll('maint_charges?select=*', 'order_id.asc').catch(function(){ return []; }) : Promise.resolve([])   /* v58 */
     ]).then(function(a){ O = a[0] || []; SUM = a[1] || {};
       CH = {}; (a[2] || []).forEach(function(c){ CH[c.order_id] = c; });
       loadingP = null; render(); })

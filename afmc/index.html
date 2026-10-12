@@ -952,7 +952,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261013003105";
+  var BUILD = "20261013004003";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -3232,7 +3232,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     function isOpen(x){ return x.status === 'new' || x.status === 'in_progress'; }
     function load(){
       if (!me || loading) return Promise.resolve(); loading = true;
-      return Promise.all([api('GET', 'inbox_items?select=*&order=updated_at.desc&limit=300'), api('GET', 'inbox_reads?select=item_id,read_at')]).then(function(r){
+      return Promise.all([pageAll('inbox_items?select=*', 'updated_at.desc,id.asc'), pageAll('inbox_reads?select=item_id,read_at', 'item_id.asc,user_id.asc')])   /* v58 */.then(function(r){
         items = r[0] || []; reads = {}; (r[1] || []).forEach(function(x){ reads[x.item_id] = x.read_at; });
         loading = false; badge(); if ($('inbox').classList.contains('on')) { if (cur) detail(cur, true); else list(); }
       }).catch(function(){ loading = false; });
