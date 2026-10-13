@@ -1038,7 +1038,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261013185422";
+  var BUILD = "20261013190040";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -2909,7 +2909,8 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     return isNaN(d)?'':d.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn',{weekday:'short'}); }
   function njIni(s2){ var a=String(s2||'').trim().split(/\s+/);
     return ((a[0]||'')[0]||'')+((a[1]||'')[0]||''); }
-  function njShift(iso,n){ var d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+n);
+  /* الحساب بالـUTC، وإلا ضاع يوم عند التحويل في توقيت +3 */
+  function njShift(iso,n){ var d=new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+n);
     return d.toISOString().slice(0,10); }
 
   function njInit(){
