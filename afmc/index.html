@@ -446,6 +446,12 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 #njSec .al .t{font-size:13.5px;font-weight:600}
 #njSec .al .m{font-size:11.5px;color:var(--muted);margin-top:1px}
 #njSec .al .ago{margin-inline-start:auto;font-size:11.5px;color:var(--faint);white-space:nowrap}
+#njSec .t2{border-collapse:collapse;width:100%;font-size:13px}
+#njSec .t2 th,#njSec .t2 td{padding:8px 10px;border-bottom:1px solid var(--line-2);text-align:right;vertical-align:middle}
+#njSec .t2 th{font-size:11.5px;color:var(--muted);font-weight:600}
+#njSec .t2 td.nt{color:var(--ink-2);font-size:12px;white-space:normal;max-width:360px;line-height:1.7}
+#njSec .t2 input[type=number]{width:62px;font:inherit;font-size:12.5px;padding:4px 7px;
+  border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--ink)}
 #njSec .bmk{display:inline-block;padding:9px 18px;border-radius:10px;background:var(--brand);
   color:#fff;font-weight:600;font-size:13.5px;text-decoration:none;cursor:grab}
 #njSec .step{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line-2)}
@@ -841,6 +847,11 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
               <div id="njAlerts" style="margin-top:10px"><div class="sub">—</div></div>
             </div>
             <div class="card" style="padding:16px 18px;margin-top:10px">
+              <div class="bar2" style="margin-top:0"><b>قواعد التنبيه</b>
+                <span class="sub">الحدود تتغيّر من هنا مباشرة</span></div>
+              <div id="njRulesBox" style="margin-top:10px"></div>
+            </div>
+            <div class="card" style="padding:16px 18px;margin-top:10px">
               <div class="bar2" style="margin-top:0"><b>الحالة اللحظية</b>
                 <input id="njOpsQ" class="inp sm" placeholder="بحث بالاسم أو المعرّف" style="max-width:220px">
                 <span class="sub" id="njOpsN"></span></div>
@@ -1114,7 +1125,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261013195608";
+  var BUILD = "20261013212606";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -3148,16 +3159,17 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     return m < 60 ? ('قبل ' + m + ' د') : ('قبل ' + Math.floor(m/60) + ' س ' + (m%60) + ' د'); }
   function njOpsRender(){
     var d = OPS.d; if (!d) return;
-    var c = d.counts || {}, on = (c.busy||0) + (c.wait||0) + (c.roam||0);
+    var c = d.counts || {};
     $('njOpsK').innerHTML =
-      k('br',  on,       'على الطريق الآن') + k('ok',  c.busy||0, 'مشغول بطلب') +
-      k('',    c.wait||0,'منتظر طلب')       + k('warn',c.roam||0, 'رومينق') +
-      k('bad', c.off||0, 'أوفلاين');
+      k('br',  c.onduty||0,'على الدوام الآن') + k('ok',  c.busy||0, 'مشغول بطلب') +
+      k('',    c.wait||0,  'منتظر داخل نطاقه')+ k('warn',c.roam||0, 'خارج النطاق') +
+      k('bad', c.susp||0,  'موقوف');
     function k(cl,v,l){ return '<div class="k '+cl+'"><b>'+njN0(v)+'</b><span>'+l+'</span></div>'; }
+    njRules(d.rules || []);
 
     var seen = d.seen_at ? new Date(d.seen_at) : null;
     $('njOpsMeta').textContent = (seen ? 'آخر قراءة ' + seen.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : 'ما فيه قراءة بعد')
-      + ' · ' + njN0(c.total||0) + ' كابتن';
+      + ' · ' + njN0(c.total||0) + ' كابتن في الحساب';
 
     var al = d.alerts || [];               /* [id,cap,code,label,sev,branch,detail,opened] */
     $('njAlN').textContent = al.length ? (al.length + ' مفتوح') : 'ما فيه تنبيهات';
@@ -3185,6 +3197,30 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 
     $('njVOps').querySelectorAll('[data-njo]').forEach(function(el){
       el.onclick = function(){ njOpenAny(el.getAttribute('data-njo')); }; });
+  }
+  /* محرّر القواعد — الحدود تتغيّر من الصفحة بدون تحديث قاعدة */
+  function njRules(rows){
+    var box = $('njRulesBox'); if (!box) return;
+    box.innerHTML = '<table class="t2"><thead><tr><th>التنبيه</th><th>متى يُفتح</th>'
+      + '<th>لا يظهر قبل</th><th>الخطورة</th><th>مفعّل</th></tr></thead><tbody>'
+      + rows.map(function(r){                      /* code,label,threshold,severity,enabled,note */
+        return '<tr><td><b>'+esc(r[1])+'</b></td>'
+          + '<td class="nt">'+esc(r[5]||'—')+'</td>'
+          + '<td><input type="number" min="0" max="600" step="5" value="'+(r[2]==null?0:r[2])
+          + '" data-rt="'+esc(r[0])+'"> د</td>'
+          + '<td><span class="pill '+(r[3]===3?'p-bad':r[3]===2?'p-warn':'p-ok')+'">'
+          + (r[3]===3?'عالية':r[3]===2?'متوسطة':'خفيفة')+'</span></td>'
+          + '<td><input type="checkbox" data-re="'+esc(r[0])+'"'+(r[4]?' checked':'')+'></td></tr>';
+      }).join('') + '</tbody></table>';
+    box.querySelectorAll('[data-rt]').forEach(function(i){
+      i.onchange = function(){ njRuleSave(i.getAttribute('data-rt'), parseInt(i.value,10), null); }; });
+    box.querySelectorAll('[data-re]').forEach(function(i){
+      i.onchange = function(){ njRuleSave(i.getAttribute('data-re'), null, i.checked); }; });
+  }
+  function njRuleSave(code, th, en){
+    rpc('ninja_rule_set', { p_code: code, p_threshold: th, p_enabled: en })
+      .then(function(){ toast('انحفظ', 1600); OPS.left = 60; njOpsLoad(); })
+      .catch(function(e){ toast(e.message, 5000); njOpsLoad(); });
   }
   function njName(id){
     var r = ((OPS.d&&OPS.d.live)||[]).filter(function(x){ return String(x[0])===String(id); })[0];
