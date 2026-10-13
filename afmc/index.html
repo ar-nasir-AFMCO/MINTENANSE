@@ -283,11 +283,11 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 #attp .d.first, #samp .d.first{box-shadow:0 0 0 2px var(--brand)}
 #attp .idcell, #samp .idcell{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
 #attp .idcell .pill, #samp .idcell .pill{max-width:100%;overflow:hidden;text-overflow:ellipsis}
-#attp .pill, #samp .pill, #dbbSec .pill{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:999px;font-weight:600}
-#attp .p-bad, #samp .p-bad, #dbbSec .p-bad{background:var(--badbg);color:var(--bad)}
-#attp .p-ok, #samp .p-ok, #dbbSec .p-ok{background:var(--okbg);color:var(--ok)}
+#attp .pill, #samp .pill, #dbbSec .pill, #njSec .pill{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:999px;font-weight:600}
+#attp .p-bad, #samp .p-bad, #dbbSec .p-bad, #njSec .p-bad{background:var(--badbg);color:var(--bad)}
+#attp .p-ok, #samp .p-ok, #dbbSec .p-ok, #njSec .p-ok{background:var(--okbg);color:var(--ok)}
 #attp .p-plum, #samp .p-plum{background:var(--plumbg);color:var(--plum)}
-#attp .p-warn, #samp .p-warn, #dbbSec .p-warn{background:var(--warnbg);color:var(--warn)}
+#attp .p-warn, #samp .p-warn, #dbbSec .p-warn, #njSec .p-warn{background:var(--warnbg);color:var(--warn)}
 #attp .flags, #samp .flags{display:inline-flex;gap:4px;flex-wrap:wrap;margin-inline-start:6px;vertical-align:middle}
 #attp .at-empty, #samp .at-empty{text-align:center;color:var(--muted);padding:32px 12px;white-space:normal}
 #attp .at-note, #samp .at-note{font-size:12.5px;color:var(--muted);margin-top:9px}
@@ -394,6 +394,48 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   .subhead{padding:8px 12px}
   #gate{grid-template-columns:1fr}#gate .art{display:none}
 }
+
+/* ═══ v60: متابعة مناديب نينجا ═══ */
+#njSec .njbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#njSec .chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 13px;
+  font:inherit;font-size:12.5px;cursor:pointer;color:var(--muted)}
+#njSec .chip.on{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+#njSec .chip .c{opacity:.65;margin-inline-start:5px;font-size:11px}
+#njSec .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line-2);
+  border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden;margin-top:12px}
+@media(max-width:820px){#njSec .kpis{grid-template-columns:repeat(2,1fr)}}
+#njSec .kpi{background:var(--surface);padding:12px 14px}
+#njSec .kpi .lb{font-size:11.5px;color:var(--muted);display:block}
+#njSec .kpi .vl{font-size:22px;font-weight:600;letter-spacing:-.5px;line-height:1.35;margin-top:2px;
+  font-variant-numeric:tabular-nums}
+#njSec .kpi .vl span{font-size:12px;color:var(--faint);font-weight:400;margin-inline-start:2px}
+#njSec .kpi .dl{font-size:11.5px;margin-top:1px}
+#njSec .stack{display:flex;height:26px;border-radius:6px;overflow:hidden;gap:2px;margin-top:10px}
+#njSec .stack i{display:block;height:100%}
+#njSec .lg2{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:9px}
+#njSec .lg2 i{width:12px;height:12px;border-radius:3px;display:inline-block;vertical-align:-2px;margin-inline-end:6px}
+#njSec .cols{display:flex;align-items:stretch;gap:4px;height:130px;margin-top:10px}
+#njSec .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;min-width:0}
+#njSec .col .bar{width:100%;max-width:42px;border-radius:4px 4px 2px 2px;background:var(--brand)}
+#njSec .col .v{font-size:11px;font-variant-numeric:tabular-nums;font-weight:600}
+#njSec .col .x{font-size:10px;color:var(--faint);white-space:nowrap}
+#njSec .mini{display:flex;height:8px;border-radius:3px;overflow:hidden;gap:1.5px;width:76px}
+#njSec .mini i{display:block;height:100%}
+#njSec .wb{width:42px;height:6px;border-radius:999px;background:var(--line-2);overflow:hidden;flex:0 0 42px;display:inline-block;vertical-align:middle}
+#njSec .wb i{display:block;height:100%;background:var(--brand);border-radius:999px}
+#njMask{position:fixed;inset:0;background:rgba(14,22,21,.45);z-index:70;display:none;
+  align-items:flex-start;justify-content:center;padding:36px 14px;overflow-y:auto}
+#njMask.on{display:flex}
+#njMask .box{background:var(--surface);border:1px solid var(--line);border-radius:16px;max-width:860px;width:100%;
+  box-shadow:var(--sh-lg);overflow:hidden}
+#njMask .mh{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:center}
+#njMask .mb{padding:16px 20px 22px}
+#njMask .tabs2{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:-4px -20px 14px;padding:0 20px}
+#njMask .tabs2 button{border:0;background:none;font:inherit;font-size:13px;color:var(--muted);padding:9px 13px;
+  cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+#njMask .tabs2 button.on{color:var(--brand);border-bottom-color:var(--brand);font-weight:600}
+#njSec .ava{width:42px;height:42px;border-radius:12px;background:var(--brand-soft);color:var(--brand);
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex:0 0 42px}
 </style>
 </head>
 <body>
@@ -747,6 +789,25 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
           </div>
         </div>
 
+        <div class="sec" id="njSec">
+          <h3><svg class="i"><use href="#i-users"/></svg>متابعة مناديب نينجا</h3>
+          <div class="card" style="padding:16px 18px">
+            <div class="njbar">
+              <label class="sub">من <input type="date" id="njF"></label>
+              <label class="sub">إلى <input type="date" id="njT"></label>
+              <span class="chips" id="njPre"></span>
+              <select id="njCity"><option value="">كل المدن</option></select>
+              <select id="njBr"><option value="">كل الفروع</option></select>
+              <label class="sub">بحد أدنى <select id="njMin">
+                <option>1</option><option>2</option><option selected>3</option><option>5</option><option>10</option>
+              </select> أيام</label>
+              <button class="btn" id="njGo"><svg class="i"><use href="#i-reload"/></svg>اعرض</button>
+              <span class="sub" id="njMeta"></span>
+            </div>
+            <div id="njBody" style="margin-top:14px"><div class="sub">اضغط «اعرض» لتحميل المدى.</div></div>
+          </div>
+        </div>
+
         <div class="sec" id="dbbSec">
           <h3><svg class="i"><use href="#i-shield"/></svg>أجهزة الصيانة — الحالة واستعادة الملفات</h3>
           <div class="card" style="padding:16px 18px">
@@ -972,11 +1033,12 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   <div class="ifil"><select id="ibSt"><option value="open">المفتوحة</option><option value="all">الكل</option><option value="closed">المنجزة والمرفوضة</option></select></div>
   <div class="ibody" id="ibBody"></div>
 </aside>
+<div id="njMask"><div class="box" id="njBox"></div></div>
 <div id="toast"></div>
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261013021512";
+  var BUILD = "20261013185422";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -2749,6 +2811,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   var labCard = null;
   function labInit(){
     $('labFuelOpen').href = LAB_FUEL;
+    njInit();
     if (!labInit.__dbb){ labInit.__dbb = 1;
       $('dbbRefresh').onclick = dbbLoad;
       $('dbbVerClose').onclick = function(){ $('dbbVerWrap').classList.add('hide'); }; }
@@ -2835,6 +2898,227 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     });
   }
 
+  /* ═══════════ v60: متابعة مناديب نينجا — تقرأ من القاعدة عند الطلب ═══════════ */
+  var NJ = { rng:null, days:[], caps:[], from:'', to:'', city:'', br:'', min:3, cur:null, mtab:'sum' };
+  var NJ_TARGET = 12;
+  function njN1(v){ return (v==null||isNaN(v)) ? '—' : (Math.round(v*10)/10).toFixed(1); }
+  function njN0(v){ return (v==null||isNaN(v)) ? '—' : Math.round(v).toLocaleString('en-US'); }
+  function njDay(iso){ if(!iso) return '—'; var d=new Date(iso+'T00:00:00');
+    return isNaN(d)?esc(iso):d.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn',{day:'numeric',month:'short'}); }
+  function njDow(iso){ var d=new Date(iso+'T00:00:00');
+    return isNaN(d)?'':d.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn',{weekday:'short'}); }
+  function njIni(s2){ var a=String(s2||'').trim().split(/\s+/);
+    return ((a[0]||'')[0]||'')+((a[1]||'')[0]||''); }
+  function njShift(iso,n){ var d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+n);
+    return d.toISOString().slice(0,10); }
+
+  function njInit(){
+    if (njInit.__done) { return; }
+    njInit.__done = 1;
+    $('njGo').onclick = njLoad;
+    $('njCity').onchange = function(){ NJ.city=$('njCity').value; njFillBranches(); };
+    rpc('ninja_range').then(function(r){
+      NJ.rng = r || {};
+      if (!NJ.rng.to) { $('njMeta').textContent = 'لا بيانات مخزّنة بعد.'; return; }
+      NJ.to = NJ.rng.to; NJ.from = njShift(NJ.to, -6);
+      $('njF').value = NJ.from; $('njT').value = NJ.to;
+      $('njF').min = NJ.rng.from; $('njF').max = NJ.rng.to;
+      $('njT').min = NJ.rng.from; $('njT').max = NJ.rng.to;
+      $('njMeta').innerHTML = 'المخزون: <b>' + njN0(NJ.rng.rows) + '</b> صف · '
+        + njN0(NJ.rng.days) + ' يوم · ' + njN0(NJ.rng.captains) + ' كابتن · '
+        + njDay(NJ.rng.from) + ' — ' + njDay(NJ.rng.to);
+      var cs = {}; (NJ.rng.branches||[]).forEach(function(b){ cs[b.city] = b.city_name || b.city; });
+      $('njCity').innerHTML = '<option value="">كل المدن</option>'
+        + Object.keys(cs).map(function(k){ return '<option value="'+esc(k)+'">'+esc(cs[k])+'</option>'; }).join('');
+      njFillBranches();
+      $('njPre').innerHTML = [[7,'٧ أيام'],[14,'١٤ يوم'],[30,'٣٠ يوم'],[0,'الكل']].map(function(x){
+        return '<button class="chip" data-n="'+x[0]+'">'+x[1]+'</button>'; }).join('');
+      $('njPre').querySelectorAll('[data-n]').forEach(function(b){
+        b.onclick = function(){ var n=+b.dataset.n;
+          NJ.to = NJ.rng.to; NJ.from = n ? njShift(NJ.to, -(n-1)) : NJ.rng.from;
+          $('njF').value = NJ.from; $('njT').value = NJ.to;
+          $('njPre').querySelectorAll('.chip').forEach(function(x){ x.classList.toggle('on', x===b); });
+          njLoad(); };
+      });
+      njLoad();
+    }).catch(function(e){ $('njMeta').textContent = 'تعذّرت القراءة — ' + ((e&&e.message)||''); });
+  }
+  function njFillBranches(){
+    var bs = (NJ.rng && NJ.rng.branches || []).filter(function(b){ return !NJ.city || b.city===NJ.city; });
+    $('njBr').innerHTML = '<option value="">كل الفروع ('+bs.length+')</option>'
+      + bs.map(function(b){ return '<option value="'+esc(b.code)+'">'+esc(b.code)+'</option>'; }).join('');
+    NJ.br = '';
+  }
+  function njLoad(){
+    NJ.from=$('njF').value; NJ.to=$('njT').value; NJ.br=$('njBr').value;
+    NJ.city=$('njCity').value; NJ.min=+$('njMin').value;
+    if(!NJ.from||!NJ.to){ toast('حدّد المدى'); return; }
+    $('njBody').innerHTML = '<div class="sub">جارٍ القراءة…</div>';
+    var a={p_from:NJ.from,p_to:NJ.to,p_city:NJ.city||null,p_branch:NJ.br||null};
+    Promise.all([ rpc('ninja_daily', a),
+                  rpc('ninja_captains', {p_from:a.p_from,p_to:a.p_to,p_city:a.p_city,
+                                         p_branch:a.p_branch,p_min_days:NJ.min}) ])
+      .then(function(r){ NJ.days=r[0]||[]; NJ.caps=r[1]||[]; njPaint(); })
+      .catch(function(e){ $('njBody').innerHTML='<div class="sub">تعذّرت القراءة — '+esc((e&&e.message)||'')+'</div>'; });
+  }
+  function njSum(a,k){ return a.reduce(function(s2,x){ return s2+(+x[k]||0); },0); }
+  function njPaint(){
+    var D=NJ.days, C=NJ.caps;
+    if(!D.length){ $('njBody').innerHTML='<div class="sub">لا بيانات في هذا المدى.</div>'; return; }
+    var ord=njSum(D,'orders'), hrs=njSum(D,'hours'), act=njSum(D,'active'), net=njSum(D,'net');
+    var roamH=hrs-net-0, offH=0;
+    /* الرومينق والأوفلاين بالساعات من مجموع الكباتن */
+    var rh=njSum(C,'roam_h'), oh=njSum(C,'off_h');
+    var capDays=njSum(C,'days'), target=NJ_TARGET*capDays;
+    var wait=Math.max(0, net-act), P=function(v){ return hrs? 100*v/hrs : 0; };
+    var h='<div class="kpis">'
+     + njTile('طلب مُسلَّم', njN0(ord), '', '')
+     + njTile('ساعات الاتصال', njN0(hrs), 'س', njN0(100*hrs/(target||1))+'% من المطلوب')
+     + njTile('الساعات المحتسبة', njN0(net), 'س', njN0(100*net/(target||1))+'% من المطلوب', 'var(--brand)')
+     + njTile('المطلوب ('+NJ_TARGET+'س)', njN0(target), 'س', njN0(capDays)+' يوم-كابتن')
+     + '</div>';
+
+    h += '<div class="card" style="padding:14px 16px;margin-top:12px"><b style="font-size:13.5px">وين تروح ساعات الاتصال</b>'
+     + '<div class="stack">'
+     + '<i style="width:'+P(act)+'%;background:var(--brand)"></i>'
+     + '<i style="width:'+P(wait)+'%;background:#9ec9c4"></i>'
+     + '<i style="width:'+P(rh)+'%;background:var(--warn)"></i>'
+     + '<i style="width:'+P(oh)+'%;background:var(--bad)"></i></div>'
+     + '<div class="lg2"><span><i style="background:var(--brand)"></i>مشغول بطلب '+njN0(act)+' س</span>'
+     + '<span><i style="background:#9ec9c4"></i>منتظر طلب '+njN0(wait)+' س</span>'
+     + '<span><i style="background:var(--warn)"></i>رومينق '+njN0(rh)+' س</span>'
+     + '<span><i style="background:var(--bad)"></i>أوفلاين '+njN0(oh)+' س</span></div>'
+     + '<div class="sub" style="margin-top:9px">المحتسب = الاتصال − الرومينق − الأوفلاين. '
+     + 'الرومينق والأوفلاين لا يُحتسبان من الـ'+NJ_TARGET+' ساعة.</div></div>';
+
+    var mx=Math.max.apply(null,D.map(function(d){return d.orders;}))||1;
+    h += '<div class="card" style="padding:14px 16px;margin-top:12px"><b style="font-size:13.5px">الطلبات في كل يوم</b>'
+     + '<div class="cols">' + D.slice(-31).map(function(d){
+         return '<div class="col" title="'+esc(d.d)+'"><span class="v">'+njN0(d.orders)+'</span>'
+          +'<span class="bar" style="height:'+Math.max(3,100*d.orders/mx)+'%"></span>'
+          +'<span class="x">'+esc(njDow(d.d))+'</span></div>'; }).join('')
+     + '</div>'+(D.length>31?'<div class="sub" style="margin-top:6px">آخر ٣١ يوماً من المدى المختار</div>':'')+'</div>';
+
+    h += '<div class="card tbl" style="margin-top:12px"><table><thead><tr>'
+     + '<th>#</th><th>الكابتن</th><th>الفرع</th><th>أيام</th><th>WPI</th><th>طلبات</th><th>/يوم</th>'
+     + '<th>الاتصال</th><th>المحتسب</th><th>التحقيق</th><th>التركيب</th><th>تسليم%</th>'
+     + '<th>رومينق</th><th>أوفلاين</th><th>تأخير</th></tr></thead><tbody id="njTB"></tbody></table></div>'
+     + '<div class="sub" style="margin-top:8px">'+C.length+' كابتن داوم '+NJ.min+' أيام فأكثر · اضغط أي صف لفتح كرته</div>';
+    $('njBody').innerHTML = h;
+    njRows();
+  }
+  function njTile(lb,v,u,dl,col){
+    return '<div class="kpi"><span class="lb">'+esc(lb)+'</span><div class="vl"'
+      +(col?' style="color:'+col+'"':'')+'>'+v+'<span>'+esc(u||'')+'</span></div>'
+      +(dl?'<div class="dl sub">'+dl+'</div>':'')+'</div>';
+  }
+  function njRows(){
+    var C=NJ.caps;
+    $('njTB').innerHTML = C.map(function(c,i){
+      var pa=100*(+c.active||0)/(+c.hours||1), pw=100*Math.max(0,(+c.net||0)-(+c.active||0))/(+c.hours||1),
+          pr=100*(+c.roam_h||0)/(+c.hours||1), po=100*(+c.off_h||0)/(+c.hours||1);
+      return '<tr data-nj="'+esc(c.id)+'" style="cursor:pointer">'
+       +'<td class="sub">'+(i+1)+'</td>'
+       +'<td><div style="font-weight:600">'+esc(c.name||'—')+'</div>'
+       +'<div class="sub" style="direction:ltr">'+esc(c.id)+'</div></td>'
+       +'<td class="sub" style="direction:ltr">'+esc(c.branch||'—')+'</td>'
+       +'<td>'+njN0(c.days)+'</td>'
+       +'<td><span class="wb"><i style="width:'+Math.min(100,+c.wpi||0)+'%"></i></span> <b>'+njN1(c.wpi)+'</b></td>'
+       +'<td>'+njN0(c.orders)+'</td><td>'+njN1((+c.orders||0)/(+c.days||1))+'</td>'
+       +'<td>'+njN1(c.hours)+'</td>'
+       +'<td style="color:var(--brand);font-weight:600">'+njN1(c.net)+'</td>'
+       +'<td'+((+c.ach||0)<85?' style="color:var(--bad);font-weight:600"':'')+'>'+njN0(c.ach)+'%</td>'
+       +'<td><span class="mini"><i style="width:'+pa+'%;background:var(--brand)"></i>'
+       +'<i style="width:'+pw+'%;background:#9ec9c4"></i><i style="width:'+pr+'%;background:var(--warn)"></i>'
+       +'<i style="width:'+po+'%;background:var(--bad)"></i></span></td>'
+       +'<td>'+njN1(c.dlv)+'</td><td>'+njN0(c.roam)+'</td><td>'+njN0(c.off)+'</td><td>'+njN0(c.delay)+'</td></tr>';
+    }).join('') || '<tr><td colspan="15" class="sub">لا كباتن داخل الفلتر.</td></tr>';
+    $('njTB').querySelectorAll('[data-nj]').forEach(function(tr){
+      tr.onclick=function(){ njOpen(tr.getAttribute('data-nj')); }; });
+  }
+  function njOpen(id){
+    NJ.cur = NJ.caps.filter(function(x){ return String(x.id)===String(id); })[0];
+    if(!NJ.cur) return;
+    NJ.mtab='sum'; NJ.dayRows=null;
+    $('njMask').classList.add('on'); document.body.style.overflow='hidden';
+    njModal();
+  }
+  function njClose(){ $('njMask').classList.remove('on'); document.body.style.overflow=''; }
+  function njModal(){
+    var c=NJ.cur;
+    $('njBox').innerHTML = '<div class="mh"><div class="ava">'+esc(njIni(c.name))+'</div>'
+     +'<div style="flex:1"><div style="font-weight:700;font-size:15.5px">'+esc(c.name||'—')+'</div>'
+     +'<div class="sub"><span style="direction:ltr">'+esc(c.id)+'</span>'
+     +(c.branch?' · <span style="direction:ltr">'+esc(c.branch)+'</span>':'')+' · '+njN0(c.days)+' يوم عمل</div></div>'
+     +'<button class="btn ghost sm" onclick="njClose()">إغلاق</button></div>'
+     +'<div class="mb"><div class="tabs2" id="njMT">'
+     + [['sum','الخلاصة'],['hrs','الدوام'],['days','الأيام']].map(function(x){
+         return '<button class="'+(NJ.mtab===x[0]?'on':'')+'" data-m="'+x[0]+'">'+x[1]+'</button>'; }).join('')
+     +'</div><div id="njMC"></div></div>';
+    $('njMT').querySelectorAll('button').forEach(function(b){
+      b.onclick=function(){ NJ.mtab=b.dataset.m; njModal(); }; });
+    var mc=$('njMC');
+    if(NJ.mtab==='sum'){
+      mc.innerHTML='<div class="kpis">'
+       + njTile('WPI', njN1(c.wpi), '', '')
+       + njTile('إجمالي الطلبات', njN0(c.orders), '', njN1((+c.orders||0)/(+c.days||1))+' يومياً')
+       + njTile('الساعات المحتسبة', njN1(c.net), 'س', njN0(c.ach)+'% من المطلوب', 'var(--brand)')
+       + njTile('التسليم في وقته', njN1(c.dlv), '%', '')
+       + '</div>'
+       + '<div class="card tbl" style="margin-top:12px"><table><thead><tr><th>المؤشر</th><th>القيمة</th></tr></thead><tbody>'
+       + [['الاستلام في وقته',njN1(c.pick)+'%'],['العودة للمنطقة',njN1(c.ret)+'%'],
+          ['الدورة الكاملة',njN1(c.cyc)+'%'],['الالتزام بالوردية',njN1(c.shift)+'%'],
+          ['متوسط التأخير',njN0(c.delay)+' د'],['متوسط الرومينق',njN0(c.roam)+' د'],
+          ['متوسط الأوفلاين',njN0(c.off)+' د']].map(function(x){
+            return '<tr><td>'+x[0]+'</td><td>'+x[1]+'</td></tr>'; }).join('')
+       + '</tbody></table></div>';
+    } else if(NJ.mtab==='hrs'){
+      var pa=100*(+c.active||0)/(+c.hours||1), pw=100*Math.max(0,(+c.net||0)-(+c.active||0))/(+c.hours||1),
+          pr=100*(+c.roam_h||0)/(+c.hours||1), po=100*(+c.off_h||0)/(+c.hours||1);
+      mc.innerHTML='<div class="kpis">'
+       + njTile('المطلوب', njN0(c.target), 'س', NJ_TARGET+' × '+njN0(c.days)+' يوم')
+       + njTile('ساعات الاتصال', njN1(c.hours), 'س', '')
+       + njTile('المحتسبة', njN1(c.net), 'س', njN0(c.ach)+'% من المطلوب', 'var(--brand)')
+       + njTile('النقص', njN1(Math.max(0,(+c.target||0)-(+c.net||0))), 'س', '', 'var(--bad)')
+       + '</div>'
+       + '<div class="stack">'
+       + '<i style="width:'+pa+'%;background:var(--brand)"></i>'
+       + '<i style="width:'+pw+'%;background:#9ec9c4"></i>'
+       + '<i style="width:'+pr+'%;background:var(--warn)"></i>'
+       + '<i style="width:'+po+'%;background:var(--bad)"></i></div>'
+       + '<div class="lg2"><span><i style="background:var(--brand)"></i>مشغول بطلب '+njN1(c.active)+' س</span>'
+       + '<span><i style="background:#9ec9c4"></i>منتظر طلب '+njN1(Math.max(0,(+c.net||0)-(+c.active||0)))+' س</span>'
+       + '<span><i style="background:var(--warn)"></i>رومينق '+njN1(c.roam_h)+' س</span>'
+       + '<span><i style="background:var(--bad)"></i>أوفلاين '+njN1(c.off_h)+' س</span></div>'
+       + '<div class="sub" style="margin-top:10px">المحتسب = '+njN1(c.hours)+' − '+njN1(c.roam_h)
+       + ' − '+njN1(c.off_h)+' = <b>'+njN1(c.net)+' ساعة</b> · والمطلوب '+njN0(c.target)+' ساعة.</div>';
+    } else {
+      mc.innerHTML='<div class="sub">جارٍ القراءة…</div>';
+      var go=function(rows){
+        mc.innerHTML='<div class="card tbl"><table><thead><tr><th>اليوم</th><th>الفرع</th><th>طلبات</th>'
+         +'<th>الاتصال</th><th>المحتسب</th><th>مشغول</th><th>رومينق</th><th>أوفلاين</th><th>تأخير</th>'
+         +'<th>تسليم%</th><th>استلام%</th></tr></thead><tbody>'
+         + (rows.length ? rows.map(function(r){
+             var bad=function(v,t){ return (+v>t) ? '<span class="pill p-bad">'+njN0(v)+'</span>' : njN0(v); };
+             return '<tr><td>'+esc(njDow(r.d))+' '+esc(njDay(r.d))+'</td>'
+              +'<td class="sub" style="direction:ltr">'+esc(r.branch||'—')+'</td>'
+              +'<td>'+njN0(r.orders)+'</td><td>'+njN1(r.hours)+'</td>'
+              +'<td style="color:var(--brand);font-weight:600">'+njN1(r.net)+'</td>'
+              +'<td>'+njN1(r.active)+'</td>'
+              +'<td>'+bad(r.roam,45)+'</td><td>'+bad(r.off,60)+'</td><td>'+bad(r.delay,90)+'</td>'
+              +'<td>'+njN1(r.dlv)+'</td><td>'+njN1(r.pick)+'</td></tr>'; }).join('')
+           : '<tr><td colspan="11" class="sub">لا أيام في هذا المدى.</td></tr>')
+         +'</tbody></table></div>'
+         +'<div class="sub" style="margin-top:8px">'+rows.length+' يوم · الأحدث أولاً</div>';
+      };
+      if(NJ.dayRows) go(NJ.dayRows);
+      else rpc('ninja_days_of',{p_captain:String(c.id),p_from:NJ.from,p_to:NJ.to})
+        .then(function(r){ NJ.dayRows=r||[]; if(NJ.mtab==='days') go(NJ.dayRows); })
+        .catch(function(e){ mc.innerHTML='<div class="sub">تعذّرت القراءة — '+esc((e&&e.message)||'')+'</div>'; });
+    }
+  }
+
+  window.njClose = njClose;
   function labSearch(){
     var q = $('labQ').value.trim();
     if (q.length < 2){ $('labHits').textContent = 'اكتب حرفين على الأقل.'; return; }
