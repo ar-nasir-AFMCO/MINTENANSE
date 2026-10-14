@@ -1134,7 +1134,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261014161307";
+  var BUILD = "20261014161923";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -3257,11 +3257,12 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   function njAuthBar(a){
     var el = $('njAuthBar'); if (!el) return;
     var left = a.access_exp ? (new Date(a.access_exp) - Date.now())/36e5 : -1;
-    var bad  = !a.linked || left <= 0, warn = left > 0 && left < 4;
+    var lim  = a.mode === 'long' ? 168 : 4;          /* ٧ أيام للطويل · ٤ ساعات لليومي */
+    var bad  = !a.linked || left <= 0, warn = left > 0 && left < lim;
     el.classList.toggle('hide', !(bad || warn));
     if (bad || warn) el.innerHTML = '<b>' + (bad ? 'وقف السحب التلقائي' : 'مفتاح ساموراي قارب ينتهي')
       + '</b> — ' + (bad ? 'المفتاح انتهى، والبيانات واقفة عند آخر سحبة.'
-                         : 'باقي ' + Math.max(0, Math.round(left)) + ' ساعة.')
+                         : 'باقي ' + (left >= 48 ? Math.round(left/24) + ' يوم' : Math.max(0, Math.round(left)) + ' ساعة') + '.')
       + (can('admin') ? ' <a href="#" id="njAuthGo">افتح الربط</a>' : ' بلّغ مدير النظام.');
     var g = $('njAuthGo'); if (g) g.onclick = function(e){ e.preventDefault(); njTabTo('link'); };
   }
@@ -3295,12 +3296,16 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     var linked = !!a.linked, mode = a.mode;
     $('njLinkState').innerHTML = linked
       ? '<span class="pill ' + (a.access_valid ? 'p-ok' : 'p-warn') + '">'
-        + (mode === 'long' ? 'مربوط — تجديد تلقائي' : 'مربوط — يحتاج ضغطة يومية') + '</span>'
+        + (mode === 'long' ? 'مربوط — تلقائي' : 'مربوط — يحتاج ضغطة يومية') + '</span>'
       : '<span class="pill p-warn">غير مربوط</span>';
     var h = '';
     if (linked){
+      var direct = mode === 'long' && a.refresh_exp && a.access_exp
+                   && Math.abs(new Date(a.refresh_exp) - new Date(a.access_exp)) < 6e4;
       h += '<div class="sub" style="line-height:2">'
-        + 'الوضع: <b>' + (mode==='long' ? 'طويل — المنصة تجدّد المفتاح لحالها' : 'يومي — المفتاح ينتهي كل ٢٤ ساعة') + '</b><br>'
+        + 'الوضع: <b>' + (direct ? 'تلقائي بالكامل — المفتاح الطويل يُستعمل مباشرة، بلا تجديد وبلا ضغطة'
+                        : mode==='long' ? 'طويل — المنصة تجدّد المفتاح لحالها'
+                        : 'يومي — المفتاح ينتهي كل ٢٤ ساعة') + '</b><br>'
         + 'المفتاح الحالي ينتهي: <b>' + njWhen(a.access_exp) + '</b>'
         + (a.refresh_exp ? '<br>مفتاح التجديد ينتهي: <b>' + njWhen(a.refresh_exp) + '</b>' : '')
         + '<br>آخر سحب ناجح: <b>' + (a.last_ok_at ? njWhen(a.last_ok_at) : '—') + '</b>'
