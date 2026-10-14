@@ -423,48 +423,260 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 #njSec .mini i{display:block;height:100%}
 #njSec .wb{width:42px;height:6px;border-radius:999px;background:var(--line-2);overflow:hidden;flex:0 0 42px;display:inline-block;vertical-align:middle}
 #njSec .wb i{display:block;height:100%;background:var(--brand);border-radius:999px}
-#njSec .njtabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:0 0 12px}
-#njSec .njtabs button{border:0;background:none;font:inherit;font-size:13.5px;color:var(--muted);
-  padding:9px 15px;border-bottom:2px solid transparent;cursor:pointer}
-#njSec .njtabs button.on{color:var(--brand);border-bottom-color:var(--brand);font-weight:600}
-#njSec .opsk{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--line-2);
-  border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:12px}
-@media(max-width:820px){#njSec .opsk{grid-template-columns:repeat(2,1fr)}}
-#njSec .opsk .k{background:var(--surface);padding:12px 14px}
-#njSec .opsk .k b{font-size:23px;font-weight:650;letter-spacing:-.5px;display:block;
-  font-variant-numeric:tabular-nums;line-height:1.3}
-#njSec .opsk .k span{font-size:11.5px;color:var(--muted)}
-#njSec .opsk .k.ok b{color:var(--ok)}#njSec .opsk .k.warn b{color:var(--warn)}
-#njSec .opsk .k.bad b{color:var(--bad)}#njSec .opsk .k.br b{color:var(--brand)}
-#njSec .al{display:flex;gap:11px;align-items:flex-start;border:1px solid var(--line);
-  border-radius:11px;padding:10px 12px;margin-bottom:7px;cursor:pointer;background:var(--surface)}
-#njSec .al:hover{border-color:var(--brand)}
-#njSec .al .ic{flex:0 0 30px;height:30px;border-radius:9px;display:grid;place-items:center;font-weight:700}
-#njSec .al.s3 .ic{background:var(--badbg);color:var(--bad)}
-#njSec .al.s2 .ic{background:var(--warnbg);color:var(--warn)}
-#njSec .al.s1 .ic{background:var(--brand-soft,#e4efed);color:var(--brand)}
-#njSec .al .t{font-size:13.5px;font-weight:600}
-#njSec .al .m{font-size:11.5px;color:var(--muted);margin-top:1px}
-#njSec .al .ago{margin-inline-start:auto;font-size:11.5px;color:var(--faint);white-space:nowrap}
-#njSec .mute{border:1px dashed var(--line);border-radius:11px;padding:10px 13px;margin-bottom:7px;
-  background:var(--surface-2,#faf8f4);font-size:13px}
-#njSec .mute b{font-size:16px;font-variant-numeric:tabular-nums;margin-inline-end:4px}
-#njSec .mute span{color:var(--muted);font-size:12px}
-#njSec .authbar{margin-top:12px;border:1px solid #efe2c8;background:#fdf7ea;border-radius:11px;
-  padding:10px 14px;font-size:13px;line-height:1.8}
-#njSec .authbar a{color:var(--brand);font-weight:600}
-#njSec .t2{border-collapse:collapse;width:100%;font-size:13px}
-#njSec .t2 th,#njSec .t2 td{padding:8px 10px;border-bottom:1px solid var(--line-2);text-align:right;vertical-align:middle}
-#njSec .t2 th{font-size:11.5px;color:var(--muted);font-weight:600}
-#njSec .t2 td.nt{color:var(--ink-2);font-size:12px;white-space:normal;max-width:360px;line-height:1.7}
-#njSec .t2 input[type=number]{width:62px;font:inherit;font-size:12.5px;padding:4px 7px;
-  border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--ink)}
-#njSec .bmk{display:inline-block;padding:9px 18px;border-radius:10px;background:var(--brand);
-  color:#fff;font-weight:600;font-size:13.5px;text-decoration:none;cursor:grab}
-#njSec .step{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line-2)}
-#njSec .step:last-child{border-bottom:0}
-#njSec .step i{flex:0 0 26px;height:26px;border-radius:50%;background:var(--brand-soft,#e4efed);
-  color:var(--brand);display:grid;place-items:center;font-weight:700;font-size:12.5px;font-style:normal}
+#njp{
+  --font:"IBM Plex Sans Arabic",Tahoma,"Segoe UI",system-ui,sans-serif;
+  --bg:#f4f2ed;--surface:#fff;--surface-2:#faf8f4;--line:#e8e3d8;--line-2:#f0ece4;
+  --ink:#16211f;--ink-2:#3b4745;--muted:#78827f;--faint:#a6adaa;
+  --brand:#0e5e5c;--brand-2:#0a4644;--brand-soft:#e4efed;--brand-ring:rgba(14,94,92,.14);
+  --gold:#b48a4a;--gold-soft:#faf3e6;
+  --ok:#1d6b45;--okbg:#eaf4ee;--warn:#95570f;--warnbg:#fcf3e4;--bad:#a3372b;--badbg:#fbeceA;
+  --r:16px;--r-sm:11px;--r-xs:8px;
+  --sh:0 1px 2px rgba(16,33,31,.05);
+  --sh-2:0 1px 3px rgba(16,33,31,.05),0 8px 26px -12px rgba(16,33,31,.18);
+  --grid:#eeeae1;
+}
+#njp, #njp *{box-sizing:border-box}
+#njp{-webkit-text-size-adjust:100%}
+#njp{margin:0;background:var(--bg);color:var(--ink);font:15px/1.65 var(--font);
+  font-feature-settings:"tnum" 0;-webkit-font-smoothing:antialiased}
+#njp .num{font-variant-numeric:tabular-nums}
+#njp /* ───── shell ───── */
+.top{position:sticky;top:0;z-index:20;background:rgba(244,242,237,.86);backdrop-filter:saturate(1.6) blur(12px);
+  border-bottom:1px solid var(--line)}
+#njp .top .in{max-width:1240px;margin:0 auto;padding:11px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+#njp .brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px;letter-spacing:-.2px}
+#njp .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--brand);box-shadow:0 0 0 3px var(--brand-ring)}
+#njp .brand small{display:block;font-weight:400;font-size:11px;color:var(--muted);letter-spacing:0}
+#njp .spacer{flex:1}
+#njp .live{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);
+  background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 12px}
+#njp .live i{width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block;
+  animation: nj-pulse 2.4s ease-in-out infinite}
+@keyframes nj-pulse{0%,100%{opacity:1}50%{opacity:.35}}
+#njp .seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px}
+#njp .seg button{border:0;background:none;font:inherit;font-size:13px;color:var(--muted);padding:6px 15px;
+  border-radius:999px;cursor:pointer;white-space:nowrap;transition:background .12s,color .12s}
+#njp .seg button:hover{color:var(--ink)}
+#njp .seg button.on{background:var(--brand);color:#fff;font-weight:600}
+#njp .wrap{max-width:1240px;margin:0 auto;padding:22px 20px 90px}
+#njp .banner{background:linear-gradient(100deg,var(--gold-soft),#fdfaf4);border:1px solid #efe2c8;
+  border-radius:var(--r);padding:13px 17px;font-size:13.5px;line-height:1.8;margin-bottom:18px}
+#njp .banner b{color:#7a5a16}
+#njp /* ───── cards ───── */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;box-shadow:var(--sh)}
+#njp .card+.card{margin-top:14px}
+#njp .row{display:grid;gap:14px}
+#njp .r-2{grid-template-columns:1fr 1fr}
+#njp .r-73{grid-template-columns:1.6fr 1fr}
+@media(max-width:900px){#njp .r-2, #njp .r-73{grid-template-columns:1fr}}
+@media(max-width:820px){#njp .kpis{grid-template-columns:repeat(2,1fr)}}
+#njp .kpis.k4{grid-template-columns:repeat(4,1fr)}
+#njp /* شريط الانحراف عن متوسط الفريق */
+.dv{display:flex;align-items:center;gap:10px;padding:6px 0}
+#njp .dv .nm{flex:0 0 132px;font-size:13px;color:var(--ink-2)}
+#njp .dvt{flex:1;height:22px;position:relative}
+#njp .dvt:before{content:'';position:absolute;inset-block:2px;inset-inline-start:50%;width:2px;background:var(--ink);opacity:.22;border-radius:2px}
+#njp .dvt i{position:absolute;top:6px;height:10px;border-radius:3px;min-width:3px}
+#njp .dv b{flex:0 0 92px;text-align:left;font-size:13px}
+#njp .dv b em{font-style:normal;font-size:11.5px;color:var(--muted);font-weight:400;margin-inline-start:5px}
+#njp .thgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
+#njp .thgrid .mline{padding:4px 0}
+#njp .thgrid .nm{flex:1;font-size:12.5px}
+#njp .stats4{grid-template-columns:repeat(3,1fr)}
+#njp .hd{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+#njp .hd h2{font-size:16.5px;margin:0;letter-spacing:-.2px}
+#njp .hd p{margin:3px 0 0;font-size:12.5px;color:var(--muted)}
+#njp .sub{font-size:12.5px;color:var(--muted)}
+#njp /* ───── hero / kpi ───── */
+.hero{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+#njp .hero .big{font-size:54px;font-weight:600;letter-spacing:-2px;line-height:1}
+#njp .hero .unit{font-size:16px;color:var(--muted);font-weight:500}
+#njp .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line-2);
+  border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
+#njp .kpi{background:var(--surface);padding:13px 15px}
+#njp .kpi .lb{font-size:11.5px;color:var(--muted);display:block}
+#njp .kpi .vl{font-size:23px;font-weight:600;letter-spacing:-.6px;line-height:1.35;margin-top:2px}
+#njp .kpi .vl span{font-size:12px;color:var(--faint);font-weight:400;margin-inline-start:2px}
+#njp .kpi .dl{font-size:11.5px;margin-top:1px;display:flex;align-items:center;gap:4px}
+#njp .kpi svg{display:block;margin-top:6px}
+#njp .up{color:var(--ok)}
+#njp .dn{color:var(--bad)}
+#njp .flat{color:var(--faint)}
+#njp /* ───── bars / meters ───── */
+.mline{display:flex;align-items:center;gap:10px;padding:7px 0}
+#njp .mline .nm{flex:0 0 130px;font-size:13px;color:var(--ink-2)}
+#njp .mtrack{flex:1;height:8px;background:var(--line-2);border-radius:999px;position:relative;overflow:hidden}
+#njp .mtrack i{position:absolute;inset-block:0;inset-inline-start:0;border-radius:999px;background:var(--brand)}
+#njp .mtrack u{position:absolute;inset-block:-3px;width:2px;background:var(--ink);opacity:.3}
+#njp .mline b{flex:0 0 54px;text-align:left;font-size:13px}
+#njp /* ───── tables ───── */
+.tblwrap{margin:0 -20px;overflow-x:auto}
+#njp table{width:100%;border-collapse:collapse;font-size:13px}
+#njp thead th{background:var(--surface);font-size:11px;color:var(--muted);font-weight:600;
+  text-align:right;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+#njp tbody td{padding:9px 10px;border-bottom:1px solid var(--line-2);white-space:nowrap}
+#njp tbody tr:last-child td{border-bottom:0}
+#njp tbody tr:hover td{background:var(--surface-2)}
+#njp td.name{white-space:normal;min-width:150px}
+#njp .rank{display:inline-flex;width:22px;height:22px;border-radius:7px;background:var(--surface-2);
+  align-items:center;justify-content:center;font-size:11px;color:var(--muted);font-weight:600}
+#njp .rank.top{background:var(--brand);color:#fff}
+#njp .pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2.5px 9px;border-radius:999px;font-weight:600}
+#njp .p-ok{background:var(--okbg);color:var(--ok)}
+#njp .p-warn{background:var(--warnbg);color:var(--warn)}
+#njp .p-bad{background:var(--badbg);color:var(--bad)}
+#njp .p-mut{background:var(--surface-2);color:var(--muted)}
+#njp .wcell{display:flex;align-items:center;gap:8px}
+#njp .wbar{width:44px;height:6px;border-radius:999px;background:var(--line-2);overflow:hidden;flex:0 0 44px}
+#njp .wbar i{display:block;height:100%;background:var(--brand);border-radius:999px}
+#njp /* ───── buttons / inputs ───── */
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:7px 14px;
+  font:inherit;font-size:13px;cursor:pointer;color:var(--ink);transition:background .12s,border-color .12s}
+#njp .btn:hover{background:var(--surface-2)}
+#njp .btn.pri{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+#njp .btn.pri:hover{background:var(--brand-2)}
+#njp .btn.sm{padding:4px 11px;font-size:12px;border-radius:8px}
+#njp select, #njp input{font:inherit;font-size:13.5px;padding:7px 11px;border:1px solid var(--line);
+  border-radius:9px;background:var(--surface);color:var(--ink)}
+#njp input[type=number]{width:76px}
+#njp /* ───── chart ───── */
+.chart{position:relative}
+#njp .chart svg{display:block;width:100%;height:auto;overflow:visible}
+#njp .tip{position:absolute;pointer-events:none;background:var(--ink);color:#fff;font-size:11.5px;
+  border-radius:9px;padding:8px 11px;white-space:nowrap;opacity:0;transition:opacity .1s;z-index:9;
+  box-shadow:0 8px 24px -8px rgba(0,0,0,.4)}
+#njp .lg{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px}
+#njp .lg i{width:16px;height:3px;border-radius:2px;display:inline-block;vertical-align:middle;margin-inline-end:6px}
+#njp /* ───── profile / employee card ───── */
+.prof{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+#njp .ava{width:46px;height:46px;border-radius:13px;background:var(--brand-soft);color:var(--brand);
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;flex:0 0 46px}
+#njp .ec{border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
+#njp .ec .eh{background:var(--surface-2);padding:11px 15px;border-bottom:1px solid var(--line);display:flex;
+  justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+#njp .ec .eb{padding:14px 15px}
+#njp .idrow{display:grid;grid-template-columns:90px 1fr 90px 90px auto;gap:9px;align-items:center;
+  padding:9px 0;border-bottom:1px solid var(--line-2);font-size:13px}
+#njp .idrow:last-child{border-bottom:0}
+@media(max-width:700px){#njp .idrow{grid-template-columns:1fr 1fr}}
+#njp .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:10px}
+#njp .step{border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 14px;background:var(--surface-2)}
+#njp .step b{display:block;font-size:13px;margin-bottom:4px}
+#njp .step span{font-size:12px;color:var(--muted);line-height:1.7;display:block}
+#njp .step.on{background:var(--brand-soft);border-color:var(--brand-ring)}
+#njp /* ───── alerts ───── */
+.al{display:flex;gap:12px;align-items:flex-start;padding:13px 0;border-bottom:1px solid var(--line-2)}
+#njp .al:last-child{border-bottom:0}
+#njp .al .ic{flex:0 0 28px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700}
+#njp .al .bd{flex:1;min-width:0}
+#njp .al .bd b{font-size:13.5px}
+#njp .al .rs{font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.75}
+#njp .al .rs em{font-style:normal;color:var(--ink-2);font-weight:600}
+#njp .stats4{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+#njp .sbox{border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 14px;background:var(--surface)}
+#njp .sbox .v{font-size:24px;font-weight:600;letter-spacing:-.6px;line-height:1.3}
+#njp .sbox .l{font-size:11.5px;color:var(--muted)}
+#njp .find{border-inline-start:3px solid var(--gold);background:var(--gold-soft);border-radius:0 var(--r-xs) var(--r-xs) 0;
+  padding:11px 14px;font-size:13px;line-height:1.8;margin-top:10px}
+#njp .find b{color:#7a5a16}
+#njp /* ═══ v2 ═══ */
+.filters{position:sticky;top:57px;z-index:15;background:rgba(244,242,237,.92);
+  backdrop-filter:saturate(1.5) blur(10px);border-bottom:1px solid var(--line);margin-bottom:18px}
+#njp .filters .in{max-width:1240px;margin:0 auto;padding:10px 0;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+#njp .filters label{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+#njp .chips{display:flex;gap:6px;flex-wrap:wrap}
+#njp .chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 13px;
+  font:inherit;font-size:12.5px;cursor:pointer;color:var(--muted)}
+#njp .chip.on{background:var(--ink);border-color:var(--ink);color:#fff;font-weight:600}
+#njp .chip .c{opacity:.6;margin-inline-start:5px;font-size:11px}
+#njp .fsum{font-size:12.5px;color:var(--muted);margin-inline-start:auto}
+#njp /* modal */
+.mask{position:fixed;inset:0;background:rgba(14,22,21,.42);backdrop-filter:blur(3px);z-index:60;
+  display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
+#njp .mask.on{display:flex}
+#njp .modal{background:var(--surface);border-radius:18px;max-width:880px;width:100%;
+  box-shadow:0 30px 80px -20px rgba(8,25,24,.45);border:1px solid var(--line);overflow:hidden;animation: nj-pop .16s ease-out}
+@keyframes nj-pop{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+#njp .modal .mh{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;gap:14px;align-items:center;
+  position:sticky;top:0;background:var(--surface);z-index:2}
+#njp .modal .mb{padding:20px 22px 26px}
+#njp .x{margin-inline-start:auto;border:1px solid var(--line);background:var(--surface);width:32px;height:32px;
+  border-radius:10px;cursor:pointer;font-size:17px;line-height:1;color:var(--muted)}
+#njp .x:hover{background:var(--surface-2);color:var(--ink)}
+#njp .tabs2{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:-4px -22px 16px;padding:0 22px}
+#njp .tabs2 button{border:0;background:none;font:inherit;font-size:13px;color:var(--muted);padding:9px 13px;
+  cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+#njp .tabs2 button.on{color:var(--brand);border-bottom-color:var(--brand);font-weight:600}
+#njp /* branch board */
+.bgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(188px,1fr));gap:10px}
+#njp .bcard{border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 14px;background:var(--surface);cursor:pointer}
+#njp .bcard:hover{border-color:var(--brand-ring);background:var(--surface-2)}
+#njp .bcard .bc{font-size:13px;font-weight:600;letter-spacing:.2px;direction:ltr;text-align:right}
+#njp .bcard .bn{font-size:11.5px;color:var(--muted)}
+#njp .bcard .br{display:flex;align-items:baseline;gap:7px;margin-top:8px}
+#njp .bcard .br b{font-size:21px;font-weight:600;letter-spacing:-.5px}
+#njp .bcard .br span{font-size:11.5px;color:var(--muted)}
+#njp .feed{max-height:330px;overflow-y:auto;margin:0 -6px;padding:0 6px}
+#njp .fe{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line-2);font-size:13px}
+#njp .fe:last-child{border-bottom:0}
+#njp .fe .t{flex:0 0 52px;font-size:11.5px;color:var(--faint)}
+#njp .fe .d{width:7px;height:7px;border-radius:50%;flex:0 0 7px}
+#njp /* editable employee cards */
+.ecard{border:1px solid var(--line);border-radius:var(--r-sm);padding:0;overflow:hidden;background:var(--surface)}
+#njp .ecard.draft{border-color:var(--gold);box-shadow:0 0 0 3px rgba(180,138,74,.1)}
+#njp .ecard .h{padding:12px 15px;border-bottom:1px solid var(--line-2);display:flex;gap:11px;align-items:center}
+#njp .ecard .b{padding:12px 15px}
+#njp .fld{display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:center;padding:5px 0;font-size:13px}
+#njp .fld span{color:var(--muted);font-size:12px}
+#njp .fld input, #njp .fld select{width:100%;padding:5px 9px;font-size:13px}
+#njp .ribbon{font-size:11px;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--gold-soft);color:#7a5a16}
+#njp .priv{background:#16211f;color:#e8efee;border-radius:var(--r-sm);padding:12px 15px;font-size:13px;line-height:1.8}
+#njp .priv b{color:#ffd79a}
+#njp /* ═══ v3: أشكال جديدة ═══ */
+.asof{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);
+  background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 12px}
+#njp .cols{display:flex;align-items:stretch;gap:4px;height:150px;padding:0 2px}
+#njp .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px;min-width:0}
+#njp .col .bar{width:100%;max-width:46px;border-radius:5px 5px 2px 2px;background:var(--brand);position:relative;
+  transition:background .12s}
+#njp .col:hover .bar{background:var(--brand-2)}
+#njp .col .v{font-size:11.5px;font-weight:600;font-variant-numeric:tabular-nums}
+#njp .col .x{font-size:10.5px;color:var(--faint);white-space:nowrap}
+#njp .col.dim .bar{background:var(--line);}
+#njp .stack{display:flex;height:16px;border-radius:5px;overflow:hidden;gap:2px;background:transparent}
+#njp .stack i{display:block;height:100%}
+#njp .stack i:first-child{border-radius:5px 0 0 5px}
+#njp .stack i:last-child{border-radius:0 5px 5px 0}
+#njp .mini{display:flex;height:9px;border-radius:3px;overflow:hidden;gap:1.5px;width:92px}
+#njp .mini i{display:block;height:100%}
+#njp .hm{display:grid;gap:2px;overflow-x:auto}
+#njp .hmrow{display:grid;grid-template-columns:150px repeat(7,1fr) 48px;gap:2px;align-items:center}
+#njp .hmrow .lb{font-size:11.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-inline-end:6px}
+#njp .hmc{height:24px;border-radius:4px;display:flex;align-items:center;justify-content:center;
+  font-size:10.5px;font-variant-numeric:tabular-nums;cursor:pointer}
+#njp .hmc.na{background:repeating-linear-gradient(45deg,var(--line-2),var(--line-2) 3px,transparent 3px,transparent 6px)}
+#njp .hmhead{display:grid;grid-template-columns:150px repeat(7,1fr) 48px;gap:2px;margin-bottom:4px}
+#njp .hmhead span{font-size:10.5px;color:var(--faint);text-align:center}
+#njp .scale{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);margin-top:10px}
+#njp .scale i{width:22px;height:11px;border-radius:3px;display:inline-block}
+#njp .gapbar{display:flex;align-items:center;gap:9px}
+#njp .gapbar .t{flex:1;height:10px;background:var(--line-2);border-radius:999px;overflow:hidden;display:flex;gap:2px}
+#njp .gapbar .t i{display:block;height:100%}
+#njp .legend2{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px}
+#njp .legend2 i{width:12px;height:12px;border-radius:3px;display:inline-block;vertical-align:-2px;margin-inline-end:6px}
+#njp .warn-strip{background:var(--warnbg);border:1px solid #f0dcb8;border-radius:var(--r-sm);
+  padding:10px 14px;font-size:13px;line-height:1.75;margin-bottom:12px}
+#njp .warn-strip b{color:var(--warn)}
+/* لوحة نينجا: نسخة النموذج كما هي، منحصرة داخل #njp */
+#njp{display:block;padding:0;min-height:60vh}
+#njp .top{position:sticky;top:0;z-index:5}
+#njp .filters{position:sticky;top:52px;z-index:4}
+#njp.njbusy{opacity:.55;pointer-events:none;transition:opacity .15s}
+#njp .njadmin.hide{display:none}
+/* الأعمدة: نحجز مكان رقم القيمة واسم اليوم حتى لا يطلع فوق العنوان */
+#njp .cols{height:190px}
+#njp .col .bar{max-height:calc(100% - 52px)}
 #njMask{position:fixed;inset:0;background:rgba(14,22,21,.45);z-index:70;display:none;
   align-items:flex-start;justify-content:center;padding:36px 14px;overflow-y:auto}
 #njMask.on{display:flex}
@@ -670,77 +882,22 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
           <div class="at-note" id="sFoot" aria-live="polite"></div>
         </div>
         <div class="view hide" id="njp" style="overflow:auto;width:100%">
-        <div class="sec" id="njSec">
-          <h3><svg class="i"><use href="#i-users"/></svg>متابعة مناديب نينجا</h3>
-          <div class="njtabs">
-            <button class="on" data-njv="perf">الأداء</button>
-            <button data-njv="ops">العمليات الحية</button>
-            <button data-njv="link">الربط التلقائي</button>
-          </div>
 
-          <div id="njVOps" class="hide">
-            <div class="card" style="padding:16px 18px">
-              <div class="bar2" style="margin-top:0">
-                <button class="btn ghost" id="njOpsGo"><svg class="i"><use href="#i-reload"/></svg>تحديث</button>
-                <span class="sub" id="njOpsMeta">—</span>
-                <span class="sub" id="njOpsTick" style="margin-inline-start:auto"></span>
-              </div>
-              <div class="authbar hide" id="njAuthBar"></div>
-              <div class="opsk" id="njOpsK"></div>
-            </div>
-            <div class="card" style="padding:16px 18px;margin-top:10px">
-              <div class="bar2" style="margin-top:0"><b>التنبيهات المفتوحة</b>
-                <span class="sub" id="njAlN">—</span></div>
-              <div id="njAlerts" style="margin-top:10px"><div class="sub">—</div></div>
-            </div>
-            <div class="card" id="njRulesCard" style="padding:16px 18px;margin-top:10px">
-              <div class="bar2" style="margin-top:0"><b>قواعد التنبيه</b>
-                <span class="sub">الحدود تتغيّر من هنا مباشرة</span></div>
-              <div id="njRulesBox" style="margin-top:10px"></div>
-            </div>
-            <div class="card" style="padding:16px 18px;margin-top:10px">
-              <div class="bar2" style="margin-top:0"><b>الحالة اللحظية</b>
-                <input id="njOpsQ" class="inp sm" placeholder="بحث بالاسم أو المعرّف" style="max-width:220px">
-                <span class="sub" id="njOpsN"></span></div>
-              <div class="card tbl" style="margin-top:10px;max-height:460px;overflow:auto"><table><thead><tr>
-                <th>الكابتن</th><th>الفرع</th><th>الحالة</th><th>آخر طلب</th>
-              </tr></thead><tbody id="njOpsTB"></tbody></table></div>
-            </div>
-          </div>
-
-          <div id="njVLink" class="hide">
-            <div class="card" style="padding:16px 18px">
-              <div class="bar2" style="margin-top:0"><b>حالة الربط</b>
-                <span class="sub" id="njLinkState">—</span>
-                <button class="btn ghost sm" id="njLinkRef" style="margin-inline-start:auto">تحديث</button></div>
-              <div id="njLinkBody" style="margin-top:12px"></div>
-            </div>
-            <div class="card" style="padding:16px 18px;margin-top:10px">
-              <div class="bar2" style="margin-top:0"><b>سجل السحب</b></div>
-              <div class="card tbl" style="margin-top:10px;max-height:320px;overflow:auto"><table><thead><tr>
-                <th>الوقت</th><th>النوع</th><th>المدى</th><th>صفوف</th><th>المدة</th><th>النتيجة</th>
-              </tr></thead><tbody id="njLogTB"></tbody></table></div>
-            </div>
-          </div>
-
-          <div id="njVPerf">
-          <div class="card" style="padding:16px 18px">
-            <div class="njbar">
-              <label class="sub">من <input type="date" id="njF"></label>
-              <label class="sub">إلى <input type="date" id="njT"></label>
-              <span class="chips" id="njPre"></span>
-              <select id="njCity"><option value="">كل المدن</option></select>
-              <select id="njBr"><option value="">كل الفروع</option></select>
-              <label class="sub">بحد أدنى <select id="njMin">
-                <option>1</option><option>2</option><option selected>3</option><option>5</option><option>10</option>
-              </select> أيام</label>
-              <button class="btn" id="njGo"><svg class="i"><use href="#i-reload"/></svg>اعرض</button>
-              <span class="sub" id="njMeta"></span>
-            </div>
-            <div id="njBody" style="margin-top:14px"><div class="sub">اضغط «اعرض» لتحميل المدى.</div></div>
-          </div>
-          </div>
-        </div>
+<header class="top"><div class="in">
+  <div class="brand"><span class="dot"></span><span>متابعة المناديب<small>AFMCO Bike · نينجا</small></span></div>
+  <div class="spacer"></div>
+  <nav class="seg" id="nav">
+    <button class="on" data-t="gen">الأداء</button>
+    <button data-t="hrs">الدوام</button>
+    <button data-t="ops">العمليات</button>
+    <button data-t="emp">الربط بالموظفين</button>
+    <button data-t="lnk" class="njadmin">الربط التلقائي</button>
+  </nav>
+  <span class="live"><i></i>من سمّوراي مباشرة</span>
+</div></header>
+<div class="filters"><div class="in wrap" id="njfbar"></div></div>
+<div class="wrap" style="padding-top:0"><main id="view"></main></div>
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
         </div>
         <div class="view hide" id="keep" style="overflow:auto;width:100%">
           <div class="sam-beta">🧪 <b>شاشة تجريبية</b> — لمدير النظام وحده. حضور مناديب كيتا كما هو في Keemart، ولا يدخل في الرواتب بعد.</div>
@@ -1134,7 +1291,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261014161923";
+  var BUILD = "20261014170703";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -2996,409 +3153,16 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   }
 
   /* ═══════════ v60: متابعة مناديب نينجا — تقرأ من القاعدة عند الطلب ═══════════ */
-  var NJ = { rng:null, days:[], caps:[], from:'', to:'', city:'', br:'', min:3, cur:null, mtab:'sum' };
-  var NJ_TARGET = 12;
-  function njN1(v){ return (v==null||isNaN(v)) ? '—' : (Math.round(v*10)/10).toFixed(1); }
-  function njN0(v){ return (v==null||isNaN(v)) ? '—' : Math.round(v).toLocaleString('en-US'); }
-  function njDay(iso){ if(!iso) return '—'; var d=new Date(iso+'T00:00:00');
-    return isNaN(d)?esc(iso):d.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn',{day:'numeric',month:'short'}); }
-  function njDow(iso){ var d=new Date(iso+'T00:00:00');
-    return isNaN(d)?'':d.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn',{weekday:'short'}); }
-  function njIni(s2){ var a=String(s2||'').trim().split(/\s+/);
-    return ((a[0]||'')[0]||'')+((a[1]||'')[0]||''); }
-  /* الحساب بالـUTC، وإلا ضاع يوم عند التحويل في توقيت +3 */
-  function njShift(iso,n){ var d=new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+n);
-    return d.toISOString().slice(0,10); }
-
-  function njPanelOpen(){ njInit(); njTabTo(NJ.view || 'ops'); }
-  function njInit(){
-    if (njInit.__done) { njTabTo(NJ.view || 'ops'); return; }
-    njInit.__done = 1;
-    document.querySelectorAll('#njSec .njtabs button').forEach(function(b){
-      if (b.getAttribute('data-njv') === 'link' && !can('admin')) { b.classList.add('hide'); return; }
-      b.onclick = function(){ njTabTo(b.getAttribute('data-njv')); }; });
-    if (!can('admin')) { var rb = $('njRulesCard'); if (rb) rb.classList.add('hide'); }
-    $('njOpsGo').onclick = function(){ OPS.left = 60; njOpsLoad(); };
-    $('njOpsQ').oninput  = function(){ OPS.q = $('njOpsQ').value; njOpsRender(); };
-    $('njLinkRef').onclick = njLinkLoad;
-    $('njGo').onclick = njLoad;
-    $('njCity').onchange = function(){ NJ.city=$('njCity').value; njFillBranches(); };
-    rpc('ninja_range').then(function(r){
-      NJ.rng = r || {};
-      if (!NJ.rng.to) { $('njMeta').textContent = 'لا بيانات مخزّنة بعد.'; return; }
-      NJ.to = NJ.rng.to; NJ.from = njShift(NJ.to, -6);
-      $('njF').value = NJ.from; $('njT').value = NJ.to;
-      $('njF').min = NJ.rng.from; $('njF').max = NJ.rng.to;
-      $('njT').min = NJ.rng.from; $('njT').max = NJ.rng.to;
-      $('njMeta').innerHTML = 'المخزون: <b>' + njN0(NJ.rng.rows) + '</b> صف · '
-        + njN0(NJ.rng.days) + ' يوم · ' + njN0(NJ.rng.captains) + ' كابتن · '
-        + njDay(NJ.rng.from) + ' — ' + njDay(NJ.rng.to);
-      var cs = {}; (NJ.rng.branches||[]).forEach(function(b){ cs[b.city] = b.city_name || b.city; });
-      $('njCity').innerHTML = '<option value="">كل المدن</option>'
-        + Object.keys(cs).map(function(k){ return '<option value="'+esc(k)+'">'+esc(cs[k])+'</option>'; }).join('');
-      njFillBranches();
-      $('njPre').innerHTML = [[7,'٧ أيام'],[14,'١٤ يوم'],[30,'٣٠ يوم'],[0,'الكل']].map(function(x){
-        return '<button class="chip" data-n="'+x[0]+'">'+x[1]+'</button>'; }).join('');
-      $('njPre').querySelectorAll('[data-n]').forEach(function(b){
-        b.onclick = function(){ var n=+b.dataset.n;
-          NJ.to = NJ.rng.to; NJ.from = n ? njShift(NJ.to, -(n-1)) : NJ.rng.from;
-          $('njF').value = NJ.from; $('njT').value = NJ.to;
-          $('njPre').querySelectorAll('.chip').forEach(function(x){ x.classList.toggle('on', x===b); });
-          njLoad(); };
-      });
-      njLoad();
-    }).catch(function(e){ $('njMeta').textContent = 'تعذّرت القراءة — ' + ((e&&e.message)||''); });
+  /* ═══════════ نينجا — متابعة المناديب (واجهة النموذج كما هي) ═══════════ */
+  var NJAPP = null;
+  function njPanelOpen(){
+    if (!window.NJP) { toast('تعذّر تحميل صفحة نينجا', 5000); return; }
+    if (!NJAPP) NJAPP = window.NJP({ rpc: rpc, toast: toast, can: can });
+    document.querySelectorAll('#njp .njadmin').forEach(function(b){
+      b.classList.toggle('hide', !can('admin')); });
+    NJAPP.load();
   }
-  function njFillBranches(){
-    var bs = (NJ.rng && NJ.rng.branches || []).filter(function(b){ return !NJ.city || b.city===NJ.city; });
-    $('njBr').innerHTML = '<option value="">كل الفروع ('+bs.length+')</option>'
-      + bs.map(function(b){ return '<option value="'+esc(b.code)+'">'+esc(b.code)+'</option>'; }).join('');
-    NJ.br = '';
-  }
-  function njLoad(){
-    NJ.from=$('njF').value; NJ.to=$('njT').value; NJ.br=$('njBr').value;
-    NJ.city=$('njCity').value; NJ.min=+$('njMin').value;
-    if(!NJ.from||!NJ.to){ toast('حدّد المدى'); return; }
-    $('njBody').innerHTML = '<div class="sub">جارٍ القراءة…</div>';
-    var a={p_from:NJ.from,p_to:NJ.to,p_city:NJ.city||null,p_branch:NJ.br||null};
-    Promise.all([ rpc('ninja_daily', a),
-                  rpc('ninja_captains', {p_from:a.p_from,p_to:a.p_to,p_city:a.p_city,
-                                         p_branch:a.p_branch,p_min_days:NJ.min}) ])
-      .then(function(r){ NJ.days=r[0]||[]; NJ.caps=r[1]||[]; njPaint(); })
-      .catch(function(e){ $('njBody').innerHTML='<div class="sub">تعذّرت القراءة — '+esc((e&&e.message)||'')+'</div>'; });
-  }
-  function njSum(a,k){ return a.reduce(function(s2,x){ return s2+(+x[k]||0); },0); }
-  function njPaint(){
-    var D=NJ.days, C=NJ.caps;
-    if(!D.length){ $('njBody').innerHTML='<div class="sub">لا بيانات في هذا المدى.</div>'; return; }
-    var ord=njSum(D,'orders'), hrs=njSum(D,'hours'), act=njSum(D,'active'), net=njSum(D,'net');
-    var roamH=hrs-net-0, offH=0;
-    /* الرومينق والأوفلاين بالساعات من مجموع الكباتن */
-    var rh=njSum(C,'roam_h'), oh=njSum(C,'off_h');
-    var capDays=njSum(C,'days'), target=NJ_TARGET*capDays;
-    var wait=Math.max(0, net-act), P=function(v){ return hrs? 100*v/hrs : 0; };
-    var h='<div class="kpis">'
-     + njTile('طلب مُسلَّم', njN0(ord), '', '')
-     + njTile('ساعات الاتصال', njN0(hrs), 'س', njN0(100*hrs/(target||1))+'% من المطلوب')
-     + njTile('الساعات المحتسبة', njN0(net), 'س', njN0(100*net/(target||1))+'% من المطلوب', 'var(--brand)')
-     + njTile('المطلوب ('+NJ_TARGET+'س)', njN0(target), 'س', njN0(capDays)+' يوم-كابتن')
-     + '</div>';
-
-    h += '<div class="card" style="padding:14px 16px;margin-top:12px"><b style="font-size:13.5px">وين تروح ساعات الاتصال</b>'
-     + '<div class="stack">'
-     + '<i style="width:'+P(act)+'%;background:var(--brand)"></i>'
-     + '<i style="width:'+P(wait)+'%;background:#9ec9c4"></i>'
-     + '<i style="width:'+P(rh)+'%;background:var(--warn)"></i>'
-     + '<i style="width:'+P(oh)+'%;background:var(--bad)"></i></div>'
-     + '<div class="lg2"><span><i style="background:var(--brand)"></i>مشغول بطلب '+njN0(act)+' س</span>'
-     + '<span><i style="background:#9ec9c4"></i>منتظر طلب '+njN0(wait)+' س</span>'
-     + '<span><i style="background:var(--warn)"></i>رومينق '+njN0(rh)+' س</span>'
-     + '<span><i style="background:var(--bad)"></i>أوفلاين '+njN0(oh)+' س</span></div>'
-     + '<div class="sub" style="margin-top:9px">المحتسب = الاتصال − الرومينق − الأوفلاين. '
-     + 'الرومينق والأوفلاين لا يُحتسبان من الـ'+NJ_TARGET+' ساعة.</div></div>';
-
-    var mx=Math.max.apply(null,D.map(function(d){return d.orders;}))||1;
-    h += '<div class="card" style="padding:14px 16px;margin-top:12px"><b style="font-size:13.5px">الطلبات في كل يوم</b>'
-     + '<div class="cols">' + D.slice(-31).map(function(d){
-         return '<div class="col" title="'+esc(d.d)+'"><span class="v">'+njN0(d.orders)+'</span>'
-          +'<span class="bar" style="height:'+Math.max(3,100*d.orders/mx)+'%"></span>'
-          +'<span class="x">'+esc(njDow(d.d))+'</span></div>'; }).join('')
-     + '</div>'+(D.length>31?'<div class="sub" style="margin-top:6px">آخر ٣١ يوماً من المدى المختار</div>':'')+'</div>';
-
-    h += '<div class="card tbl" style="margin-top:12px"><table><thead><tr>'
-     + '<th>#</th><th>الكابتن</th><th>الفرع</th><th>أيام</th><th>WPI</th><th>طلبات</th><th>/يوم</th>'
-     + '<th>الاتصال</th><th>المحتسب</th><th>التحقيق</th><th>التركيب</th><th>تسليم%</th>'
-     + '<th>رومينق</th><th>أوفلاين</th><th>تأخير</th></tr></thead><tbody id="njTB"></tbody></table></div>'
-     + '<div class="sub" style="margin-top:8px">'+C.length+' كابتن داوم '+NJ.min+' أيام فأكثر · اضغط أي صف لفتح كرته</div>';
-    $('njBody').innerHTML = h;
-    njRows();
-  }
-  function njTile(lb,v,u,dl,col){
-    return '<div class="kpi"><span class="lb">'+esc(lb)+'</span><div class="vl"'
-      +(col?' style="color:'+col+'"':'')+'>'+v+'<span>'+esc(u||'')+'</span></div>'
-      +(dl?'<div class="dl sub">'+dl+'</div>':'')+'</div>';
-  }
-  function njRows(){
-    var C=NJ.caps;
-    $('njTB').innerHTML = C.map(function(c,i){
-      var pa=100*(+c.active||0)/(+c.hours||1), pw=100*Math.max(0,(+c.net||0)-(+c.active||0))/(+c.hours||1),
-          pr=100*(+c.roam_h||0)/(+c.hours||1), po=100*(+c.off_h||0)/(+c.hours||1);
-      return '<tr data-nj="'+esc(c.id)+'" style="cursor:pointer">'
-       +'<td class="sub">'+(i+1)+'</td>'
-       +'<td><div style="font-weight:600">'+esc(c.name||'—')+'</div>'
-       +'<div class="sub" style="direction:ltr">'+esc(c.id)+'</div></td>'
-       +'<td class="sub" style="direction:ltr">'+esc(c.branch||'—')+'</td>'
-       +'<td>'+njN0(c.days)+'</td>'
-       +'<td><span class="wb"><i style="width:'+Math.min(100,+c.wpi||0)+'%"></i></span> <b>'+njN1(c.wpi)+'</b></td>'
-       +'<td>'+njN0(c.orders)+'</td><td>'+njN1((+c.orders||0)/(+c.days||1))+'</td>'
-       +'<td>'+njN1(c.hours)+'</td>'
-       +'<td style="color:var(--brand);font-weight:600">'+njN1(c.net)+'</td>'
-       +'<td'+((+c.ach||0)<85?' style="color:var(--bad);font-weight:600"':'')+'>'+njN0(c.ach)+'%</td>'
-       +'<td><span class="mini"><i style="width:'+pa+'%;background:var(--brand)"></i>'
-       +'<i style="width:'+pw+'%;background:#9ec9c4"></i><i style="width:'+pr+'%;background:var(--warn)"></i>'
-       +'<i style="width:'+po+'%;background:var(--bad)"></i></span></td>'
-       +'<td>'+njN1(c.dlv)+'</td><td>'+njN0(c.roam)+'</td><td>'+njN0(c.off)+'</td><td>'+njN0(c.delay)+'</td></tr>';
-    }).join('') || '<tr><td colspan="15" class="sub">لا كباتن داخل الفلتر.</td></tr>';
-    $('njTB').querySelectorAll('[data-nj]').forEach(function(tr){
-      tr.onclick=function(){ njOpen(tr.getAttribute('data-nj')); }; });
-  }
-  /* ═══════════ العمليات الحية ═══════════ */
-  var OPS = { d:null, t:null, left:60, q:'' };
-  function njTabTo(v){
-    if (v === 'link' && !can('admin')) v = 'ops';
-    NJ.view = v;
-    document.querySelectorAll('#njSec .njtabs button').forEach(function(b){
-      b.classList.toggle('on', b.getAttribute('data-njv') === v); });
-    ['perf','ops','link'].forEach(function(x){
-      $('njV' + x.charAt(0).toUpperCase() + x.slice(1)).classList.toggle('hide', x !== v); });
-    clearInterval(OPS.t); OPS.t = null;
-    if (v === 'ops'){ njOpsLoad(); OPS.left = 60;
-      OPS.t = setInterval(function(){ OPS.left--;
-        $('njOpsTick').textContent = 'التحديث بعد ' + OPS.left + ' ث';
-        if (OPS.left <= 0){ OPS.left = 60; njOpsLoad(); } }, 1000); }
-    if (v === 'link') njLinkLoad();
-  }
-  function njOpsLoad(){
-    return rpc('ninja_ops').then(function(d){ OPS.d = d; njOpsRender(); })
-      .catch(function(e){ $('njOpsMeta').textContent = 'تعذّرت القراءة — ' + ((e&&e.message)||''); });
-  }
-  function njSt(r){                       /* r = [id,name,branch,busy,inArea,susp,ready,last] */
-    if (r[5]) return { t:'موقوف',       c:'p-mut' };
-    if (r[3]) return { t:'مشغول بطلب',  c:'p-ok'  };
-    if (!r[6]) return { t:'أوفلاين',    c:'p-bad' };
-    if (!r[4]) return { t:'رومينق',     c:'p-warn'};
-    return { t:'منتظر طلب', c:'p-ok' };
-  }
-  function njAgo(m){ if (m == null) return '—';
-    return m < 60 ? ('قبل ' + m + ' د') : ('قبل ' + Math.floor(m/60) + ' س ' + (m%60) + ' د'); }
-  function njOpsRender(){
-    var d = OPS.d; if (!d) return;
-    var c = d.counts || {};
-    $('njOpsK').innerHTML =
-      k('br',  c.onduty||0,'على الدوام الآن') + k('ok',  c.busy||0, 'مشغول بطلب') +
-      k('',    c.wait||0,  'منتظر داخل نطاقه')+ k('warn',c.roam||0, 'خارج النطاق') +
-      k('bad', c.susp||0,  'موقوف');
-    function k(cl,v,l){ return '<div class="k '+cl+'"><b>'+njN0(v)+'</b><span>'+l+'</span></div>'; }
-    njRules(d.rules || []);
-
-    njAuthBar(d.auth || {});
-    var seen = d.seen_at ? new Date(d.seen_at) : null;
-    $('njOpsMeta').textContent = (seen ? 'آخر قراءة ' + seen.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : 'ما فيه قراءة بعد')
-      + ' · ' + njN0(c.total||0) + ' كابتن في الحساب';
-
-    var al = d.alerts || [], mu = d.muted || [];   /* [id,cap,code,label,sev,branch,detail,opened] */
-    var ageMin = seen ? Math.round((Date.now() - seen.getTime())/60000) : 1e9;
-    var stale  = ageMin > 20;                       /* القراءة تتوقف بين ٨ص و٤م — لا ورديات */
-    if (stale){
-      $('njAlN').textContent = 'موقوفة';
-      $('njAlerts').innerHTML = '<div class="mute"><b>—</b> التنبيهات موقوفة '
-        + '<span>آخر قراءة ' + seen.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})
-        + ' · القراءة تتوقف بين ٨ صباحاً و٤ عصراً لأن ما فيه ورديات، وترجع مع أول وردية. '
-        + 'ما نعرض تنبيهات قديمة كأنها لحظية.</span></div>';
-      njRowsRender(d); return;
-    }
-    $('njAlN').textContent = al.length ? (al.length + ' مفتوح') : 'ما فيه تنبيهات';
-    var muHtml = mu.map(function(m){               /* [code,label,n,severity] */
-      return '<div class="mute"><b>' + njN0(m[2]) + '</b> ' + esc(m[1])
-        + ' <span>— حالة عامة في الأسطول الآن، مو استثناء. طُويت عشان ما تغرق الصفحة'
-        + (d.cap ? ' (الحد ' + njN0(d.cap) + ')' : '') + '</span></div>'; }).join('');
-    $('njAlerts').innerHTML = muHtml + (al.length ? al.map(function(a){
-      var nm = njName(a[1]);
-      return '<div class="al s'+a[4]+'" data-njo="'+esc(a[1])+'"><span class="ic">'
-        + (a[4]===3?'!':a[4]===2?'•':'i') + '</span><div style="flex:1;min-width:0">'
-        + '<div class="t">'+esc(nm)+' — '+esc(a[3])+'</div>'
-        + '<div class="m">'+esc(a[5]||'فرع غير معروف')+' · '+esc(a[6]||'')+'</div></div>'
-        + '<span class="ago">'+njSince(a[7])+'</span></div>'; }).join('')
-      : (muHtml ? '' : '<div class="sub">كل شي تمام — ما فيه تنبيه مفتوح.</div>'));
-
-    njRowsRender(d);
-  }
-  function njRowsRender(d){
-    var q = (OPS.q||'').trim().toLowerCase();
-    var rows = (d.live||[]).filter(function(r){
-      return !q || ((r[1]||'') + ' ' + r[0] + ' ' + (r[2]||'')).toLowerCase().indexOf(q) >= 0; });
-    rows.sort(function(a,b){ return (b[7]||0) - (a[7]||0); });
-    $('njOpsN').textContent = rows.length + ' كابتن';
-    $('njOpsTB').innerHTML = rows.map(function(r){
-      var st = njSt(r);
-      return '<tr data-njo="'+esc(r[0])+'" style="cursor:pointer"><td><b>'+esc(r[1]||'—')
-        + '</b><div class="sub" style="direction:ltr;text-align:right">'+esc(r[0])+'</div></td>'
-        + '<td>'+esc(r[2]||'—')+'</td><td><span class="pill '+st.c+'">'+st.t+'</span></td>'
-        + '<td>'+njAgo(r[7])+'</td></tr>'; }).join('')
-      || '<tr><td colspan="4" class="sub">لا نتائج.</td></tr>';
-
-    $('njVOps').querySelectorAll('[data-njo]').forEach(function(el){
-      el.onclick = function(){ njOpenAny(el.getAttribute('data-njo')); }; });
-  }
-  /* محرّر القواعد — الحدود تتغيّر من الصفحة بدون تحديث قاعدة */
-  function njRules(rows){
-    var box = $('njRulesBox'); if (!box) return;
-    box.innerHTML = '<table class="t2"><thead><tr><th>التنبيه</th><th>متى يُفتح</th>'
-      + '<th>لا يظهر قبل</th><th>الخطورة</th><th>مفعّل</th></tr></thead><tbody>'
-      + rows.map(function(r){                      /* code,label,threshold,severity,enabled,note */
-        return '<tr><td><b>'+esc(r[1])+'</b></td>'
-          + '<td class="nt">'+esc(r[5]||'—')+'</td>'
-          + '<td><input type="number" min="0" max="600" step="5" value="'+(r[2]==null?0:r[2])
-          + '" data-rt="'+esc(r[0])+'"> د</td>'
-          + '<td><span class="pill '+(r[3]===3?'p-bad':r[3]===2?'p-warn':'p-ok')+'">'
-          + (r[3]===3?'عالية':r[3]===2?'متوسطة':'خفيفة')+'</span></td>'
-          + '<td><input type="checkbox" data-re="'+esc(r[0])+'"'+(r[4]?' checked':'')+'></td></tr>';
-      }).join('') + '</tbody></table>';
-    box.querySelectorAll('[data-rt]').forEach(function(i){
-      i.onchange = function(){ njRuleSave(i.getAttribute('data-rt'), parseInt(i.value,10), null); }; });
-    box.querySelectorAll('[data-re]').forEach(function(i){
-      i.onchange = function(){ njRuleSave(i.getAttribute('data-re'), null, i.checked); }; });
-  }
-  function njRuleSave(code, th, en){
-    rpc('ninja_rule_set', { p_code: code, p_threshold: th, p_enabled: en })
-      .then(function(){ toast('انحفظ', 1600); OPS.left = 60; njOpsLoad(); })
-      .catch(function(e){ toast(e.message, 5000); njOpsLoad(); });
-  }
-  function njAuthBar(a){
-    var el = $('njAuthBar'); if (!el) return;
-    var left = a.access_exp ? (new Date(a.access_exp) - Date.now())/36e5 : -1;
-    var lim  = a.mode === 'long' ? 168 : 4;          /* ٧ أيام للطويل · ٤ ساعات لليومي */
-    var bad  = !a.linked || left <= 0, warn = left > 0 && left < lim;
-    el.classList.toggle('hide', !(bad || warn));
-    if (bad || warn) el.innerHTML = '<b>' + (bad ? 'وقف السحب التلقائي' : 'مفتاح ساموراي قارب ينتهي')
-      + '</b> — ' + (bad ? 'المفتاح انتهى، والبيانات واقفة عند آخر سحبة.'
-                         : 'باقي ' + (left >= 48 ? Math.round(left/24) + ' يوم' : Math.max(0, Math.round(left)) + ' ساعة') + '.')
-      + (can('admin') ? ' <a href="#" id="njAuthGo">افتح الربط</a>' : ' بلّغ مدير النظام.');
-    var g = $('njAuthGo'); if (g) g.onclick = function(e){ e.preventDefault(); njTabTo('link'); };
-  }
-  function njName(id){
-    var r = ((OPS.d&&OPS.d.live)||[]).filter(function(x){ return String(x[0])===String(id); })[0];
-    return (r && r[1]) || id;
-  }
-  function njSince(iso){
-    var m = Math.round((Date.now() - new Date(iso).getTime())/60000);
-    if (!isFinite(m) || m < 0) return '';
-    return m < 60 ? ('قبل '+m+' د') : m < 1440 ? ('قبل '+Math.floor(m/60)+' س') : ('قبل '+Math.floor(m/1440)+' يوم');
-  }
-  /* فتح الكابتن من العمليات — يحمّل المدى أولاً لو ما كان محمّلاً */
-  function njOpenAny(id){
-    if (NJ.caps && NJ.caps.length){ var h = NJ.caps.filter(function(x){ return String(x.id)===String(id); })[0];
-      if (h) { njOpen(id); return; } }
-    toast('أجيب تاريخه…', 1800);
-    njLoad().then(function(){
-      var h = (NJ.caps||[]).filter(function(x){ return String(x.id)===String(id); })[0];
-      if (h) njOpen(id); else toast('ما له سجل داخل المدى المختار — وسّع التاريخ من تبويب الأداء', 5000);
-    });
-  }
-
-  /* ═══════════ الربط التلقائي ═══════════ */
-  function njLinkLoad(){
-    return Promise.all([ rpc('ninja_auth_status'), rpc('ninja_pull_history', { p_limit: 20 }) ])
-      .then(function(r){ njLinkRender(r[0]); njLogRender(r[1]); })
-      .catch(function(e){ $('njLinkState').textContent = 'تعذّرت القراءة — ' + ((e&&e.message)||''); });
-  }
-  function njLinkRender(a){
-    var linked = !!a.linked, mode = a.mode;
-    $('njLinkState').innerHTML = linked
-      ? '<span class="pill ' + (a.access_valid ? 'p-ok' : 'p-warn') + '">'
-        + (mode === 'long' ? 'مربوط — تلقائي' : 'مربوط — يحتاج ضغطة يومية') + '</span>'
-      : '<span class="pill p-warn">غير مربوط</span>';
-    var h = '';
-    if (linked){
-      var direct = mode === 'long' && a.refresh_exp && a.access_exp
-                   && Math.abs(new Date(a.refresh_exp) - new Date(a.access_exp)) < 6e4;
-      h += '<div class="sub" style="line-height:2">'
-        + 'الوضع: <b>' + (direct ? 'تلقائي بالكامل — المفتاح الطويل يُستعمل مباشرة، بلا تجديد وبلا ضغطة'
-                        : mode==='long' ? 'طويل — المنصة تجدّد المفتاح لحالها'
-                        : 'يومي — المفتاح ينتهي كل ٢٤ ساعة') + '</b><br>'
-        + 'المفتاح الحالي ينتهي: <b>' + njWhen(a.access_exp) + '</b>'
-        + (a.refresh_exp ? '<br>مفتاح التجديد ينتهي: <b>' + njWhen(a.refresh_exp) + '</b>' : '')
-        + '<br>آخر سحب ناجح: <b>' + (a.last_ok_at ? njWhen(a.last_ok_at) : '—') + '</b>'
-        + '<br>المخزون: <b>' + njN0(a.stored_days) + '</b> يوم · آخر يوم <b>' + (a.last_day||'—') + '</b>'
-        + (a.last_err ? '<br><span style="color:var(--bad)">آخر خطأ: ' + esc(a.last_err) + '</span>' : '')
-        + '</div>';
-    }
-    h += '<div style="margin-top:12px">'
-      + '<div class="step"><i>1</i><div><b>افتح ساموراي وسجّل دخولك</b>'
-      + '<div class="sub">ما أحتاج كلمة مرورك ولا أدخلها.</div></div></div>'
-      + '<div class="step"><i>2</i><div><b>اسحب هذا الزر لشريط المفضّلة ثم اضغطه وأنت داخل ساموراي</b>'
-      + '<div class="sub">يقرأ مفتاح جلستك من متصفحك ويسلّمه للمنصة مباشرة — ما يمرّ على أي طرف ثالث.</div>'
-      + '<div style="margin-top:9px"><a class="bmk" id="njBmk" href="#">اربط المنصة بساموراي</a></div>'
-      + '<div class="sub" style="margin-top:7px">لو عندك الزر من قبل: <b>اسحبه من جديد</b> — النسخة الجديدة'
-      + ' تفحص إن كان ساموراي يقبل المفتاح الطويل (٩٠ يوم)، والقديمة ما تفحصه.</div></div></div>'
-      + '<div class="step"><i>3</i><div><b>خلاص</b>'
-      + '<div class="sub">السحب كل ٣ ساعات والمتابعة كل دقيقة تشتغل لحالها.</div></div></div></div>';
-    if (linked) h += '<div class="bar2"><button class="btn ghost sm" id="njUnlink">فصل الربط</button>'
-      + '<button class="btn ghost sm" id="njPullNow">اسحب الآن</button></div>';
-    $('njLinkBody').innerHTML = h;
-    $('njBmk').href = njBookmarklet();
-    $('njBmk').onclick = function(e){ e.preventDefault();
-      toast('اسحب الزر لشريط المفضّلة — ما يشتغل بالضغط من هنا، لازم تضغطه داخل صفحة ساموراي', 7000); };
-    if ($('njUnlink')) $('njUnlink').onclick = function(){
-      if (!confirm('أمسح مفتاح ساموراي من المنصة؟ السحب التلقائي بيوقف.')) return;
-      rpc('ninja_unlink').then(function(){ toast('انفصل الربط'); njLinkLoad(); })
-        .catch(function(e){ toast(e.message, 5000); }); };
-    if ($('njPullNow')) $('njPullNow').onclick = function(){
-      var b = $('njPullNow'); b.disabled = true; b.textContent = 'جارٍ…';
-      rpc('ninja_tick_perf', { p_back: 2 }).then(function(r){
-        b.disabled = false; b.textContent = 'اسحب الآن';
-        toast(r.ok ? ('تمّ — ' + njN0(r.rows) + ' صف') : ('تعذّر: ' + r.err), 6000); njLinkLoad();
-      }).catch(function(e){ b.disabled=false; b.textContent='اسحب الآن'; toast(e.message, 6000); }); };
-  }
-  function njWhen(iso){ if (!iso) return '—';
-    return new Date(iso).toLocaleString('en-GB',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(',',' '); }
-  function njLogRender(rows){
-    $('njLogTB').innerHTML = (rows||[]).map(function(r){     /* at,kind,from,to,rows,ms,ok,err */
-      var kn = { perf:'أداء', live:'حالة', backfill:'تعويض' }[r[1]] || r[1];
-      return '<tr><td>'+njWhen(r[0])+'</td><td>'+kn+'</td>'
-        + '<td>'+(r[2] ? (r[2]+' → '+r[3]) : '—')+'</td><td>'+njN0(r[4])+'</td>'
-        + '<td>'+(r[5]==null?'—':(Math.round(r[5]/100)/10)+' ث')+'</td>'
-        + '<td>'+(r[6] ? '<span class="pill p-ok">تمّت</span>'
-                       : '<span class="pill p-bad">'+esc(r[7]||'فشل')+'</span>')+'</td></tr>'; }).join('')
-      || '<tr><td colspan="6" class="sub">ما فيه سحبات بعد.</td></tr>';
-  }
-
-  /* زر المفضّلة: يشتغل داخل ساموراي، يفحص مسار التجديد، ويسلّم عبر window.name */
-  function njBookmarklet(){
-    var target = location.origin + location.pathname + '#ninja-link';
-    var fn = function(){
-      var T = '@@T@@';
-      var tk, rt;
-      try { tk = localStorage.getItem('token'); rt = localStorage.getItem('refresh_token'); } catch(e){}
-      if (!tk) { alert('سجّل دخولك في ساموراي أولاً، ثم اضغط الزر من داخل الصفحة.'); return; }
-      var exp = function(t){ try { return JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).exp * 1000; } catch(e){ return null; } };
-      var B = 'https://api.samurai.delivery/supplier/';
-      var C = ['admin/users/token/refresh','auth/refresh','admin/users/refresh','admin/auth/refresh',
-               'users/token/refresh','token/refresh','refresh','admin/users/refresh_token'];
-      var hit = null;
-      var probe = function(i){
-        if (!rt || i >= C.length) return Promise.resolve(null);
-        return fetch(B + C[i], { method:'POST',
-            headers:{ 'authorization':'Bearer ' + rt, 'accept-language':'en', 'content-type':'application/json' },
-            body:'{}' })
-          .then(function(r){ if (r.status !== 200) return probe(i+1);
-            return r.json().then(function(j){
-              var t = j && (j.token || j.access_token || (j.data && (j.data.token ||
-                      (j.data.attributes && j.data.attributes.token))));
-              return t ? C[i] : probe(i+1); }).catch(function(){ return probe(i+1); }); })
-          .catch(function(){ return probe(i+1); });
-      };
-      probe(0).then(function(path){
-        if (path || !rt) return path;
-        /* هل الخادم يقبل المفتاح الطويل مباشرة على طلبات البيانات؟
-           لو قبله فما نحتاج تجديداً أصلاً — ٩٠ يوماً بلا أي ضغطة. */
-        return fetch(B + 'captains?page%5Bnumber%5D=1&page%5Bsize%5D=1',
-            { headers:{ 'authorization':'Bearer ' + rt, 'accept-language':'en' } })
-          .then(function(r){ return r.status === 200 ? 'direct' : null; })
-          .catch(function(){ return null; });
-      }).then(function(path){
-        var pay = (path === 'direct')
-          ? { afmc:'ninja-link', v:2, access: rt, access_exp: exp(rt),
-              refresh: rt, refresh_exp: exp(rt), path: 'direct' }
-          : { afmc:'ninja-link', v:2, access: tk, access_exp: exp(tk),
-              refresh: path ? rt : null, refresh_exp: rt ? exp(rt) : null, path: path };
-        try { window.name = JSON.stringify(pay); } catch(e){ alert('تعذّر التسليم'); return; }
-        location.href = T;
-      });
-    };
-    return 'javascript:' + encodeURIComponent('(' + fn.toString().replace('@@T@@', target) + ')()');
-  }
-  /* الاستقبال — يُلتقط قبل أي تغيير على العنوان */
+  /* استقبال مفتاح ساموراي من زر المفضّلة — يُلتقط قبل أي تغيير على العنوان */
   function njLinkGrab(){
     var p = null;
     try { p = JSON.parse(window.name || '{}'); } catch(e){}
@@ -3407,106 +3171,21 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   }
   function njLinkSend(p){
     if (!p) { toast('ما وصل مفتاح — أعد الضغط على الزر من داخل صفحة ساموراي', 7000); return; }
-    if (!p.v) NJ.oldBmk = true;   /* زر محفوظ من نسخة سابقة: ما يفحص المفتاح الطويل */
+    var old = !p.v;
     rpc('ninja_link', { p_access: p.access,
         p_access_exp:  p.access_exp  ? new Date(p.access_exp).toISOString()  : null,
         p_refresh:     p.refresh || null,
         p_refresh_exp: p.refresh_exp ? new Date(p.refresh_exp).toISOString() : null,
         p_refresh_path: p.path || null })
       .then(function(a){
-        toast(a.mode === 'long'
-          ? '✅ انربط — السحب تلقائي بالكامل حتى ' + njWhen(a.access_exp)
-          : '✅ انربط — وضع يومي: ساموراي ما قبل المفتاح الطويل، فتحتاج ضغطة وحدة كل ٢٤ ساعة', 9000);
-        if (NJ.oldBmk) toast('⚠ زر الربط المحفوظ عندك نسخة قديمة — ما جرّب المفتاح الطويل. '
-          + 'اسحب الزر من جديد من صفحة الربط (يستبدل القديم) واضغطه مرّة وحدة.', 12000);
-        njLinkLoad();
+        toast(a.mode === 'long' ? '✅ انربط — السحب تلقائي بالكامل' 
+                                : '✅ انربط — وضع يومي: ضغطة وحدة كل ٢٤ ساعة', 9000);
+        if (old) toast('⚠ زر الربط المحفوظ عندك نسخة قديمة — اسحبه من جديد من تبويب «الربط التلقائي».', 12000);
+        if (NJAPP) NJAPP.load();
       })
       .catch(function(e){ toast('تعذّر الربط: ' + ((e&&e.message)||''), 7000); });
   }
 
-  function njOpen(id){
-    NJ.cur = NJ.caps.filter(function(x){ return String(x.id)===String(id); })[0];
-    if(!NJ.cur) return;
-    NJ.mtab='sum'; NJ.dayRows=null;
-    $('njMask').classList.add('on'); document.body.style.overflow='hidden';
-    njModal();
-  }
-  function njClose(){ $('njMask').classList.remove('on'); document.body.style.overflow=''; }
-  function njModal(){
-    var c=NJ.cur;
-    $('njBox').innerHTML = '<div class="mh"><div class="ava">'+esc(njIni(c.name))+'</div>'
-     +'<div style="flex:1"><div style="font-weight:700;font-size:15.5px">'+esc(c.name||'—')+'</div>'
-     +'<div class="sub"><span style="direction:ltr">'+esc(c.id)+'</span>'
-     +(c.branch?' · <span style="direction:ltr">'+esc(c.branch)+'</span>':'')+' · '+njN0(c.days)+' يوم عمل</div></div>'
-     +'<button class="btn ghost sm" onclick="njClose()">إغلاق</button></div>'
-     +'<div class="mb"><div class="tabs2" id="njMT">'
-     + [['sum','الخلاصة'],['hrs','الدوام'],['days','الأيام']].map(function(x){
-         return '<button class="'+(NJ.mtab===x[0]?'on':'')+'" data-m="'+x[0]+'">'+x[1]+'</button>'; }).join('')
-     +'</div><div id="njMC"></div></div>';
-    $('njMT').querySelectorAll('button').forEach(function(b){
-      b.onclick=function(){ NJ.mtab=b.dataset.m; njModal(); }; });
-    var mc=$('njMC');
-    if(NJ.mtab==='sum'){
-      mc.innerHTML='<div class="kpis">'
-       + njTile('WPI', njN1(c.wpi), '', '')
-       + njTile('إجمالي الطلبات', njN0(c.orders), '', njN1((+c.orders||0)/(+c.days||1))+' يومياً')
-       + njTile('الساعات المحتسبة', njN1(c.net), 'س', njN0(c.ach)+'% من المطلوب', 'var(--brand)')
-       + njTile('التسليم في وقته', njN1(c.dlv), '%', '')
-       + '</div>'
-       + '<div class="card tbl" style="margin-top:12px"><table><thead><tr><th>المؤشر</th><th>القيمة</th></tr></thead><tbody>'
-       + [['الاستلام في وقته',njN1(c.pick)+'%'],['العودة للمنطقة',njN1(c.ret)+'%'],
-          ['الدورة الكاملة',njN1(c.cyc)+'%'],['الالتزام بالوردية',njN1(c.shift)+'%'],
-          ['متوسط التأخير',njN0(c.delay)+' د'],['متوسط الرومينق',njN0(c.roam)+' د'],
-          ['متوسط الأوفلاين',njN0(c.off)+' د']].map(function(x){
-            return '<tr><td>'+x[0]+'</td><td>'+x[1]+'</td></tr>'; }).join('')
-       + '</tbody></table></div>';
-    } else if(NJ.mtab==='hrs'){
-      var pa=100*(+c.active||0)/(+c.hours||1), pw=100*Math.max(0,(+c.net||0)-(+c.active||0))/(+c.hours||1),
-          pr=100*(+c.roam_h||0)/(+c.hours||1), po=100*(+c.off_h||0)/(+c.hours||1);
-      mc.innerHTML='<div class="kpis">'
-       + njTile('المطلوب', njN0(c.target), 'س', NJ_TARGET+' × '+njN0(c.days)+' يوم')
-       + njTile('ساعات الاتصال', njN1(c.hours), 'س', '')
-       + njTile('المحتسبة', njN1(c.net), 'س', njN0(c.ach)+'% من المطلوب', 'var(--brand)')
-       + njTile('النقص', njN1(Math.max(0,(+c.target||0)-(+c.net||0))), 'س', '', 'var(--bad)')
-       + '</div>'
-       + '<div class="stack">'
-       + '<i style="width:'+pa+'%;background:var(--brand)"></i>'
-       + '<i style="width:'+pw+'%;background:#9ec9c4"></i>'
-       + '<i style="width:'+pr+'%;background:var(--warn)"></i>'
-       + '<i style="width:'+po+'%;background:var(--bad)"></i></div>'
-       + '<div class="lg2"><span><i style="background:var(--brand)"></i>مشغول بطلب '+njN1(c.active)+' س</span>'
-       + '<span><i style="background:#9ec9c4"></i>منتظر طلب '+njN1(Math.max(0,(+c.net||0)-(+c.active||0)))+' س</span>'
-       + '<span><i style="background:var(--warn)"></i>رومينق '+njN1(c.roam_h)+' س</span>'
-       + '<span><i style="background:var(--bad)"></i>أوفلاين '+njN1(c.off_h)+' س</span></div>'
-       + '<div class="sub" style="margin-top:10px">المحتسب = '+njN1(c.hours)+' − '+njN1(c.roam_h)
-       + ' − '+njN1(c.off_h)+' = <b>'+njN1(c.net)+' ساعة</b> · والمطلوب '+njN0(c.target)+' ساعة.</div>';
-    } else {
-      mc.innerHTML='<div class="sub">جارٍ القراءة…</div>';
-      var go=function(rows){
-        mc.innerHTML='<div class="card tbl"><table><thead><tr><th>اليوم</th><th>الفرع</th><th>طلبات</th>'
-         +'<th>الاتصال</th><th>المحتسب</th><th>مشغول</th><th>رومينق</th><th>أوفلاين</th><th>تأخير</th>'
-         +'<th>تسليم%</th><th>استلام%</th></tr></thead><tbody>'
-         + (rows.length ? rows.map(function(r){
-             var bad=function(v,t){ return (+v>t) ? '<span class="pill p-bad">'+njN0(v)+'</span>' : njN0(v); };
-             return '<tr><td>'+esc(njDow(r.d))+' '+esc(njDay(r.d))+'</td>'
-              +'<td class="sub" style="direction:ltr">'+esc(r.branch||'—')+'</td>'
-              +'<td>'+njN0(r.orders)+'</td><td>'+njN1(r.hours)+'</td>'
-              +'<td style="color:var(--brand);font-weight:600">'+njN1(r.net)+'</td>'
-              +'<td>'+njN1(r.active)+'</td>'
-              +'<td>'+bad(r.roam,45)+'</td><td>'+bad(r.off,60)+'</td><td>'+bad(r.delay,90)+'</td>'
-              +'<td>'+njN1(r.dlv)+'</td><td>'+njN1(r.pick)+'</td></tr>'; }).join('')
-           : '<tr><td colspan="11" class="sub">لا أيام في هذا المدى.</td></tr>')
-         +'</tbody></table></div>'
-         +'<div class="sub" style="margin-top:8px">'+rows.length+' يوم · الأحدث أولاً</div>';
-      };
-      if(NJ.dayRows) go(NJ.dayRows);
-      else rpc('ninja_days_of',{p_captain:String(c.id),p_from:NJ.from,p_to:NJ.to})
-        .then(function(r){ NJ.dayRows=r||[]; if(NJ.mtab==='days') go(NJ.dayRows); })
-        .catch(function(e){ mc.innerHTML='<div class="sub">تعذّرت القراءة — '+esc((e&&e.message)||'')+'</div>'; });
-    }
-  }
-
-  window.njClose = njClose;
   function labSearch(){
     var q = $('labQ').value.trim();
     if (q.length < 2){ $('labHits').textContent = 'اكتب حرفين على الأقل.'; return; }
@@ -4169,6 +3848,922 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   if (recoveryFromHash()) { /* شاشة اختيار كلمة جديدة تتولّى الباقي */ }
   else if (sess) start(); else $('gate').classList.remove('hide');
 })();
+</script>
+<script>
+window.NJP = function(deps){
+  window.njCloseCap = function(){};
+  var RPC = deps.rpc, TOAST = deps.toast;
+  var NJROOT = document.getElementById('njp');
+  var STOCK = { from:null, to:null };
+var $=function(i){return document.getElementById(i);};
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function n1(v){return v==null||isNaN(v)?'—':(Math.round(v*10)/10).toFixed(1);}
+function n0(v){return v==null||isNaN(v)?'—':Math.round(v).toLocaleString('en-US');}
+function dAr(iso){var d=new Date(iso+'T00:00:00');
+  return d.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn',{day:'numeric',month:'short'});}
+function dDay(iso){var d=new Date(iso+'T00:00:00');
+  return d.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn',{weekday:'short'});}
+function ini(s){var p=String(s||'').trim().split(/\s+/);return ((p[0]||'')[0]||'')+((p[1]||'')[0]||'');}
+function hhmm(d){return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+
+var D=null, DAYS=[], CITY={}, ASOF=new Date(), CC={}, DC={}, LIVE={},
+    CAPS=[], DAILY=[], BR=[], ALERTS=[], TARGET=12;
+function hydrate(Dx){ D=Dx;
+DAYS=D.days; CITY=D.cities; ASOF=new Date(D.asof);
+CC={}; D.capCols.forEach(function(k,i){CC[k]=i;});
+DC={}; D.dayCols.forEach(function(k,i){DC[k]=i;});
+TARGET=12;   /* الدوام المطلوب في اليوم */
+LIVE={}; (function(){var L=D.live; if(!L)return;
+  var ix={}; L.cols.forEach(function(k,i){ix[k]=i;});
+  L.rows.forEach(function(r){LIVE[r[ix.id]]={conn:r[ix.conn],busy:r[ix.busy],inArea:r[ix.inArea],
+    susp:r[ix.susp],ready:r[ix.ready],lastH:r[ix.lastH]};});})();
+CAPS=D.caps.map(function(a){var o={};D.capCols.forEach(function(k,i){o[k]=a[i];});
+  o.city=o.branch?o.branch.split('-')[0]:'';
+  o.roamH=o.roam*o.days/60;              /* الرومينق بالساعات */
+  o.offH =o.off *o.days/60;              /* الأوفلاين بالساعات */
+  o.netHrs=o.totHrs-o.roamH-o.offH;      /* المحتسب: الاتصال − الرومينق − الأوفلاين */
+  o.waitHrs=Math.max(0,o.netHrs-o.actHrs);/* منتظر طلب */
+  o.targetHrs=TARGET*o.days;             /* المطلوب */
+  o.achPct=o.targetHrs?100*o.netHrs/o.targetHrs:null;  /* تحقيق الهدف من المحتسب */
+  o.gap=Math.max(0,o.targetHrs-o.netHrs);/* النقص عن المطلوب */
+  o.live=LIVE[o.id]||null;
+  return o;});
+DAILY=D.daily.map(function(a){var o={};D.dayCols.forEach(function(k,i){o[k]=a[i];});
+  o.gap=o.totHrs-o.actHrs;
+  o.avgOrd=o.n?o.totOrd/o.n:null;        /* متوسط طلبات الكابتن في ذلك اليوم */
+  o.avgHrs=o.n?o.totHrs/o.n:null;        /* متوسط ساعات الكابتن في ذلك اليوم */
+  o.actPct=o.totHrs?100*o.actHrs/o.totHrs:null;
+  return o;});
+BR=D.branches.map(function(b){return {code:b[0],shifts:b[1],mh:b[2],city:b[0].split('-')[0]};});
+
+}
+var M=[
+ {k:'wpi',   t:'WPI',             u:'',  hi:1,f:n1,g:'الخلاصة'},
+ {k:'avgOrd',t:'الطلبات في اليوم', u:'',  hi:1,f:n1,g:'الإنتاج'},
+ {k:'avgHrs',t:'ساعات الدوام',     u:'س', hi:1,f:n1,g:'الإنتاج'},
+ {k:'pick',  t:'الاستلام في وقته', u:'%', hi:1,f:n1,g:'الالتزام'},
+ {k:'dlv',   t:'التسليم في وقته',  u:'%', hi:1,f:n1,g:'الالتزام'},
+ {k:'ret',   t:'العودة للمنطقة',   u:'%', hi:1,f:n1,g:'الالتزام'},
+ {k:'cyc',   t:'الدورة الكاملة',   u:'%', hi:1,f:n1,g:'الالتزام'},
+ {k:'shift', t:'الالتزام بالوردية',u:'%', hi:1,f:n1,g:'الالتزام'},
+ {k:'delay', t:'التأخير',          u:'د', hi:0,f:n0,g:'الهدر'},
+ {k:'roam',  t:'الرومينق',         u:'د', hi:0,f:n0,g:'الهدر'},
+ {k:'off',   t:'الأوفلاين',        u:'د', hi:0,f:n0,g:'الهدر'}
+];
+var TH={off:60,roam:45,delay:90,avgHrs:9,avgOrd:22,dlv:70};
+
+/* ── الفلاتر ── */
+var F={from:null,to:null,city:'',branch:'',min:3};
+function dIdx(){var r=[];DAYS.forEach(function(d,i){if(d>=F.from&&d<=F.to)r.push(i);});return r;}
+function days(){return DAYS.filter(function(d){return d>=F.from&&d<=F.to;});}
+function daily(){var ix=dIdx();return DAILY.filter(function(_,i){return ix.indexOf(i)>=0;});}
+function capsAll(){return CAPS.filter(function(c){
+  return (!F.city||c.city===F.city)&&(!F.branch||c.branch===F.branch);});}
+/* الترتيب والمتوسطات تستبعد من داوم أقل من الحدّ — يوم واحد ما يصلح يتصدّر الترتيب */
+function caps(){return capsAll().filter(function(c){return c.days>=F.min;});}
+function capsFew(){return capsAll().filter(function(c){return c.days<F.min;});}
+function ser(c){var ix=dIdx();return c.ser.filter(function(_,i){return ix.indexOf(i)>=0;});}
+function avg(a,k){var v=a.map(function(x){return +x[k];}).filter(function(x){return !isNaN(x);});
+  return v.length?v.reduce(function(s,x){return s+x;},0)/v.length:null;}
+/* المتوسط الموزون — النِسب بالطلبات والدقائق بالساعات */
+function wavg(a,k,wk){var n=0,w=0;a.forEach(function(r){var ww=+r[wk]||0;
+  if(ww>0&&!isNaN(+r[k])){n+=r[k]*ww;w+=ww;}});return w?n/w:avg(a,k);}
+function teamOf(k){var CP=caps();
+  if(['pick','dlv','ret','cyc','shift','wpi'].indexOf(k)>=0) return wavg(CP,k,'totOrd');
+  if(['delay','roam','off'].indexOf(k)>=0) return wavg(CP,k,'totHrs');
+  return avg(CP,k);}
+function sum(a,k){return a.reduce(function(s,x){return s+(+x[k]||0);},0);}
+
+function renderFilters(){
+  var cs={};CAPS.forEach(function(c){if(c.city)cs[c.city]=(cs[c.city]||0)+1;});
+  $('njfbar').innerHTML='<label>من <input type="date" id="f1" value="'+F.from+'" min="'+STOCK.from+'" max="'+STOCK.to+'"></label>'
+   +'<label>إلى <input type="date" id="f2" value="'+F.to+'" min="'+STOCK.from+'" max="'+STOCK.to+'"></label>'
+   +'<span class="chips"><button class="chip'+(F.city?'':' on')+'" data-city="">كل المدن</button>'
+   +Object.keys(cs).sort(function(a,b){return cs[b]-cs[a];}).map(function(k){
+     return '<button class="chip'+(F.city===k?' on':'')+'" data-city="'+k+'">'+esc(CITY[k]||k)
+      +'<span class="c">'+cs[k]+'</span></button>';}).join('')+'</span>'
+   +'<select id="fbr"><option value="">كل الفروع</option>'
+   +BR.filter(function(b){return !F.city||b.city===F.city;}).map(function(b){
+     return '<option value="'+b.code+'"'+(F.branch===b.code?' selected':'')+'>'+b.code+'</option>';}).join('')+'</select>'
+   +'<label>بحد أدنى <select id="fmin">'+[1,2,3,4,5].map(function(n){
+     return '<option value="'+n+'"'+(F.min===n?' selected':'')+'>'+n+' أيام</option>';}).join('')+'</select></label>'
+   +'<span class="fsum">'+caps().length+' كابتن'
+   +(capsFew().length?' <span style="color:var(--warn)">(+'+capsFew().length+' مستبعَد)</span>':'')
+   +' · '+days().length+' يوم</span>';
+  $('f1').onchange=function(){F.from=$('f1').value;reloadRange();};
+  $('f2').onchange=function(){F.to=$('f2').value;reloadRange();};
+  $('fbr').onchange=function(){F.branch=$('fbr').value;redraw();};
+  $('fmin').onchange=function(){F.min=+$('fmin').value;redraw();};
+  $('njfbar').querySelectorAll('[data-city]').forEach(function(b){
+    b.onclick=function(){F.city=b.dataset.city;F.branch='';redraw();};});
+}
+function redraw(){renderFilters();V[TAB]();}
+
+/* ── أشكال ── */
+function spark(vals,w,h,col){
+  w=w||72;h=h||22;col=col||'var(--brand)';
+  var v=vals.filter(function(x){return x!=null;});
+  if(v.length<2)return '<svg width="'+w+'" height="'+h+'"></svg>';
+  var lo=Math.min.apply(null,v),hi=Math.max.apply(null,v),sp=(hi-lo)||1,d='',open=false;
+  vals.forEach(function(y,i){if(y==null){open=false;return;}
+    var x=(w-2)*(i/Math.max(1,vals.length-1))+1,yy=h-2-(h-4)*((y-lo)/sp);
+    d+=(open?' L ':' M ')+x.toFixed(1)+' '+yy.toFixed(1);open=true;});
+  var last=null,li=0;vals.forEach(function(y,i){if(y!=null){last=y;li=i;}});
+  var lx=(w-2)*(li/Math.max(1,vals.length-1))+1,ly=h-2-(h-4)*((last-lo)/sp);
+  return '<svg width="'+w+'" height="'+h+'" aria-hidden="true"><path d="'+d+'" fill="none" stroke="'+col
+   +'" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>'
+   +'<circle cx="'+lx.toFixed(1)+'" cy="'+ly.toFixed(1)+'" r="2.2" fill="'+col+'"/></svg>';}
+
+/* أعمدة يومية — بديل الخط */
+function cols(el,vals,lab,fmt,alt){
+  var mx=Math.max.apply(null,vals.filter(function(v){return v!=null;}))||1;
+  el.innerHTML='<div class="cols" role="img" aria-label="'+esc(alt||'')+'">'
+   +vals.map(function(v,i){var h=v==null?0:Math.max(3,100*v/mx);
+     return '<div class="col" title="'+esc(lab[i])+'"><span class="v">'+(v==null?'—':fmt(v))+'</span>'
+      +'<span class="bar" style="height:'+h+'%"></span>'
+      +'<span class="x">'+esc(dDay(lab[i]))+'<br>'+esc(dAr(lab[i]).split(' ')[0])+'</span></div>';}).join('')
+   +'</div>';}
+
+/* خريطة حرارية — كابتن × يوم */
+function heat(el,rows,ix){
+  function col(v){ if(v==null) return null;
+    var t=Math.max(0,Math.min(1,(v-50)/45));
+    return 'rgba(14,94,92,'+(0.1+t*0.85).toFixed(2)+')';}
+  el.innerHTML='<div class="hmhead"><span></span>'
+   +ix.map(function(i){return '<span>'+esc(dDay(DAYS[i]))+'</span>';}).join('')+'<span>الفترة</span></div>'
+   +'<div class="hm">'+rows.map(function(c){
+     return '<div class="hmrow" data-c="'+esc(c.id)+'" style="cursor:pointer">'
+      +'<span class="lb">'+esc(c.name)+'</span>'
+      +ix.map(function(i){var v=c.ser[i];
+        return v==null?'<span class="hmc na" title="لم يعمل"></span>'
+         :'<span class="hmc" style="background:'+col(v)+';color:'+(v>72?'#fff':'var(--ink-2)')
+          +'" title="'+esc(dAr(DAYS[i]))+' · WPI '+v+'">'+v+'</span>';}).join('')
+      +'<span class="hmc" style="background:var(--surface-2);font-weight:600">'+n0(c.wpi)+'</span></div>';}).join('')
+   +'</div><div class="scale"><span>أضعف</span>'
+   +[0.12,0.3,0.5,0.7,0.95].map(function(a){return '<i style="background:rgba(14,94,92,'+a+')"></i>';}).join('')
+   +'<span>أقوى</span><i class="hmc na" style="width:22px;height:11px;border-radius:3px"></i><span>لم يعمل</span></div>';
+  el.querySelectorAll('.hmrow').forEach(function(r){r.onclick=function(){openCap(r.dataset.c);};});}
+
+/* ═════ النافذة ═════ */
+var MTAB='sum';
+function openCap(id){var c=CAPS.filter(function(x){return x.id===id;})[0];if(!c)return;
+  window.__CAP=c;MTAB='sum';$('mask').classList.add('on');document.body.style.overflow='hidden';paintModal();}
+function closeCap(){$('mask').classList.remove('on');document.body.style.overflow='';}
+function paintModal(){
+  var c=window.__CAP,CP=caps();
+  var rank=CP.slice().sort(function(a,b){return b.wpi-a.wpi;}).map(function(x){return x.id;}).indexOf(c.id)+1;
+  $('modal').innerHTML='<div class="mh"><div class="ava">'+esc(ini(c.name))+'</div>'
+   +'<div><div style="font-weight:700;font-size:16px">'+esc(c.name)+'</div>'
+   +'<div class="sub"><span class="num" style="direction:ltr">'+esc(c.id)+'</span>'
+   +(c.branch?' · <span style="direction:ltr">'+esc(c.branch)+'</span> · '+esc(CITY[c.city]||''):' · فرع غير معروف')
+   +' · '+c.days+' يوم عمل</div></div><button class="x" onclick="njCloseCap()">✕</button></div>'
+   +'<div class="mb"><div class="tabs2" id="mt">'
+   +['sum:الخلاصة','hrs:الدوام التفصيلي','cmp:مقابل الفريق','his:الأيام'].map(function(x){
+     var p=x.split(':');return '<button class="'+(MTAB===p[0]?'on':'')+'" data-m="'+p[0]+'">'+p[1]+'</button>';}).join('')
+   +'</div><div id="mc"></div></div>';
+  $('mt').querySelectorAll('button').forEach(function(b){b.onclick=function(){MTAB=b.dataset.m;paintModal();};});
+  var mc=$('mc');
+  if(MTAB==='sum'){
+    mc.innerHTML='<div class="hd" style="margin-bottom:12px"><div><h2 style="font-size:15px">التراكمي للفترة</h2>'
+     +'<p>الترتيب '+rank+' من '+CP.length+' · WPI الفريق '+n1(teamOf('wpi'))+'</p></div>'
+     +'<div style="text-align:left"><div style="font-size:38px;font-weight:600;letter-spacing:-1.3px" class="num">'
+     +n1(c.wpi)+'</div><div class="sub">WPI</div></div></div>'
+     +'<div class="kpis"><div class="kpi"><span class="lb">إجمالي الطلبات</span><div class="vl num">'+n0(c.totOrd)
+     +'</div><div class="dl flat"><span class="num">'+n1(c.avgOrd)+'</span> يومياً</div></div>'
+     +'<div class="kpi"><span class="lb">ساعات الدوام</span><div class="vl num">'+n1(c.totHrs)+'<span>س</span></div>'
+     +'<div class="dl flat"><span class="num">'+n1(c.avgHrs)+'</span> يومياً</div></div>'
+     +'<div class="kpi"><span class="lb">الساعات النشطة</span><div class="vl num">'+n1(c.actHrs)+'<span>س</span></div>'
+     +'<div class="dl '+(c.actHrs/c.totHrs<.45?'dn':'flat')+'"><span class="num">'
+     +n0(100*c.actHrs/(c.totHrs||1))+'%</span> من الدوام</div></div>'
+     +'<div class="kpi"><span class="lb">التسليم في وقته</span><div class="vl num">'+n1(c.dlv)+'<span>%</span></div>'
+     +'<div class="dl '+(c.dlv>=teamOf('dlv')?'up':'dn')+'"><span class="num">'
+     +n1(Math.abs(c.dlv-teamOf('dlv')))+'</span> '+(c.dlv>=teamOf('dlv')?'فوق':'تحت')+' الفريق</div></div></div>'
+     +'<h3 style="margin:18px 0 8px">WPI في كل يوم</h3><div id="mch"></div>';
+    var ix=dIdx();
+    cols($('mch'),ix.map(function(i){return c.ser[i];}),days(),n0,'WPI اليومي');
+  } else if(MTAB==='hrs'){
+    var pa=100*c.actHrs/(c.totHrs||1),pw=100*c.waitHrs/(c.totHrs||1),
+        pr=100*c.roamH/(c.totHrs||1),po=100*c.offH/(c.totHrs||1);
+    mc.innerHTML='<div class="kpis k4">'
+     +'<div class="kpi"><span class="lb">المطلوب</span><div class="vl num">'+n0(c.targetHrs)+'<span>س</span></div>'
+     +'<div class="dl flat">'+TARGET+' × '+c.days+' يوم</div></div>'
+     +'<div class="kpi"><span class="lb">ساعات الاتصال</span><div class="vl num">'+n1(c.totHrs)+'<span>س</span></div></div>'
+     +'<div class="kpi"><span class="lb">المحتسبة</span><div class="vl num" style="color:var(--brand)">'
+     +n1(c.netHrs)+'<span>س</span></div><div class="dl '+(c.achPct<85?'dn':'up')+'">'
+     +'<span class="num">'+n0(c.achPct)+'%</span> من المطلوب</div></div>'
+     +'<div class="kpi"><span class="lb">النقص</span><div class="vl num" style="color:var(--bad)">'
+     +n1(c.gap)+'<span>س</span></div></div></div>'
+     +'<h3 style="margin:18px 0 8px">وين تروح ساعات اتصاله</h3>'
+     +'<div class="stack" style="height:24px">'
+     +'<i style="width:'+pa+'%;background:var(--brand)"></i>'
+     +'<i style="width:'+pw+'%;background:#9ec9c4"></i>'
+     +'<i style="width:'+pr+'%;background:var(--warn)"></i>'
+     +'<i style="width:'+po+'%;background:var(--bad)"></i></div>'
+     +'<div class="legend2"><span><i style="background:var(--brand)"></i>مشغول بطلب '+n1(c.actHrs)+' س</span>'
+     +'<span><i style="background:#9ec9c4"></i>منتظر طلب '+n1(c.waitHrs)+' س</span>'
+     +'<span><i style="background:var(--warn)"></i>رومينق '+n1(c.roamH)+' س</span>'
+     +'<span><i style="background:var(--bad)"></i>أوفلاين '+n1(c.offH)+' س</span></div>'
+     +'<div class="find" style="margin-top:14px"><b>المحتسب = الاتصال − الرومينق − الأوفلاين</b> = '
+     +n1(c.totHrs)+' − '+n1(c.roamH)+' − '+n1(c.offH)+' = <b>'+n1(c.netHrs)+' ساعة</b>، '
+     +'والمطلوب '+n0(c.targetHrs)+' ساعة.</div>';
+  } else if(MTAB==='cmp'){
+    mc.innerHTML='<p class="sub" style="margin:0 0 12px">الخط في النص هو متوسط الفريق داخل نفس الفلتر · '
+     +'الشريط يسار النص أفضل ويمينه أقل</p>'
+     +['الخلاصة','الإنتاج','الالتزام','الهدر'].map(function(g){
+      return '<div class="sub" style="margin:13px 0 4px;font-weight:600">'+esc(g)+'</div>'
+       +M.filter(function(m){return m.g===g;}).map(function(m){
+        var v=c[m.k],t=teamOf(m.k)||0; if(!t)return '';
+        var pct=100*(v-t)/t,w=Math.min(48,Math.abs(pct)*.9),good=m.hi?pct>=0:pct<=0;
+        var col=good?'var(--brand)':'var(--warn)',side=pct>=0?'inset-inline-start:50%':'inset-inline-end:50%';
+        return '<div class="dv"><span class="nm">'+esc(m.t)+'</span><span class="dvt">'
+         +'<i style="'+side+';width:'+w+'%;background:'+col+'"></i></span>'
+         +'<b class="num" style="color:'+(Math.abs(pct)<2?'var(--muted)':col)+'">'+m.f(v)
+         +'<em>'+(pct>=0?'+':'−')+Math.abs(pct).toFixed(0)+'%</em></b></div>';}).join('');}).join('');
+  } else {
+    var ix2=dIdx();
+    mc.innerHTML='<div class="tblwrap" style="margin:0"><table><thead><tr><th>اليوم</th><th>WPI</th>'
+     +'<th>الحالة</th></tr></thead><tbody>'
+     +ix2.slice().reverse().map(function(i){var v=c.ser[i];
+       return '<tr><td>'+esc(dDay(DAYS[i]))+' '+esc(dAr(DAYS[i]))+'</td>'
+        +'<td class="num">'+(v==null?'—':v)+'</td>'
+        +'<td>'+(v==null?'<span class="pill p-mut">لم يعمل</span>'
+          :v>=85?'<span class="pill p-ok">ممتاز</span>'
+          :v>=70?'<span class="pill p-mut">مقبول</span>':'<span class="pill p-warn">ضعيف</span>')+'</td></tr>';}).join('')
+     +'</tbody></table></div>'
+     +'<div class="find" style="margin-top:12px">تفصيل كل مؤشر ليوم واحد متاح في المصدر — '
+     +'في المنصة يُعرض هنا كامل الصف اليومي لكل كابتن.</div>';
+  }
+}
+
+/* ═════ ① الأداء ═════ */
+function vGen(){
+  var DL=daily(),CP=caps(),ix=dIdx();
+  if(!DL.length||!CP.length){$('view').innerHTML='<div class="card"><p class="sub">لا بيانات داخل الفلتر.</p></div>';return;}
+  var L=DL[DL.length-1],P=DL.length>1?DL[DL.length-2]:L;
+  var EXTRA={actPct:{t:'نسبة النشاط',u:'%',f:n0,hi:1}};
+  function tile(k){var m=M.filter(function(x){return x.k===k;})[0]||EXTRA[k]||{t:k,u:'',f:n1,hi:1};
+    var a=L[k],b=P[k],d=(a!=null&&b!=null)?a-b:null;
+    var good=m.hi?d>0:d<0,cls=d==null||Math.abs(d)<.05?'flat':(good?'up':'dn');
+    return '<div class="kpi"><span class="lb">'+esc(m.t)+'</span><div class="vl num">'+m.f(a)
+     +'<span>'+esc(m.u)+'</span></div><div class="dl '+cls+'"><span>'+(d==null?'◦':(d>0?'▲':'▼'))
+     +'</span><span class="num">'+(d==null?'—':m.f(Math.abs(d)))+'</span>'
+     +'<span style="color:var(--faint)">عن أمس</span></div>'
+     +spark(DL.map(function(x){return x[k];}),78,20,cls==='dn'?'var(--bad)':'var(--brand)')+'</div>';}
+  var tot=sum(DL,'totOrd'),th=sum(DL,'totHrs'),ta=sum(DL,'actHrs');
+
+  var h='<div class="warn-strip"><b>مهم:</b> يوم العمل عند نينجا يبدأ مساءً وينتهي صباح اليوم التالي، '
+   +'فأرقام أي يوم ما تكتمل إلا بعد انتهاء ورديّاته. آخر يوم مكتمل هنا هو <b>'+esc(dAr(DAYS[DAYS.length-1]))
+   +'</b>، واليوم الجاري ما يظهر لأن ورديّاته ما بدأت بعد. '
+   +'<b>كل الأرقام في هذي الصفحة لأيام مكتملة فقط</b> — عشان ما تقارن يوماً ناقصاً بيوم كامل.</div>';
+
+  h+='<div class="row r-73"><div class="card">'
+   +'<div class="hd"><div><h2>الصورة العامة</h2><p>'+esc(dAr(F.from))+' — '+esc(dAr(F.to))+' · '+DL.length+' أيام · '
+   +CP.length+' كابتن'+(F.city?' · '+esc(CITY[F.city]):'')+(F.branch?' · '+esc(F.branch):'')+'</p></div>'
+   +'<span class="asof">سُحبت '+hhmm(new Date(ASOF.getTime()+3*36e5))+' بتوقيت الرياض</span></div>'
+   +'<div class="hero"><div class="big num">'+n0(tot)+'</div><div class="unit">طلب مُسلَّم</div>'
+   +'<div style="flex:1"></div><div style="text-align:left"><div class="big num" style="font-size:34px">'
+   +n1(wavg(DL,'wpi','totOrd'))+'</div><div class="unit">WPI موزون</div></div></div>'
+   +'<h3 style="margin:18px 0 6px">الطلبات في كل يوم</h3><div id="cOrd"></div></div>'
+   +'<div class="card"><div class="hd"><div><h2>الالتزام</h2><p>موزون بالطلبات لا بعدد الكباتن</p></div></div>'
+   +'<div id="meters"></div>'
+   +'<div class="find"><b>فرق مهم:</b> هذي نِسب <b>موزونة بحجم الطلبات</b>، مو متوسط بسيط للكباتن. '
+   +'كابتن عنده ٣ طلبات ما يساوي كابتن عنده ٥٠ في حساب الالتزام.</div></div></div>';
+
+  h+='<div class="card" style="margin-top:14px"><div class="hd"><div><h2>المؤشرات اليومية</h2>'
+   +'<p>آخر يوم مكتمل مقارنةً باللي قبله</p></div></div><div class="kpis">'
+   +['avgOrd','avgHrs','actPct','dlv','off','roam','delay','wpi'].map(tile).join('')+'</div></div>';
+
+  h+='<div class="card" style="margin-top:14px"><div class="hd"><div><h2>الفروع</h2>'
+   +'<p>اضغط للتصفية · WPI موزون</p></div></div><div class="bgrid">'
+   +BR.filter(function(b){return !F.city||b.city===F.city;}).map(function(b){
+     var cs=CAPS.filter(function(c){return c.branch===b.code;});
+     return '<div class="bcard" data-br="'+b.code+'"><div class="bc">'+esc(b.code)+'</div>'
+      +'<div class="bn">'+esc(CITY[b.city]||b.city)+' · '+b.shifts+' ورديات · '+b.mh+' ساعة/يوم</div>'
+      +'<div class="br"><b class="num">'+(cs.length?n1(wavg(cs,'wpi','totOrd')):'—')+'</b><span>WPI</span>'
+      +'<span style="flex:1"></span><b class="num" style="font-size:15px">'+cs.length+'</b><span>كابتن</span></div></div>';}).join('')
+   +'</div></div>';
+
+  h+='<div class="card" style="margin-top:14px"><div class="hd"><div><h2>خريطة الأداء</h2>'
+   +'<p>كل صف كابتن وكل عمود يوم · المربّع المخطّط يعني ما داوم · اضغط أي صف</p></div>'
+   +'<div class="seg" id="hseg"><button class="on" data-n="20">أعلى ٢٠</button>'
+   +'<button data-n="40">٤٠</button><button data-n="999">الكل</button></div></div>'
+   +'<div id="hm"></div></div>';
+
+  h+='<div class="card" style="margin-top:14px"><div class="hd"><div><h2>الكباتن</h2>'
+   +'<p>'+CP.length+' كابتن داوم '+F.min+' أيام فأكثر'
+   +(capsFew().length?' · '+capsFew().length+' مستبعَد لقلّة الأيام':'')+' · اضغط أي صف</p></div>'
+   +'<div class="seg" id="ss"><button class="on" data-s="wpi">WPI</button><button data-s="totOrd">الطلبات</button>'
+   +'<button data-s="gap">النقص عن ١٢ س</button><button data-s="off">الأوفلاين</button></div></div>'
+   +'<div class="tblwrap"><table><thead><tr><th>#</th><th>الكابتن</th><th>الفرع</th><th>الحالة الآن</th>'
+   +'<th>WPI</th><th>المسار</th><th>طلبات</th><th>طلبات/يوم</th><th>ساعات الاتصال</th>'
+   +'<th>الساعات المحتسبة</th><th>التحقيق</th><th>تسليم%</th><th>أوفلاين</th><th>رومينق</th>'
+   +'<th>تأخير</th><th>أيام</th></tr></thead><tbody id="gb"></tbody></table></div></div>';
+  $('view').innerHTML=h;
+
+  cols($('cOrd'),DL.map(function(d){return d.totOrd;}),days(),n0,'الطلبات في كل يوم');
+  $('meters').innerHTML=['dlv','pick','ret','cyc','shift'].map(function(k){
+    var m=M.filter(function(x){return x.k===k;})[0],v=wavg(DL,k,'totOrd')||0,t=k==='dlv'?TH.dlv:85;
+    return '<div class="mline"><span class="nm">'+esc(m.t)+'</span><span class="mtrack">'
+     +'<i style="width:'+Math.min(100,v)+'%;background:'+(v<t?'var(--warn)':'var(--brand)')+'"></i>'
+     +'<u style="inset-inline-start:'+t+'%"></u></span><b class="num">'+n1(v)+'%</b></div>';}).join('');
+  $('view').querySelectorAll('[data-br]').forEach(function(b){
+    b.onclick=function(){F.branch=F.branch===b.dataset.br?'':b.dataset.br;redraw();};});
+
+  var hn=20;
+  function ph(){heat($('hm'),CP.slice().sort(function(a,b){return b.wpi-a.wpi;}).slice(0,hn),ix);}
+  $('hseg').querySelectorAll('button').forEach(function(b){b.onclick=function(){hn=+b.dataset.n;
+    $('hseg').querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b);});ph();};});
+  ph();
+
+  var sk='wpi';
+  function pt(){
+    var rows=CP.slice().sort(function(a,b){return b[sk]-a[sk];});
+    $('gb').innerHTML=rows.map(function(c,i){
+      return '<tr data-c="'+esc(c.id)+'" style="cursor:pointer"><td><span class="rank'+(i<3?' top':'')+'">'+(i+1)+'</span></td>'
+       +'<td class="name"><div style="font-weight:600">'+esc(c.name)+'</div>'
+       +'<div class="sub num" style="direction:ltr">'+esc(c.id)+'</div></td>'
+       +'<td class="sub" style="direction:ltr">'+(c.branch?esc(c.branch):'—')+'</td>'
+       +'<td>'+liveTag(c)+'</td>'
+       +'<td><div class="wcell"><span class="wbar"><i style="width:'+Math.min(100,c.wpi)+'%"></i></span>'
+       +'<b class="num">'+n1(c.wpi)+'</b></div></td>'
+       +'<td>'+spark(ser(c),62,20)+'</td>'
+       +'<td class="num">'+n0(c.totOrd)+'</td><td class="num">'+n1(c.avgOrd)+'</td>'
+       +'<td class="num">'+n1(c.totHrs)+'</td>'
+       +'<td class="num" style="font-weight:600;color:var(--brand)">'+n1(c.netHrs)+'</td>'
+       +'<td class="num" style="'+(c.achPct<85?'color:var(--bad);font-weight:600':'')+'">'+n0(c.achPct)+'%</td>'
+       +'<td class="num">'+n1(c.dlv)+'</td>'
+       +'<td>'+bd(c.off,TH.off)+'</td><td>'+bd(c.roam,TH.roam)+'</td><td>'+bd(c.delay,TH.delay)+'</td>'
+       +'<td class="num" style="color:var(--muted)">'+c.days+'</td></tr>';}).join('');
+    $('gb').querySelectorAll('tr[data-c]').forEach(function(tr){tr.onclick=function(){openCap(tr.dataset.c);};});}
+  $('ss').querySelectorAll('button').forEach(function(b){b.onclick=function(){sk=b.dataset.s;
+    $('ss').querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b);});pt();};});
+  pt();
+}
+function liveTag(c){var L=c.live; if(!L) return '<span class="pill p-mut">لا قراءة</span>';
+  if(L.susp) return '<span class="pill p-bad">موقوف</span>';
+  if(L.busy) return '<span class="pill p-ok">في طلب</span>';
+  if(L.inArea) return '<span class="pill p-mut">داخل المنطقة · فاضي</span>';
+  if(L.ready) return '<span class="pill p-warn">جاهز · خارج المنطقة</span>';
+  return '<span class="pill p-bad">غير جاهز</span>';}
+function lastTxt(c){var L=c.live; if(!L||L.lastH==null) return '—';
+  if(L.lastH<=0) return 'الآن تقريباً';
+  if(L.lastH<24) return 'قبل '+L.lastH+' ساعة';
+  var d=Math.round(L.lastH/24); return 'قبل '+d+' يوم';}
+function bd(v,th){return v==null?'—':(v>th?'<span class="pill p-bad num">'+n0(v)+'</span>':'<span class="num">'+n0(v)+'</span>');}
+
+/* ═════ ② الدوام التفصيلي التراكمي ═════ */
+function vHrs(){
+  var DL=daily(),CP=caps();
+  if(!DL.length||!CP.length){$('view').innerHTML='<div class="card"><p class="sub">لا بيانات.</p></div>';return;}
+  var tH=0,tA=0,tR=0,tO=0,tC=0,tD=0;
+  CP.forEach(function(c){tH+=c.totHrs;tA+=c.actHrs;tR+=c.roamH;tO+=c.offH;tC+=c.comHrs;tD+=c.days;});
+  var net=tH-tR-tO, wait=Math.max(0,net-tA), target=TARGET*tD, ach=target?100*net/target:0;
+  var P=function(v){return 100*v/(tH||1);};
+
+  var h='<div class="card"><div class="hd"><div><h2>الدوام التفصيلي التراكمي</h2>'
+   +'<p>'+esc(dAr(F.from))+' — '+esc(dAr(F.to))+' · '+CP.length+' كابتن · '+n0(tD)+' يوم-كابتن · '
+   +'المطلوب '+TARGET+' ساعة في اليوم</p></div>'
+   +'<span class="asof">أيام مكتملة فقط</span></div>'
+   +'<div class="kpis k4">'
+   +'<div class="kpi"><span class="lb">المطلوب</span><div class="vl num">'+n0(target)+'<span>س</span></div>'
+   +'<div class="dl flat">'+TARGET+' × '+n0(tD)+' يوم-كابتن</div></div>'
+   +'<div class="kpi"><span class="lb">ساعات الاتصال</span><div class="vl num">'+n0(tH)+'<span>س</span></div>'
+   +'<div class="dl flat"><span class="num">'+n0(100*tH/(target||1))+'%</span> من المطلوب</div></div>'
+   +'<div class="kpi"><span class="lb">الساعات المحتسبة</span>'
+   +'<div class="vl num" style="color:var(--brand)">'+n0(net)+'<span>س</span></div>'
+   +'<div class="dl '+(ach<85?'dn':'up')+'"><span class="num">'+n0(ach)+'%</span> من المطلوب</div></div>'
+   +'<div class="kpi"><span class="lb">النقص عن المطلوب</span>'
+   +'<div class="vl num" style="color:var(--bad)">'+n0(Math.max(0,target-net))+'<span>س</span></div>'
+   +'<div class="dl dn">غير مُنجَز</div></div></div>'
+
+   +'<h3 style="margin:22px 0 8px">وين تروح ساعات الاتصال</h3>'
+   +'<div class="stack" style="height:30px">'
+   +'<i style="width:'+P(tA)+'%;background:var(--brand)" title="مشغول بطلب"></i>'
+   +'<i style="width:'+P(wait)+'%;background:#9ec9c4" title="منتظر طلب"></i>'
+   +'<i style="width:'+P(tR)+'%;background:var(--warn)" title="رومينق"></i>'
+   +'<i style="width:'+P(tO)+'%;background:var(--bad)" title="أوفلاين"></i></div>'
+   +'<div class="legend2">'
+   +'<span><i style="background:var(--brand)"></i>مشغول بطلب — '+n0(tA)+' س ('+n0(P(tA))+'%)</span>'
+   +'<span><i style="background:#9ec9c4"></i>منتظر طلب — '+n0(wait)+' س ('+n0(P(wait))+'%)</span>'
+   +'<span><i style="background:var(--warn)"></i>رومينق — '+n0(tR)+' س ('+n0(P(tR))+'%)</span>'
+   +'<span><i style="background:var(--bad)"></i>أوفلاين — '+n0(tO)+' س ('+n0(P(tO))+'%)</span></div>'
+
+   +'<div class="find" style="margin-top:16px"><b>التعريف المعتمد:</b> '
+   +'<b>الساعات المحتسبة = ساعات الاتصال − الرومينق − الأوفلاين</b> — '
+   +'وهي ما يُقاس عليه تحقيق الـ'+TARGET+' ساعة. '
+   +'داخل المحتسبة قسمان: <b>مشغول بطلب</b> و<b>منتظر طلب</b>، والاثنان دوام فعلي. '
+   +'الرومينق والأوفلاين لا يُحتسبان.</div></div>';
+
+  h+='<div class="row r-2" style="margin-top:14px"><div class="card">'
+   +'<div class="hd"><div><h2>كل يوم مقابل المطلوب</h2>'
+   +'<p>العمود هو المحتسب والخط هو هدف '+TARGET+' ساعة × عدد من داوم</p></div></div>'
+   +'<div id="hcols"></div></div>'
+   +'<div class="card"><div class="hd"><div><h2>التراكم عبر الفترة</h2>'
+   +'<p>الساعات المحتسبة تتراكم يوماً بعد يوم</p></div></div><div id="hcum"></div></div></div>';
+
+  h+='<div class="card" style="margin-top:14px"><div class="hd"><div><h2>الدوام لكل كابتن</h2>'
+   +'<p>مرتّب بالنقص عن المطلوب · اضغط أي صف</p></div>'
+   +'<div class="seg" id="hseg2"><button class="on" data-s="gap">النقص</button>'
+   +'<button data-s="achPct">نسبة التحقيق</button><button data-s="netHrs">المحتسب</button>'
+   +'<button data-s="roamH">الرومينق</button></div></div>'
+   +'<div class="tblwrap"><table><thead><tr>'
+   +'<th>#</th><th>الكابتن</th><th>الفرع</th><th>أيام</th><th>المطلوب</th><th>الاتصال</th>'
+   +'<th>رومينق</th><th>أوفلاين</th><th>المحتسب</th><th>التحقيق</th><th>النقص</th>'
+   +'<th>مشغول</th><th>منتظر</th><th>طلبات/ساعة</th>'
+   +'</tr></thead><tbody id="hb"></tbody></table></div>'
+   +'<div class="legend2"><span><i style="background:var(--brand)"></i>مشغول بطلب</span>'
+   +'<span><i style="background:#9ec9c4"></i>منتظر طلب</span>'
+   +'<span><i style="background:var(--warn)"></i>رومينق</span>'
+   +'<span><i style="background:var(--bad)"></i>أوفلاين</span></div></div>';
+  $('view').innerHTML=h;
+
+  /* أعمدة: المحتسب مقابل هدف اليوم */
+  var ix=dIdx();
+  var dayNet=DL.map(function(d,i){
+    var s=CP.filter(function(c){return c.ser[ix[i]]!=null;});
+    return {net:d.totHrs*(net/(tH||1)), tgt:TARGET*d.n, tot:d.totHrs};});
+  var mx=(Math.max.apply(null,dayNet.map(function(x){return Math.max(x.tgt,x.tot);}))||1)*1.08;
+  $('hcols').innerHTML='<div class="cols" style="height:175px" role="img" aria-label="المحتسب مقابل المطلوب">'
+   +dayNet.map(function(x,i){var hh=100*x.net/mx, th=100*x.tgt/mx;
+     return '<div class="col"><span class="v">'+n0(x.net)+'</span>'
+      +'<span class="bar" style="height:'+hh+'%;position:relative;overflow:visible">'
+      +'<u style="position:absolute;left:-3px;right:-3px;bottom:'+(th/Math.max(hh,0.1)*100)+'%;'
+      +'height:2px;background:var(--bad);opacity:.85"></u></span>'
+      +'<span class="x">'+esc(dDay(days()[i]))+'<br>'+esc(dAr(days()[i]).split(' ')[0])+'</span></div>';}).join('')
+   +'</div><div class="legend2"><span><i style="background:var(--brand)"></i>المحتسب</span>'
+   +'<span><i style="background:var(--bad);height:3px;margin-bottom:4px"></i>هدف اليوم</span></div>';
+  var cum=[],s=0;dayNet.forEach(function(x){s+=x.net;cum.push(Math.round(s));});
+  cols($('hcum'),cum,days(),n0,'تراكم الساعات المحتسبة');
+
+  var sk='gap';
+  function pt(){
+    var rows=CP.slice().sort(function(a,b){return sk==='achPct'?a[sk]-b[sk]:b[sk]-a[sk];});
+    $('hb').innerHTML=rows.map(function(c,i){
+      var pa=100*c.actHrs/(c.totHrs||1),pw=100*c.waitHrs/(c.totHrs||1),
+          pr=100*c.roamH/(c.totHrs||1),po=100*c.offH/(c.totHrs||1);
+      return '<tr data-c="'+esc(c.id)+'" style="cursor:pointer"><td><span class="rank">'+(i+1)+'</span></td>'
+       +'<td class="name"><div style="font-weight:600">'+esc(c.name)+'</div>'
+       +'<div class="sub num" style="direction:ltr">'+esc(c.id)+'</div></td>'
+       +'<td class="sub" style="direction:ltr">'+(c.branch?esc(c.branch):'—')+'</td>'
+       +'<td class="num">'+c.days+'</td>'
+       +'<td class="num" style="color:var(--muted)">'+n0(c.targetHrs)+'</td>'
+       +'<td class="num">'+n1(c.totHrs)+'</td>'
+       +'<td class="num" style="color:var(--warn)">'+n1(c.roamH)+'</td>'
+       +'<td class="num" style="color:var(--bad)">'+n1(c.offH)+'</td>'
+       +'<td class="num" style="font-weight:600;color:var(--brand)">'+n1(c.netHrs)+'</td>'
+       +'<td class="num" style="'+(c.achPct<85?'color:var(--bad);font-weight:600':'')+'">'+n0(c.achPct)+'%</td>'
+       +'<td class="num" style="color:var(--bad)">'+n1(c.gap)+'</td>'
+       +'<td><div class="wcell"><span class="mini"><i style="width:'+pa+'%;background:var(--brand)"></i>'
+       +'<i style="width:'+pw+'%;background:#9ec9c4"></i><i style="width:'+pr+'%;background:var(--warn)"></i>'
+       +'<i style="width:'+po+'%;background:var(--bad)"></i></span><span class="num">'+n1(c.actHrs)+'</span></div></td>'
+       +'<td class="num" style="color:var(--muted)">'+n1(c.waitHrs)+'</td>'
+       +'<td class="num">'+n1(c.totOrd/(c.netHrs||1))+'</td></tr>';}).join('');
+    $('hb').querySelectorAll('tr[data-c]').forEach(function(tr){tr.onclick=function(){openCap(tr.dataset.c);};});}
+  $('hseg2').querySelectorAll('button').forEach(function(b){b.onclick=function(){sk=b.dataset.s;
+    $('hseg2').querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b);});pt();};});
+  pt();
+}
+
+/* ═════ ③ العمليات — لحظية ═════ */
+var FEED=[],TICK=null,SEC=60;
+function seedFeed(){
+  FEED=(ALERTS||[]).map(function(a){
+    var c=CAPS.filter(function(x){return String(x.id)===String(a[1]);})[0]
+        ||{id:a[1],name:a[1],branch:a[5]};
+    return {at:new Date(a[7]),c:c,e:a[3]};});
+}
+function evC(e){return /انقطع|خرج|تأخّر|غادر/.test(e)?'var(--bad)':/عاد|انضمّ/.test(e)?'var(--ok)':'var(--warn)';}
+var OPSF='all';
+function vOps(){
+  var CP=caps(), ALL=capsAll();
+  var busy=ALL.filter(function(c){return c.live&&c.live.busy;}).length;
+  var inA=ALL.filter(function(c){return c.live&&c.live.inArea&&!c.live.busy;}).length;
+  var out=ALL.filter(function(c){return c.live&&!c.live.busy&&!c.live.inArea&&c.live.ready;}).length;
+  var nr =ALL.filter(function(c){return c.live&&!c.live.ready&&!c.live.susp;}).length;
+  var sp =ALL.filter(function(c){return c.live&&c.live.susp;}).length;
+  var stale=ALL.filter(function(c){return c.live&&c.live.lastH!=null&&c.live.lastH>=24;}).length;
+  if(!FEED.length)seedFeed();
+
+  var h='<div class="card" style="background:#16211f;border-color:#16211f;color:#e8efee">'
+   +'<div class="hd" style="margin-bottom:12px"><div><h2 style="color:#fff">متابعة لحظية</h2>'
+   +'<p style="color:#9fb0ae">'+ALL.length+' كابتن · حالة كل واحد الآن · اضغط أي صف تفتح تراكميه</p></div>'
+   +'<span class="live" style="background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.14);color:#cfe0de">'
+   +'<i></i>تحديث بعد <b class="num" id="cd">00:60</b></span></div><div class="stats4">'
+   +[['في طلب',busy,'var(--ok)','busy'],['داخل المنطقة · فاضي',inA,'','inArea'],
+     ['خارج المنطقة',out,'var(--warn)','out'],['غير جاهز',nr,'','nr'],
+     ['موقوف',sp,'var(--bad)','susp'],['بلا طلب ٢٤ ساعة',stale,'var(--warn)','stale']]
+    .map(function(x){return '<div class="sbox" data-of="'+x[3]+'" style="cursor:pointer;'
+      +'background:rgba(255,255,255,'+(OPSF===x[3]?'.14':'.05')+');border-color:rgba(255,255,255,'
+      +(OPSF===x[3]?'.3':'.1')+')"><div class="v num" style="color:'+(x[2]||'#fff')+'">'+x[1]+'</div>'
+      +'<div class="l" style="color:#9fb0ae">'+esc(x[0])+'</div></div>';}).join('')+'</div>'
+   +'<div style="margin-top:12px;font-size:12.5px;color:#9fb0ae">القراءة '
+   +hhmm(new Date(new Date(D.live.at).getTime()+3*36e5))+' بتوقيت الرياض · '
+   +'اضغط أي بطاقة لتصفية الجدول تحت'+(OPSF!=='all'?' · <b style="color:#ffd79a">مصفّى الآن</b>':'')+'</div></div>';
+
+  h+='<div class="card" style="margin-top:14px"><div class="hd"><div><h2>حالة الكباتن الآن</h2>'
+   +'<p>الحالة اللحظية ومعها تراكم الفترة — اضغط أي صف</p></div>'
+   +'<div style="display:flex;gap:8px;align-items:center">'
+   +'<input id="qq" type="search" placeholder="ابحث بالاسم أو المعرّف" style="min-width:200px">'
+   +(OPSF!=='all'?'<button class="btn sm" id="clrf">إلغاء التصفية</button>':'')+'</div></div>'
+   +'<div class="tblwrap"><table><thead><tr>'
+   +'<th>الكابتن</th><th>الفرع</th><th>الحالة الآن</th><th>آخر طلب</th>'
+   +'<th>WPI</th><th>المسار</th><th>طلبات</th><th>المحتسب</th><th>التحقيق</th>'
+   +'<th>رومينق</th><th>أوفلاين</th>'
+   +'</tr></thead><tbody id="ob"></tbody></table></div></div>';
+
+  h+='<div class="row r-2" style="margin-top:14px"><div class="card">'
+   +'<div class="hd"><div><h2>آخر الأحداث</h2><p>انضمام ومغادرة وانقطاع</p></div></div>'
+   +'<div class="feed" id="feed"></div></div>'
+   +'<div class="card"><div class="hd"><div><h2>الحدود</h2><p>عدّل وشوف التنبيهات تتغيّر</p></div></div>'
+   +'<div class="thgrid">'+[['off','أوفلاين فوق'],['roam','رومينق فوق'],['delay','تأخير فوق'],
+     ['avgHrs','ساعات تحت'],['avgOrd','طلبات تحت'],['dlv','تسليم % تحت']].map(function(x){
+     return '<div class="mline"><span class="nm">'+esc(x[1])+'</span>'
+      +'<input type="number" id="t_'+x[0]+'" value="'+TH[x[0]]+'"></div>';}).join('')+'</div>'
+   +'<button class="btn pri" id="ap" style="margin-top:12px">طبّق</button>'
+   +'<div class="find"><b>ملاحظة على المصدر:</b> حقل «متّصل» يرجع صفراً للجميع حتى والكباتن في طلبات، '
+   +'فما نعتمد عليه. نعتمد <b>حالة العمل</b> و<b>حالة الموقع</b> و<b>آخر طلب مُسلَّم</b>.</div></div></div>';
+  $('view').innerHTML=h;
+  paintOps(); paintFeed();
+  $('view').querySelectorAll('[data-of]').forEach(function(b){
+    b.onclick=function(){OPSF=(OPSF===b.dataset.of)?'all':b.dataset.of;vOps();};});
+  if($('clrf'))$('clrf').onclick=function(){OPSF='all';vOps();};
+  $('qq').oninput=function(){paintOps();};
+  $('ap').onclick=function(){Object.keys(TH).forEach(function(k){var e=$('t_'+k);
+    if(e&&e.value!=='')TH[k]=+e.value;});vOps();};
+  startTick();
+}
+function paintOps(){
+  var q=($('qq')&&$('qq').value||'').trim().toLowerCase();
+  var rows=capsAll().filter(function(c){
+    var L=c.live||{};
+    if(OPSF==='busy'&&!L.busy)return false;
+    if(OPSF==='inArea'&&!(L.inArea&&!L.busy))return false;
+    if(OPSF==='out'&&!(!L.busy&&!L.inArea&&L.ready))return false;
+    if(OPSF==='nr'&&!(!L.ready&&!L.susp))return false;
+    if(OPSF==='susp'&&!L.susp)return false;
+    if(OPSF==='stale'&&!(L.lastH!=null&&L.lastH>=24))return false;
+    if(q&&c.name.toLowerCase().indexOf(q)<0&&String(c.id).indexOf(q)<0)return false;
+    return true;});
+  rows.sort(function(a,b){var A=a.live||{},B=b.live||{};
+    return (B.busy||0)-(A.busy||0)||(B.inArea||0)-(A.inArea||0)||b.wpi-a.wpi;});
+  $('ob').innerHTML=rows.length?rows.map(function(c){
+    return '<tr data-c="'+esc(c.id)+'" style="cursor:pointer">'
+     +'<td class="name"><div style="font-weight:600">'+esc(c.name)+'</div>'
+     +'<div class="sub num" style="direction:ltr">'+esc(c.id)+'</div></td>'
+     +'<td class="sub" style="direction:ltr">'+(c.branch?esc(c.branch):'—')+'</td>'
+     +'<td>'+liveTag(c)+'</td><td class="sub">'+lastTxt(c)+'</td>'
+     +'<td><div class="wcell"><span class="wbar"><i style="width:'+Math.min(100,c.wpi)+'%"></i></span>'
+     +'<b class="num">'+n1(c.wpi)+'</b></div></td>'
+     +'<td>'+spark(ser(c),62,20)+'</td>'
+     +'<td class="num">'+n0(c.totOrd)+'</td>'
+     +'<td class="num">'+n1(c.netHrs)+'</td>'
+     +'<td class="num" style="'+(c.achPct<85?'color:var(--bad);font-weight:600':'')+'">'+n0(c.achPct)+'%</td>'
+     +'<td>'+bd(c.roam,TH.roam)+'</td><td>'+bd(c.off,TH.off)+'</td></tr>';}).join('')
+   :'<tr><td colspan="11" class="sub" style="padding:18px">لا نتائج.</td></tr>';
+  $('ob').querySelectorAll('tr[data-c]').forEach(function(tr){tr.onclick=function(){openCap(tr.dataset.c);};});
+}
+function paintFeed(){var el=$('feed');if(!el)return;
+  el.innerHTML=FEED.map(function(f){return '<div class="fe" data-c="'+esc(f.c.id)+'" style="cursor:pointer">'
+   +'<span class="t num">'+hhmm(f.at)+'</span><span class="d" style="background:'+evC(f.e)+'"></span>'
+   +'<span style="flex:1"><b>'+esc(f.c.name)+'</b> <span class="sub">'+esc(f.e)+'</span></span>'
+   +'<span class="sub" style="direction:ltr">'+esc(f.c.branch||'')+'</span></div>';}).join('');
+  el.querySelectorAll('.fe').forEach(function(x){x.onclick=function(){openCap(x.dataset.c);};});}
+function startTick(){if(TICK)clearInterval(TICK);SEC=60;
+  TICK=setInterval(function(){var e=$('cd');if(!e){clearInterval(TICK);TICK=null;return;}
+    SEC--;if(SEC<=0){SEC=60;
+      var ev=['انضمّ للوردية','غادر الوردية','خرج عن المنطقة','انقطع الاتصال','عاد للاتصال'];
+      FEED.unshift({at:new Date(),c:CAPS[Math.floor(Math.random()*CAPS.length)],
+        e:ev[Math.floor(Math.random()*ev.length)]});FEED=FEED.slice(0,14);paintFeed();}
+    e.textContent='00:'+String(SEC).padStart(2,'0');},1000);}
+
+/* ═════ ④ كروت الموظفين والربط ═════ */
+var EMPS=[];
+/* الربط: معرّف ⇄ موظف بفترة من/إلى — والتاريخ محفوظ */
+var LINKS=[];
+var EQ='', CQ='', PEND=null;
+function empOf(iq){return EMPS.filter(function(e){return e.iq===iq;})[0];}
+function activeLink(cap){return LINKS.filter(function(l){return l.cap===cap&&!l.to;})[0];}
+function histOf(cap){return LINKS.filter(function(l){return l.cap===cap;})
+  .sort(function(a,b){return (b.from||'').localeCompare(a.from||'');});}
+function linksOfEmp(iq){return LINKS.filter(function(l){return l.iq===iq;});}
+
+function vEmp(){
+  var unl=CAPS.filter(function(c){return !activeLink(c.id);});
+  var h='<div class="card"><div class="hd"><div><h2>ربط المعرّف بالموظف</h2>'
+   +'<p>ابحث عن الموظف برقم الإقامة أو الاسم · الربط بفترة من/إلى · والسجل محفوظ</p></div>'
+   +'<span class="pill p-warn">'+unl.length+' معرّف بلا موظف</span></div>'
+   +'<div class="priv"><b>كيف يمشي:</b> تختار المعرّف، تبحث عن الموظف برقم إقامته، '
+   +'تحدّد تاريخ البداية، وتأكّد. لو المعرّف مربوط بموظف سابق، '
+   +'<b>تُقفل فترته بتاريخ النهاية ولا تُحذف</b> — فيبقى أداؤه القديم منسوباً له.</div></div>';
+
+  h+='<div class="row r-2" style="margin-top:14px"><div class="card">'
+   +'<div class="hd"><div><h2>١ · اختر المعرّف</h2><p>'+CAPS.length+' معرّف</p></div></div>'
+   +'<input id="cq" type="search" placeholder="ابحث بالمعرّف أو الاسم" style="width:100%" value="'+esc(CQ)+'">'
+   +'<div class="feed" id="clist" style="max-height:330px;margin-top:10px"></div></div>'
+   +'<div class="card"><div class="hd"><div><h2>٢ · اختر الموظف</h2>'
+   +'<p>بحث برقم الإقامة أو الاسم</p></div></div>'
+   +'<input id="eq" type="search" placeholder="مثال: 2295582585" style="width:100%" value="'+esc(EQ)+'">'
+   +'<div class="feed" id="elist" style="max-height:330px;margin-top:10px"></div></div></div>'
+   +'<div id="cbox"></div>';
+
+  h+='<div class="card" style="margin-top:14px"><div class="hd"><div><h2>المعرّفات المربوطة</h2>'
+   +'<p>الفترة الجارية لكل معرّف · «السجل» يعرض من كان قبله</p></div></div>'
+   +'<div class="tblwrap"><table><thead><tr><th>المعرّف</th><th>الكابتن في نينجا</th><th>الموظف</th>'
+   +'<th>الإقامة</th><th>من</th><th>إلى</th><th>الأداء في الفترة</th><th></th></tr></thead><tbody id="lb"></tbody></table></div></div>';
+  $('view').innerHTML=h;
+  $('cq').oninput=function(){CQ=$('cq').value;paintCList();};
+  $('eq').oninput=function(){
+    EQ=$('eq').value; paintEList();
+    clearTimeout(window.__njEqT);
+    var q=EQ.trim();
+    if(q.length<2) return;
+    window.__njEqT=setTimeout(function(){
+      RPC('ninja_emp_search',{p_q:q,p_limit:60}).then(function(r){
+        EMPS=(r||[]).map(function(e){return {iq:e.iq,nm:e.nm||e.iq,st:e.st||''};});
+        if(EQ.trim()===q) paintEList();
+      }).catch(function(){});
+    },260);
+  };
+  paintCList();paintEList();paintLinks();
+}
+function paintCList(){
+  var q=CQ.trim().toLowerCase();
+  var rows=CAPS.filter(function(c){return !q||c.name.toLowerCase().indexOf(q)>=0||String(c.id).indexOf(q)>=0;})
+   .sort(function(a,b){return (activeLink(a.id)?1:0)-(activeLink(b.id)?1:0)||b.wpi-a.wpi;}).slice(0,60);
+  $('clist').innerHTML=rows.map(function(c){var l=activeLink(c.id),e=l&&empOf(l.iq);
+    return '<div class="fe" data-pc="'+esc(c.id)+'" style="cursor:pointer'
+     +(PEND&&PEND.cap===c.id?';background:var(--brand-soft);border-radius:8px':'')+'">'
+     +'<span style="flex:1"><b>'+esc(c.name)+'</b> <span class="sub num" style="direction:ltr">'+esc(c.id)+'</span>'
+     +'<div class="sub">'+(c.branch?esc(c.branch)+' · ':'')+'WPI '+n1(c.wpi)+' · '+n0(c.totOrd)+' طلب</div></span>'
+     +(l?'<span class="pill p-ok">'+esc((e&&e.nm||'').split(' ').slice(0,2).join(' '))+'</span>'
+        :'<span class="pill p-warn">بلا موظف</span>')+'</div>';}).join('')
+   ||'<p class="sub">لا نتائج.</p>';
+  $('clist').querySelectorAll('[data-pc]').forEach(function(x){
+    x.onclick=function(){PEND={cap:x.dataset.pc,iq:PEND&&PEND.iq||'',from:DAYS[DAYS.length-1]};
+      paintCList();paintEList();};});
+}
+function paintEList(){
+  var q=EQ.trim().toLowerCase();
+  var rows=EMPS.filter(function(e){return !q||e.iq.indexOf(q)>=0||e.nm.toLowerCase().indexOf(q)>=0;});
+  $('elist').innerHTML=(rows.length?rows.map(function(e){
+    var ls=linksOfEmp(e.iq).filter(function(l){return !l.to;});
+    return '<div class="fe" data-pe="'+esc(e.iq)+'" style="cursor:pointer'
+     +(PEND&&PEND.iq===e.iq?';background:var(--brand-soft);border-radius:8px':'')+'">'
+     +'<span style="flex:1"><b>'+esc(e.nm)+'</b>'
+     +'<div class="sub num" style="direction:ltr">'+esc(e.iq)+'</div></span>'
+     +(e.st==='نشط'?'<span class="pill p-ok">نشط</span>':'<span class="pill p-bad">'+esc(e.st)+'</span>')
+     +(ls.length?'<span class="sub" style="margin-inline-start:6px">'+ls.length+' معرّف</span>':'')+'</div>';}).join('')
+   :'<p class="sub">ما فيه موظف بهذا الرقم. تأكّد من الإقامة.</p>')
+   ;
+  $('cbox').innerHTML=(PEND&&PEND.cap&&PEND.iq)?confirmBox():'';
+  $('elist').querySelectorAll('[data-pe]').forEach(function(x){
+    x.onclick=function(){PEND=PEND||{};PEND.iq=x.dataset.pe;PEND.cap=PEND.cap||'';
+      PEND.from=PEND.from||DAYS[DAYS.length-1];paintCList();paintEList();};});
+  if($('cfYes'))$('cfYes').onclick=doLink;
+  if($('cfNo'))$('cfNo').onclick=function(){PEND=null;paintCList();paintEList();};
+  if($('cfFrom'))$('cfFrom').onchange=function(){PEND.from=$('cfFrom').value;paintEList();};
+}
+function confirmBox(){
+  var c=CAPS.filter(function(x){return x.id===PEND.cap;})[0],e=empOf(PEND.iq);
+  if(!c||!e)return '';
+  var old=activeLink(c.id), oe=old&&empOf(old.iq);
+  return '<div class="card" style="margin-top:14px;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-ring)">'
+   +'<h3 style="margin:0 0 10px;color:var(--brand)">تأكيد الربط</h3>'
+   +'<div style="font-size:14px;line-height:2">المعرّف <b style="direction:ltr">'+esc(c.id)+'</b> ('+esc(c.name)+')'
+   +'<br>يُربط بالموظف <b>'+esc(e.nm)+'</b> <span class="num" style="direction:ltr">'+esc(e.iq)+'</span></div>'
+   +'<div class="fld" style="margin-top:10px"><span>من تاريخ</span>'
+   +'<input type="date" id="cfFrom" value="'+esc(PEND.from)+'"></div>'
+   +(old?'<div class="warn-strip" style="margin:12px 0 0"><b>تنبيه — المعرّف مربوط حالياً:</b> '
+      +'<b>'+esc(oe?oe.nm:old.iq)+'</b> منذ '+esc(dAr(old.from))+'. '
+      +'بالتأكيد تُقفل فترته في <b>'+esc(PEND.from)+'</b> ويبدأ الجديد من نفس التاريخ. '
+      +'أداؤه السابق يبقى منسوباً له ولا يُحذف.</div>'
+     :'<div class="find" style="margin-top:12px">هذا المعرّف غير مربوط بأحد — '
+      +'بالتأكيد يبدأ احتساب أدائه لهذا الموظف من التاريخ أعلاه.</div>')
+   +'<div style="display:flex;gap:8px;margin-top:14px">'
+   +'<button class="btn pri" id="cfYes">أكّد الربط</button>'
+   +'<button class="btn" id="cfNo">إلغاء</button></div></div>';
+}
+function doLink(){
+  var cap=PEND.cap, iq=PEND.iq;
+  RPC('ninja_link_set',{p_captain:cap,p_iqama:iq})
+    .then(function(){ return RPC('ninja_links_all'); })
+    .then(function(rows){
+      LINKS=(rows||[]).map(function(l){return {cap:l.cap,iq:l.iq,from:l['from'],to:l.to||'',by:l.by};});
+      vEmp(); TOAST('تم الربط — أداء المعرّف '+cap+' يترحّل لكرت الموظف من اليوم', 6000);
+    }).catch(function(err){ vEmp(); TOAST((err&&err.message)||'تعذّر الربط', 6000); });
+  PEND=null; vEmp();
+}
+function paintLinks(){
+  var act=LINKS.filter(function(l){return !l.to;});
+  $('lb').innerHTML=act.length?act.map(function(l){
+    var c=CAPS.filter(function(x){return x.id===l.cap;})[0],e=empOf(l.iq),hs=histOf(l.cap);
+    return '<tr><td class="num" style="direction:ltr">'+esc(l.cap)+'</td>'
+     +'<td>'+esc(c?c.name:'—')+'</td><td>'+esc(e?e.nm:'—')+'</td>'
+     +'<td class="num" style="direction:ltr">'+esc(l.iq)+'</td>'
+     +'<td class="sub">'+esc(dAr(l.from))+'</td><td><span class="pill p-ok">مفتوح</span></td>'
+     +'<td class="sub">'+(c?'WPI '+n1(c.wpi)+' · '+n0(c.totOrd)+' طلب · '+n1(c.netHrs)+' س':'—')+'</td>'
+     +'<td>'+(hs.length>1?'<button class="btn sm" data-h="'+esc(l.cap)+'">السجل ('+hs.length+')</button>':'')
+     +'</td></tr>';}).join('')
+   :'<tr><td colspan="8" class="sub" style="padding:18px">ما فيه معرّف مربوط.</td></tr>';
+  $('lb').querySelectorAll('[data-h]').forEach(function(b){b.onclick=function(){showHist(b.dataset.h);};});
+}
+function showHist(cap){
+  var hs=histOf(cap),c=CAPS.filter(function(x){return x.id===cap;})[0];
+  $('modal').innerHTML='<div class="mh"><div><div style="font-weight:700;font-size:16px">سجل المعرّف '
+   +esc(cap)+'</div><div class="sub">'+esc(c?c.name:'')+' · من حمله ومتى</div></div>'
+   +'<button class="x" onclick="njCloseCap()">✕</button></div><div class="mb">'
+   +'<div class="tblwrap" style="margin:0"><table><thead><tr><th>الموظف</th><th>الإقامة</th>'
+   +'<th>من</th><th>إلى</th><th>الحالة</th><th>ربطه</th></tr></thead><tbody>'
+   +hs.map(function(l){var e=empOf(l.iq);
+     return '<tr><td>'+esc(e?e.nm:'—')+'</td><td class="num" style="direction:ltr">'+esc(l.iq)+'</td>'
+      +'<td class="sub">'+esc(dAr(l.from))+'</td><td class="sub">'+(l.to?esc(dAr(l.to)):'—')+'</td>'
+      +'<td>'+(l.to?'<span class="pill p-mut">منتهية</span>':'<span class="pill p-ok">جارية</span>')+'</td>'
+      +'<td class="sub">'+esc(l.by||'—')+'</td></tr>';}).join('')
+   +'</tbody></table></div>'
+   +'<div class="find" style="margin-top:12px">لا شيء يُحذف — كل فترة تبقى بتاريخها، '
+   +'فأداء كل موظف منسوب له في وقته.</div></div>';
+  $('mask').classList.add('on');document.body.style.overflow='hidden';
+}
+
+/* ═════ التنقّل ═════ */
+  /* ═════ الربط التلقائي بساموراي — لمدير النظام ═════ */
+  function njWhen(iso){ if(!iso) return '—';
+    return new Date(iso).toLocaleString('en-GB',{day:'2-digit',month:'2-digit',
+      hour:'2-digit',minute:'2-digit'}).replace(',',' '); }
+  function bookmarklet(){
+    var target = location.origin + location.pathname + '#ninja-link';
+    var fn = function(){
+      var T='@@T@@', tk, rt;
+      try { tk=localStorage.getItem('token'); rt=localStorage.getItem('refresh_token'); } catch(e){}
+      if(!tk){ alert('سجّل دخولك في ساموراي أولاً، ثم اضغط الزر من داخل الصفحة.'); return; }
+      var exp=function(t){ try{ return JSON.parse(atob(t.split('.')[1].replace(/-/g,'+')
+        .replace(/_/g,'/'))).exp*1000; }catch(e){ return null; } };
+      var B='https://api.samurai.delivery/supplier/';
+      var C=['admin/users/token/refresh','auth/refresh','admin/users/refresh','admin/auth/refresh',
+             'users/token/refresh','token/refresh','refresh','admin/users/refresh_token'];
+      var probe=function(i){
+        if(!rt||i>=C.length) return Promise.resolve(null);
+        return fetch(B+C[i],{method:'POST',headers:{'authorization':'Bearer '+rt,
+            'accept-language':'en','content-type':'application/json'},body:'{}'})
+          .then(function(r){ if(r.status!==200) return probe(i+1);
+            return r.json().then(function(j){
+              var t=j&&(j.token||j.access_token||(j.data&&(j.data.token||
+                    (j.data.attributes&&j.data.attributes.token))));
+              return t?C[i]:probe(i+1); }).catch(function(){ return probe(i+1); }); })
+          .catch(function(){ return probe(i+1); });
+      };
+      probe(0).then(function(path){
+        if(path||!rt) return path;
+        return fetch(B+'captains?page%5Bnumber%5D=1&page%5Bsize%5D=1',
+            {headers:{'authorization':'Bearer '+rt,'accept-language':'en'}})
+          .then(function(r){ return r.status===200?'direct':null; }).catch(function(){ return null; });
+      }).then(function(path){
+        var pay=(path==='direct')
+          ? {afmc:'ninja-link',v:2,access:rt,access_exp:exp(rt),refresh:rt,refresh_exp:exp(rt),path:'direct'}
+          : {afmc:'ninja-link',v:2,access:tk,access_exp:exp(tk),
+             refresh:path?rt:null,refresh_exp:rt?exp(rt):null,path:path};
+        try{ window.name=JSON.stringify(pay); }catch(e){ alert('تعذّر التسليم'); return; }
+        location.href=T;
+      });
+    };
+    return 'javascript:' + encodeURIComponent('('+fn.toString().replace('@@T@@',target)+')()');
+  }
+  function vLnk(){
+    $('view').innerHTML='<div class="card"><p class="sub">جارٍ…</p></div>';
+    Promise.all([ RPC('ninja_auth_status'), RPC('ninja_pull_history',{p_limit:20}) ])
+      .then(function(r){ paintLnk(r[0], r[1]||[]); })
+      .catch(function(e){ $('view').innerHTML='<div class="card"><p class="sub">تعذّرت القراءة — '
+        +esc((e&&e.message)||'')+'</p></div>'; });
+  }
+  function paintLnk(a, log){
+    var direct = a.mode==='long' && a.refresh_exp && a.access_exp
+                 && Math.abs(new Date(a.refresh_exp)-new Date(a.access_exp))<6e4;
+    var left = a.access_exp ? (new Date(a.access_exp)-Date.now())/36e5 : -1;
+    var lim  = a.mode==='long' ? 168 : 4;
+    var h='<div class="card"><div class="hd"><div><h2>حالة الربط بساموراي</h2>'
+     +'<p>'+(a.linked ? (direct?'تلقائي بالكامل — المفتاح الطويل يُستعمل مباشرة، بلا تجديد وبلا ضغطة'
+                        : a.mode==='long'?'طويل — المنصة تجدّد المفتاح لحالها'
+                        : 'يومي — المفتاح ينتهي كل ٢٤ ساعة')
+                     : 'غير مربوط')+'</p></div>'
+     +'<span class="pill '+(a.linked&&a.access_valid?'p-ok':'p-warn')+'">'
+     +(a.linked?(a.access_valid?'يعمل':'منتهي'):'غير مربوط')+'</span></div>';
+    if(a.linked) h+='<div style="font-size:13.5px;line-height:2.1">'
+     +'المفتاح ينتهي: <b>'+njWhen(a.access_exp)+'</b>'
+     +(left>0?' <span class="sub">(باقي '+(left>=48?Math.round(left/24)+' يوم':Math.max(0,Math.round(left))+' ساعة')+')</span>':'')
+     +'<br>آخر سحب ناجح: <b>'+(a.last_ok_at?njWhen(a.last_ok_at):'—')+'</b>'
+     +'<br>المخزون: <b>'+n0(a.stored_days)+'</b> يوم · آخر يوم <b>'+esc(a.last_day||'—')+'</b>'
+     +(a.last_err?'<br><span style="color:var(--bad)">آخر خطأ: '+esc(a.last_err)+'</span>':'')
+     +'</div>';
+    if(!a.linked || left<lim) h+='<div class="warn-strip" style="margin-top:12px"><b>'
+     +(left<=0?'السحب واقف':'المفتاح قارب ينتهي')+'</b> — اسحب الزر تحت لشريط المفضّلة '
+     +'واضغطه وأنت داخل ساموراي.</div>';
+    h+='<div style="margin-top:14px"><a class="btn pri" id="bmk" href="#" '
+     +'style="text-decoration:none;cursor:grab">اربط المنصة بساموراي</a>'
+     +'<div class="sub" style="margin-top:7px">لو عندك الزر من قبل: <b>اسحبه من جديد</b> — '
+     +'النسخة الجديدة تفحص إن كان ساموراي يقبل المفتاح الطويل (٩٠ يوم).</div></div>'
+     +(a.linked?'<div style="display:flex;gap:8px;margin-top:12px">'
+       +'<button class="btn sm" id="pullnow">اسحب الآن</button>'
+       +'<button class="btn sm" id="unlink">فصل الربط</button></div>':'')
+     +'</div>';
+    h+='<div class="card" style="margin-top:14px"><div class="hd"><div><h2>سجل السحب</h2>'
+     +'<p>آخر ٢٠ عملية</p></div></div><div class="tblwrap"><table><thead><tr>'
+     +'<th>الوقت</th><th>النوع</th><th>المدى</th><th>صفوف</th><th>المدة</th><th>النتيجة</th>'
+     +'</tr></thead><tbody>'
+     + (log.length ? log.map(function(r){
+         var kn={perf:'أداء',live:'حالة',backfill:'تعويض'}[r[1]]||r[1];
+         return '<tr><td class="sub">'+njWhen(r[0])+'</td><td>'+esc(kn)+'</td>'
+          +'<td class="sub">'+(r[2]?esc(r[2])+' → '+esc(r[3]):'—')+'</td>'
+          +'<td class="num">'+n0(r[4])+'</td>'
+          +'<td class="num">'+(r[5]==null?'—':(Math.round(r[5]/100)/10)+' ث')+'</td>'
+          +'<td>'+(r[6]?'<span class="pill p-ok">تمّت</span>'
+                      :'<span class="pill p-bad">'+esc(r[7]||'فشل')+'</span>')+'</td></tr>';}).join('')
+       : '<tr><td colspan="6" class="sub">ما فيه سحبات بعد.</td></tr>')
+     +'</tbody></table></div></div>';
+    $('view').innerHTML=h;
+    $('bmk').href=bookmarklet();
+    $('bmk').onclick=function(e){ e.preventDefault();
+      TOAST('اسحب الزر لشريط المفضّلة — ما يشتغل بالضغط من هنا، لازم تضغطه داخل صفحة ساموراي',7000); };
+    if($('pullnow')) $('pullnow').onclick=function(){
+      var b=$('pullnow'); b.disabled=true; b.textContent='جارٍ…';
+      RPC('ninja_tick_perf',{p_back:2}).then(function(r){
+        TOAST(r.ok?('تمّ — '+n0(r.rows)+' صف'):('تعذّر: '+r.err),6000); vLnk();
+      }).catch(function(e){ b.disabled=false; b.textContent='اسحب الآن'; TOAST(e.message,6000); }); };
+    if($('unlink')) $('unlink').onclick=function(){
+      if(!confirm('أمسح مفتاح ساموراي من المنصة؟ السحب التلقائي بيوقف.')) return;
+      RPC('ninja_unlink').then(function(){ TOAST('انفصل الربط'); vLnk(); })
+        .catch(function(e){ TOAST(e.message,5000); }); };
+  }
+
+
+  var TAB='gen',V={gen:vGen,hrs:vHrs,ops:vOps,emp:vEmp,lnk:vLnk};
+function go(t){TAB=t; NJROOT.querySelector('.filters').style.display=(t==='lnk'?'none':'');if(TICK&&t!=='ops'){clearInterval(TICK);TICK=null;}
+  V[t]();NJROOT.querySelectorAll('#nav button').forEach(function(b){b.classList.toggle('on',b.dataset.t===t);});
+  NJROOT.scrollIntoView({block:'start',behavior:'smooth'});}
+  /* ═════ الوصل بالمنصة ═════ */
+  function wire(){
+    NJROOT.querySelectorAll('#nav button').forEach(function(b){
+      b.onclick=function(){ go(b.dataset.t); }; });
+    $('mask').addEventListener('click',function(e){ if(e.target===$('mask')) closeCap(); });
+    document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeCap(); });
+  }
+  function busy(on){ NJROOT.classList.toggle('njbusy', !!on); }
+
+  /* المدى يُسحب من القاعدة — الفلاتر الباقية تشتغل محلياً فوراً */
+  function fetchRange(from,to){
+    busy(true);
+    return RPC('ninja_page',{p_from:from,p_to:to,p_city:null,p_branch:null,p_min_days:1})
+      .then(function(d){
+        STOCK = d.stock||{};
+        hydrate(d);
+        if(!F.from){ F.from=DAYS[0]||from; F.to=DAYS[DAYS.length-1]||to; }
+        busy(false);
+      }).catch(function(e){ busy(false);
+        NJROOT.querySelector('#view').innerHTML =
+          '<div class="card"><p class="sub">تعذّرت القراءة — '+esc((e&&e.message)||'')+'</p></div>';
+        throw e; });
+  }
+  function reloadRange(){
+    if(F.from>F.to){ var t=F.from; F.from=F.to; F.to=t; }
+    fetchRange(F.from,F.to).then(function(){ redraw(); });
+  }
+  /* التنبيهات تغذّي شريط «آخر الأحداث» في العمليات */
+  function fetchAlerts(){
+    return RPC('ninja_ops').then(function(o){ ALERTS=o.alerts||[]; FEED=[]; })
+                           .catch(function(){ ALERTS=[]; FEED=[]; });
+  }
+  function fetchLinks(){
+    return Promise.all([ RPC('ninja_links_all'), RPC('ninja_emp_search',{p_q:null,p_limit:200}) ])
+      .then(function(r){
+        LINKS=(r[0]||[]).map(function(l){return {cap:l.cap,iq:l.iq,from:l['from'],to:l.to||'',by:l.by};});
+        EMPS =(r[1]||[]).map(function(e){return {iq:e.iq,nm:e.nm||e.iq,st:e.st||''};});
+      }).catch(function(){ LINKS=[]; EMPS=[]; });
+  }
+
+  var started=false;
+  function load(){
+    wire();
+    if(started){ redraw(); return Promise.resolve(); }
+    started=true;
+    return RPC('ninja_range').then(function(r){
+      STOCK={from:r.from,to:r.to};
+      if(!r.to){ NJROOT.querySelector('#view').innerHTML=
+        '<div class="card"><p class="sub">ما فيه بيانات مخزّنة بعد.</p></div>'; return; }
+      var to=r.to, d=new Date(to+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()-6);
+      var from=d.toISOString().slice(0,10); if(from<r.from) from=r.from;
+      F.from=from; F.to=to;
+      return fetchRange(from,to)
+        .then(fetchAlerts).then(fetchLinks)
+        .then(function(){ renderFilters(); go('gen'); });
+    });
+  }
+  window.njCloseCap = closeCap;
+  return { load:load, refreshOps:function(){ return fetchAlerts().then(function(){ if(TAB==='ops') vOps(); }); } };
+
+
+
+};
+
 </script>
 </body>
 </html>
