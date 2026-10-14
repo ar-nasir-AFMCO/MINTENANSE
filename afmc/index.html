@@ -1291,7 +1291,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261014173642";
+  var BUILD = "20261014180000";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -3869,6 +3869,11 @@ function hhmm(d){return String(d.getHours()).padStart(2,'0')+':'+String(d.getMin
 
 var D=null, DAYS=[], CITY={}, ASOF=new Date(), CC={}, DC={}, LIVE={},
     CAPS=[], DAILY=[], BR=[], ALERTS=[], TARGET=12;
+  var STOP={ days:5, ids:{}, lastWork:{}, today:null }, SHOWSTOP=false, RELINK=[];
+  function isStop(id){ return !!STOP.ids[String(id)]; }
+  function stopDays(id){ var d=STOP.lastWork[String(id)];
+    if(!d||!STOP.today) return null;
+    return Math.round((new Date(STOP.today+'T00:00:00Z')-new Date(d+'T00:00:00Z'))/864e5); }
 function hydrate(Dx){ D=Dx;
 DAYS=D.days; CITY=D.cities; ASOF=new Date(D.asof);
 CC={}; D.capCols.forEach(function(k,i){CC[k]=i;});
@@ -4017,7 +4022,10 @@ function paintModal(){
    +'<div><div style="font-weight:700;font-size:16px">'+esc(c.name)+'</div>'
    +'<div class="sub"><span class="num" style="direction:ltr">'+esc(c.id)+'</span>'
    +(c.branch?' · <span style="direction:ltr">'+esc(c.branch)+'</span> · '+esc(CITY[c.city]||''):' · فرع غير معروف')
-   +' · '+c.days+' يوم عمل</div></div><button class="x" onclick="njCloseCap()">✕</button></div>'
+   +' · '+c.days+' يوم عمل'
+   +(isStop(c.id)?' · <span class="pill p-bad">متوقّف عن العمل'
+      +(stopDays(c.id)?' منذ '+stopDays(c.id)+' يوم':'')+'</span>':'')
+   +'</div></div><button class="x" onclick="njCloseCap()">✕</button></div>'
    +'<div class="mb"><div class="tabs2" id="mt">'
    +['sum:الخلاصة','hrs:الدوام التفصيلي','cmp:مقابل الفريق','his:الأيام'].map(function(x){
      var p=x.split(':');return '<button class="'+(MTAB===p[0]?'on':'')+'" data-m="'+p[0]+'">'+p[1]+'</button>';}).join('')
@@ -4229,7 +4237,11 @@ function vGen(){
     $('ss').querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b);});pt();};});
   pt();
 }
-function liveTag(c){var L=c.live; if(!L) return '<span class="pill p-mut">لا قراءة</span>';
+function liveTag(c){
+  if(isStop(c.id)){ var dd=stopDays(c.id);
+    return '<span class="pill p-bad" title="ما داوم أكثر من '+STOP.days+' أيام">متوقّف عن العمل'
+      +(dd?' · '+dd+' يوم':'')+'</span>'; }
+  var L=c.live; if(!L) return '<span class="pill p-mut">لا قراءة</span>';
   if(L.susp) return '<span class="pill p-bad">موقوف</span>';
   if(L.busy) return '<span class="pill p-ok">في طلب</span>';
   if(L.inArea) return '<span class="pill p-mut">داخل المنطقة · فاضي</span>';
@@ -4388,6 +4400,9 @@ function vOps(){
       +'background:rgba(255,255,255,'+(OPSF===x[3]?'.14':'.05')+');border-color:rgba(255,255,255,'
       +(OPSF===x[3]?'.3':'.1')+')"><div class="v num" style="color:'+(x[2]||'#fff')+'">'+x[1]+'</div>'
       +'<div class="l" style="color:#9fb0ae">'+esc(x[0])+'</div></div>';}).join('')+'</div>'
+   +(SHOWSTOP?'<div class="warn-strip" style="margin-top:12px"><b>تعرض الآن المتوقّفين عن العمل</b> — '
+       +'ما داوموا أكثر من '+STOP.days+' أيام. يرجعون للتشغيل تلقائياً أول ما يداومون، '
+       +'ومعرّفاتهم تنتظر إعادة ربط في تبويب «الربط بالموظفين».</div>':'')
    +'<div style="margin-top:12px;font-size:12.5px;color:#9fb0ae">القراءة '
    +hhmm(new Date(new Date(D.live.at).getTime()+3*36e5))+' بتوقيت الرياض · '
    +'اضغط أي بطاقة لتصفية الجدول تحت'+(OPSF!=='all'?' · <b style="color:#ffd79a">مصفّى الآن</b>':'')+'</div></div>';
@@ -4395,6 +4410,7 @@ function vOps(){
   h+='<div class="card" style="margin-top:14px"><div class="hd"><div><h2>حالة الكباتن الآن</h2>'
    +'<p>الحالة اللحظية ومعها تراكم الفترة — اضغط أي صف</p></div>'
    +'<div style="display:flex;gap:8px;align-items:center">'
+   +'<button class="btn sm hide" id="stopBtn" style="margin-inline-end:8px"></button>'
    +'<input id="qq" type="search" placeholder="ابحث بالاسم أو المعرّف" style="min-width:200px">'
    +(OPSF!=='all'?'<button class="btn sm" id="clrf">إلغاء التصفية</button>':'')+'</div></div>'
    +'<div class="tblwrap"><table><thead><tr>'
@@ -4428,6 +4444,7 @@ function paintOps(){
   var q=($('qq')&&$('qq').value||'').trim().toLowerCase();
   var rows=capsAll().filter(function(c){
     var L=c.live||{};
+    if(isStop(c.id)!==SHOWSTOP) return false;   /* المتوقّف خارج التشغيل حتى يداوم */
     if(OPSF==='busy'&&!L.busy)return false;
     if(OPSF==='inArea'&&!(L.inArea&&!L.busy))return false;
     if(OPSF==='out'&&!(!L.busy&&!L.inArea&&L.ready))return false;
@@ -4452,7 +4469,12 @@ function paintOps(){
      +'<td class="num" style="'+(c.achPct<85?'color:var(--bad);font-weight:600':'')+'">'+n0(c.achPct)+'%</td>'
      +'<td>'+bd(c.roam,TH.roam)+'</td><td>'+bd(c.off,TH.off)+'</td></tr>';}).join('')
    :'<tr><td colspan="11" class="sub" style="padding:18px">لا نتائج.</td></tr>';
+  var sb=$('stopBtn');
+  if(sb){ var nst=capsAll().filter(function(c){return isStop(c.id);}).length;
+    sb.textContent=(SHOWSTOP?'ارجع للعاملين':'متوقّفون '+nst);
+    sb.classList.toggle('hide', !nst && !SHOWSTOP); }
   $('ob').querySelectorAll('tr[data-c]').forEach(function(tr){tr.onclick=function(){openCap(tr.dataset.c);};});
+  if($('stopBtn')) $('stopBtn').onclick=function(){ SHOWSTOP=!SHOWSTOP; vOps(); };
 }
 function paintFeed(){var el=$('feed');if(!el)return;
   el.innerHTML=FEED.map(function(f){return '<div class="fe" data-c="'+esc(f.c.id)+'" style="cursor:pointer">'
@@ -4489,6 +4511,29 @@ function vEmp(){
    +'تحدّد تاريخ البداية، وتأكّد. لو المعرّف مربوط بموظف سابق، '
    +'<b>تُقفل فترته بتاريخ النهاية ولا تُحذف</b> — فيبقى أداؤه القديم منسوباً له.</div></div>';
 
+  if(RELINK.length){
+    h+='<div class="card" style="margin-top:14px;border-color:var(--warn)">'
+     +'<div class="hd"><div><h2 style="color:var(--warn)">يحتاج إعادة ربط</h2>'
+     +'<p>معرّفات متوقّفة عن العمل أكثر من '+STOP.days+' أيام وما زالت مربوطة بموظف</p></div>'
+     +'<span class="pill p-warn">'+RELINK.length+'</span></div>'
+     +'<div class="priv" style="margin-bottom:10px">الكابتن توقّف، والمعرّف غالباً انتقل لموظف ثاني. '
+     +'<b>غيّر الموظف</b> يفتح لك الربط على نفس المعرّف — تختار الموظف الجديد وتُقفل فترة القديم بتاريخها. '
+     +'أو <b>أنهِ الربط</b> لو المعرّف ما عاد يُستعمل. ولا شي ينحذف.</div>'
+     +'<div class="tblwrap" style="margin:0"><table><thead><tr><th>المعرّف</th><th>الكابتن</th>'
+     +'<th>الفرع</th><th>الموظف الحالي</th><th>آخر دوام</th><th>أيام التوقّف</th><th></th>'
+     +'</tr></thead><tbody>'
+     + RELINK.map(function(r){
+        return '<tr><td class="num" style="direction:ltr">'+esc(r.cap)+'</td>'
+         +'<td>'+esc(r.name||'—')+'</td>'
+         +'<td class="sub" style="direction:ltr">'+esc(r.branch||'—')+'</td>'
+         +'<td>'+esc(r.emp||r.iq)+'<div class="sub num" style="direction:ltr">'+esc(r.iq)+'</div></td>'
+         +'<td class="sub">'+esc(dAr(r.last))+'</td>'
+         +'<td class="num"><span class="pill p-warn">'+n0(r.idle_days)+' يوم</span></td>'
+         +'<td style="white-space:nowrap"><button class="btn sm" data-rl="'+esc(r.cap)+'">غيّر الموظف</button> '
+         +'<button class="btn sm" data-re="'+esc(r.cap)+'">أنهِ الربط</button></td></tr>';}).join('')
+     +'</tbody></table></div></div>';
+  }
+
   h+='<div class="row r-2" style="margin-top:14px"><div class="card">'
    +'<div class="hd"><div><h2>١ · اختر المعرّف</h2><p>'+CAPS.length+' معرّف</p></div></div>'
    +'<input id="cq" type="search" placeholder="ابحث بالمعرّف أو الاسم" style="width:100%" value="'+esc(CQ)+'">'
@@ -4517,6 +4562,23 @@ function vEmp(){
       }).catch(function(){});
     },260);
   };
+  document.querySelectorAll('#njp [data-rl]').forEach(function(b){
+    b.onclick=function(){
+      PEND={cap:b.dataset.rl, iq:'', from:(DAYS[DAYS.length-1]||STOP.today)};
+      CQ=b.dataset.rl; EQ=''; vEmp();
+      var e=$('eq'); if(e) e.focus();
+      TOAST('اختر الموظف الجديد لهذا المعرّف — فترة الموظف السابق تُقفل بتاريخها ولا تُحذف', 8000);
+    };});
+  document.querySelectorAll('#njp [data-re]').forEach(function(b){
+    b.onclick=function(){
+      if(!confirm('أنهي ربط المعرّف '+b.dataset.re+'؟ الفترة تُقفل بتاريخ اليوم ولا تُحذف.')) return;
+      RPC('ninja_link_end',{p_captain:b.dataset.re})
+        .then(function(){ return Promise.all([RPC('ninja_links_all'), RPC('ninja_relink_queue')]); })
+        .then(function(r){
+          LINKS=(r[0]||[]).map(function(l){return {cap:l.cap,iq:l.iq,from:l['from'],to:l.to||'',by:l.by};});
+          RELINK=r[1]||[]; vEmp(); TOAST('انتهى الربط — السجل محفوظ',4000);
+        }).catch(function(e){ TOAST((e&&e.message)||'تعذّر',5000); });
+    };});
   paintCList();paintEList();paintLinks();
 }
 function paintCList(){
@@ -4579,9 +4641,10 @@ function confirmBox(){
 function doLink(){
   var cap=PEND.cap, iq=PEND.iq;
   RPC('ninja_link_set',{p_captain:cap,p_iqama:iq})
-    .then(function(){ return RPC('ninja_links_all'); })
-    .then(function(rows){
-      LINKS=(rows||[]).map(function(l){return {cap:l.cap,iq:l.iq,from:l['from'],to:l.to||'',by:l.by};});
+    .then(function(){ return Promise.all([RPC('ninja_links_all'), RPC('ninja_relink_queue')]); })
+    .then(function(r){
+      LINKS=(r[0]||[]).map(function(l){return {cap:l.cap,iq:l.iq,from:l['from'],to:l.to||'',by:l.by};});
+      RELINK=r[1]||[];
       vEmp(); TOAST('تم الربط — أداء المعرّف '+cap+' يترحّل لكرت الموظف من اليوم', 6000);
     }).catch(function(err){ vEmp(); TOAST((err&&err.message)||'تعذّر الربط', 6000); });
   PEND=null; vEmp();
@@ -4903,6 +4966,13 @@ function go(t){TAB=t; NJROOT.querySelector('.filters').style.display=(t==='lnk'?
     fetchRange(F.from,F.to).then(function(){ redraw(); });
   }
   /* التنبيهات تغذّي شريط «آخر الأحداث» في العمليات */
+  function fetchStopped(){
+    return Promise.all([ RPC('ninja_stopped'), RPC('ninja_relink_queue') ]).then(function(r){
+      var s=r[0]||{}; STOP={ days:s.stop_days||5, ids:{}, lastWork:s.lastWork||{}, today:s.today };
+      (s.ids||[]).forEach(function(id){ STOP.ids[String(id)]=1; });
+      RELINK=r[1]||[];
+    }).catch(function(){ STOP={days:5,ids:{},lastWork:{},today:null}; RELINK=[]; });
+  }
   function fetchAlerts(){
     return RPC('ninja_ops').then(function(o){ ALERTS=o.alerts||[]; FEED=[]; })
                            .catch(function(){ ALERTS=[]; FEED=[]; });
@@ -4928,7 +4998,7 @@ function go(t){TAB=t; NJROOT.querySelector('.filters').style.display=(t==='lnk'?
       var from=d.toISOString().slice(0,10); if(from<r.from) from=r.from;
       F.from=from; F.to=to;
       return fetchRange(from,to)
-        .then(fetchAlerts).then(fetchLinks)
+        .then(fetchStopped).then(fetchAlerts).then(fetchLinks)
         .then(function(){ renderFilters(); go('gen'); });
     });
   }
