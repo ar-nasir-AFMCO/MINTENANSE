@@ -1291,7 +1291,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261014180000";
+  var BUILD = "20261014190722";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -4509,7 +4509,9 @@ function vEmp(){
    +'<span class="pill p-warn">'+unl.length+' معرّف بلا موظف</span></div>'
    +'<div class="priv"><b>كيف يمشي:</b> تختار المعرّف، تبحث عن الموظف برقم إقامته، '
    +'تحدّد تاريخ البداية، وتأكّد. لو المعرّف مربوط بموظف سابق، '
-   +'<b>تُقفل فترته بتاريخ النهاية ولا تُحذف</b> — فيبقى أداؤه القديم منسوباً له.</div></div>';
+   +'<b>تُقفل فترته بتاريخ النهاية ولا تُحذف</b> — فيبقى أداؤه القديم منسوباً له. '
+   +'والربط ينحفظ في <b>كرت الموظف في وثيق</b> مباشرة، لا في جدول منفصل. '
+   +'ونقل معرّف من موظف لآخر من صلاحية المدير.</div></div>';
 
   if(RELINK.length){
     h+='<div class="card" style="margin-top:14px;border-color:var(--warn)">'
@@ -4641,12 +4643,19 @@ function confirmBox(){
 function doLink(){
   var cap=PEND.cap, iq=PEND.iq;
   RPC('ninja_link_set',{p_captain:cap,p_iqama:iq})
-    .then(function(){ return Promise.all([RPC('ninja_links_all'), RPC('ninja_relink_queue')]); })
-    .then(function(r){
-      LINKS=(r[0]||[]).map(function(l){return {cap:l.cap,iq:l.iq,from:l['from'],to:l.to||'',by:l.by};});
-      RELINK=r[1]||[];
-      vEmp(); TOAST('تم الربط — أداء المعرّف '+cap+' يترحّل لكرت الموظف من اليوم', 6000);
-    }).catch(function(err){ vEmp(); TOAST((err&&err.message)||'تعذّر الربط', 6000); });
+    .then(function(res){
+      /* المعرّف عند موظف آخر: نقله من صلاحية المدير في وثيق */
+      if (res && res.ok === false && res.needs_manager) { vEmp(); TOAST(res.msg, 12000); return null; }
+      return Promise.all([RPC('ninja_links_all'), RPC('ninja_relink_queue')]).then(function(r){
+        LINKS=(r[0]||[]).map(function(l){return {cap:l.cap,iq:l.iq,from:l['from'],to:l.to||'',by:l.by};});
+        RELINK=r[1]||[];
+        vEmp();
+        TOAST(res && res.transferred
+          ? 'انتقل المعرّف '+cap+' — فترة '+((res.prev&&res.prev.nm)||'السابق')+' أُقفلت وحُفظت في سجل وثيق'
+          : (res && res.same ? 'هذا الربط موجود أصلاً'
+             : 'تم الربط — المعرّف '+cap+' صار في كرت الموظف في وثيق'), 7000);
+      });
+    }).catch(function(err){ vEmp(); TOAST((err&&err.message)||'تعذّر الربط', 8000); });
   PEND=null; vEmp();
 }
 function paintLinks(){
