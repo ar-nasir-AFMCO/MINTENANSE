@@ -1291,7 +1291,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261014170703";
+  var BUILD = "20261014173642";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -4081,18 +4081,45 @@ function paintModal(){
          +'<b class="num" style="color:'+(Math.abs(pct)<2?'var(--muted)':col)+'">'+m.f(v)
          +'<em>'+(pct>=0?'+':'−')+Math.abs(pct).toFixed(0)+'%</em></b></div>';}).join('');}).join('');
   } else {
-    var ix2=dIdx();
-    mc.innerHTML='<div class="tblwrap" style="margin:0"><table><thead><tr><th>اليوم</th><th>WPI</th>'
-     +'<th>الحالة</th></tr></thead><tbody>'
-     +ix2.slice().reverse().map(function(i){var v=c.ser[i];
-       return '<tr><td>'+esc(dDay(DAYS[i]))+' '+esc(dAr(DAYS[i]))+'</td>'
-        +'<td class="num">'+(v==null?'—':v)+'</td>'
-        +'<td>'+(v==null?'<span class="pill p-mut">لم يعمل</span>'
-          :v>=85?'<span class="pill p-ok">ممتاز</span>'
-          :v>=70?'<span class="pill p-mut">مقبول</span>':'<span class="pill p-warn">ضعيف</span>')+'</td></tr>';}).join('')
-     +'</tbody></table></div>'
-     +'<div class="find" style="margin-top:12px">تفصيل كل مؤشر ليوم واحد متاح في المصدر — '
-     +'في المنصة يُعرض هنا كامل الصف اليومي لكل كابتن.</div>';
+    var key=c.id+'|'+F.from+'|'+F.to;
+    if(DAYROWS.key!==key){
+      mc.innerHTML='<p class="sub">جارٍ تحميل أيامه…</p>';
+      RPC('ninja_days_of',{p_captain:c.id,p_from:F.from,p_to:F.to}).then(function(rows){
+        DAYROWS={key:key,rows:rows||[]}; if(MTAB==='his'&&window.__CAP&&window.__CAP.id===c.id) paintModal();
+      }).catch(function(e){ mc.innerHTML='<p class="sub">تعذّرت القراءة — '+esc((e&&e.message)||'')+'</p>'; });
+      return;
+    }
+    var R=DAYROWS.rows, byD={}; R.forEach(function(r){ byD[r.d]=r; });
+    mc.innerHTML='<div class="bar2" style="margin:0 0 10px;display:flex;gap:8px;align-items:center">'
+     +'<span class="sub" style="flex:1">المطلوب '+TARGET+' ساعة في اليوم · المحتسب = الاتصال − الرومينق − الأوفلاين</span>'
+     +'<button class="btn sm" id="xcap">تصدير أيامه Excel</button></div>'
+     +'<div class="tblwrap" style="margin:0"><table><thead><tr><th>اليوم</th><th>طلبات</th>'
+     +'<th>ساعات الاتصال</th><th>المحتسبة</th><th>من '+TARGET+'س</th><th>نشطة</th>'
+     +'<th>تسليم%</th><th>تأخير د</th><th>رومينق د</th><th>أوفلاين د</th><th>WPI</th><th>الحالة</th>'
+     +'</tr></thead><tbody>'
+     +days().slice().reverse().map(function(dd){
+       var r=byD[dd];
+       if(!r) return '<tr><td>'+esc(dDay(dd))+' '+esc(dAr(dd))+'</td>'
+         +'<td colspan="10" class="sub">—</td><td><span class="pill p-mut">لم يعمل</span></td></tr>';
+       var net=+r.net, pct=TARGET?100*net/TARGET:null;
+       var w=Math.min(100,Math.max(0,+r.orders/25*100))*0.4
+            +(+r.dlv||0)*0.4 + Math.min(100,Math.max(0,+r.hours/12*100))*0.2;
+       return '<tr><td>'+esc(dDay(dd))+' '+esc(dAr(dd))+'</td>'
+        +'<td class="num">'+n0(r.orders)+'</td>'
+        +'<td class="num">'+n1(r.hours)+'</td>'
+        +'<td class="num"><b>'+n1(net)+'</b></td>'
+        +'<td class="num"><span class="pill '+(pct>=95?'p-ok':pct>=80?'p-mut':'p-warn')+'">'+n0(pct)+'%</span></td>'
+        +'<td class="num">'+n1(r.active)+'</td>'
+        +'<td class="num">'+n1(r.dlv)+'</td>'
+        +'<td class="num">'+n0(r.delay)+'</td>'
+        +'<td class="num">'+n0(r.roam)+'</td>'
+        +'<td class="num">'+n0(r.off)+'</td>'
+        +'<td class="num">'+n0(w)+'</td>'
+        +'<td>'+(w>=85?'<span class="pill p-ok">ممتاز</span>'
+          :w>=70?'<span class="pill p-mut">مقبول</span>':'<span class="pill p-warn">ضعيف</span>')+'</td></tr>';
+     }).join('')
+     +'</tbody></table></div>';
+    $('xcap').onclick=function(){ exportCaptain(c, R); };
   }
 }
 
@@ -4153,6 +4180,7 @@ function vGen(){
   h+='<div class="card" style="margin-top:14px"><div class="hd"><div><h2>الكباتن</h2>'
    +'<p>'+CP.length+' كابتن داوم '+F.min+' أيام فأكثر'
    +(capsFew().length?' · '+capsFew().length+' مستبعَد لقلّة الأيام':'')+' · اضغط أي صف</p></div>'
+   +'<button class="btn sm" id="xcaps" style="margin-inline-end:8px">تصدير Excel</button>'
    +'<div class="seg" id="ss"><button class="on" data-s="wpi">WPI</button><button data-s="totOrd">الطلبات</button>'
    +'<button data-s="gap">النقص عن ١٢ س</button><button data-s="off">الأوفلاين</button></div></div>'
    +'<div class="tblwrap"><table><thead><tr><th>#</th><th>الكابتن</th><th>الفرع</th><th>الحالة الآن</th>'
@@ -4196,6 +4224,7 @@ function vGen(){
        +'<td>'+bd(c.off,TH.off)+'</td><td>'+bd(c.roam,TH.roam)+'</td><td>'+bd(c.delay,TH.delay)+'</td>'
        +'<td class="num" style="color:var(--muted)">'+c.days+'</td></tr>';}).join('');
     $('gb').querySelectorAll('tr[data-c]').forEach(function(tr){tr.onclick=function(){openCap(tr.dataset.c);};});}
+  if($('xcaps')) $('xcaps').onclick=function(){ exportCaps($('xcaps')); };
   $('ss').querySelectorAll('button').forEach(function(b){b.onclick=function(){sk=b.dataset.s;
     $('ss').querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b);});pt();};});
   pt();
@@ -4224,7 +4253,8 @@ function vHrs(){
   var h='<div class="card"><div class="hd"><div><h2>الدوام التفصيلي التراكمي</h2>'
    +'<p>'+esc(dAr(F.from))+' — '+esc(dAr(F.to))+' · '+CP.length+' كابتن · '+n0(tD)+' يوم-كابتن · '
    +'المطلوب '+TARGET+' ساعة في اليوم</p></div>'
-   +'<span class="asof">أيام مكتملة فقط</span></div>'
+   +'<button class="btn pri sm" id="xhrs">تصدير الساعات Excel</button>'
+   +'<span class="asof" style="margin-inline-start:8px">أيام مكتملة فقط</span></div>'
    +'<div class="kpis k4">'
    +'<div class="kpi"><span class="lb">المطلوب</span><div class="vl num">'+n0(target)+'<span>س</span></div>'
    +'<div class="dl flat">'+TARGET+' × '+n0(tD)+' يوم-كابتن</div></div>'
@@ -4277,6 +4307,7 @@ function vHrs(){
    +'<span><i style="background:var(--warn)"></i>رومينق</span>'
    +'<span><i style="background:var(--bad)"></i>أوفلاين</span></div></div>';
   $('view').innerHTML=h;
+  if($('xhrs')) $('xhrs').onclick=function(){ exportHours($('xhrs')); };
 
   /* أعمدة: المحتسب مقابل هدف اليوم */
   var ix=dIdx();
@@ -4442,6 +4473,7 @@ var EMPS=[];
 /* الربط: معرّف ⇄ موظف بفترة من/إلى — والتاريخ محفوظ */
 var LINKS=[];
 var EQ='', CQ='', PEND=null;
+  var DAYROWS={key:null,rows:[]};
 function empOf(iq){return EMPS.filter(function(e){return e.iq===iq;})[0];}
 function activeLink(cap){return LINKS.filter(function(l){return l.cap===cap&&!l.to;})[0];}
 function histOf(cap){return LINKS.filter(function(l){return l.cap===cap;})
@@ -4587,6 +4619,149 @@ function showHist(cap){
 }
 
 /* ═════ التنقّل ═════ */
+
+  /* ═════ التصدير إلى Excel — من البيانات الحيّة ═════ */
+  function loadXLSX(){
+    if (window.XLSX) return Promise.resolve();
+    return new Promise(function(res,rej){
+      var sc=document.createElement('script');
+      sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      sc.onload=function(){res();}; sc.onerror=function(){rej(new Error('تعذّر تحميل محرّك Excel'));};
+      document.head.appendChild(sc);
+    });
+  }
+  function r1(v){ return Math.round((+v||0)*10)/10; }
+  function bar10(p){ var f=Math.max(0,Math.min(10,Math.round((+p||0)/10)));
+    return '█'.repeat(f)+'░'.repeat(10-f); }
+  function fname(base){ return 'نينجا-'+base+'-'+F.from+'_'+F.to+'.xlsx'; }
+  function xbusy(b,on,txt){ if(!b) return; b.disabled=on; b.textContent=on?'جارٍ…':txt; }
+
+  /* تصدير الساعات مقابل المطلوب — نفس تقرير الصفحة القديمة */
+  function exportHours(btn){
+    var t0=btn?btn.textContent:'';
+    xbusy(btn,true,t0);
+    Promise.all([ loadXLSX(),
+      RPC('ninja_export',{p_from:F.from,p_to:F.to,p_city:F.city||null,
+                          p_branch:F.branch||null,p_min_days:F.min}) ])
+    .then(function(r){
+      var X=r[1], rows=X.rows||[], dates=X.days||[], TG=X.target||TARGET, LK=X.links||{};
+      if(!rows.length){ TOAST('لا بيانات داخل الفلتر',4000); xbusy(btn,false,t0); return; }
+      var by={};
+      rows.forEach(function(a){
+        var id=a[0]; by[id]=by[id]||{id:id,name:a[1],branch:a[2],d:{},hrs:0,net:0,ord:0,days:0};
+        by[id].d[a[3]]={h:+a[5]||0,o:+a[4]||0,n:+a[6]||0};
+        by[id].hrs+=+a[5]||0; by[id].net+=+a[6]||0; by[id].ord+=+a[4]||0; by[id].days++;
+      });
+      var caps=Object.keys(by).map(function(k){ return by[k]; })
+        .sort(function(a,b){ return (a.name||a.id).localeCompare(b.name||b.id,'ar'); });
+
+      var s1=[['الساعات مقابل المطلوب — '+F.from+' إلى '+F.to
+               +(F.city?' · '+(CITY[F.city]||F.city):'')+(F.branch?' · '+F.branch:'')],
+        ['المعرّف','اسم الكابتن','الموظف في وثيق','الفرع','أيام العمل',
+         'ساعات الاتصال','الساعات المحتسبة','المطلوب ('+TG+'×أيام)','المتبقي من المطلوب',
+         'نسبة التحقيق %','التقدّم','الحالة','إجمالي الطلبات','متوسط الطلبات/يوم']];
+      var sT=0,sN=0;
+      caps.forEach(function(c){
+        var target=c.days*TG, remain=target-c.net, pct=target?c.net/target*100:0;
+        sT+=target; sN+=c.net;
+        s1.push([c.id, c.name, LK[c.id]||'', c.branch||'', c.days,
+          r1(c.hrs), r1(c.net), target, r1(remain), Math.round(pct), bar10(pct),
+          remain<=0 ? (remain<-0.05?'🚀 تجاوز +'+r1(-remain):'✅ محقّق') : '⏳ متبقّي '+r1(remain)+' ساعة',
+          r1(c.ord), c.days?r1(c.ord/c.days):0]);
+      });
+      s1.push([]); s1.push(['━━━ ملخّص ━━━']);
+      s1.push(['إجمالي المطلوب', r1(sT)]);
+      s1.push(['إجمالي المحتسب', r1(sN)]);
+      s1.push(['المتبقي', r1(sT-sN), (sT-sN)<=0?'✅ محقّق':'⏳ متبقّي على الأسطول']);
+      s1.push(['نسبة التحقيق', (sT?Math.round(sN/sT*100):0)+'%', bar10(sT?sN/sT*100:0)]);
+      s1.push([]);
+      s1.push(['المحتسب = ساعات الاتصال − الرومينق − الأوفلاين. المطلوب = '+TG+' ساعة × أيام العمل.']);
+      var ws1=XLSX.utils.aoa_to_sheet(s1);
+      ws1['!cols']=[{wch:12},{wch:24},{wch:24},{wch:14},{wch:10},{wch:14},{wch:16},
+                    {wch:16},{wch:16},{wch:13},{wch:13},{wch:20},{wch:13},{wch:16}];
+
+      function sheetBy(key, title, withTarget){
+        var a=[[title],['المعرّف','اسم الكابتن'].concat(dates)
+               .concat(withTarget?['الإجمالي','المطلوب','المتبقي']:['الإجمالي'])];
+        caps.forEach(function(c){
+          var row=[c.id,c.name];
+          dates.forEach(function(d){ row.push(c.d[d]? r1(c.d[d][key]) : ''); });
+          if(withTarget){ var tg=c.days*TG; row.push(r1(c[key==='n'?'net':key==='h'?'hrs':'ord']),
+            tg, r1(tg-c.net)); }
+          else row.push(r1(c[key==='n'?'net':key==='h'?'hrs':'ord']));
+          a.push(row);
+        });
+        var ws=XLSX.utils.aoa_to_sheet(a);
+        ws['!cols']=[{wch:12},{wch:24}].concat(dates.map(function(){return {wch:11};}))
+                    .concat(withTarget?[{wch:12},{wch:12},{wch:12}]:[{wch:12}]);
+        return ws;
+      }
+      var wb=XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws1, 'الإجماليات');
+      XLSX.utils.book_append_sheet(wb, sheetBy('n','الساعات المحتسبة — أعمدة بالتواريخ', true), 'المحتسبة بالتواريخ');
+      XLSX.utils.book_append_sheet(wb, sheetBy('h','ساعات الاتصال — أعمدة بالتواريخ', false), 'الاتصال بالتواريخ');
+      XLSX.utils.book_append_sheet(wb, sheetBy('o','الطلبات — أعمدة بالتواريخ', false), 'الطلبات بالتواريخ');
+      XLSX.writeFile(wb, fname('الساعات-مقابل-المطلوب'));
+      xbusy(btn,false,t0);
+    }).catch(function(e){ xbusy(btn,false,t0); TOAST((e&&e.message)||'تعذّر التصدير',6000); });
+  }
+
+  /* تصدير جدول الكباتن بكل المؤشرات */
+  function exportCaps(btn){
+    var t0=btn?btn.textContent:'';
+    xbusy(btn,true,t0);
+    loadXLSX().then(function(){
+      var CP=caps();
+      if(!CP.length){ TOAST('لا كباتن داخل الفلتر',4000); xbusy(btn,false,t0); return; }
+      var a=[['أداء الكباتن — '+F.from+' إلى '+F.to
+              +(F.city?' · '+(CITY[F.city]||F.city):'')+(F.branch?' · '+F.branch:'')],
+        ['المعرّف','الاسم','الفرع','المدينة','أيام','WPI','الطلبات','طلبات/يوم',
+         'ساعات الاتصال','المحتسبة','المطلوب','التحقيق %','النقص',
+         'نشطة','منتظر طلب','رومينق س','أوفلاين س',
+         'استلام %','تسليم %','إرجاع %','الدورة %','الوردية %','تأخير د']];
+      CP.forEach(function(c){
+        a.push([c.id,c.name,c.branch||'',CITY[c.city]||c.city||'',c.days,r1(c.wpi),
+          r1(c.totOrd),r1(c.avgOrd),r1(c.totHrs),r1(c.netHrs),r1(c.targetHrs),
+          Math.round(c.achPct||0),r1(c.gap),r1(c.actHrs),r1(c.waitHrs),r1(c.roamH),r1(c.offH),
+          r1(c.pick),r1(c.dlv),r1(c.ret),r1(c.cyc),r1(c.shift),r1(c.delay)]);
+      });
+      a.push([]);
+      a.push(['المحتسبة = الاتصال − الرومينق − الأوفلاين · المطلوب = '+TARGET+' × أيام العمل']);
+      a.push(['النِسب موزونة بحجم الطلبات، والدقائق موزونة بالساعات — لا متوسط بسيط للكباتن']);
+      var ws=XLSX.utils.aoa_to_sheet(a);
+      ws['!cols']=[{wch:12},{wch:24},{wch:14},{wch:10},{wch:8}].concat(
+        Array.apply(null,Array(18)).map(function(){ return {wch:12}; }));
+      var wb=XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'الكباتن');
+      XLSX.writeFile(wb, fname('أداء-الكباتن'));
+      xbusy(btn,false,t0);
+    }).catch(function(e){ xbusy(btn,false,t0); TOAST((e&&e.message)||'تعذّر التصدير',6000); });
+  }
+
+  /* تصدير أيام كابتن واحد */
+  function exportCaptain(c, rows){
+    loadXLSX().then(function(){
+      var a=[[ (c.name||c.id)+' — '+c.id+' · '+F.from+' إلى '+F.to ],
+        ['اليوم','الفرع','طلبات','ساعات الاتصال','المحتسبة','المطلوب','المتبقي','نشطة',
+         'استلام %','تسليم %','الوردية %','تأخير د','رومينق د','أوفلاين د']];
+      var tH=0,tN=0,tO=0;
+      (rows||[]).slice().reverse().forEach(function(r){
+        tH+=+r.hours||0; tN+=+r.net||0; tO+=+r.orders||0;
+        a.push([r.d, r.branch||'', r1(r.orders), r1(r.hours), r1(r.net), TARGET,
+          r1(TARGET-(+r.net||0)), r1(r.active), r1(r.pick), r1(r.dlv), r1(r.shift),
+          r1(r.delay), r1(r.roam), r1(r.off)]);
+      });
+      var nd=(rows||[]).length;
+      a.push([]);
+      a.push(['الإجمالي','',r1(tO),r1(tH),r1(tN),nd*TARGET,r1(nd*TARGET-tN)]);
+      var ws=XLSX.utils.aoa_to_sheet(a);
+      ws['!cols']=[{wch:13},{wch:14}].concat(Array.apply(null,Array(12)).map(function(){return {wch:12};}));
+      var wb=XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'الأيام');
+      XLSX.writeFile(wb, 'نينجا-'+(c.id)+'-'+F.from+'_'+F.to+'.xlsx');
+    }).catch(function(e){ TOAST((e&&e.message)||'تعذّر التصدير',6000); });
+  }
+
   /* ═════ الربط التلقائي بساموراي — لمدير النظام ═════ */
   function njWhen(iso){ if(!iso) return '—';
     return new Date(iso).toLocaleString('en-GB',{day:'2-digit',month:'2-digit',
