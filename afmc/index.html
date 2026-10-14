@@ -1134,7 +1134,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261014155557";
+  var BUILD = "20261014161307";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -3313,7 +3313,9 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       + '<div class="sub">ما أحتاج كلمة مرورك ولا أدخلها.</div></div></div>'
       + '<div class="step"><i>2</i><div><b>اسحب هذا الزر لشريط المفضّلة ثم اضغطه وأنت داخل ساموراي</b>'
       + '<div class="sub">يقرأ مفتاح جلستك من متصفحك ويسلّمه للمنصة مباشرة — ما يمرّ على أي طرف ثالث.</div>'
-      + '<div style="margin-top:9px"><a class="bmk" id="njBmk" href="#">اربط المنصة بساموراي</a></div></div></div>'
+      + '<div style="margin-top:9px"><a class="bmk" id="njBmk" href="#">اربط المنصة بساموراي</a></div>'
+      + '<div class="sub" style="margin-top:7px">لو عندك الزر من قبل: <b>اسحبه من جديد</b> — النسخة الجديدة'
+      + ' تفحص إن كان ساموراي يقبل المفتاح الطويل (٩٠ يوم)، والقديمة ما تفحصه.</div></div></div>'
       + '<div class="step"><i>3</i><div><b>خلاص</b>'
       + '<div class="sub">السحب كل ٣ ساعات والمتابعة كل دقيقة تشتغل لحالها.</div></div></div></div>';
     if (linked) h += '<div class="bar2"><button class="btn ghost sm" id="njUnlink">فصل الربط</button>'
@@ -3381,9 +3383,9 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
           .catch(function(){ return null; });
       }).then(function(path){
         var pay = (path === 'direct')
-          ? { afmc:'ninja-link', access: rt, access_exp: exp(rt),
+          ? { afmc:'ninja-link', v:2, access: rt, access_exp: exp(rt),
               refresh: rt, refresh_exp: exp(rt), path: 'direct' }
-          : { afmc:'ninja-link', access: tk, access_exp: exp(tk),
+          : { afmc:'ninja-link', v:2, access: tk, access_exp: exp(tk),
               refresh: path ? rt : null, refresh_exp: rt ? exp(rt) : null, path: path };
         try { window.name = JSON.stringify(pay); } catch(e){ alert('تعذّر التسليم'); return; }
         location.href = T;
@@ -3400,6 +3402,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   }
   function njLinkSend(p){
     if (!p) { toast('ما وصل مفتاح — أعد الضغط على الزر من داخل صفحة ساموراي', 7000); return; }
+    if (!p.v) NJ.oldBmk = true;   /* زر محفوظ من نسخة سابقة: ما يفحص المفتاح الطويل */
     rpc('ninja_link', { p_access: p.access,
         p_access_exp:  p.access_exp  ? new Date(p.access_exp).toISOString()  : null,
         p_refresh:     p.refresh || null,
@@ -3409,6 +3412,8 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         toast(a.mode === 'long'
           ? '✅ انربط — السحب تلقائي بالكامل حتى ' + njWhen(a.access_exp)
           : '✅ انربط — وضع يومي: ساموراي ما قبل المفتاح الطويل، فتحتاج ضغطة وحدة كل ٢٤ ساعة', 9000);
+        if (NJ.oldBmk) toast('⚠ زر الربط المحفوظ عندك نسخة قديمة — ما جرّب المفتاح الطويل. '
+          + 'اسحب الزر من جديد من صفحة الربط (يستبدل القديم) واضغطه مرّة وحدة.', 12000);
         njLinkLoad();
       })
       .catch(function(e){ toast('تعذّر الربط: ' + ((e&&e.message)||''), 7000); });
