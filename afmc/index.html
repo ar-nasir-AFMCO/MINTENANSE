@@ -446,6 +446,13 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 #njSec .al .t{font-size:13.5px;font-weight:600}
 #njSec .al .m{font-size:11.5px;color:var(--muted);margin-top:1px}
 #njSec .al .ago{margin-inline-start:auto;font-size:11.5px;color:var(--faint);white-space:nowrap}
+#njSec .mute{border:1px dashed var(--line);border-radius:11px;padding:10px 13px;margin-bottom:7px;
+  background:var(--surface-2,#faf8f4);font-size:13px}
+#njSec .mute b{font-size:16px;font-variant-numeric:tabular-nums;margin-inline-end:4px}
+#njSec .mute span{color:var(--muted);font-size:12px}
+#njSec .authbar{margin-top:12px;border:1px solid #efe2c8;background:#fdf7ea;border-radius:11px;
+  padding:10px 14px;font-size:13px;line-height:1.8}
+#njSec .authbar a{color:var(--brand);font-weight:600}
 #njSec .t2{border-collapse:collapse;width:100%;font-size:13px}
 #njSec .t2 th,#njSec .t2 td{padding:8px 10px;border-bottom:1px solid var(--line-2);text-align:right;vertical-align:middle}
 #njSec .t2 th{font-size:11.5px;color:var(--muted);font-weight:600}
@@ -662,6 +669,79 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
           </div>
           <div class="at-note" id="sFoot" aria-live="polite"></div>
         </div>
+        <div class="view hide" id="njp" style="overflow:auto;width:100%">
+        <div class="sec" id="njSec">
+          <h3><svg class="i"><use href="#i-users"/></svg>متابعة مناديب نينجا</h3>
+          <div class="njtabs">
+            <button class="on" data-njv="perf">الأداء</button>
+            <button data-njv="ops">العمليات الحية</button>
+            <button data-njv="link">الربط التلقائي</button>
+          </div>
+
+          <div id="njVOps" class="hide">
+            <div class="card" style="padding:16px 18px">
+              <div class="bar2" style="margin-top:0">
+                <button class="btn ghost" id="njOpsGo"><svg class="i"><use href="#i-reload"/></svg>تحديث</button>
+                <span class="sub" id="njOpsMeta">—</span>
+                <span class="sub" id="njOpsTick" style="margin-inline-start:auto"></span>
+              </div>
+              <div class="authbar hide" id="njAuthBar"></div>
+              <div class="opsk" id="njOpsK"></div>
+            </div>
+            <div class="card" style="padding:16px 18px;margin-top:10px">
+              <div class="bar2" style="margin-top:0"><b>التنبيهات المفتوحة</b>
+                <span class="sub" id="njAlN">—</span></div>
+              <div id="njAlerts" style="margin-top:10px"><div class="sub">—</div></div>
+            </div>
+            <div class="card" id="njRulesCard" style="padding:16px 18px;margin-top:10px">
+              <div class="bar2" style="margin-top:0"><b>قواعد التنبيه</b>
+                <span class="sub">الحدود تتغيّر من هنا مباشرة</span></div>
+              <div id="njRulesBox" style="margin-top:10px"></div>
+            </div>
+            <div class="card" style="padding:16px 18px;margin-top:10px">
+              <div class="bar2" style="margin-top:0"><b>الحالة اللحظية</b>
+                <input id="njOpsQ" class="inp sm" placeholder="بحث بالاسم أو المعرّف" style="max-width:220px">
+                <span class="sub" id="njOpsN"></span></div>
+              <div class="card tbl" style="margin-top:10px;max-height:460px;overflow:auto"><table><thead><tr>
+                <th>الكابتن</th><th>الفرع</th><th>الحالة</th><th>آخر طلب</th>
+              </tr></thead><tbody id="njOpsTB"></tbody></table></div>
+            </div>
+          </div>
+
+          <div id="njVLink" class="hide">
+            <div class="card" style="padding:16px 18px">
+              <div class="bar2" style="margin-top:0"><b>حالة الربط</b>
+                <span class="sub" id="njLinkState">—</span>
+                <button class="btn ghost sm" id="njLinkRef" style="margin-inline-start:auto">تحديث</button></div>
+              <div id="njLinkBody" style="margin-top:12px"></div>
+            </div>
+            <div class="card" style="padding:16px 18px;margin-top:10px">
+              <div class="bar2" style="margin-top:0"><b>سجل السحب</b></div>
+              <div class="card tbl" style="margin-top:10px;max-height:320px;overflow:auto"><table><thead><tr>
+                <th>الوقت</th><th>النوع</th><th>المدى</th><th>صفوف</th><th>المدة</th><th>النتيجة</th>
+              </tr></thead><tbody id="njLogTB"></tbody></table></div>
+            </div>
+          </div>
+
+          <div id="njVPerf">
+          <div class="card" style="padding:16px 18px">
+            <div class="njbar">
+              <label class="sub">من <input type="date" id="njF"></label>
+              <label class="sub">إلى <input type="date" id="njT"></label>
+              <span class="chips" id="njPre"></span>
+              <select id="njCity"><option value="">كل المدن</option></select>
+              <select id="njBr"><option value="">كل الفروع</option></select>
+              <label class="sub">بحد أدنى <select id="njMin">
+                <option>1</option><option>2</option><option selected>3</option><option>5</option><option>10</option>
+              </select> أيام</label>
+              <button class="btn" id="njGo"><svg class="i"><use href="#i-reload"/></svg>اعرض</button>
+              <span class="sub" id="njMeta"></span>
+            </div>
+            <div id="njBody" style="margin-top:14px"><div class="sub">اضغط «اعرض» لتحميل المدى.</div></div>
+          </div>
+          </div>
+        </div>
+        </div>
         <div class="view hide" id="keep" style="overflow:auto;width:100%">
           <div class="sam-beta">🧪 <b>شاشة تجريبية</b> — لمدير النظام وحده. حضور مناديب كيتا كما هو في Keemart، ولا يدخل في الرواتب بعد.</div>
           <div class="sam-ext hide" id="kMiss"></div>
@@ -821,77 +901,6 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
             <div class="sub" style="margin-bottom:10px">تطبيق الوقود على AppSheet لا يقبل التعبئة من الرابط: AppSheet لا يفتح حقول نموذج بقيم من query string. البابان الممكنان: (أ) إضافة <code>LINKTOFORM</code> داخل التطبيق نفسه — يحتاج صلاحية تعديل عليه، (ب) الكتابة في الجدول الذي يقف خلفه. إلى أن نفتح أحدهما، نسخ الصف جاهزاً هو أسرع طريق.</div>
             <div class="bar2" style="margin-top:0"><button class="btn ghost" id="labFuelCopy">نسخ صف المندوب المختار</button><a class="btn ghost" id="labFuelOpen" target="_blank" rel="noopener">فتح تطبيق الوقود</a></div>
             <pre id="labFuelRow" class="sub" style="white-space:pre-wrap;margin-top:10px"></pre>
-          </div>
-        </div>
-
-        <div class="sec" id="njSec">
-          <h3><svg class="i"><use href="#i-users"/></svg>متابعة مناديب نينجا</h3>
-          <div class="njtabs">
-            <button class="on" data-njv="perf">الأداء</button>
-            <button data-njv="ops">العمليات الحية</button>
-            <button data-njv="link">الربط التلقائي</button>
-          </div>
-
-          <div id="njVOps" class="hide">
-            <div class="card" style="padding:16px 18px">
-              <div class="bar2" style="margin-top:0">
-                <button class="btn ghost" id="njOpsGo"><svg class="i"><use href="#i-reload"/></svg>تحديث</button>
-                <span class="sub" id="njOpsMeta">—</span>
-                <span class="sub" id="njOpsTick" style="margin-inline-start:auto"></span>
-              </div>
-              <div class="opsk" id="njOpsK"></div>
-            </div>
-            <div class="card" style="padding:16px 18px;margin-top:10px">
-              <div class="bar2" style="margin-top:0"><b>التنبيهات المفتوحة</b>
-                <span class="sub" id="njAlN">—</span></div>
-              <div id="njAlerts" style="margin-top:10px"><div class="sub">—</div></div>
-            </div>
-            <div class="card" style="padding:16px 18px;margin-top:10px">
-              <div class="bar2" style="margin-top:0"><b>قواعد التنبيه</b>
-                <span class="sub">الحدود تتغيّر من هنا مباشرة</span></div>
-              <div id="njRulesBox" style="margin-top:10px"></div>
-            </div>
-            <div class="card" style="padding:16px 18px;margin-top:10px">
-              <div class="bar2" style="margin-top:0"><b>الحالة اللحظية</b>
-                <input id="njOpsQ" class="inp sm" placeholder="بحث بالاسم أو المعرّف" style="max-width:220px">
-                <span class="sub" id="njOpsN"></span></div>
-              <div class="card tbl" style="margin-top:10px;max-height:460px;overflow:auto"><table><thead><tr>
-                <th>الكابتن</th><th>الفرع</th><th>الحالة</th><th>آخر طلب</th>
-              </tr></thead><tbody id="njOpsTB"></tbody></table></div>
-            </div>
-          </div>
-
-          <div id="njVLink" class="hide">
-            <div class="card" style="padding:16px 18px">
-              <div class="bar2" style="margin-top:0"><b>حالة الربط</b>
-                <span class="sub" id="njLinkState">—</span>
-                <button class="btn ghost sm" id="njLinkRef" style="margin-inline-start:auto">تحديث</button></div>
-              <div id="njLinkBody" style="margin-top:12px"></div>
-            </div>
-            <div class="card" style="padding:16px 18px;margin-top:10px">
-              <div class="bar2" style="margin-top:0"><b>سجل السحب</b></div>
-              <div class="card tbl" style="margin-top:10px;max-height:320px;overflow:auto"><table><thead><tr>
-                <th>الوقت</th><th>النوع</th><th>المدى</th><th>صفوف</th><th>المدة</th><th>النتيجة</th>
-              </tr></thead><tbody id="njLogTB"></tbody></table></div>
-            </div>
-          </div>
-
-          <div id="njVPerf">
-          <div class="card" style="padding:16px 18px">
-            <div class="njbar">
-              <label class="sub">من <input type="date" id="njF"></label>
-              <label class="sub">إلى <input type="date" id="njT"></label>
-              <span class="chips" id="njPre"></span>
-              <select id="njCity"><option value="">كل المدن</option></select>
-              <select id="njBr"><option value="">كل الفروع</option></select>
-              <label class="sub">بحد أدنى <select id="njMin">
-                <option>1</option><option>2</option><option selected>3</option><option>5</option><option>10</option>
-              </select> أيام</label>
-              <button class="btn" id="njGo"><svg class="i"><use href="#i-reload"/></svg>اعرض</button>
-              <span class="sub" id="njMeta"></span>
-            </div>
-            <div id="njBody" style="margin-top:14px"><div class="sub">اضغط «اعرض» لتحميل المدى.</div></div>
-          </div>
           </div>
         </div>
 
@@ -1125,7 +1134,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261013212606";
+  var BUILD = "20261014155046";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -1140,14 +1149,14 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     { id:'couriers', ic:'scooter', name:'المناديب', desc:'Ninja · Keemart', group:['ninja','keemart'] },
     { id:'housing', ic:'bed', name:'السكنات', desc:'المباني والغرف والنزلاء', src:'housing.html' }
   ];
-  var SUBS = { ninja:{ name:'Ninja', desc:'أداء الكباتن والـ SLA', src:'ninja.html' }, keemart:{ name:'Keemart', desc:'الحضور والتسوية والفواتير', src:'keemart.html' } ,
+  var SUBS = { ninja:{ name:'Ninja', desc:'الأداء والدوام والعمليات اللحظية', local:true, panel:'njp', open:function(){ njPanelOpen(); } },
+               keemart:{ name:'Keemart', desc:'الحضور والتسوية والفواتير', src:'keemart.html' } ,
                attauth:{ name:'الدوام والتفويض', desc:'مقارنة أيام الدوام بأيام التفويض', local:true, panel:'attp', open:function(){ atOpen(); } },
-               samurai:{ name:'Samurai · تجريبي', desc:'تجريبي — لمدير النظام وحده. أداء المورّد والكباتن يُسحب من Samurai وKeeta يومياً.', local:true, panel:'samp', open:function(){ smOpen(); } },
                keeta:{ name:'Keeta · تجريبي', desc:'تجريبي — لمدير النظام وحده. حضور مناديب كيتا يُسحب من صفحة Keemart.', local:true, panel:'keep', open:function(){ keOpen(); } } };
   /* تبويبات «المناديب»: الأنظمة المتاحة + شاشة المقارنة (شاشة داخل البوابة، لا إطار) */
   function segSubs(){ var a = subsFor(); if (!a.length) return a;
     a = a.concat(['attauth']);
-    if (me && me.role === 'admin') { a.push('samurai'); a.push('keeta'); }   /* تجريبيتان — لمدير النظام وحده */
+    if (me && me.role === 'admin') a.push('keeta');   /* تجريبية — لمدير النظام وحده */
     return a; }
   var AREA_AR = { employees:'الموظفون', vehicles:'المركبات', attendance:'الحضور', maintenance:'الصيانة' };
   var CODE_AR = { no_phone:'بلا جوال', dup_phone:'جوال مكرر', iqama_expired:'إقامة منتهية', iqama_soon:'إقامة قريبة الانتهاء', license_expired:'رخصة منتهية',
@@ -2339,7 +2348,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       .then(function(r){
         toast('✅ Samurai ' + d.date + ' — ' + ((r && r.captains) || 0) + ' كابتن');
         if (current === 'couriers' && sub === 'samurai') { smRAW = null; smLoad(); }
-        else openSys('couriers', 'samurai');
+        else openSys('couriers', 'ninja');
       })
       .catch(function(err){ toast('تعذّر الحفظ: ' + err.message, 6000); });
   });
@@ -2899,7 +2908,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   var labCard = null;
   function labInit(){
     $('labFuelOpen').href = LAB_FUEL;
-    njInit();
+    /* نينجا انتقلت لتبويب «المناديب» */
     if (!labInit.__dbb){ labInit.__dbb = 1;
       $('dbbRefresh').onclick = dbbLoad;
       $('dbbVerClose').onclick = function(){ $('dbbVerWrap').classList.add('hide'); }; }
@@ -3001,11 +3010,14 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   function njShift(iso,n){ var d=new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+n);
     return d.toISOString().slice(0,10); }
 
+  function njPanelOpen(){ njInit(); njTabTo(NJ.view || 'ops'); }
   function njInit(){
-    if (njInit.__done) { return; }
+    if (njInit.__done) { njTabTo(NJ.view || 'ops'); return; }
     njInit.__done = 1;
     document.querySelectorAll('#njSec .njtabs button').forEach(function(b){
+      if (b.getAttribute('data-njv') === 'link' && !can('admin')) { b.classList.add('hide'); return; }
       b.onclick = function(){ njTabTo(b.getAttribute('data-njv')); }; });
+    if (!can('admin')) { var rb = $('njRulesCard'); if (rb) rb.classList.add('hide'); }
     $('njOpsGo').onclick = function(){ OPS.left = 60; njOpsLoad(); };
     $('njOpsQ').oninput  = function(){ OPS.q = $('njOpsQ').value; njOpsRender(); };
     $('njLinkRef').onclick = njLinkLoad;
@@ -3133,6 +3145,8 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   /* ═══════════ العمليات الحية ═══════════ */
   var OPS = { d:null, t:null, left:60, q:'' };
   function njTabTo(v){
+    if (v === 'link' && !can('admin')) v = 'ops';
+    NJ.view = v;
     document.querySelectorAll('#njSec .njtabs button').forEach(function(b){
       b.classList.toggle('on', b.getAttribute('data-njv') === v); });
     ['perf','ops','link'].forEach(function(x){
@@ -3167,20 +3181,25 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     function k(cl,v,l){ return '<div class="k '+cl+'"><b>'+njN0(v)+'</b><span>'+l+'</span></div>'; }
     njRules(d.rules || []);
 
+    njAuthBar(d.auth || {});
     var seen = d.seen_at ? new Date(d.seen_at) : null;
     $('njOpsMeta').textContent = (seen ? 'آخر قراءة ' + seen.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : 'ما فيه قراءة بعد')
       + ' · ' + njN0(c.total||0) + ' كابتن في الحساب';
 
-    var al = d.alerts || [];               /* [id,cap,code,label,sev,branch,detail,opened] */
+    var al = d.alerts || [], mu = d.muted || [];   /* [id,cap,code,label,sev,branch,detail,opened] */
     $('njAlN').textContent = al.length ? (al.length + ' مفتوح') : 'ما فيه تنبيهات';
-    $('njAlerts').innerHTML = al.length ? al.map(function(a){
+    var muHtml = mu.map(function(m){               /* [code,label,n,severity] */
+      return '<div class="mute"><b>' + njN0(m[2]) + '</b> ' + esc(m[1])
+        + ' <span>— حالة عامة في الأسطول الآن، مو استثناء. طُويت عشان ما تغرق الصفحة'
+        + (d.cap ? ' (الحد ' + njN0(d.cap) + ')' : '') + '</span></div>'; }).join('');
+    $('njAlerts').innerHTML = muHtml + (al.length ? al.map(function(a){
       var nm = njName(a[1]);
       return '<div class="al s'+a[4]+'" data-njo="'+esc(a[1])+'"><span class="ic">'
         + (a[4]===3?'!':a[4]===2?'•':'i') + '</span><div style="flex:1;min-width:0">'
         + '<div class="t">'+esc(nm)+' — '+esc(a[3])+'</div>'
         + '<div class="m">'+esc(a[5]||'فرع غير معروف')+' · '+esc(a[6]||'')+'</div></div>'
         + '<span class="ago">'+njSince(a[7])+'</span></div>'; }).join('')
-      : '<div class="sub">كل شي تمام — ما فيه تنبيه مفتوح.</div>';
+      : (muHtml ? '' : '<div class="sub">كل شي تمام — ما فيه تنبيه مفتوح.</div>'));
 
     var q = (OPS.q||'').trim().toLowerCase();
     var rows = (d.live||[]).filter(function(r){
@@ -3221,6 +3240,17 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     rpc('ninja_rule_set', { p_code: code, p_threshold: th, p_enabled: en })
       .then(function(){ toast('انحفظ', 1600); OPS.left = 60; njOpsLoad(); })
       .catch(function(e){ toast(e.message, 5000); njOpsLoad(); });
+  }
+  function njAuthBar(a){
+    var el = $('njAuthBar'); if (!el) return;
+    var left = a.access_exp ? (new Date(a.access_exp) - Date.now())/36e5 : -1;
+    var bad  = !a.linked || left <= 0, warn = left > 0 && left < 4;
+    el.classList.toggle('hide', !(bad || warn));
+    if (bad || warn) el.innerHTML = '<b>' + (bad ? 'وقف السحب التلقائي' : 'مفتاح ساموراي قارب ينتهي')
+      + '</b> — ' + (bad ? 'المفتاح انتهى، والبيانات واقفة عند آخر سحبة.'
+                         : 'باقي ' + Math.max(0, Math.round(left)) + ' ساعة.')
+      + (can('admin') ? ' <a href="#" id="njAuthGo">افتح الربط</a>' : ' بلّغ مدير النظام.');
+    var g = $('njAuthGo'); if (g) g.onclick = function(e){ e.preventDefault(); njTabTo('link'); };
   }
   function njName(id){
     var r = ((OPS.d&&OPS.d.live)||[]).filter(function(x){ return String(x[0])===String(id); })[0];
@@ -3329,8 +3359,19 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
           .catch(function(){ return probe(i+1); });
       };
       probe(0).then(function(path){
-        var pay = { afmc:'ninja-link', access:tk, access_exp:exp(tk),
-                    refresh: path ? rt : null, refresh_exp: rt ? exp(rt) : null, path: path };
+        if (path || !rt) return path;
+        /* هل الخادم يقبل المفتاح الطويل مباشرة على طلبات البيانات؟
+           لو قبله فما نحتاج تجديداً أصلاً — ٩٠ يوماً بلا أي ضغطة. */
+        return fetch(B + 'captains?page%5Bnumber%5D=1&page%5Bsize%5D=1',
+            { headers:{ 'authorization':'Bearer ' + rt, 'accept-language':'en' } })
+          .then(function(r){ return r.status === 200 ? 'direct' : null; })
+          .catch(function(){ return null; });
+      }).then(function(path){
+        var pay = (path === 'direct')
+          ? { afmc:'ninja-link', access: rt, access_exp: exp(rt),
+              refresh: rt, refresh_exp: exp(rt), path: 'direct' }
+          : { afmc:'ninja-link', access: tk, access_exp: exp(tk),
+              refresh: path ? rt : null, refresh_exp: rt ? exp(rt) : null, path: path };
         try { window.name = JSON.stringify(pay); } catch(e){ alert('تعذّر التسليم'); return; }
         location.href = T;
       });
@@ -3353,8 +3394,8 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         p_refresh_path: p.path || null })
       .then(function(a){
         toast(a.mode === 'long'
-          ? '✅ انربط — وضع التجديد التلقائي، ما تحتاج تعيدها قبل انتهاء مفتاح الـ٩٠ يوم'
-          : '✅ انربط — وضع يومي: ساموراي ما يقبل التجديد، فتحتاج ضغطة وحدة كل ٢٤ ساعة', 9000);
+          ? '✅ انربط — السحب تلقائي بالكامل حتى ' + njWhen(a.access_exp)
+          : '✅ انربط — وضع يومي: ساموراي ما قبل المفتاح الطويل، فتحتاج ضغطة وحدة كل ٢٤ ساعة', 9000);
         njLinkLoad();
       })
       .catch(function(e){ toast('تعذّر الربط: ' + ((e&&e.message)||''), 7000); });
