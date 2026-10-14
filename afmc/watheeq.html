@@ -8837,6 +8837,78 @@ body.wx-card-open #wx4Pill{ display:none !important; }
         })
         .catch(function(err){ box.innerHTML = '<span class="warn">تعذّر تحميل المعرّفات: ' + esc(err.message) + '</span>'; });
     }
+    /* ═══ v70: طلب تصحيح الحقول المقفلة ═══
+       بعد الاعتماد تُقفل الاسم والمشروع على غير مدير النظام (v51). بدل أن
+       تُرفض حفظة المستخدم كاملة ويضيع معها ما غيّره، يرفع طلباً مكتوباً
+       يعتمده المدير، والقاعدة تطبّقه وتكتبه في السجل. */
+    var FIX_FIELDS = [['name_ar','الاسم بالعربي'], ['name_en','الاسم بالإنجليزي'], ['project','المشروع']];
+    function fixChangesHtml(ch){
+      return '<table style="margin:4px 0"><tbody>' + (ch || []).map(function(c){
+        return '<tr><th>' + esc(c.label) + '</th><td><span style="color:#a3372b;text-decoration:line-through">'
+          + esc(c.old || '—') + '</span> ← <b style="color:#0e5e5c">' + esc(c.new || '—') + '</b></td></tr>';
+      }).join('') + '</tbody></table>';
+    }
+    function paintFix(e, pane, canEdit){
+      var box = pane.querySelector('#afxFix'); if (!box) return;
+      var drop = function(){ var h4 = box.previousElementSibling; if (h4) h4.remove(); box.remove(); };
+      if (!HAS_APPROVAL) return drop();
+      if (!e.approved_at){ box.innerHTML = '<span class="muted">الموظف غير معتمد بعد — كل حقوله مفتوحة في «تعديل بيانات الموظف».</span>'; return; }
+      var isAdmin = !!(me && me.role === 'admin');
+      rpc('emp_fix_open', {}).then(function(list){
+        var mine = (list || []).filter(function(x){ return normId(x.iqama) === normId(e.iqama); })[0];
+        if (mine){
+          box.innerHTML = '<div style="border:1px solid #f2ddb5;background:#fdf8ef;border-radius:10px;padding:9px 11px">'
+            + '<b>⏳ طلب تصحيح مفتوح</b> <span class="muted">— رفعه ' + esc(mine.by || '—') + ' · '
+            + esc(String(mine.at || '').slice(0, 10)) + '</span>'
+            + fixChangesHtml(mine.changes)
+            + '<div class="muted">السبب: ' + esc(mine.reason || '') + '</div>'
+            + (mine.can_decide ? '<div class="row"><button class="btnx" id="afxFixOk">✅ اعتماد التصحيح</button>'
+                                 + '<button class="btnx gh" id="afxFixNo">✕ رفض</button></div>'
+                               : '<div class="muted">بانتظار اعتماد المدير.</div>') + '</div>';
+          if (!mine.can_decide) return;
+          box.querySelector('#afxFixOk').onclick = function(){
+            this.disabled = true;
+            rpc('emp_fix_decide', { p_id: mine.id, p_approve: true })
+              .then(function(){ note('✅ طُبّق التصحيح', 'green'); pullAll().catch(function(){}); empPane(e, pane); })
+              .catch(function(err){ note(idErr(err), 'red'); paintFix(e, pane, canEdit); });
+          };
+          box.querySelector('#afxFixNo').onclick = function(){
+            var why = prompt('سبب الرفض؟'); if (!why || !why.trim()) return;
+            rpc('emp_fix_decide', { p_id: mine.id, p_approve: false, p_note: why.trim() })
+              .then(function(){ note('سُجّل الرفض', 'amber'); paintFix(e, pane, canEdit); })
+              .catch(function(err){ note(idErr(err), 'red'); });
+          };
+          return;
+        }
+        if (isAdmin){ box.innerHTML = '<span class="muted">أنت مدير النظام — تعدّل هذه الحقول مباشرة من «تعديل بيانات الموظف». لا يوجد طلب تصحيح مفتوح.</span>'; return; }
+        if (!canEdit){ box.innerHTML = '<span class="muted">لا تملك صلاحية رفع طلب تصحيح.</span>'; return; }
+        var cur = { name_ar: e.name_ar || '', name_en: e.name_en || '', project: e.project || '' };
+        box.innerHTML = '<div class="muted">الاسم والمشروع مقفلان بعد الاعتماد. اكتب الصحيح هنا وسيصل المدير للاعتماد — '
+          + 'ورقم الإقامة يُغيَّر من مدير النظام مباشرة لأنه مفتاح الحضور والسكن والمعرّفات.</div>'
+          + '<div class="row">' + FIX_FIELDS.map(function(f){
+              return '<label class="muted" style="display:flex;gap:5px;align-items:center">' + esc(f[1])
+                + '<input data-fx="' + f[0] + '" value="' + esc(cur[f[0]]) + '" style="min-width:150px"></label>';
+            }).join('') + '</div>'
+          + '<div class="row"><input id="afxFixWhy" placeholder="سبب التصحيح (إلزامي)" style="flex:1;min-width:200px">'
+          + '<button class="btnx" id="afxFixGo">📝 إرسال طلب التصحيح</button></div>';
+        box.querySelector('#afxFixGo').onclick = function(){
+          var ch = {}, n = 0;
+          box.querySelectorAll('[data-fx]').forEach(function(i){
+            var f = i.getAttribute('data-fx'), v = (i.value || '').trim();
+            if (v !== String(cur[f] || '').trim()) { ch[f] = v; n++; }
+          });
+          if (!n) return note('ما غيّرت شيئاً', 'amber');
+          var why = (box.querySelector('#afxFixWhy').value || '').trim();
+          if (!why) return note('اكتب سبب التصحيح', 'amber');
+          var b = this; b.disabled = true;
+          api('GET', 'employees?select=id&iqama=eq.' + encodeURIComponent(normId(e.iqama))).then(function(r){
+            if (!r || !r[0]) throw new Error('الموظف غير موجود في القاعدة');
+            return rpc('emp_fix_request', { p_employee: r[0].id, p_changes: ch, p_reason: why });
+          }).then(function(){ note('📝 وصل الطلب للمدير', 'green'); paintFix(e, pane, canEdit); })
+            .catch(function(err){ b.disabled = false; note(idErr(err), 'red'); });
+        };
+      }).catch(function(){ drop(); });
+    }
     function empPane(e, pane){
       pane.innerHTML = '<div class="afx muted">جارٍ التحميل من القاعدة…</div>';
       rpc('employee_overview', { p_iqama: normId(e.iqama) }).then(function(o){
@@ -8873,6 +8945,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
         // طلب الإيقاف — الإيقاف نفسه يقع من الأسطول
         h += '<h4>✅ اعتماد الموظف</h4><div class="row" id="afxApp"><span class="muted">جارٍ التحقّق…</span></div>';
         h += '<h4>⛔ إيقاف المندوب</h4><div class="row" id="afxStopBox"><span class="muted">جارٍ التحقّق…</span></div>';
+        h += '<h4>✏️ تصحيح الحقول المقفلة</h4><div id="afxFix"><span class="muted">جارٍ التحقّق…</span></div>';   /* v70 */
         // طلب التفويض — للمدير وحده، وبعد اعتماد الموظف (v47)
         var canManage = !!(me && (me.role === 'admin' || me.role === 'manager' || (me.perms && me.perms.manage)));   /* v52 */
         var canApprove = !!(me && (me.role === 'admin' || me.role === 'manager'));   /* v53: نفس can_approve_emp في القاعدة */
@@ -8894,6 +8967,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
         paintIds(e, pane, canEdit, canDel);
         paintApproval(e, pane);
         paintStop(e, pane, canEdit);
+        paintFix(e, pane, canEdit);   /* v70 */
         var add = pane.querySelector('#afxAdd');
         if (add) add.onclick = function(){
           var pl = pane.querySelector('#afxPl').value, id = normId(pane.querySelector('#afxId').value);
@@ -9121,8 +9195,8 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       var n = document.createElement('div'); n.id = noteId;
       n.style.cssText = 'margin:8px 0;padding:9px 11px;border:1px solid #f2ddb5;background:#fdf8ef;'
         + 'border-radius:9px;color:#95570f;font-size:12.5px;line-height:1.7';
-      n.textContent = '🔒 هذا الموظف معتمد — الإقامة والاسم والمشروع تُعدَّل من مدير النظام وحده. '
-        + 'بقيّة الحقول (الجوال، العنوان، الرخصة، السكن…) مفتوحة وتُحفظ عادي.';
+      n.textContent = '🔒 هذا الموظف معتمد — الاسم والمشروع يُصحَّحان بطلب يعتمده المدير (من تبويب «المنصّة» في ملفه)، '
+        + 'ورقم الإقامة من مدير النظام وحده. بقيّة الحقول (الجوال، العنوان، الرخصة، السكن…) مفتوحة وتُحفظ عادي.';
       var host = first.closest('.wf-form') || first.parentNode.parentNode || mdl;
       host.insertBefore(n, host.firstChild);
     }
