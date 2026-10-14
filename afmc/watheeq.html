@@ -8243,7 +8243,11 @@ body.wx-card-open #wx4Pill{ display:none !important; }
           var lh = rowHash(c, local);
           var dirty = (m.hashes[k] != null) && lh !== m.hashes[k];      /* تعديل محلي لم يُرفع بعد */
           if (dirty && !c.force[k]) return;                               /* سيُرفع ويقرّر الخادم الأحدث */
-          if (lh !== h) { replaceInPlace(local, obj); changed++; }
+          /* v69: الاعتماد (approved_at) مستثنى من البصمة عمداً لأنه لا يُرفع من الجهاز،
+             فلو تغيّر وحده على الخادم لم تلحظه المقارنة وبقي الموظف «معلّقاً» على هذا الجهاز
+             إلى الأبد. نقارنه صراحةً حتى يُصحَّح من أول مزامنة. */
+          var metaDiff = (local.approved_at || null) !== (obj.approved_at || null);
+          if (lh !== h || metaDiff) { replaceInPlace(local, obj); changed++; }
         } else { list.push(obj); idx[k] = list.length - 1; changed++; }
         m.hashes[k] = h; delete c.force[k];
       });
@@ -8324,6 +8328,29 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       return res;
     });
   }
+  /* ═══ v69: تنبيه فشل الحفظ يبقى على الشاشة ═══
+     كان تنبيهاً عابراً يختفي في ثوانٍ، فيبدو للمستخدم أن «التعديل ما انحفظ»
+     بلا سبب. هنا يبقى شريط ظاهر باسم الموظف وسبب الرفض حتى يُغلقه بنفسه. */
+  function failBanner(failed){
+    try {
+      var id = 'afxFailBar', old = document.getElementById(id); if (old) old.remove();
+      var bar = document.createElement('div'); bar.id = id;
+      bar.style.cssText = 'position:fixed;inset-inline:0;bottom:0;z-index:99999;background:#fdf2f0;'
+        + 'border-top:2px solid #a3372b;color:#a3372b;padding:12px 16px;font:13px/1.8 system-ui,sans-serif;'
+        + 'direction:rtl;text-align:right;max-height:40vh;overflow:auto;box-shadow:0 -6px 18px rgba(0,0,0,.08)';
+      var names = {}; try { (state.employees || []).forEach(function(e){ names[normId(e.iqama)] = e.name_ar || e.name_en || ''; }); } catch(_){}
+      bar.innerHTML = '<b>⚠️ لم تُحفظ ' + failed.length + ' حفظة في القاعدة — التعديل باقٍ على هذا الجهاز فقط</b>'
+        + '<div style="margin-top:7px">' + failed.slice(0, 8).map(function(f){
+            return '• ' + esc(names[f.key] || f.key) + ' <span style="opacity:.75">(' + esc(f.key) + ')</span> — ' + esc(f.error);
+          }).join('<br>') + (failed.length > 8 ? '<br>… و' + (failed.length - 8) + ' غيرها' : '') + '</div>';
+      var x = document.createElement('button'); x.textContent = 'إغلاق';
+      x.style.cssText = 'margin-top:9px;border:1px solid #a3372b;background:#fff;color:#a3372b;'
+        + 'border-radius:8px;padding:5px 14px;font:inherit;font-weight:600;cursor:pointer';
+      x.onclick = function(){ bar.remove(); };
+      bar.appendChild(x);
+      document.body.appendChild(bar);
+    } catch(e){ note('⚠️ تعذّر حفظ ' + failed.length + ' سجل: ' + failed[0].error, 'red'); }
+  }
   function pushAll(forceAll){
     if (!ready || pushing) { if (ready) schedulePush(); return Promise.resolve(); }
     pushing = true; setChip('sync');
@@ -8334,7 +8361,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       }); });
     }, Promise.resolve()).then(function(){
       pushing = false;
-      if (summary.failed.length) note('⚠️ تعذّر حفظ ' + summary.failed.length + ' سجل في القاعدة: ' + summary.failed[0].error, 'red');
+      if (summary.failed.length) failBanner(summary.failed);   /* v69: الفشل يبقى معروضاً حتى يُقرأ */
       if (summary.stale) { note('🔄 ' + summary.stale + ' سجل عُدِّل من جهاز آخر — تم جلب الأحدث', 'amber'); pullAll(); }
       if (summary.issues) { note('📋 ' + summary.issues + ' ملاحظة جديدة على القواعد — افتح «ملاحظات المزامنة»', 'amber'); refreshIssues(); }
       setChip('ok');
@@ -9067,7 +9094,40 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     }
     window.wfAfmcJoin = startDate;
 
-    function tickFn(){ try { hookModal(); ensureTab(); hookCards(); modalJoin(); if (ready) { payCard(); missingBtn(); } } catch(_){} }
+
+    /* ═══ v69: بعد الاعتماد تُقفل الإقامة والاسم والمشروع على غير مدير النظام ═══
+       القاعدة (v51) ترفض التعديل، وكانت ترفض الحفظ كلّه — فيضيع معه الجوال
+       والعنوان وكل ما غيّره المستخدم في نفس الحفظة، ولا يبقى إلا تنبيه عابر.
+       فنقفل الحقول في الشاشة قبل الكتابة، ونشرح السبب في مكانه. */
+    var LOCKED_FIELDS = [['ef-iqama','رقم الإقامة'], ['ef-name_ar','الاسم بالعربي'],
+                         ['ef-name_en','الاسم بالإنجليزي'], ['ef-project','المسمى / المشروع']];
+    function lockApprovedFields(){
+      var mdl = document.getElementById('wfModal'); if (!mdl) return;
+      var first = document.getElementById('ef-iqama'); if (!first) return;
+      var isAdmin = !!(me && me.role === 'admin');
+      var e = (state.current != null) ? state.employees[state.current] : null;
+      var approved = !!(e && e.approved_at);
+      var lock = approved && !isAdmin;
+      LOCKED_FIELDS.forEach(function(f){
+        var el = document.getElementById(f[0]); if (!el) return;
+        if (el.disabled === lock && el.getAttribute('data-afxlock') === (lock ? '1' : '0')) return;
+        el.disabled = lock; el.setAttribute('data-afxlock', lock ? '1' : '0');
+        el.style.background = lock ? '#f4f2ed' : '';
+        el.title = lock ? 'بعد اعتماد الموظف لا يُعدَّل هذا الحقل إلا من مدير النظام' : '';
+      });
+      var noteId = 'afxLockNote', old = document.getElementById(noteId);
+      if (!lock){ if (old) old.remove(); return; }
+      if (old) return;
+      var n = document.createElement('div'); n.id = noteId;
+      n.style.cssText = 'margin:8px 0;padding:9px 11px;border:1px solid #f2ddb5;background:#fdf8ef;'
+        + 'border-radius:9px;color:#95570f;font-size:12.5px;line-height:1.7';
+      n.textContent = '🔒 هذا الموظف معتمد — الإقامة والاسم والمشروع تُعدَّل من مدير النظام وحده. '
+        + 'بقيّة الحقول (الجوال، العنوان، الرخصة، السكن…) مفتوحة وتُحفظ عادي.';
+      var host = first.closest('.wf-form') || first.parentNode.parentNode || mdl;
+      host.insertBefore(n, host.firstChild);
+    }
+
+    function tickFn(){ try { hookModal(); ensureTab(); hookCards(); modalJoin(); lockApprovedFields(); if (ready) { payCard(); missingBtn(); } } catch(_){} }
     tickFn(); setInterval(tickFn, 1500);
     /* ---------- (٥) زر «بلا معرف»: موظف بلا معرّف منصة أو بلا مشروع (نفس آلية الأسطول) ---------- */
     function missingBtn(){
