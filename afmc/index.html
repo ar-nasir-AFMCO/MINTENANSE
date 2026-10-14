@@ -1134,7 +1134,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261014155046";
+  var BUILD = "20261014155557";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -3187,6 +3187,16 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       + ' · ' + njN0(c.total||0) + ' كابتن في الحساب';
 
     var al = d.alerts || [], mu = d.muted || [];   /* [id,cap,code,label,sev,branch,detail,opened] */
+    var ageMin = seen ? Math.round((Date.now() - seen.getTime())/60000) : 1e9;
+    var stale  = ageMin > 20;                       /* القراءة تتوقف بين ٨ص و٤م — لا ورديات */
+    if (stale){
+      $('njAlN').textContent = 'موقوفة';
+      $('njAlerts').innerHTML = '<div class="mute"><b>—</b> التنبيهات موقوفة '
+        + '<span>آخر قراءة ' + seen.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})
+        + ' · القراءة تتوقف بين ٨ صباحاً و٤ عصراً لأن ما فيه ورديات، وترجع مع أول وردية. '
+        + 'ما نعرض تنبيهات قديمة كأنها لحظية.</span></div>';
+      njRowsRender(d); return;
+    }
     $('njAlN').textContent = al.length ? (al.length + ' مفتوح') : 'ما فيه تنبيهات';
     var muHtml = mu.map(function(m){               /* [code,label,n,severity] */
       return '<div class="mute"><b>' + njN0(m[2]) + '</b> ' + esc(m[1])
@@ -3201,6 +3211,9 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         + '<span class="ago">'+njSince(a[7])+'</span></div>'; }).join('')
       : (muHtml ? '' : '<div class="sub">كل شي تمام — ما فيه تنبيه مفتوح.</div>'));
 
+    njRowsRender(d);
+  }
+  function njRowsRender(d){
     var q = (OPS.q||'').trim().toLowerCase();
     var rows = (d.live||[]).filter(function(r){
       return !q || ((r[1]||'') + ' ' + r[0] + ' ' + (r[2]||'')).toLowerCase().indexOf(q) >= 0; });
