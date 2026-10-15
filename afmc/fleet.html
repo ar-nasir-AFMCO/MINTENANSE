@@ -7923,6 +7923,62 @@ async function handleAccidentFile(input){
     var LAB_F = { name:'1156777051', iqama:'1970767550', email:'1619132559', plate:'1581913447',
                   plate_ar:'1046381303', project:'129957825', area:'820389940', office:'1414804338' };
     var LAB_FUEL = 'https://www.appsheet.com/start/0fcc64c6-f3fb-4be7-9002-2fd17dd57ebf?platform=desktop';
+    /* ═══ v79: مطابقة القيم بخيارات النموذج ═══
+       حقول «المشروع» و«المنطقة» و«مكتب الإيجار» في نموذج جوجل قوائم
+       منسدلة: التعبئة من الرابط لا تُقبل إلا بالنص الحرفي للخيار. وقيم
+       المنصة تختلف تهجئةً (JADAH/JEDDAH · DAMAM/DAMMAM · SAFI - T/SAFI)،
+       فكانت الثلاثة تصل فارغة بلا أي رسالة. هنا نطابقها: نصّاً، ثم بادئةً،
+       ثم تقريباً — والتقريب ممنوع على المشاريع لأنها أسماء شركات، وفرق
+       حرفين فيها يعني شركة أخرى (NINJA ← NANNA). ما لا يُطابَق يُترك
+       فارغاً ويُقال للمستخدم صراحةً بدل أن يُملأ بالخطأ. */
+    var FORM_OPT = {
+      project: ['SMSA - سمسا','AMAZON - أمازون','NOON - نون','CARFOUR - كارفور','NANNA - نعناع',
+                'NAQEL - ناقل','HUNGERSTATION - هنقرستيشن','كيتا - KEETA','STARLINK - ستارلينك'],
+      area: ['RIYADH - الرياض','JEDDAH - جدة','BURAIDAH - بريدة','MECCA - مكة','HOFUF - الهفوف',
+             'KHAMIS MUSHIT - خميس مشيط','HAFAR AL BATEN - حفر الباطن','NAJRAN - نجران','ABHA - ابها',
+             'WADI DAWASIR - وادي الدواسر','KHUBAR - الخبر','BISHA - بيشة','MADINAH - المدينة',
+             'JAZAN - جازان','MAHAYEL - محايل','JUBAIL - الجبيل','SKAKAH - سكاكا','TAIF - الطائف',
+             'AL BAHA - الباحة','QURAYYAT - القريات','TABUK - تبوك','MAJMAAH - المجمعة','HAIL - حائل',
+             'ARAR - عرعر','ALJOUF - الجوف','QASSIM - القصيم','KHARJ - الخرج','DAMMAM - الدمام','RAFHA - رفحاء'],
+      office: ['MUSBAH','ETIHAD','SAFI','ELIET','SMSA - Budget','SMSA - AVIS','SMSA - Yello',
+               'FARIS','RENTO','AFMCO','MUAKAD','دانيال','الثاقب - ALTHAQIB']
+    };
+    var FORM_ALIAS = { JADAH:'JEDDAH', JEEDAH:'JEDDAH', DAMAM:'DAMMAM', MAKA:'MECCA',
+      MAJMA:'MAJMAAH', QASEEM:'QASSIM', STARLINKS:'STARLINK',
+      'الرياض':'RIYADH', 'جدة':'JEDDAH', 'الدمام':'DAMMAM', 'مكة':'MECCA', 'الطائف':'TAIF' };
+    var FORM_FUZZ = { area:2, office:1, project:0 };
+    function fnk(x){ return String(x == null ? '' : x).toUpperCase()
+      .replace(/[ً-ْـ]/g, '').replace(/[^A-Zء-ي]/g, ''); }
+    function flev(a, b){
+      if (a === b) return 0; var m = a.length, n = b.length; if (!m || !n) return m || n;
+      var p = [], c = [], i, j; for (j = 0; j <= n; j++) p[j] = j;
+      for (i = 1; i <= m; i++){ c[0] = i;
+        for (j = 1; j <= n; j++) c[j] = Math.min(p[j] + 1, c[j-1] + 1, p[j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+        for (j = 0; j <= n; j++) p[j] = c[j]; }
+      return p[n];
+    }
+    function fparts(o){ return String(o).split(/\s*-\s*/).map(function(x){ return x.trim(); }).filter(Boolean); }
+    function matchOpt(val, kind){
+      var v = fnk(val); if (!v) return '';
+      var opts = FORM_OPT[kind] || [];
+      var al = FORM_ALIAS[String(val).trim().toUpperCase()] || FORM_ALIAS[String(val).trim()];
+      var cand = [v]; if (al) cand.push(fnk(al));
+      var i, k, o, p;
+      for (i = 0; i < opts.length; i++){ p = fparts(opts[i]);
+        for (k = 0; k < p.length; k++) for (o = 0; o < cand.length; o++)
+          if (fnk(p[k]) === cand[o]) return opts[i]; }
+      for (i = 0; i < opts.length; i++){ p = fparts(opts[i]);
+        for (k = 0; k < p.length; k++){ var pk = fnk(p[k]); if (!pk) continue;
+          for (o = 0; o < cand.length; o++)
+            if ((cand[o].indexOf(pk) === 0 || pk.indexOf(cand[o]) === 0)
+                && Math.min(cand[o].length, pk.length) >= 4) return opts[i]; } }
+      var lim = FORM_FUZZ[kind] || 0; if (!lim) return '';
+      var best = '', bd = 99;
+      for (i = 0; i < opts.length; i++){ p = fparts(opts[i]);
+        for (k = 0; k < p.length; k++){ var q = fnk(p[k]); if (q.length < 3) continue;
+          for (o = 0; o < cand.length; o++){ var d = flev(cand[o], q); if (d < bd){ bd = d; best = opts[i]; } } } }
+      return bd <= lim ? best : '';
+    }
     function activeVeh(e){
       return (e.vehicles || []).filter(function(v){
         return v && (v.active === true || String(v.status || '').toLowerCase() === 'active'); })[0] || null;
@@ -7933,9 +7989,9 @@ async function handleAccidentFile(input){
         ['entry.' + LAB_F.iqama,   normId(e.iqama) || ''],
         ['entry.' + LAB_F.email,   (me && me.email) || ''],
         ['entry.' + LAB_F.plate,   (v && v.plate) || ''],
-        ['entry.' + LAB_F.project, (v && v.project) || e.project || ''],
-        ['entry.' + LAB_F.area,    (v && v.area) || e.area || ''],
-        ['entry.' + LAB_F.office,  (v && v.rental_office) || '']]
+        ['entry.' + LAB_F.project, matchOpt((v && v.project) || e.project || '', 'project')],
+        ['entry.' + LAB_F.area,    matchOpt((v && v.area) || e.area || '', 'area')],
+        ['entry.' + LAB_F.office,  matchOpt((v && v.rental_office) || '', 'office')]]
         .filter(function(p){ return String(p[1] || '') !== ''; })
         .map(function(p){ return encodeURIComponent(p[0]) + '=' + encodeURIComponent(p[1]); }).join('&');
       return LAB_FORM + '?' + q;
@@ -7949,6 +8005,19 @@ async function handleAccidentFile(input){
               'مكتب الإيجار: ' + ((v && v.rental_office) || ''),
               'الجوال: ' + (e.mobile || '')].join('\n');
     }
+    function missHtml(e, v){
+      var miss = [];
+      [['المشروع', (v && v.project) || e.project || '', 'project'],
+       ['المنطقة', (v && v.area) || e.area || '', 'area'],
+       ['مكتب الإيجار', (v && v.rental_office) || '', 'office']].forEach(function(f){
+        if (f[1] && !matchOpt(f[1], f[2])) miss.push(f[0] + ' «' + f[1] + '»');
+      });
+      if (!miss.length) return '';
+      return '<div style="margin-top:6px;padding:8px 10px;border:1px solid #f2ddb5;background:#fdf8ef;'
+        + 'border-radius:9px;color:#95570f;font-size:12.5px;line-height:1.7">⚠️ '
+        + esc(miss.join(' · ')) + ' — ليس من خيارات النموذج، فيصل فارغاً. '
+        + 'اختره يدوياً في النموذج، أو أضف الخيار للنموذج ليُعبَّأ تلقائياً.</div>';
+    }
     function fuelWashHtml(e){
       var v = activeVeh(e); if (!v) return '';
       return '<h4>🧰 بعد الإسناد</h4>'
@@ -7961,6 +8030,7 @@ async function handleAccidentFile(input){
         + (v.rental_office ? ' · مكتب ' + esc(v.rental_office) : '')
         + ((v.project || e.project) ? ' · ' + esc(v.project || e.project) : '') + '. '
         + 'نموذج الغسيل يفتح معبّأً. تطبيق الوقود لا يقبل التعبئة من الرابط — انسخ البيانات والصقها فيه.</div>'
+        + missHtml(e, v)
         + '<pre id="afxFuelRow" style="display:none">' + esc(fuelRow(e, v)) + '</pre>';
     }
     function empPane(e, pane){
