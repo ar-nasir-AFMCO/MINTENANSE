@@ -7283,10 +7283,42 @@ async function handleAccidentFile(input){
       return res;
     });
   }
+  /* ═══ v71: فكّ العالق — الحقول المقفلة تأخذ نسخة القاعدة ═══
+     لو رُفضت حفظة بسبب قفل الاسم/المشروع (v51/v70)، كان السجل يعلق للأبد:
+     الرفع يُرفض كل دقيقة، والسحب يتخطّاه لأن فيه تعديلاً محلياً لم يُرفع.
+     هنا نأخذ قيم القاعدة لتلك الحقول الأربعة وحدها، فتُحفظ بقيّة تعديلات
+     المستخدم (الجوال، السكن، الرخصة…) ويتوقّف النزيف — ومن أراد تغيير
+     الاسم أو المشروع فمساره «طلب تصحيح» يعتمده المدير. */
+  var lockRepaired = {};
+  function isLockErr(m){ return /بعد الاعتماد/.test(String(m || '')); }
+  function repairLocked(failed){
+    if (APP !== 'watheeq' || typeof state === 'undefined' || !state || !state.employees) return Promise.resolve(0);
+    var keys = (failed || []).filter(function(f){ return isLockErr(f.error) && !lockRepaired[f.key]; })
+                             .map(function(f){ return normId(f.key); });
+    if (!keys.length) return Promise.resolve(0);
+    keys.forEach(function(k){ lockRepaired[k] = 1; });
+    var inList = '(' + keys.map(function(k){ return encodeURIComponent('"' + k.replace(/"/g, '') + '"'); }).join(',') + ')';
+    return selectAll('employees?select=iqama,full_name_ar,full_name_en,project_code&iqama=in.' + inList)
+      .then(function(rows){
+        var byIq = {}; (state.employees || []).forEach(function(e){ byIq[normId(e.iqama)] = e; });
+        var n = 0, names = [];
+        (rows || []).forEach(function(r){
+          var e = byIq[normId(r.iqama)]; if (!e) return;
+          var hit = false;
+          if (String(e.name_ar || '') !== String(r.full_name_ar || '')) { e.name_ar = r.full_name_ar || ''; hit = true; }
+          if (String(e.name_en || '') !== String(r.full_name_en || '')) { e.name_en = r.full_name_en || ''; hit = true; }
+          if (String(e.project || '') !== String(r.project_code || '')) { e.project = r.project_code || ''; hit = true; }
+          if (hit) { n++; names.push(e.name_ar || normId(r.iqama)); }
+        });
+        if (n){ localSaveAndRender(); schedulePush(); }
+        return { n: n, names: names };
+      }).catch(function(){ return { n: 0, names: [] }; });
+  }
+
   /* ═══ v69: تنبيه فشل الحفظ يبقى على الشاشة ═══
      كان تنبيهاً عابراً يختفي في ثوانٍ، فيبدو للمستخدم أن «التعديل ما انحفظ»
      بلا سبب. هنا يبقى شريط ظاهر باسم الموظف وسبب الرفض حتى يُغلقه بنفسه. */
-  function failBanner(failed){
+  function failBanner(failed, repaired){
     try {
       var id = 'afxFailBar', old = document.getElementById(id); if (old) old.remove();
       var bar = document.createElement('div'); bar.id = id;
@@ -7294,7 +7326,10 @@ async function handleAccidentFile(input){
         + 'border-top:2px solid #a3372b;color:#a3372b;padding:12px 16px;font:13px/1.8 system-ui,sans-serif;'
         + 'direction:rtl;text-align:right;max-height:40vh;overflow:auto;box-shadow:0 -6px 18px rgba(0,0,0,.08)';
       var names = {}; try { (state.employees || []).forEach(function(e){ names[normId(e.iqama)] = e.name_ar || e.name_en || ''; }); } catch(_){}
-      bar.innerHTML = '<b>⚠️ لم تُحفظ ' + failed.length + ' حفظة في القاعدة — التعديل باقٍ على هذا الجهاز فقط</b>'
+      bar.innerHTML = '<b>⚠️ لم تُحفظ ' + failed.length + ' حفظة في القاعدة</b>'
+        + (repaired ? '<div style="margin-top:5px">أُعيد الاسم/المشروع إلى نسخة القاعدة وحُفظت بقيّة تعديلاتك. '
+                      + 'لتغيير الاسم أو المشروع: افتح ملف الموظف ← تبويب «المنصّة» ← «✏️ تصحيح الحقول المقفلة».</div>'
+                    : '<div style="margin-top:5px">التعديل باقٍ على هذا الجهاز فقط.</div>')
         + '<div style="margin-top:7px">' + failed.slice(0, 8).map(function(f){
             return '• ' + esc(names[f.key] || f.key) + ' <span style="opacity:.75">(' + esc(f.key) + ')</span> — ' + esc(f.error);
           }).join('<br>') + (failed.length > 8 ? '<br>… و' + (failed.length - 8) + ' غيرها' : '') + '</div>';
@@ -7316,7 +7351,17 @@ async function handleAccidentFile(input){
       }); });
     }, Promise.resolve()).then(function(){
       pushing = false;
-      if (summary.failed.length) failBanner(summary.failed);   /* v69: الفشل يبقى معروضاً حتى يُقرأ */
+      if (summary.failed.length) {
+        var lockOnes = summary.failed.filter(function(f){ return isLockErr(f.error); });
+        if (lockOnes.length) {
+          repairLocked(summary.failed).then(function(r){            /* v71 */
+            if (r && r.n) note('🔁 ' + r.n + ' سجل: أُعيد الاسم/المشروع لنسخة القاعدة وحُفظت بقيّة تعديلاتك — '
+                               + 'لتغييرهما ارفع «طلب تصحيح» من تبويب المنصّة.', 'amber');
+            var rest = summary.failed.filter(function(f){ return !isLockErr(f.error); });
+            if (rest.length || !(r && r.n)) failBanner(summary.failed, !!(r && r.n));
+          });
+        } else failBanner(summary.failed, false);
+      }
       if (summary.stale) { note('🔄 ' + summary.stale + ' سجل عُدِّل من جهاز آخر — تم جلب الأحدث', 'amber'); pullAll(); }
       if (summary.issues) { note('📋 ' + summary.issues + ' ملاحظة جديدة على القواعد — افتح «ملاحظات المزامنة»', 'amber'); refreshIssues(); }
       setChip('ok');
