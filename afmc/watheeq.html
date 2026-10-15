@@ -8899,6 +8899,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       if (!HAS_APPROVAL) return drop();
       if (!e.approved_at){ box.innerHTML = '<span class="muted">الموظف غير معتمد بعد — كل حقوله مفتوحة في «تعديل بيانات الموظف».</span>'; return; }
       var isAdmin = !!(me && me.role === 'admin');
+      var isMgr   = !!(me && (me.role === 'admin' || me.role === 'manager'));   /* v72 */
       rpc('emp_fix_open', {}).then(function(list){
         var mine = (list || []).filter(function(x){ return normId(x.iqama) === normId(e.iqama); })[0];
         if (mine){
@@ -8925,7 +8926,10 @@ body.wx-card-open #wx4Pill{ display:none !important; }
           };
           return;
         }
-        if (isAdmin){ box.innerHTML = '<span class="muted">أنت مدير النظام — تعدّل هذه الحقول مباشرة من «تعديل بيانات الموظف». لا يوجد طلب تصحيح مفتوح.</span>'; return; }
+        if (isMgr){ box.innerHTML = '<span class="muted">' + (isAdmin
+            ? 'أنت مدير النظام — تعدّل كل الحقول مباشرة من «تعديل بيانات الموظف».'
+            : 'أنت المدير — تعدّل الاسم والمشروع مباشرة من «تعديل بيانات الموظف»، ورقم الإقامة من مدير النظام وحده.')
+          + ' لا يوجد طلب تصحيح مفتوح، وكل تعديل يُسجَّل في تبويب «الملاحظات».</span>'; return; }   /* v72 */
         if (!canEdit){ box.innerHTML = '<span class="muted">لا تملك صلاحية رفع طلب تصحيح.</span>'; return; }
         var cur = { name_ar: e.name_ar || '', name_en: e.name_en || '', project: e.project || '' };
         box.innerHTML = '<div class="muted">الاسم والمشروع مقفلان بعد الاعتماد. اكتب الصحيح هنا وسيصل المدير للاعتماد — '
@@ -9085,6 +9089,61 @@ body.wx-card-open #wx4Pill{ display:none !important; }
         if (rq) rq.onclick = function(){ var idx = state.employees.indexOf(e); if (idx >= 0) window.__wfReqSend(idx); setTimeout(function(){ empPane(e, pane); }, 1500); };
       }).catch(function(err){ pane.innerHTML = '<div class="afx warn">تعذّر التحميل: ' + esc(err.message) + '</div>'; });
     }
+    /* ═══ v72: سجل التغييرات داخل تبويب «الملاحظات» ═══
+       كل تعديل على كرت الموظف — من أي مستخدم — تكتبه القاعدة في
+       audit_log قبل/بعد. هنا نعرضه كما هو: يُضاف ولا يُحذف. */
+    var HLBL = { iqama:'رقم الإقامة', name_ar:'الاسم بالعربي', name_en:'الاسم بالإنجليزي',
+      project:'المشروع', job_title:'المسمّى الوظيفي', mobile:'رقم الجوال', email:'البريد',
+      nationality:'الجنسية', birth_date:'تاريخ الميلاد', profession:'المهنة في الإقامة',
+      area:'مدينة العمل', city:'المدينة', license_type:'نوع الرخصة', license_number:'رقم الرخصة',
+      license_issue:'إصدار الرخصة', license_expiry:'انتهاء الرخصة', iqama_issue:'إصدار الإقامة',
+      iqama_expiry:'انتهاء الإقامة', housing_status:'حالة السكن', housing_location:'موقع السكن',
+      category:'الفئة', employment_status:'حالة التوظيف', status:'حالة التوظيف',
+      approved_at:'الاعتماد', deleted_at:'الحذف', salary_only:'راتب فقط', iban:'الآيبان' };
+    var HACT = { employee_edit:'تعديل', emp_fix_approved:'تصحيح معتمد' };
+    function hVal(v){
+      if (v === null || v === undefined || v === '') return '—';
+      var t = String(v);
+      if (/^\d{4}-\d{2}-\d{2}T/.test(t)) return t.slice(0, 10);
+      if (t === 'true') return 'نعم'; if (t === 'false') return 'لا';
+      return t;
+    }
+    function histPane(){
+      var pane = document.getElementById('pane-notes'); if (!pane) return;
+      if (pane.querySelector('#afxHist')) return;
+      if (state.current == null) return;
+      var e = state.employees[state.current]; if (!e) return;
+      var box = document.createElement('div');
+      box.className = 'afx'; box.id = 'afxHist'; box.style.marginTop = '14px';
+      box.innerHTML = '<h4 style="margin:0 0 6px">📜 سجل التغييرات على الكرت</h4>'
+        + '<div class="muted">كل تعديل من أي مستخدم — يُضاف ولا يُحذف.</div>'
+        + '<div id="afxHistBody" class="muted" style="margin-top:6px">جارٍ التحميل…</div>';
+      pane.appendChild(box);
+      rpc('employee_history', { p_iqama: normId(e.iqama) }).then(function(rows){
+        var b = box.querySelector('#afxHistBody');
+        rows = rows || [];
+        if (!rows.length){ b.innerHTML = '<span class="muted">لا تغييرات مسجّلة بعد — السجل يبدأ من تفعيل التتبّع.</span>'; return; }
+        b.innerHTML = '<div class="scroll"><table><thead><tr><th>متى</th><th>مَن</th><th>الحقل</th><th>قبل</th><th>بعد</th></tr></thead><tbody>'
+          + rows.map(function(r){
+              var ch = r.changes || {}, ks = Object.keys(ch);
+              var when = String(r.at || '').slice(0, 16).replace('T', ' ');
+              if (!ks.length) return '';
+              return ks.map(function(k, i){
+                return '<tr>' + (i === 0
+                    ? '<td rowspan="' + ks.length + '">' + esc(when) + '</td><td rowspan="' + ks.length + '">' + esc(r.by || '—')
+                      + (r.note ? '<div class="muted">' + esc(r.note) + '</div>' : '')
+                      + (r.action === 'emp_fix_approved' ? '<div class="muted">' + esc(HACT[r.action]) + '</div>' : '') + '</td>'
+                    : '')
+                  + '<td>' + esc(HLBL[k] || k) + '</td>'
+                  + '<td style="color:#a3372b">' + esc(hVal(ch[k] && ch[k][0])) + '</td>'
+                  + '<td style="color:#0e5e5c"><b>' + esc(hVal(ch[k] && ch[k][1])) + '</b></td></tr>';
+              }).join('');
+            }).join('')
+          + '</tbody></table></div>';
+      }).catch(function(err){
+        box.querySelector('#afxHistBody').innerHTML = '<span class="warn">' + esc(err.message) + '</span>';
+      });
+    }
     function addEmpTab(){
       var mdl = document.getElementById('modal'); if (!mdl || state.current == null) return;
       var tabs = mdl.querySelector('.mtabs'), body = mdl.querySelector('.mbody'); if (!tabs || !body || tabs.querySelector('[data-pane="afmc"]')) return;
@@ -9101,9 +9160,9 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     var obsOn = false;
     function hookModal(){
       if (obsOn) return; var mdl = document.getElementById('modal'); if (!mdl) return; obsOn = true;
-      var t = null; new MutationObserver(function(){ clearTimeout(t); t = setTimeout(function(){ try { modalJoin(); if (ready) addEmpTab(); } catch(_){} }, 60); }).observe(mdl, { childList: true });
+      var t = null; new MutationObserver(function(){ clearTimeout(t); t = setTimeout(function(){ try { modalJoin(); if (ready) { addEmpTab(); histPane(); } } catch(_){} }, 60); }).observe(mdl, { childList: true });
     }
-    function ensureTab(){ try { if (ready && state.current != null && document.querySelector('#scrim.on')) addEmpTab(); } catch(_){} }
+    function ensureTab(){ try { if (ready && state.current != null && document.querySelector('#scrim.on')) { addEmpTab(); histPane(); } } catch(_){} }
 
     /* ---------- (٢) استخراج الرواتب من الحضور (تبويب ملفات الرواتب) ---------- */
     var payRows = [];
@@ -9224,24 +9283,36 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       var mdl = document.getElementById('wfModal'); if (!mdl) return;
       var first = document.getElementById('ef-iqama'); if (!first) return;
       var isAdmin = !!(me && me.role === 'admin');
+      var isMgr   = !!(me && (me.role === 'admin' || me.role === 'manager'));
       var e = (state.current != null) ? state.employees[state.current] : null;
       var approved = !!(e && e.approved_at);
-      var lock = approved && !isAdmin;
+      /* v72: المدير يعدّل كل شيء إلا الإقامة · المشرف تبقى عنده الأربعة مقفلة */
+      var lockAll = approved && !isAdmin && !isMgr;
+      var lockIq  = approved && !isAdmin;
+      var anyLock = false;
       LOCKED_FIELDS.forEach(function(f){
         var el = document.getElementById(f[0]); if (!el) return;
+        var lock = (f[0] === 'ef-iqama') ? lockIq : lockAll;
+        if (lock) anyLock = true;
         if (el.disabled === lock && el.getAttribute('data-afxlock') === (lock ? '1' : '0')) return;
         el.disabled = lock; el.setAttribute('data-afxlock', lock ? '1' : '0');
         el.style.background = lock ? '#f4f2ed' : '';
-        el.title = lock ? 'بعد اعتماد الموظف لا يُعدَّل هذا الحقل إلا من مدير النظام' : '';
+        el.title = lock ? (f[0] === 'ef-iqama'
+          ? 'رقم الإقامة يُعدَّل من مدير النظام وحده — مفتاح الحضور والسكن والمعرّفات'
+          : 'بعد الاعتماد يُصحَّح هذا الحقل بطلب يعتمده المدير') : '';
       });
+      var lock = anyLock;
       var noteId = 'afxLockNote', old = document.getElementById(noteId);
       if (!lock){ if (old) old.remove(); return; }
       if (old) return;
       var n = document.createElement('div'); n.id = noteId;
       n.style.cssText = 'margin:8px 0;padding:9px 11px;border:1px solid #f2ddb5;background:#fdf8ef;'
         + 'border-radius:9px;color:#95570f;font-size:12.5px;line-height:1.7';
-      n.textContent = '🔒 هذا الموظف معتمد — الاسم والمشروع يُصحَّحان بطلب يعتمده المدير (من تبويب «المنصّة» في ملفه)، '
-        + 'ورقم الإقامة من مدير النظام وحده. بقيّة الحقول (الجوال، العنوان، الرخصة، السكن…) مفتوحة وتُحفظ عادي.';
+      n.textContent = lockAll
+        ? '🔒 هذا الموظف معتمد — الاسم والمشروع يُصحَّحان بطلب يعتمده المدير (تبويب «المنصّة» في ملفه)، '
+          + 'ورقم الإقامة من مدير النظام وحده. بقيّة الحقول مفتوحة وتُحفظ عادي.'
+        : '🔒 رقم الإقامة يُعدَّل من مدير النظام وحده — لأنه مفتاح الربط مع الحضور والسكن والمعرّفات. '
+          + 'بقيّة الحقول مفتوحة لك، وكل تعديل يُسجَّل في «الملاحظات» باسمك.';
       var host = first.closest('.wf-form') || first.parentNode.parentNode || mdl;
       host.insertBefore(n, host.firstChild);
     }
