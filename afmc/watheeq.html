@@ -9317,7 +9317,104 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       host.insertBefore(n, host.firstChild);
     }
 
-    function tickFn(){ try { hookModal(); ensureTab(); hookCards(); modalJoin(); lockApprovedFields(); if (ready) { payCard(); missingBtn(); } } catch(_){} }
+    /* ═══ v73: تصدير ما هو معروض فعلاً حسب الفلتر ═══
+       التصديرات القديمة (قائمة «بيانات وتصدير») تأخذ كل الموظفين دائماً،
+       فلا تنفع لمن فلتر على مشروع أو حالة أو بحث. هذا الزر يصدّر الكروت
+       الظاهرة أمامك بالضبط — بكل الفلاتر معاً، بما فيها «الكفالة فقط»
+       لأنه يقرأ المعروض لا المخزون. والأعمدة المالية لا تخرج إلا لمن
+       يملك صلاحية «المالية». */
+    var XCOLS = [['name_ar','الاسم عربي'], ['name_en','الاسم إنجليزي'], ['iqama','رقم الإقامة'],
+      ['mobile','الجوال'], ['nationality','الجنسية'], ['project','المشروع'], ['job_title','المسمّى'],
+      ['status_label','الحالة'], ['category','الفئة'], ['area','مدينة العمل'],
+      ['license_type','نوع الرخصة'], ['license_number','رقم الرخصة'], ['license_expiry','انتهاء الرخصة'],
+      ['iqama_expiry','انتهاء الإقامة'], ['housing_status','حالة السكن'], ['housing_location','موقع السكن']];
+    function visibleEmps(){
+      var host = document.getElementById('empCards'); if (!host) return [];
+      var out = [], seen = {};
+      Array.prototype.forEach.call(host.querySelectorAll('button.card'), function(card){
+        if (card.offsetParent === null) return;                 /* يحترم «الكفالة فقط» وأي إخفاء بالـCSS */
+        var m = (card.getAttribute('onclick') || '').match(/openModal\((\d+)\)/); if (!m) return;
+        var i = parseInt(m[1], 10); if (seen[i]) return; seen[i] = 1;
+        var e = (state.employees || [])[i]; if (e) out.push(e);
+      });
+      return out;
+    }
+    function filterLabel(){
+      var f = (typeof state !== 'undefined' && state && state.filter) || {}, p = [];
+      if (f.project) p.push(f.project);
+      if (f.status) p.push({ active:'على رأس العمل', stopped:'موقوف', salary_only:'متوقف عن العمل' }[f.status] || f.status);
+      if (f.cat) p.push(f.cat === 'car' ? 'سيارة' : 'دراجة');
+      if (f.q) p.push('بحث ' + f.q);
+      try { if (document.getElementById('empCards').classList.contains('wf-only-kafala')) p.push('الكفالة فقط'); } catch(_){}
+      return p.length ? p.join(' · ') : 'كل الموظفين';
+    }
+    function exportVisible(){
+      var L = visibleEmps();
+      if (!L.length) return note('لا توجد كروت معروضة للتصدير', 'amber');
+      if (typeof XLSX === 'undefined') return note('محرّك Excel لم يُحمَّل — أعد تحميل الصفحة', 'red');
+      var canFin = !!(me && (me.role === 'admin' || me.role === 'manager' || me.role === 'finance'
+                             || (me.perms && me.perms.finance)));
+      var rows = L.map(function(e){
+        var o = {};
+        XCOLS.forEach(function(c){
+          var v = e[c[0]];
+          if (c[0] === 'category') v = v === 'car' ? 'سيارة' : v === 'motorcycle' ? 'دراجة نارية' : (v || '');
+          o[c[1]] = v == null ? '' : v;
+        });
+        o['معتمد'] = e.approved_at ? String(e.approved_at).slice(0, 10) : 'غير معتمد';
+        var av = (e.vehicles || []).filter(function(v){ return v && (v.active === true || String(v.status || '').toLowerCase() === 'active'); })[0];
+        o['المركبة الحالية'] = av ? (av.plate || '') : '';
+        if (canFin){
+          var f = e.finance || {};
+          o['الآيبان'] = e.iban || f.iban || '';
+          o['الراتب الأساسي'] = Number(f.base) || 0;
+          o['الحوافز'] = Number(f.bonus) || 0;
+          o['التوالف'] = Number(f.accident) || 0;
+          o['الخصميات'] = Number(f.deduction) || 0;
+          o['صافي الراتب'] = Number(f.net) || 0;
+        }
+        return o;
+      });
+      var wb = XLSX.utils.book_new();
+      var ws = XLSX.utils.json_to_sheet(rows);
+      ws['!cols'] = Object.keys(rows[0]).map(function(h){ return { wch: Math.max(11, Math.min(26, h.length + 6)) }; });
+      XLSX.utils.book_append_sheet(wb, ws, 'المعروض');
+      var byp = {}; L.forEach(function(e){ var p = e.project || 'بلا مشروع'; byp[p] = (byp[p] || 0) + 1; });
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
+        Object.keys(byp).sort().map(function(k){ return { 'المشروع': k, 'العدد': byp[k] }; })
+          .concat([{ 'المشروع': 'الإجمالي', 'العدد': L.length }])), 'حسب المشروع');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([
+        { 'البند': 'الفلتر', 'القيمة': filterLabel() },
+        { 'البند': 'عدد المصدَّر', 'القيمة': L.length },
+        { 'البند': 'إجمالي الموظفين', 'القيمة': (state.employees || []).length },
+        { 'البند': 'صدّره', 'القيمة': (me && (me.full_name || me.email)) || '' },
+        { 'البند': 'وقت التصدير', 'القيمة': new Date().toLocaleString('ar-SA') },
+        { 'البند': 'الأعمدة المالية', 'القيمة': canFin ? 'مضمّنة' : 'غير مضمّنة (بلا صلاحية مالية)' }
+      ]), 'عن التصدير');
+      var nm = 'وثيق-' + filterLabel().replace(/[\\/:*?"<>|]/g, '-').slice(0, 40)
+             + '-' + new Date().toISOString().slice(0, 10) + '.xlsx';
+      XLSX.writeFile(wb, nm);
+      note('⬇️ صُدِّر ' + L.length + ' موظف حسب الفلتر الحالي', 'green');
+    }
+    function addExportBtn(){
+      if (APP !== 'watheeq') return;
+      var bar = document.querySelector('#view-emp .toolbar'); if (!bar) return;
+      var b = document.getElementById('afxExpBtn');
+      if (!b){
+        b = document.createElement('button'); b.id = 'afxExpBtn'; b.type = 'button';
+        b.className = 'wf-adm-btn';
+        b.style.cssText = 'cursor:pointer;border:1px solid #f2ddb5;background:#fff;color:#0a4644;'
+          + 'border-radius:9px;padding:7px 12px;font:inherit;font-weight:600;font-size:13px';
+        b.onclick = exportVisible;
+        bar.appendChild(b);
+      }
+      var n = visibleEmps().length;
+      var t = '⬇️ تصدير المعروض' + (n ? ' (' + n + ')' : '');
+      if (b.textContent !== t) b.textContent = t;
+      b.title = 'يصدّر الكروت الظاهرة الآن حسب الفلتر: ' + filterLabel();
+    }
+
+    function tickFn(){ try { hookModal(); ensureTab(); hookCards(); modalJoin(); lockApprovedFields(); if (ready) { payCard(); missingBtn(); addExportBtn(); } } catch(_){} }
     tickFn(); setInterval(tickFn, 1500);
     /* ---------- (٥) زر «بلا معرف»: موظف بلا معرّف منصة أو بلا مشروع (نفس آلية الأسطول) ---------- */
     function missingBtn(){
