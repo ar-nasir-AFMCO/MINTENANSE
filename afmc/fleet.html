@@ -7997,13 +7997,7 @@ async function handleAccidentFile(input){
       return LAB_FORM + '?' + q;
     }
     function fuelRow(e, v){
-      return ['الاسم: ' + (e.name_ar || e.name_en || ''),
-              'الإقامة: ' + (normId(e.iqama) || ''),
-              'المشروع: ' + ((v && v.project) || e.project || ''),
-              'المنطقة: ' + ((v && v.area) || e.area || ''),
-              'اللوحة: ' + ((v && v.plate) || ''),
-              'مكتب الإيجار: ' + ((v && v.rental_office) || ''),
-              'الجوال: ' + (e.mobile || '')].join('\n');
+      return fuelFields(e, v).map(function(r){ return r[0] + ': ' + (r[1] || '—'); }).join('\n');
     }
     /* v80: المشروع حقل إلزامي في النموذج. لو مشروع المركبة ليس من خياراته
        — وهذا حال NINJA و KEEMART وهما أكبر مشروعين — فالشريحة لا تُرسَل
@@ -8012,6 +8006,74 @@ async function handleAccidentFile(input){
     function projMiss(e, v){
       var p = (v && v.project) || e.project || '';
       return (p && !matchOpt(p, 'project')) ? p : '';
+    }
+    /* ═══ v81: صفّ الوقود بقيم تطبيق AppSheet نفسها ═══
+       جرّبت التعبئة من الرابط على تطبيق «Petrol Chips» — يفتح لكن يتجاهل
+       قيم الأعمدة، فالملاحظة القديمة صحيحة: لا يقبل التعبئة من الرابط.
+       الأفيد إذن أن ننسخ له القيمة بالنص الحرفي الذي يعرفه التطبيق، فيختار
+       من القائمة بلا تفكير. القوائم أدناه مقروءة من بيانات التطبيق نفسه. */
+    var FUEL_OPT = {
+      area: ['RIYADH - الرياض','DAMMAM - الدمام','JEDDAH - جدة','MECCA - مكة','TAIF - الطائف',
+             'KHAMIS MUSHIT - خميس مشيط','MADINAH - المدينة','JAZAN - جازان','BURAIDAH - بريدة',
+             'HOFUF - الهفوف','MAJMAAH - المجمعة','QASSIM - القصيم','MAHAYEL - محايل','NAJRAN - نجران',
+             'HAFAR AL BATEN - حفر الباطن','BISHA - بيشة','KHUBAR - الخبر','AL BAHA - الباحة',
+             'HAIL - حائل','ARAR - عرعر','KHARJ - الخرج','JUBAIL - الجبيل','ABHA - ابها',
+             'WADI DAWASIR - وادي الدواسر','SKAKAH - سكاكا','TABUK - تبوك','QURAYYAT - القريات'],
+      project: ['NINJA AFMCO - نينجا افامكو','KEEMART - كيمارت','SHIPMENT AFMCO','ARAMEX - ارامكس',
+                'STARLINKS - ستارلينك','كيتا - KEETA','NOON - نون','ARTZ','NAQEL - ناقل',
+                'SMSA - سمسا','CARFOUR - كارفور','AMAZON - أمازون','AJEX - اجيكس','NANNA - نعناع',
+                'AFMCO SUPERVISOR-مشرفين افامكو','NINJA Dyna - نينجا دينا','ONTHER - أخرى'],
+      office: ['ETIHAD - اتحاد العالمية','SMSA - Yelo - سمسا يلو','SAFI - الصافي','RENTO - رنتو',
+               'الثاقب - ALTHAQIB','MUAKAD','SMSA - Budget','MUSBAH - المصباح','MUNAKALH - مناقلة',
+               'FARIS - الفارس','SMSA - AVIS','WASEL - واصل','TRAVIL -  ترفل','OWN CAR - سيارة خاصة','LUMI'],
+      fuel: ['PETROL - بنزين','DIESLE - ديزل']
+    };
+    var FUEL_ALIAS = { NINJA:'NINJA AFMCO', 'NINJA-DIEANA':'NINJA Dyna', SHIPMENT:'SHIPMENT AFMCO',
+      'المشرفين والصيانة':'AFMCO SUPERVISOR', TRAFEL:'TRAVIL', DESIL:'DIESLE',
+      JADAH:'JEDDAH', JEEDAH:'JEDDAH', DAMAM:'DAMMAM', MAKA:'MECCA', MAJMA:'MAJMAAH',
+      QASEEM:'QASSIM', YANBU:'', 'الرياض':'RIYADH' };
+    function fuelOpt(val, kind){
+      var v = fnk(val); if (!v) return '';
+      var opts = FUEL_OPT[kind] || [];
+      var al = FUEL_ALIAS[String(val).trim().toUpperCase()] || FUEL_ALIAS[String(val).trim()];
+      if (al === '') return '';
+      var cand = [v]; if (al) cand.push(fnk(al));
+      var i, k, o, p;
+      for (i = 0; i < opts.length; i++){ p = fparts(opts[i]);
+        for (k = 0; k < p.length; k++) for (o = 0; o < cand.length; o++)
+          if (fnk(p[k]) === cand[o]) return opts[i]; }
+      for (i = 0; i < opts.length; i++){ p = fparts(opts[i]);
+        for (k = 0; k < p.length; k++){ var pk = fnk(p[k]); if (pk.length < 4) continue;
+          for (o = 0; o < cand.length; o++)
+            if (cand[o].indexOf(pk) === 0 || pk.indexOf(cand[o]) === 0) return opts[i]; } }
+      return '';
+    }
+    /* صفوف التطبيق بترتيب حقوله وبأسمائها كما هي فيه */
+    function fuelFields(e, v){
+      var raw = { area: (v && v.area) || e.area || '', project: (v && v.project) || e.project || '',
+                  office: (v && v.rental_office) || '', fuel: (v && v.fuel) || '' };
+      return [
+        ['رقم الاقامة - IQAMA', normId(e.iqama) || '', ''],
+        ['الاسم - NAME', e.name_ar || e.name_en || '', ''],
+        ['رقم الجوال - MOBAILE NUMBER', e.mobile || '', ''],
+        ['المنطقة - AREA', fuelOpt(raw.area, 'area'), raw.area],
+        ['اسم المشروع - PROJECT NAME', fuelOpt(raw.project, 'project'), raw.project],
+        ['نوع الوقود - FUEL TYPE', fuelOpt(raw.fuel, 'fuel'), raw.fuel],
+        ['مكتب الايجار - RENT OFFICE', fuelOpt(raw.office, 'office'), raw.office],
+        ['رقم اللوحة - PLATE NUMBER', (v && v.plate) || '', '']
+      ];
+    }
+    function fuelTableHtml(e, v){
+      var rows = fuelFields(e, v);
+      return '<div class="scroll" style="margin-top:6px"><table><tbody>'
+        + rows.map(function(r, i){
+            var ok = !!r[1];
+            return '<tr><th style="white-space:nowrap">' + esc(r[0]) + '</th>'
+              + '<td style="font-weight:600;color:' + (ok ? '#0e5e5c' : '#a3372b') + '">'
+              + (ok ? esc(r[1]) : ('— ' + (r[2] ? '<span class="muted">(' + esc(r[2]) + ' ليس من قوائم التطبيق)</span>' : ''))) + '</td>'
+              + '<td>' + (ok ? '<button class="btnx gh" data-fc="' + i + '">📋</button>' : '') + '</td></tr>';
+          }).join('')
+        + '</tbody></table></div>';
     }
     function missHtml(e, v){
       var out = '', p = projMiss(e, v);
@@ -8040,13 +8102,16 @@ async function handleAccidentFile(input){
         + esc(washUrl(e, v)) + '">🧼 شريحة غسيل — '
         + (projMiss(e, v) ? 'بلا مشروع ⛔' : 'معبّأة') + '</a>'
         + '<a class="btnx gh" target="_blank" rel="noopener" href="' + esc(LAB_FUEL) + '">⛽ الوقود — تفعيل وزيادة</a>'
-        + '<button class="btnx gh" id="afxFuelCopy">📋 انسخ بيانات المندوب</button>'
+        + '<button class="btnx gh" id="afxFuelCopy">📋 انسخ كل صف الوقود</button>'
         + '</div>'
         + '<div class="muted">اللوحة <b style="direction:ltr">' + esc(v.plate || '—') + '</b>'
         + (v.rental_office ? ' · مكتب ' + esc(v.rental_office) : '')
         + ((v.project || e.project) ? ' · ' + esc(v.project || e.project) : '') + '. '
         + 'نموذج الغسيل يفتح معبّأً. تطبيق الوقود لا يقبل التعبئة من الرابط — انسخ البيانات والصقها فيه.</div>'
         + missHtml(e, v)
+        + '<div class="muted" style="margin-top:8px"><b>صفّ تطبيق الوقود</b> — بأسماء حقوله وقيَمه الحرفية، '
+        + 'لأن التطبيق لا يقبل التعبئة من الرابط (جُرّب). انسخ القيمة واخترها في التطبيق:</div>'
+        + fuelTableHtml(e, v)
         + '<pre id="afxFuelRow" style="display:none">' + esc(fuelRow(e, v)) + '</pre>';
     }
     function empPane(e, pane){
@@ -8177,6 +8242,14 @@ async function handleAccidentFile(input){
             };
           }
         }).catch(function(){});
+        pane.querySelectorAll('[data-fc]').forEach(function(b){
+          b.onclick = function(){
+            var rows = fuelFields(e, activeVeh(e)), r = rows[+b.getAttribute('data-fc')];
+            if (!r || !r[1]) return;
+            try { navigator.clipboard.writeText(r[1]); note('📋 ' + r[0] + ' — نُسخت', 'green'); }
+            catch(_){ note('انسخها يدوياً', 'amber'); }
+          };
+        });
         var fc = pane.querySelector('#afxFuelCopy');
         if (fc) fc.onclick = function(){
           var t = (pane.querySelector('#afxFuelRow') || {}).textContent || '';
