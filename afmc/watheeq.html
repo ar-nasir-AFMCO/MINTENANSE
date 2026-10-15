@@ -8958,6 +8958,56 @@ body.wx-card-open #wx4Pill{ display:none !important; }
         };
       }).catch(function(){ drop(); });
     }
+    /* ═══ v78: الوقود وشرائح الغسيل — أزرار بعد اعتماد الإسناد ═══
+       الرابطان كانا في تبويب «التجريبي» يُفتحان يدوياً بعد البحث عن
+       المندوب. هنا يظهران في ملف الموظف نفسه، ولا يظهران إلا وله
+       مركبة نشطة في الأسطول — فالزر لا يُفتح على فراغ.
+       نموذج الغسيل يقبل التعبئة من الرابط فنفتحه معبّأً بتسعة حقول،
+       وتطبيق الوقود لا يقبلها فنضع بياناته جاهزة للنسخ بجانبه. */
+    var LAB_FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSc45otbZY6bqJfJYl2VZLXT73KlRttn_i67Y5lADtM9G4k5ww/viewform';
+    var LAB_F = { name:'1156777051', iqama:'1970767550', email:'1619132559', plate:'1581913447',
+                  plate_ar:'1046381303', project:'129957825', area:'820389940', office:'1414804338' };
+    var LAB_FUEL = 'https://www.appsheet.com/start/0fcc64c6-f3fb-4be7-9002-2fd17dd57ebf?platform=desktop';
+    function activeVeh(e){
+      return (e.vehicles || []).filter(function(v){
+        return v && (v.active === true || String(v.status || '').toLowerCase() === 'active'); })[0] || null;
+    }
+    function washUrl(e, v){
+      var q = [['usp','pp_url'],
+        ['entry.' + LAB_F.name,    e.name_ar || e.name_en || ''],
+        ['entry.' + LAB_F.iqama,   normId(e.iqama) || ''],
+        ['entry.' + LAB_F.email,   (me && me.email) || ''],
+        ['entry.' + LAB_F.plate,   (v && v.plate) || ''],
+        ['entry.' + LAB_F.project, (v && v.project) || e.project || ''],
+        ['entry.' + LAB_F.area,    (v && v.area) || e.area || ''],
+        ['entry.' + LAB_F.office,  (v && v.rental_office) || '']]
+        .filter(function(p){ return String(p[1] || '') !== ''; })
+        .map(function(p){ return encodeURIComponent(p[0]) + '=' + encodeURIComponent(p[1]); }).join('&');
+      return LAB_FORM + '?' + q;
+    }
+    function fuelRow(e, v){
+      return ['الاسم: ' + (e.name_ar || e.name_en || ''),
+              'الإقامة: ' + (normId(e.iqama) || ''),
+              'المشروع: ' + ((v && v.project) || e.project || ''),
+              'المنطقة: ' + ((v && v.area) || e.area || ''),
+              'اللوحة: ' + ((v && v.plate) || ''),
+              'مكتب الإيجار: ' + ((v && v.rental_office) || ''),
+              'الجوال: ' + (e.mobile || '')].join('\n');
+    }
+    function fuelWashHtml(e){
+      var v = activeVeh(e); if (!v) return '';
+      return '<h4>🧰 بعد الإسناد</h4>'
+        + '<div class="row">'
+        + '<a class="btnx" target="_blank" rel="noopener" href="' + esc(washUrl(e, v)) + '">🧼 شريحة غسيل — معبّأة</a>'
+        + '<a class="btnx gh" target="_blank" rel="noopener" href="' + esc(LAB_FUEL) + '">⛽ الوقود — تفعيل وزيادة</a>'
+        + '<button class="btnx gh" id="afxFuelCopy">📋 انسخ بيانات المندوب</button>'
+        + '</div>'
+        + '<div class="muted">اللوحة <b style="direction:ltr">' + esc(v.plate || '—') + '</b>'
+        + (v.rental_office ? ' · مكتب ' + esc(v.rental_office) : '')
+        + ((v.project || e.project) ? ' · ' + esc(v.project || e.project) : '') + '. '
+        + 'نموذج الغسيل يفتح معبّأً. تطبيق الوقود لا يقبل التعبئة من الرابط — انسخ البيانات والصقها فيه.</div>'
+        + '<pre id="afxFuelRow" style="display:none">' + esc(fuelRow(e, v)) + '</pre>';
+    }
     function empPane(e, pane){
       pane.innerHTML = '<div class="afx muted">جارٍ التحميل من القاعدة…</div>';
       rpc('employee_overview', { p_iqama: normId(e.iqama) }).then(function(o){
@@ -9012,6 +9062,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
                     ? 'يصل «الصندوق الموحّد» عند المسؤول عن الإسناد مباشرة، ويتحدث هنا تلقائياً.'
                     : 'يصل المدير أولاً. باعتماده وحده ينتقل الطلب للأسطول — وتتابع حالته هنا.') + '</span>'
               : '<span class="muted">لا يوجد طلب.</span>')) + '</div><div id="afxReqHist"></div>';
+        h += fuelWashHtml(e);   /* v78 */
         pane.innerHTML = h + '</div>';
         paintIds(e, pane, canEdit, canDel);
         paintApproval(e, pane);
@@ -9085,6 +9136,13 @@ body.wx-card-open #wx4Pill{ display:none !important; }
             };
           }
         }).catch(function(){});
+        var fc = pane.querySelector('#afxFuelCopy');
+        if (fc) fc.onclick = function(){
+          var t = (pane.querySelector('#afxFuelRow') || {}).textContent || '';
+          if (!t.trim()) return note('لا بيانات', 'amber');
+          try { navigator.clipboard.writeText(t); note('📋 نُسخت بيانات المندوب — الصقها في تطبيق الوقود', 'green'); }
+          catch(_){ note('انسخها يدوياً', 'amber'); }
+        };
         var rq = pane.querySelector('#afxReq');
         if (rq) rq.onclick = function(){ var idx = state.employees.indexOf(e); if (idx >= 0) window.__wfReqSend(idx); setTimeout(function(){ empPane(e, pane); }, 1500); };
       }).catch(function(err){ pane.innerHTML = '<div class="afx warn">تعذّر التحميل: ' + esc(err.message) + '</div>'; });
