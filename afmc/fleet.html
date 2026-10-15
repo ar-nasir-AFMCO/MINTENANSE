@@ -8005,24 +8005,40 @@ async function handleAccidentFile(input){
               'مكتب الإيجار: ' + ((v && v.rental_office) || ''),
               'الجوال: ' + (e.mobile || '')].join('\n');
     }
+    /* v80: المشروع حقل إلزامي في النموذج. لو مشروع المركبة ليس من خياراته
+       — وهذا حال NINJA و KEEMART وهما أكبر مشروعين — فالشريحة لا تُرسَل
+       بمشروع صحيح أصلاً. فنرفعها من تنبيه أصفر إلى خطأ أحمر صريح باسم
+       المشروع، لأن الصامت منها هو ما ضيّع الحقول من البداية. */
+    function projMiss(e, v){
+      var p = (v && v.project) || e.project || '';
+      return (p && !matchOpt(p, 'project')) ? p : '';
+    }
     function missHtml(e, v){
-      var miss = [];
-      [['المشروع', (v && v.project) || e.project || '', 'project'],
-       ['المنطقة', (v && v.area) || e.area || '', 'area'],
+      var out = '', p = projMiss(e, v);
+      if (p) out += '<div style="margin-top:8px;padding:9px 11px;border:1px solid #f2cdc7;'
+        + 'background:#fdf2f0;border-radius:9px;color:#a3372b;font-size:12.5px;line-height:1.8">'
+        + '<b>⛔ المشروع «' + esc(p) + '» غير موجود في خيارات نموذج الغسيل.</b><br>'
+        + 'وحقل المشروع <b>إلزامي</b> في النموذج — فلا تُرسَل الشريحة بمشروع صحيح. '
+        + 'الحلّ: أضف «' + esc(p) + '» إلى خيارات السؤال في نموذج جوجل، وبعدها يُعبَّأ تلقائياً.'
+        + '</div>';
+      var soft = [];
+      [['المنطقة', (v && v.area) || e.area || '', 'area'],
        ['مكتب الإيجار', (v && v.rental_office) || '', 'office']].forEach(function(f){
-        if (f[1] && !matchOpt(f[1], f[2])) miss.push(f[0] + ' «' + f[1] + '»');
+        if (f[1] && !matchOpt(f[1], f[2])) soft.push(f[0] + ' «' + f[1] + '»');
       });
-      if (!miss.length) return '';
-      return '<div style="margin-top:6px;padding:8px 10px;border:1px solid #f2ddb5;background:#fdf8ef;'
-        + 'border-radius:9px;color:#95570f;font-size:12.5px;line-height:1.7">⚠️ '
-        + esc(miss.join(' · ')) + ' — ليس من خيارات النموذج، فيصل فارغاً. '
-        + 'اختره يدوياً في النموذج، أو أضف الخيار للنموذج ليُعبَّأ تلقائياً.</div>';
+      if (soft.length) out += '<div style="margin-top:6px;padding:8px 10px;border:1px solid #f2ddb5;'
+        + 'background:#fdf8ef;border-radius:9px;color:#95570f;font-size:12.5px;line-height:1.7">⚠️ '
+        + esc(soft.join(' · ')) + ' — ليس من خيارات النموذج، فيصل فارغاً. '
+        + 'اختره يدوياً، أو أضف الخيار للنموذج ليُعبَّأ تلقائياً.</div>';
+      return out;
     }
     function fuelWashHtml(e){
       var v = activeVeh(e); if (!v) return '';
       return '<h4>🧰 بعد الإسناد</h4>'
         + '<div class="row">'
-        + '<a class="btnx" target="_blank" rel="noopener" href="' + esc(washUrl(e, v)) + '">🧼 شريحة غسيل — معبّأة</a>'
+        + '<a class="btnx' + (projMiss(e, v) ? ' gh' : '') + '" target="_blank" rel="noopener" href="'
+        + esc(washUrl(e, v)) + '">🧼 شريحة غسيل — '
+        + (projMiss(e, v) ? 'بلا مشروع ⛔' : 'معبّأة') + '</a>'
         + '<a class="btnx gh" target="_blank" rel="noopener" href="' + esc(LAB_FUEL) + '">⛽ الوقود — تفعيل وزيادة</a>'
         + '<button class="btnx gh" id="afxFuelCopy">📋 انسخ بيانات المندوب</button>'
         + '</div>'
