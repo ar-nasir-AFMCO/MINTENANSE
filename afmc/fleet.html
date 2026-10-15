@@ -1243,7 +1243,8 @@ tbody tr:hover{background:var(--s1)}
     <button class="ptab" onclick="setPTab(2,this)">⚙️ الحالة</button>
     <button class="ptab" onclick="setPTab(3,this)" id="ptab-dmg">🔨 التلفيات</button>
     <button class="ptab" onclick="setPTab(4,this)" id="ptab-acc">💥 الحوادث</button>
-    <button class="ptab" onclick="setPTab(5,this)">📋 السجل</button>
+    <button class="ptab" onclick="setPTab(5,this)" id="ptab-fx">🧰 بعد الإسناد</button>
+    <button class="ptab" onclick="setPTab(6,this)">📋 السجل</button>
   </div>
   <div class="panel-body" id="panelBody">
     <div class="pb on" id="pb-0"></div>
@@ -1252,6 +1253,7 @@ tbody tr:hover{background:var(--s1)}
     <div class="pb" id="pb-3"></div>
     <div class="pb" id="pb-4"></div>
     <div class="pb" id="pb-5"></div>
+    <div class="pb" id="pb-6"></div>
   </div>
 </div>
 
@@ -1583,7 +1585,7 @@ function cardHTML(v){
       return hay.includes(_q)||hay.replace(/\.0\b/g,'').includes(qn);
     });
     if(matched.length){
-      matchHTML=`<div class="vc-match" onclick="event.stopPropagation();openPanel('${p}',5)" title="عرض السجل الكامل">
+      matchHTML=`<div class="vc-match" onclick="event.stopPropagation();openPanel('${p}',6)" title="عرض السجل الكامل">
         <div class="vc-match-h">🔎 ${matched.length} سجل مطابق في تاريخ المركبة${matched.length>1?' — اضغط لعرض السجل الكامل':''}</div>
         ${matched.map(h=>{
           const isAct=h.status==='Active';
@@ -1680,7 +1682,7 @@ function cardHTML(v){
       `}`}`}
       ${isSt?`<button class="ac" style="border-color:rgba(14,94,92,.25);color:var(--purple-l)" onclick="recoverVehicle('${p}')"><span class="ac-ico">🔓</span>استرداد</button>`:
         isAv?`<button class="ac" style="border-color:rgba(163,55,43,.25);color:var(--red-l)" onclick="markStolen('${p}')"><span class="ac-ico">🚨</span>مسروق</button>`:''}
-      <button class="ac ac-hist" title="عرض السجل الكامل" onclick="openPanel('${p}',5)"><span class="ac-ico">📋</span><span class="hist-n">${v.history.length}</span></button>
+      <button class="ac ac-hist" title="عرض السجل الكامل" onclick="openPanel('${p}',6)"><span class="ac-ico">📋</span><span class="hist-n">${v.history.length}</span></button>
     </div>
   </div>`;
 }
@@ -1753,7 +1755,7 @@ function renderPanelTab(tab,v){
 }
 
 function renderPanelContent(tab,v){
-  const containers=['pb-0','pb-1','pb-2','pb-3','pb-4','pb-5'];
+  const containers=['pb-0','pb-1','pb-2','pb-3','pb-4','pb-5','pb-6'];
   const el=document.getElementById(containers[tab]);
   if(!el)return;
   if(tab===0)el.innerHTML=buildOverview(v);
@@ -1761,7 +1763,10 @@ function renderPanelContent(tab,v){
   else if(tab===2)el.innerHTML=buildStatusPanel(v);
   else if(tab===3)el.innerHTML=buildDamagesPanel(v);
   else if(tab===4)el.innerHTML=buildAccidentsPanel(v);
-  else if(tab===5)el.innerHTML=buildHistoryPanel(v);
+  /* v83: «بعد الإسناد» — الوقود وشرائح الغسيل، تُرسم من طبقة المنصّة */
+  else if(tab===5){ if(typeof window.wfAfterAssign==='function') window.wfAfterAssign(el,v);
+                    else el.innerHTML='<div class="alert alert-amber">تحتاج اتصالاً بالمنصّة.</div>'; }
+  else if(tab===6)el.innerHTML=buildHistoryPanel(v);
   updateTabBadges(v);
 }
 
@@ -7659,6 +7664,378 @@ async function handleAccidentFile(input){
 
   /* ═══════════ وثيق: المعرّفات + الحضور التراكمي + التفويض + حوادث المركبات + رواتب من الحضور ═══════════
      كل البيانات من القاعدة الموحّدة (ملفات الحضور في Ninja/Keemart + الأسطول). وثيق يعرضها ولا يكررها. */
+  /* ═══ v78: الوقود وشرائح الغسيل — بعد اعتماد الإسناد ═══
+     الرابطان كانا في تبويب «التجريبي» يُفتحان يدوياً بعد البحث عن
+     المندوب. نموذج الغسيل يقبل التعبئة من الرابط فنفتحه معبّأً،
+     وتطبيق الوقود لا يقبلها فنضع بياناته جاهزة للنسخ بجانبه.
+     ─── v83: نُقلت الكتلة من كرت الموظف في «وثيق» إلى كرت المركبة
+     في الأسطول — بين «الحوادث» و«السجل». والمكان صحيح: شريحة
+     الوقود والغسيل تُفتح على لوحة، لا على موظف، ومن يُسند المركبة
+     هو من يفتحها. وصارت تعمل لثلاثة نماذج لا نموذج واحد:
+     «استلام جديد» و«استلام بديل» و«إيقاف سيارة» — وكلٌّ منها في
+     التطبيق يطلب حقولاً مختلفة (قرأتُ ذلك من بيانات التطبيق نفسه:
+     الإيقاف يملأ القديمة ٩٨٪ ولا يملأ الجديدة، والاستلام الجديد
+     عكسه، والبديل يملأ الاثنين). */
+  /* v82: ايميل المندوب ثابت في نموذج الغسيل وتطبيق الوقود — بقرار صاحب المنصة */
+  var DRIVER_EMAIL = 'AFAMCO@GMIL.COM';
+  var LAB_FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSc45otbZY6bqJfJYl2VZLXT73KlRttn_i67Y5lADtM9G4k5ww/viewform';
+  var LAB_F = { name:'1156777051', iqama:'1970767550', email:'1619132559', plate:'1581913447',
+                plate_ar:'1046381303', project:'129957825', area:'820389940', office:'1414804338' };
+  var LAB_FUEL = 'https://www.appsheet.com/start/0fcc64c6-f3fb-4be7-9002-2fd17dd57ebf?platform=desktop';
+  /* ═══ v79: مطابقة القيم بخيارات نموذج الغسيل ═══
+     حقول «المشروع» و«المنطقة» و«مكتب الإيجار» قوائم منسدلة: التعبئة من
+     الرابط لا تُقبل إلا بالنص الحرفي للخيار. وقيم المنصة تختلف تهجئةً
+     (JADAH/JEDDAH · DAMAM/DAMMAM)، فكانت الثلاثة تصل فارغة بلا رسالة.
+     هنا نطابقها: نصّاً، ثم بادئةً، ثم تقريباً — والتقريب ممنوع على
+     المشاريع لأنها أسماء شركات، وفرق حرفين فيها يعني شركة أخرى
+     (NINJA ← NANNA). ما لا يُطابَق يُترك فارغاً ويُقال صراحةً. */
+  var FORM_OPT = {
+    project: ['SMSA - سمسا','AMAZON - أمازون','NOON - نون','CARFOUR - كارفور','NANNA - نعناع',
+              'NAQEL - ناقل','HUNGERSTATION - هنقرستيشن','كيتا - KEETA','STARLINK - ستارلينك'],
+    area: ['RIYADH - الرياض','JEDDAH - جدة','BURAIDAH - بريدة','MECCA - مكة','HOFUF - الهفوف',
+           'KHAMIS MUSHIT - خميس مشيط','HAFAR AL BATEN - حفر الباطن','NAJRAN - نجران','ABHA - ابها',
+           'WADI DAWASIR - وادي الدواسر','KHUBAR - الخبر','BISHA - بيشة','MADINAH - المدينة',
+           'JAZAN - جازان','MAHAYEL - محايل','JUBAIL - الجبيل','SKAKAH - سكاكا','TAIF - الطائف',
+           'AL BAHA - الباحة','QURAYYAT - القريات','TABUK - تبوك','MAJMAAH - المجمعة','HAIL - حائل',
+           'ARAR - عرعر','ALJOUF - الجوف','QASSIM - القصيم','KHARJ - الخرج','DAMMAM - الدمام','RAFHA - رفحاء'],
+    office: ['MUSBAH','ETIHAD','SAFI','ELIET','SMSA - Budget','SMSA - AVIS','SMSA - Yello',
+             'FARIS','RENTO','AFMCO','MUAKAD','دانيال','الثاقب - ALTHAQIB']
+  };
+  var FORM_ALIAS = { JADAH:'JEDDAH', JEEDAH:'JEDDAH', DAMAM:'DAMMAM', MAKA:'MECCA',
+    MAJMA:'MAJMAAH', QASEEM:'QASSIM', STARLINKS:'STARLINK',
+    AFMCO:'ETIHAD',          /* v82: مركبات AFMCO مكتبها الفعلي الاتحاد */
+    'الرياض':'RIYADH', 'جدة':'JEDDAH', 'الدمام':'DAMMAM', 'مكة':'MECCA', 'الطائف':'TAIF' };
+  var FORM_FUZZ = { area:2, office:1, project:0 };
+  function fnk(x){ return String(x == null ? '' : x).toUpperCase()
+    .replace(/[ً-ْـ]/g, '').replace(/[^A-Zء-ي]/g, ''); }
+  function flev(a, b){
+    if (a === b) return 0; var m = a.length, n = b.length; if (!m || !n) return m || n;
+    var p = [], c = [], i, j; for (j = 0; j <= n; j++) p[j] = j;
+    for (i = 1; i <= m; i++){ c[0] = i;
+      for (j = 1; j <= n; j++) c[j] = Math.min(p[j] + 1, c[j-1] + 1, p[j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+      for (j = 0; j <= n; j++) p[j] = c[j]; }
+    return p[n];
+  }
+  function fparts(o){ return String(o).split(/\s*-\s*/).map(function(x){ return x.trim(); }).filter(Boolean); }
+  function matchOpt(val, kind){
+    var v = fnk(val); if (!v) return '';
+    var opts = FORM_OPT[kind] || [];
+    var al = FORM_ALIAS[String(val).trim().toUpperCase()] || FORM_ALIAS[String(val).trim()];
+    var cand = [v]; if (al) cand.push(fnk(al));
+    var i, k, o, p;
+    for (i = 0; i < opts.length; i++){ p = fparts(opts[i]);
+      for (k = 0; k < p.length; k++) for (o = 0; o < cand.length; o++)
+        if (fnk(p[k]) === cand[o]) return opts[i]; }
+    for (i = 0; i < opts.length; i++){ p = fparts(opts[i]);
+      for (k = 0; k < p.length; k++){ var pk = fnk(p[k]); if (!pk) continue;
+        for (o = 0; o < cand.length; o++)
+          if ((cand[o].indexOf(pk) === 0 || pk.indexOf(cand[o]) === 0)
+              && Math.min(cand[o].length, pk.length) >= 4) return opts[i]; } }
+    var lim = FORM_FUZZ[kind] || 0; if (!lim) return '';
+    var best = '', bd = 99;
+    for (i = 0; i < opts.length; i++){ p = fparts(opts[i]);
+      for (k = 0; k < p.length; k++){ var q = fnk(p[k]); if (q.length < 3) continue;
+        for (o = 0; o < cand.length; o++){ var d = flev(cand[o], q); if (d < bd){ bd = d; best = opts[i]; } } } }
+    return bd <= lim ? best : '';
+  }
+  /* ═══ v81: صفّ الوقود بقيم تطبيق AppSheet نفسها ═══
+     جرّبت التعبئة من الرابط على تطبيق «Petrol Chips» — يفتح لكن يتجاهل
+     قيم الأعمدة. فالأفيد أن ننسخ القيمة بالنص الحرفي الذي يعرفه
+     التطبيق، فيختارها من القائمة بلا تفكير. القوائم مقروءة من بياناته. */
+  var FUEL_OPT = {
+    area: ['RIYADH - الرياض','DAMMAM - الدمام','JEDDAH - جدة','MECCA - مكة','TAIF - الطائف',
+           'KHAMIS MUSHIT - خميس مشيط','MADINAH - المدينة','JAZAN - جازان','BURAIDAH - بريدة',
+           'HOFUF - الهفوف','MAJMAAH - المجمعة','QASSIM - القصيم','MAHAYEL - محايل','NAJRAN - نجران',
+           'HAFAR AL BATEN - حفر الباطن','BISHA - بيشة','KHUBAR - الخبر','AL BAHA - الباحة',
+           'HAIL - حائل','ARAR - عرعر','KHARJ - الخرج','JUBAIL - الجبيل','ABHA - ابها',
+           'WADI DAWASIR - وادي الدواسر','SKAKAH - سكاكا','TABUK - تبوك','QURAYYAT - القريات'],
+    project: ['NINJA AFMCO - نينجا افامكو','KEEMART - كيمارت','SHIPMENT AFMCO','ARAMEX - ارامكس',
+              'STARLINKS - ستارلينك','كيتا - KEETA','NOON - نون','ARTZ','NAQEL - ناقل',
+              'SMSA - سمسا','CARFOUR - كارفور','AMAZON - أمازون','AJEX - اجيكس','NANNA - نعناع',
+              'AFMCO SUPERVISOR-مشرفين افامكو','NINJA Dyna - نينجا دينا','ONTHER - أخرى'],
+    office: ['ETIHAD - اتحاد العالمية','SMSA - Yelo - سمسا يلو','SAFI - الصافي','RENTO - رنتو',
+             'الثاقب - ALTHAQIB','MUAKAD','SMSA - Budget','MUSBAH - المصباح','MUNAKALH - مناقلة',
+             'FARIS - الفارس','SMSA - AVIS','WASEL - واصل','TRAVIL -  ترفل','OWN CAR - سيارة خاصة','LUMI'],
+    fuel: ['PETROL - بنزين','DIESLE - ديزل']
+  };
+  var FUEL_ALIAS = { AFMCO:'ETIHAD',   /* v82 */
+    NINJA:'NINJA AFMCO', 'NINJA-DIEANA':'NINJA Dyna', SHIPMENT:'SHIPMENT AFMCO',
+    'المشرفين والصيانة':'AFMCO SUPERVISOR', TRAFEL:'TRAVIL', DESIL:'DIESLE',
+    JADAH:'JEDDAH', JEEDAH:'JEDDAH', DAMAM:'DAMMAM', MAKA:'MECCA', MAJMA:'MAJMAAH',
+    QASEEM:'QASSIM', YANBU:'', 'الرياض':'RIYADH' };
+  function fuelOpt(val, kind){
+    var v = fnk(val); if (!v) return '';
+    var opts = FUEL_OPT[kind] || [];
+    var al = FUEL_ALIAS[String(val).trim().toUpperCase()] || FUEL_ALIAS[String(val).trim()];
+    if (al === '') return '';
+    var cand = [v]; if (al) cand.push(fnk(al));
+    var i, k, o, p;
+    for (i = 0; i < opts.length; i++){ p = fparts(opts[i]);
+      for (k = 0; k < p.length; k++) for (o = 0; o < cand.length; o++)
+        if (fnk(p[k]) === cand[o]) return opts[i]; }
+    for (i = 0; i < opts.length; i++){ p = fparts(opts[i]);
+      for (k = 0; k < p.length; k++){ var pk = fnk(p[k]); if (pk.length < 4) continue;
+        for (o = 0; o < cand.length; o++)
+          if (cand[o].indexOf(pk) === 0 || pk.indexOf(cand[o]) === 0) return opts[i]; } }
+    return '';
+  }
+  /* ═══ v83: نوع السيارة ═══
+     التطبيق يكتب النوع «Brand - Model»، والأسطول يكتبه بصيغ متفرقة
+     (TOYOTA-LITEACE · MOTORCYCLE · HYUNDAI-I10). نطابق على النص كاملاً
+     بعد تجريده من الفواصل — والأرقام محفوظة هنا خلافاً لـ fnk، وإلا
+     صار «Hyundai - i10» و«Hyundai - H1» شيئاً واحداً. */
+  var VT_OPT = ['Suzuki - Dzire','Kia - Pegas','Toyota - Liteace','Hyundai - i10','Motocycle Boxer',
+    'Toyota - Hiace','Changan - Alsivn','Peugeot - Partner','Renult - Dokker','Rino - Dokker',
+    'Hyundai - Accent','Nissan - Sunny','Byd - F3','SUZUKI - ECHO BUS','Toyota - Avanza',
+    'Nissan - Urvan','Toyota - Yaris','Chery - Arrizo','Hyundai - Elantra','Toyota - Corolla',
+    'Geely - Emegrand','MG5','Toyota - Coster','Suzuki - APV','Geely','Hyundai - Staria',
+    'Hyundai - H1','Suzuki - Baleno','Mitsubishi - Attrage','BYD - SONG PRO','Isuzu',
+    'Kia - Cerato','Toyota - Camry','Toyota - Hilux','Isuzu - D-Max','Toyota - Rave 4'];
+  var VT_ALIAS = { MOTORCYCLE:'Motocycle Boxer', MOTOCYCLE:'Motocycle Boxer',
+    MOTORCYCLEBOXER:'Motocycle Boxer', DZIRE:'Suzuki - Dzire', LITEACE:'Toyota - Liteace',
+    LITEACEHAYES:'Toyota - Liteace', I10:'Hyundai - i10', ELANTRA:'Hyundai - Elantra',
+    ELNTRA:'Hyundai - Elantra', HYUNDAIELNTRA:'Hyundai - Elantra', ECHOBUS:'SUZUKI - ECHO BUS',
+    TOYOTACORROLA:'Toyota - Corolla', TOYOTAYAIRS:'Toyota - Yaris', PEUGEUTPARTNER:'Peugeot - Partner',
+    KIAPEGGAS:'Kia - Pegas', TOTATVAN:'Toyota - Liteace', ISZUE:'Isuzu' };
+  function vnk(x){ return String(x == null ? '' : x).toUpperCase().replace(/[^A-Z0-9ء-ي]/g, ''); }
+  function vtOpt(val){
+    var v = vnk(val); if (!v) return '';
+    if (VT_ALIAS[v]) return VT_ALIAS[v];
+    var i, d, b1 = 99, b2 = 99, best = '';
+    for (i = 0; i < VT_OPT.length; i++) if (vnk(VT_OPT[i]) === v) return VT_OPT[i];
+    for (i = 0; i < VT_OPT.length; i++){ d = flev(v, vnk(VT_OPT[i]));
+      if (d < b1){ b2 = b1; b1 = d; best = VT_OPT[i]; } else if (d < b2) b2 = d; }
+    return (b1 <= 1 && b2 > b1) ? best : '';   /* حرف واحد، وبلا منافس — وإلا فراغ */
+  }
+  /* النماذج الثلاثة في التطبيق، وحقول كلٍّ منها */
+  var FUEL_FORMS = {
+    'new':  { lbl:'🆕 استلام جديد', btn:'استلام جديد - NEW RECEIPT', old:false, nw:true,
+              reasons:['استلام جديد - RECEIVE A NEW CAR'] },
+    'rep':  { lbl:'🔄 استلام بديل', btn:'استلام بديل - REPLACEMENT', old:true, nw:true,
+              reasons:['استلام بديل - REPLACEMENT','حادث - ACCIDENT','صيانة - MAINTENANCE',
+                       'استلام السيارة الاصلية - RECEIVE THE ORIGINAL CAR'] },
+    'stop': { lbl:'⏸ إيقاف سيارة', btn:'أيقاف سيارة - STOP CAR', old:true, nw:false,
+              reasons:['توقف عن العمل - STOP WORKING','اجازة - VACATION','أيقاف سيارة - STOP CAR'] }
+  };
+  var FUEL_ORDER = ['new', 'rep', 'stop'];
+  function fToday(){ var d = new Date(); return d.getFullYear() + '-'
+    + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  /* آخر سائق على اللوحة — نحتاجه للإيقاف، لأن الإسناد يكون قد أُوقف أصلاً */
+  function fLastDrv(v){
+    var h = (v && v.history) || [], i;
+    for (i = h.length - 1; i >= 0; i--) if (h[i] && h[i].driver_id) return h[i];
+    return null;
+  }
+  /* المركبة السابقة لنفس المندوب — من سجلّ الأسطول نفسه، وهي «القديمة» في البديل */
+  function fPrevVeh(plate, iq){
+    iq = normId(iq); if (!iq) return null;
+    var all = (typeof vehicles !== 'undefined' && vehicles) || [], best = null, bd = '';
+    all.forEach(function(x){
+      if (!x || x.plate === plate) return;
+      (x.history || []).forEach(function(h){
+        if (!h || normId(h.driver_id) !== iq) return;
+        if (String(h.status || '').toLowerCase() === 'active') return;
+        var dd = String(h.date_deliver || h.date_receive || '');
+        if (!best || dd > bd){ best = { v: x, h: h }; bd = dd; }
+      });
+    });
+    return best;
+  }
+  function fuelCtx(v, mode, reason){
+    if (!v) return null;
+    var d = v.current_driver || fLastDrv(v); if (!d) return null;
+    var pv = fPrevVeh(v.plate, d.driver_id);
+    if (!mode || !FUEL_FORMS[mode]) mode = !v.current_driver ? 'stop' : (pv ? 'rep' : 'new');
+    var f = FUEL_FORMS[mode];
+    var c = { mode: mode, form: f, d: d, v: v, prev: pv,
+              reason: (f.reasons.indexOf(reason) >= 0 ? reason : f.reasons[0]) };
+    if (mode === 'stop'){
+      c.oldV = v; c.oldDate = (!v.current_driver && d.date_deliver) || fToday();
+      c.newV = null; c.newDate = '';
+    } else {
+      c.oldV = pv && pv.v; c.oldDate = (pv && pv.h && pv.h.date_deliver) || '';
+      c.newV = v; c.newDate = d.date_receive || '';
+    }
+    return c;
+  }
+  /* صفوف التطبيق بترتيب حقوله وبأسمائها كما هي فيه */
+  function fuelRows(c){
+    var d = c.d, v = c.v, f = c.form, r = [];
+    function row(k, val, raw){ r.push([k, val || '', raw || '']); }
+    row('رقم الاقامة - IQAMA', normId(d.driver_id));
+    row('الاسم - NAME', d.name_ar || d.name_en || '');
+    if (d.id_ninja) row('رقم الايدي - ID', String(d.id_ninja).trim());
+    row('رقم الجوال - MOBAILE NUMBER', d.mobile || '');
+    var ar = String(d.area || v.area || '').trim();
+    row('المنطقة - AREA', fuelOpt(ar, 'area'), ar);
+    var pr = String(d.project || v.project || '').trim();
+    row('اسم المشروع - PROJECT NAME', fuelOpt(pr, 'project'), pr);
+    var fu = String(v.fuel || '').trim();
+    row('نوع الوقود - FUEL TYPE', fuelOpt(fu, 'fuel'), fu);
+    row('سبب التغير - REASON FOR CHANGING', c.reason);
+    if (f.old){
+      var ov = c.oldV, ovt = ov ? String(ov.vehicle_type || '').trim() : '';
+      row('نوع السياره القديمة  -OLD VEHICLE TYPE', ov ? vtOpt(ovt) : '', ov ? ovt : 'لا سابقة في السجل');
+      row('رقم اللوحة القديمة -  OLD PLATE NUMBER', (ov && ov.plate) || '', ov ? '' : 'لا سابقة في السجل');
+      var oo = String((ov && ov.rental_office) || '').trim();
+      row('مكتب الايجار - RENT OFFICE', fuelOpt(oo, 'office'), oo);
+      row('تاريخ ايقاف السيارة - STOP CAR DATE', c.oldDate);
+    }
+    if (f.nw){
+      var nv = c.newV, nvt = nv ? String(nv.vehicle_type || '').trim() : '';
+      row('نوع السياره الجديدة  -NEW VEHICLE TYPE', nv ? vtOpt(nvt) : '', nvt);
+      row('رقم اللوحة الجديدة -  NEW PLATE NUMBER', (nv && nv.plate) || '');
+      var no = String((nv && nv.rental_office) || '').trim();
+      row('مكتب الايجار - RENT OFFICE_14', fuelOpt(no, 'office'), no);
+      row('تاريخ استلام السيارة - RECIPT CAR DATE', c.newDate);
+      var br = String(d.branch_receive || '').trim();
+      row('فرع الاستلام - RECEIVING BRANCH', fuelOpt(br, 'area'), br);
+    }
+    row('ايميل المندوب - DRIVER EMAIL', DRIVER_EMAIL);
+    return r;
+  }
+  function fuelRowText(c){
+    return fuelRows(c).map(function(r){ return r[0] + ': ' + (r[1] || '—'); }).join('\n');
+  }
+  /* شريحة الغسيل: على اللوحة التي في يد المندوب الآن */
+  function washUrl(c){
+    var d = c.d, v = c.v;
+    var q = [['usp','pp_url'],
+      ['entry.' + LAB_F.name,    d.name_ar || d.name_en || ''],
+      ['entry.' + LAB_F.iqama,   normId(d.driver_id)],
+      ['entry.' + LAB_F.email,   DRIVER_EMAIL],
+      ['entry.' + LAB_F.plate,   v.plate || ''],
+      ['entry.' + LAB_F.project, matchOpt(String(d.project || v.project || '').trim(), 'project')],
+      ['entry.' + LAB_F.area,    matchOpt(String(d.area || v.area || '').trim(), 'area')],
+      ['entry.' + LAB_F.office,  matchOpt(String(v.rental_office || '').trim(), 'office')]]
+      .filter(function(p){ return String(p[1] || '') !== ''; })
+      .map(function(p){ return encodeURIComponent(p[0]) + '=' + encodeURIComponent(p[1]); }).join('&');
+    return LAB_FORM + '?' + q;
+  }
+  /* v80: المشروع حقل إلزامي في نموذج الغسيل. لو مشروع المركبة ليس من
+     خياراته — وهذا حال NINJA و KEEMART وهما أكبر مشروعين — فالشريحة لا
+     تُرسَل بمشروع صحيح. فنرفعها من تنبيه أصفر إلى خطأ أحمر صريح. */
+  function projMiss(c){
+    var p = String((c.d && c.d.project) || c.v.project || '').trim();
+    return (p && !matchOpt(p, 'project')) ? p : '';
+  }
+
+  /* ═══ v83: كتلة «بعد الإسناد» في كرت المركبة (الأسطول) ═══
+     تُرسَم بين «الحوادث» و«السجل». تعمل على آخر مندوب للّوحة — فإن
+     أُوقف الإسناد بقي الصفّ متاحاً لإيقاف الوقود، وهو أكثر ما يُحتاج. */
+  var fuelPick = {};        /* اللوحة ← {mode, reason} — يبقى الاختيار أثناء الجلسة */
+  function fuelCss(){
+    if (document.getElementById('wf-fuel-css')) return;
+    var st = document.createElement('style'); st.id = 'wf-fuel-css';
+    st.textContent = '.fx-chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}'
+      + '.fx-chip{padding:6px 12px;border:1px solid var(--b2,#cbe0dd);background:var(--bg2,#fff);'
+      + 'color:var(--t2,#3f8a87);border-radius:999px;font:inherit;font-size:12px;font-weight:600;cursor:pointer}'
+      + '.fx-chip.on{background:var(--blue,#0e5e5c);color:#fff;border-color:var(--blue,#0e5e5c)}'
+      + '.fx-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}'
+      + '.fx-tbl th,.fx-tbl td{padding:7px 9px;border-bottom:1px solid var(--b1,#e4efed);text-align:right}'
+      + '.fx-tbl th{background:var(--bg3,#f8f6f1);color:var(--t2,#3f8a87);font-weight:600;white-space:nowrap;width:1%}'
+      + '.fx-ok{color:var(--green-l,#0e5e5c);font-weight:600}.fx-no{color:var(--red-l,#a3372b);font-weight:600}'
+      + '.fx-cp{padding:2px 8px;border:1px solid var(--b2,#cbe0dd);background:var(--bg2,#fff);'
+      + 'border-radius:var(--r4,5px);cursor:pointer;font-size:11px}'
+      + '.fx-box{margin-top:8px;padding:9px 11px;border-radius:var(--r3,7px);font-size:12px;line-height:1.8}'
+      + '.fx-err{border:1px solid rgba(163,55,43,.3);background:var(--red-d,rgba(163,55,43,.07));color:var(--red-l,#a3372b)}'
+      + '.fx-warn{border:1px solid rgba(149,87,15,.3);background:var(--amber-d,rgba(149,87,15,.08));color:var(--amber-l,#95570f)}'
+      + '.fx-hint{color:var(--t3,#9aa3a1);font-size:11px;margin-top:6px;line-height:1.7}';
+    document.head.appendChild(st);
+  }
+  function fuelMissHtml(c){
+    var out = '', p = projMiss(c);
+    if (p) out += '<div class="fx-box fx-err"><b>⛔ المشروع «' + esc(p)
+      + '» غير موجود في خيارات نموذج الغسيل.</b><br>'
+      + 'وحقل المشروع <b>إلزامي</b> في النموذج — فلا تُرسَل الشريحة بمشروع صحيح. '
+      + 'الحلّ: أضف «' + esc(p) + '» إلى خيارات السؤال في نموذج جوجل، وبعدها يُعبَّأ تلقائياً.</div>';
+    var soft = [];
+    [['المنطقة', String((c.d && c.d.area) || c.v.area || '').trim(), 'area'],
+     ['مكتب الإيجار', String(c.v.rental_office || '').trim(), 'office']].forEach(function(f){
+      if (f[1] && !matchOpt(f[1], f[2])) soft.push(f[0] + ' «' + f[1] + '»');
+    });
+    if (soft.length) out += '<div class="fx-box fx-warn">⚠️ ' + esc(soft.join(' · '))
+      + ' — ليس من خيارات نموذج الغسيل، فيصل فارغاً. اختره يدوياً، أو أضف الخيار للنموذج.</div>';
+    return out;
+  }
+  function fuelTblHtml(c){
+    return '<table class="fx-tbl"><tbody>' + fuelRows(c).map(function(r, i){
+      var ok = !!r[1];
+      return '<tr><th>' + esc(r[0]) + '</th>'
+        + '<td class="' + (ok ? 'fx-ok' : 'fx-no') + '">'
+        + (ok ? esc(r[1]) : ('— ' + (r[2] ? '<span style="color:var(--t3);font-weight:400">('
+                + esc(r[2]) + ')</span>' : ''))) + '</td>'
+        + '<td style="width:1%">' + (ok ? '<button class="fx-cp" data-fc="' + i + '">📋</button>' : '') + '</td></tr>';
+    }).join('') + '</tbody></table>';
+  }
+  function afterAssignHtml(v){
+    fuelCss();
+    var pick = fuelPick[v && v.plate] || {};
+    var c = fuelCtx(v, pick.mode, pick.reason);
+    if (!c) return '<div class="fx-box fx-warn">لا يوجد مندوب على هذه اللوحة — '
+      + 'شريحة الوقود والغسيل تُفتح على مندوب. أسندها لمندوب أولاً من تبويب «السائق».</div>';
+    var d = c.d, f = c.form, miss = projMiss(c);
+    var h = '<div class="psect-title">🧰 بعد الإسناد — الوقود والغسيل</div>';
+    h += '<div style="font-size:12px;color:var(--t2)">المندوب <b>' + esc(d.name_ar || d.name_en || '—')
+      + '</b> · ' + esc(normId(d.driver_id) || '—') + ' · اللوحة <b style="direction:ltr;display:inline-block">'
+      + esc(v.plate || '—') + '</b>'
+
+      + (v.current_driver ? '' : ' <span class="tag">الإسناد موقوف — آخر مندوب</span>') + '</div>';
+    h += '<div class="fx-hint">اختر نموذج التطبيق — كلٌّ منها يطلب حقولاً مختلفة:</div>';
+    h += '<div class="fx-chips">' + FUEL_ORDER.map(function(k){
+      return '<button class="fx-chip' + (k === c.mode ? ' on' : '') + '" data-fm="' + k + '">'
+        + esc(FUEL_FORMS[k].lbl) + '</button>'; }).join('') + '</div>';
+    if (f.reasons.length > 1) h += '<div class="fx-hint">سبب التغيير:</div><div class="fx-chips">'
+      + f.reasons.map(function(r){
+          return '<button class="fx-chip' + (r === c.reason ? ' on' : '') + '" data-fr="'
+            + esc(r) + '">' + esc(r.split(' - ')[0]) + '</button>'; }).join('') + '</div>';
+    if (f.old && !c.oldV) h += '<div class="fx-box fx-warn">⚠️ لا توجد مركبة سابقة لهذا المندوب في '
+      + 'سجلّ الأسطول — فحقول «السيارة القديمة» تُترك لك لتكتبها في التطبيق.</div>';
+    h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'
+      + '<a class="btn' + (miss ? '' : ' btn-green') + '" target="_blank" rel="noopener" href="'
+      + esc(washUrl(c)) + '">🧼 شريحة غسيل — ' + (miss ? 'بلا مشروع ⛔' : 'معبّأة') + '</a>'
+      + '<a class="btn" target="_blank" rel="noopener" href="' + esc(LAB_FUEL) + '">⛽ تطبيق الوقود</a>'
+      + '<button class="btn" id="fxCopyAll">📋 انسخ الصفّ كاملاً</button></div>';
+    h += fuelMissHtml(c);
+    h += '<div class="fx-hint">في التطبيق اضغط <b>«' + esc(f.btn) + '»</b>، ثم انسخ كل قيمة من هنا '
+      + 'واخترها هناك. التطبيق لا يقبل التعبئة من الرابط (جُرّب)، فالنسخ هو الطريق.</div>';
+    h += fuelTblHtml(c);
+    h += '<pre id="fxRowText" style="display:none">' + esc(fuelRowText(c)) + '</pre>';
+    return h;
+  }
+  function afterAssignWire(root, v){
+    if (!root || !v) return;
+    function again(){ root.innerHTML = afterAssignHtml(v); afterAssignWire(root, v); }
+    var pk = fuelPick[v.plate] = fuelPick[v.plate] || {};
+    root.querySelectorAll('[data-fm]').forEach(function(b){
+      b.onclick = function(){ pk.mode = b.getAttribute('data-fm'); pk.reason = null; again(); };
+    });
+    root.querySelectorAll('[data-fr]').forEach(function(b){
+      b.onclick = function(){ pk.reason = b.getAttribute('data-fr'); again(); };
+    });
+    var c = fuelCtx(v, pk.mode, pk.reason); if (!c) return;
+    root.querySelectorAll('[data-fc]').forEach(function(b){
+      b.onclick = function(){
+        var r = fuelRows(c)[+b.getAttribute('data-fc')]; if (!r || !r[1]) return;
+        try { navigator.clipboard.writeText(r[1]); b.textContent = '✓'; note('📋 ' + r[0] + ' — نُسخت', 'green');
+              setTimeout(function(){ b.textContent = '📋'; }, 1200); }
+        catch(_){ note('انسخها يدوياً', 'amber'); }
+      };
+    });
+    var all = root.querySelector('#fxCopyAll');
+    if (all) all.onclick = function(){
+      var t = (root.querySelector('#fxRowText') || {}).textContent || '';
+      if (!t.trim()) return note('لا بيانات', 'amber');
+      try { navigator.clipboard.writeText(t); note('📋 نُسخ صفّ الوقود كاملاً', 'green'); }
+      catch(_){ note('انسخه يدوياً', 'amber'); }
+    };
+  }
+  window.wfAfterAssign = function(root, v){
+    if (!root) return;
+    root.innerHTML = afterAssignHtml(v);
+    afterAssignWire(root, v);
+  };
+
   if (APP === 'watheeq') (function(){
     var PLATFORMS = ['NINJA', 'KEEMART', 'KEETA', 'NOON', 'SHIPMENT', 'NAQEL', 'STARLINKS', 'ARAMEX', 'CALO'];
     var num = function(n){ var x = Number(n) || 0; return x.toLocaleString('en-US', { maximumFractionDigits: 2 }); };
@@ -7913,212 +8290,6 @@ async function handleAccidentFile(input){
         };
       }).catch(function(){ drop(); });
     }
-    /* ═══ v78: الوقود وشرائح الغسيل — أزرار بعد اعتماد الإسناد ═══
-       الرابطان كانا في تبويب «التجريبي» يُفتحان يدوياً بعد البحث عن
-       المندوب. هنا يظهران في ملف الموظف نفسه، ولا يظهران إلا وله
-       مركبة نشطة في الأسطول — فالزر لا يُفتح على فراغ.
-       نموذج الغسيل يقبل التعبئة من الرابط فنفتحه معبّأً بتسعة حقول،
-       وتطبيق الوقود لا يقبلها فنضع بياناته جاهزة للنسخ بجانبه. */
-    /* v82: ايميل المندوب ثابت في نموذج الغسيل وتطبيق الوقود — بقرار صاحب المنصة */
-    var DRIVER_EMAIL = 'AFAMCO@GMIL.COM';
-    var LAB_FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSc45otbZY6bqJfJYl2VZLXT73KlRttn_i67Y5lADtM9G4k5ww/viewform';
-    var LAB_F = { name:'1156777051', iqama:'1970767550', email:'1619132559', plate:'1581913447',
-                  plate_ar:'1046381303', project:'129957825', area:'820389940', office:'1414804338' };
-    var LAB_FUEL = 'https://www.appsheet.com/start/0fcc64c6-f3fb-4be7-9002-2fd17dd57ebf?platform=desktop';
-    /* ═══ v79: مطابقة القيم بخيارات النموذج ═══
-       حقول «المشروع» و«المنطقة» و«مكتب الإيجار» في نموذج جوجل قوائم
-       منسدلة: التعبئة من الرابط لا تُقبل إلا بالنص الحرفي للخيار. وقيم
-       المنصة تختلف تهجئةً (JADAH/JEDDAH · DAMAM/DAMMAM · SAFI - T/SAFI)،
-       فكانت الثلاثة تصل فارغة بلا أي رسالة. هنا نطابقها: نصّاً، ثم بادئةً،
-       ثم تقريباً — والتقريب ممنوع على المشاريع لأنها أسماء شركات، وفرق
-       حرفين فيها يعني شركة أخرى (NINJA ← NANNA). ما لا يُطابَق يُترك
-       فارغاً ويُقال للمستخدم صراحةً بدل أن يُملأ بالخطأ. */
-    var FORM_OPT = {
-      project: ['SMSA - سمسا','AMAZON - أمازون','NOON - نون','CARFOUR - كارفور','NANNA - نعناع',
-                'NAQEL - ناقل','HUNGERSTATION - هنقرستيشن','كيتا - KEETA','STARLINK - ستارلينك'],
-      area: ['RIYADH - الرياض','JEDDAH - جدة','BURAIDAH - بريدة','MECCA - مكة','HOFUF - الهفوف',
-             'KHAMIS MUSHIT - خميس مشيط','HAFAR AL BATEN - حفر الباطن','NAJRAN - نجران','ABHA - ابها',
-             'WADI DAWASIR - وادي الدواسر','KHUBAR - الخبر','BISHA - بيشة','MADINAH - المدينة',
-             'JAZAN - جازان','MAHAYEL - محايل','JUBAIL - الجبيل','SKAKAH - سكاكا','TAIF - الطائف',
-             'AL BAHA - الباحة','QURAYYAT - القريات','TABUK - تبوك','MAJMAAH - المجمعة','HAIL - حائل',
-             'ARAR - عرعر','ALJOUF - الجوف','QASSIM - القصيم','KHARJ - الخرج','DAMMAM - الدمام','RAFHA - رفحاء'],
-      office: ['MUSBAH','ETIHAD','SAFI','ELIET','SMSA - Budget','SMSA - AVIS','SMSA - Yello',
-               'FARIS','RENTO','AFMCO','MUAKAD','دانيال','الثاقب - ALTHAQIB']
-    };
-    var FORM_ALIAS = { JADAH:'JEDDAH', JEEDAH:'JEDDAH', DAMAM:'DAMMAM', MAKA:'MECCA',
-      MAJMA:'MAJMAAH', QASEEM:'QASSIM', STARLINKS:'STARLINK',
-      AFMCO:'ETIHAD',          /* v82: مركبات AFMCO مكتبها الفعلي الاتحاد */
-      'الرياض':'RIYADH', 'جدة':'JEDDAH', 'الدمام':'DAMMAM', 'مكة':'MECCA', 'الطائف':'TAIF' };
-    var FORM_FUZZ = { area:2, office:1, project:0 };
-    function fnk(x){ return String(x == null ? '' : x).toUpperCase()
-      .replace(/[ً-ْـ]/g, '').replace(/[^A-Zء-ي]/g, ''); }
-    function flev(a, b){
-      if (a === b) return 0; var m = a.length, n = b.length; if (!m || !n) return m || n;
-      var p = [], c = [], i, j; for (j = 0; j <= n; j++) p[j] = j;
-      for (i = 1; i <= m; i++){ c[0] = i;
-        for (j = 1; j <= n; j++) c[j] = Math.min(p[j] + 1, c[j-1] + 1, p[j-1] + (a[i-1] === b[j-1] ? 0 : 1));
-        for (j = 0; j <= n; j++) p[j] = c[j]; }
-      return p[n];
-    }
-    function fparts(o){ return String(o).split(/\s*-\s*/).map(function(x){ return x.trim(); }).filter(Boolean); }
-    function matchOpt(val, kind){
-      var v = fnk(val); if (!v) return '';
-      var opts = FORM_OPT[kind] || [];
-      var al = FORM_ALIAS[String(val).trim().toUpperCase()] || FORM_ALIAS[String(val).trim()];
-      var cand = [v]; if (al) cand.push(fnk(al));
-      var i, k, o, p;
-      for (i = 0; i < opts.length; i++){ p = fparts(opts[i]);
-        for (k = 0; k < p.length; k++) for (o = 0; o < cand.length; o++)
-          if (fnk(p[k]) === cand[o]) return opts[i]; }
-      for (i = 0; i < opts.length; i++){ p = fparts(opts[i]);
-        for (k = 0; k < p.length; k++){ var pk = fnk(p[k]); if (!pk) continue;
-          for (o = 0; o < cand.length; o++)
-            if ((cand[o].indexOf(pk) === 0 || pk.indexOf(cand[o]) === 0)
-                && Math.min(cand[o].length, pk.length) >= 4) return opts[i]; } }
-      var lim = FORM_FUZZ[kind] || 0; if (!lim) return '';
-      var best = '', bd = 99;
-      for (i = 0; i < opts.length; i++){ p = fparts(opts[i]);
-        for (k = 0; k < p.length; k++){ var q = fnk(p[k]); if (q.length < 3) continue;
-          for (o = 0; o < cand.length; o++){ var d = flev(cand[o], q); if (d < bd){ bd = d; best = opts[i]; } } } }
-      return bd <= lim ? best : '';
-    }
-    function activeVeh(e){
-      return (e.vehicles || []).filter(function(v){
-        return v && (v.active === true || String(v.status || '').toLowerCase() === 'active'); })[0] || null;
-    }
-    function washUrl(e, v){
-      var q = [['usp','pp_url'],
-        ['entry.' + LAB_F.name,    e.name_ar || e.name_en || ''],
-        ['entry.' + LAB_F.iqama,   normId(e.iqama) || ''],
-        ['entry.' + LAB_F.email,   DRIVER_EMAIL],   /* v82: ثابت */
-        ['entry.' + LAB_F.plate,   (v && v.plate) || ''],
-        ['entry.' + LAB_F.project, matchOpt((v && v.project) || e.project || '', 'project')],
-        ['entry.' + LAB_F.area,    matchOpt((v && v.area) || e.area || '', 'area')],
-        ['entry.' + LAB_F.office,  matchOpt((v && v.rental_office) || '', 'office')]]
-        .filter(function(p){ return String(p[1] || '') !== ''; })
-        .map(function(p){ return encodeURIComponent(p[0]) + '=' + encodeURIComponent(p[1]); }).join('&');
-      return LAB_FORM + '?' + q;
-    }
-    function fuelRow(e, v){
-      return fuelFields(e, v).map(function(r){ return r[0] + ': ' + (r[1] || '—'); }).join('\n');
-    }
-    /* v80: المشروع حقل إلزامي في النموذج. لو مشروع المركبة ليس من خياراته
-       — وهذا حال NINJA و KEEMART وهما أكبر مشروعين — فالشريحة لا تُرسَل
-       بمشروع صحيح أصلاً. فنرفعها من تنبيه أصفر إلى خطأ أحمر صريح باسم
-       المشروع، لأن الصامت منها هو ما ضيّع الحقول من البداية. */
-    function projMiss(e, v){
-      var p = (v && v.project) || e.project || '';
-      return (p && !matchOpt(p, 'project')) ? p : '';
-    }
-    /* ═══ v81: صفّ الوقود بقيم تطبيق AppSheet نفسها ═══
-       جرّبت التعبئة من الرابط على تطبيق «Petrol Chips» — يفتح لكن يتجاهل
-       قيم الأعمدة، فالملاحظة القديمة صحيحة: لا يقبل التعبئة من الرابط.
-       الأفيد إذن أن ننسخ له القيمة بالنص الحرفي الذي يعرفه التطبيق، فيختار
-       من القائمة بلا تفكير. القوائم أدناه مقروءة من بيانات التطبيق نفسه. */
-    var FUEL_OPT = {
-      area: ['RIYADH - الرياض','DAMMAM - الدمام','JEDDAH - جدة','MECCA - مكة','TAIF - الطائف',
-             'KHAMIS MUSHIT - خميس مشيط','MADINAH - المدينة','JAZAN - جازان','BURAIDAH - بريدة',
-             'HOFUF - الهفوف','MAJMAAH - المجمعة','QASSIM - القصيم','MAHAYEL - محايل','NAJRAN - نجران',
-             'HAFAR AL BATEN - حفر الباطن','BISHA - بيشة','KHUBAR - الخبر','AL BAHA - الباحة',
-             'HAIL - حائل','ARAR - عرعر','KHARJ - الخرج','JUBAIL - الجبيل','ABHA - ابها',
-             'WADI DAWASIR - وادي الدواسر','SKAKAH - سكاكا','TABUK - تبوك','QURAYYAT - القريات'],
-      project: ['NINJA AFMCO - نينجا افامكو','KEEMART - كيمارت','SHIPMENT AFMCO','ARAMEX - ارامكس',
-                'STARLINKS - ستارلينك','كيتا - KEETA','NOON - نون','ARTZ','NAQEL - ناقل',
-                'SMSA - سمسا','CARFOUR - كارفور','AMAZON - أمازون','AJEX - اجيكس','NANNA - نعناع',
-                'AFMCO SUPERVISOR-مشرفين افامكو','NINJA Dyna - نينجا دينا','ONTHER - أخرى'],
-      office: ['ETIHAD - اتحاد العالمية','SMSA - Yelo - سمسا يلو','SAFI - الصافي','RENTO - رنتو',
-               'الثاقب - ALTHAQIB','MUAKAD','SMSA - Budget','MUSBAH - المصباح','MUNAKALH - مناقلة',
-               'FARIS - الفارس','SMSA - AVIS','WASEL - واصل','TRAVIL -  ترفل','OWN CAR - سيارة خاصة','LUMI'],
-      fuel: ['PETROL - بنزين','DIESLE - ديزل']
-    };
-    var FUEL_ALIAS = { AFMCO:'ETIHAD',   /* v82 */
-      NINJA:'NINJA AFMCO', 'NINJA-DIEANA':'NINJA Dyna', SHIPMENT:'SHIPMENT AFMCO',
-      'المشرفين والصيانة':'AFMCO SUPERVISOR', TRAFEL:'TRAVIL', DESIL:'DIESLE',
-      JADAH:'JEDDAH', JEEDAH:'JEDDAH', DAMAM:'DAMMAM', MAKA:'MECCA', MAJMA:'MAJMAAH',
-      QASEEM:'QASSIM', YANBU:'', 'الرياض':'RIYADH' };
-    function fuelOpt(val, kind){
-      var v = fnk(val); if (!v) return '';
-      var opts = FUEL_OPT[kind] || [];
-      var al = FUEL_ALIAS[String(val).trim().toUpperCase()] || FUEL_ALIAS[String(val).trim()];
-      if (al === '') return '';
-      var cand = [v]; if (al) cand.push(fnk(al));
-      var i, k, o, p;
-      for (i = 0; i < opts.length; i++){ p = fparts(opts[i]);
-        for (k = 0; k < p.length; k++) for (o = 0; o < cand.length; o++)
-          if (fnk(p[k]) === cand[o]) return opts[i]; }
-      for (i = 0; i < opts.length; i++){ p = fparts(opts[i]);
-        for (k = 0; k < p.length; k++){ var pk = fnk(p[k]); if (pk.length < 4) continue;
-          for (o = 0; o < cand.length; o++)
-            if (cand[o].indexOf(pk) === 0 || pk.indexOf(cand[o]) === 0) return opts[i]; } }
-      return '';
-    }
-    /* صفوف التطبيق بترتيب حقوله وبأسمائها كما هي فيه */
-    function fuelFields(e, v){
-      var raw = { area: (v && v.area) || e.area || '', project: (v && v.project) || e.project || '',
-                  office: (v && v.rental_office) || '', fuel: (v && v.fuel) || '' };
-      return [
-        ['رقم الاقامة - IQAMA', normId(e.iqama) || '', ''],
-        ['الاسم - NAME', e.name_ar || e.name_en || '', ''],
-        ['رقم الجوال - MOBAILE NUMBER', e.mobile || '', ''],
-        ['المنطقة - AREA', fuelOpt(raw.area, 'area'), raw.area],
-        ['اسم المشروع - PROJECT NAME', fuelOpt(raw.project, 'project'), raw.project],
-        ['نوع الوقود - FUEL TYPE', fuelOpt(raw.fuel, 'fuel'), raw.fuel],
-        ['مكتب الايجار - RENT OFFICE', fuelOpt(raw.office, 'office'), raw.office],
-        ['رقم اللوحة - PLATE NUMBER', (v && v.plate) || '', ''],
-        ['ايميل المندوب - DRIVER EMAIL', DRIVER_EMAIL, '']
-      ];
-    }
-    function fuelTableHtml(e, v){
-      var rows = fuelFields(e, v);
-      return '<div class="scroll" style="margin-top:6px"><table><tbody>'
-        + rows.map(function(r, i){
-            var ok = !!r[1];
-            return '<tr><th style="white-space:nowrap">' + esc(r[0]) + '</th>'
-              + '<td style="font-weight:600;color:' + (ok ? '#0e5e5c' : '#a3372b') + '">'
-              + (ok ? esc(r[1]) : ('— ' + (r[2] ? '<span class="muted">(' + esc(r[2]) + ' ليس من قوائم التطبيق)</span>' : ''))) + '</td>'
-              + '<td>' + (ok ? '<button class="btnx gh" data-fc="' + i + '">📋</button>' : '') + '</td></tr>';
-          }).join('')
-        + '</tbody></table></div>';
-    }
-    function missHtml(e, v){
-      var out = '', p = projMiss(e, v);
-      if (p) out += '<div style="margin-top:8px;padding:9px 11px;border:1px solid #f2cdc7;'
-        + 'background:#fdf2f0;border-radius:9px;color:#a3372b;font-size:12.5px;line-height:1.8">'
-        + '<b>⛔ المشروع «' + esc(p) + '» غير موجود في خيارات نموذج الغسيل.</b><br>'
-        + 'وحقل المشروع <b>إلزامي</b> في النموذج — فلا تُرسَل الشريحة بمشروع صحيح. '
-        + 'الحلّ: أضف «' + esc(p) + '» إلى خيارات السؤال في نموذج جوجل، وبعدها يُعبَّأ تلقائياً.'
-        + '</div>';
-      var soft = [];
-      [['المنطقة', (v && v.area) || e.area || '', 'area'],
-       ['مكتب الإيجار', (v && v.rental_office) || '', 'office']].forEach(function(f){
-        if (f[1] && !matchOpt(f[1], f[2])) soft.push(f[0] + ' «' + f[1] + '»');
-      });
-      if (soft.length) out += '<div style="margin-top:6px;padding:8px 10px;border:1px solid #f2ddb5;'
-        + 'background:#fdf8ef;border-radius:9px;color:#95570f;font-size:12.5px;line-height:1.7">⚠️ '
-        + esc(soft.join(' · ')) + ' — ليس من خيارات النموذج، فيصل فارغاً. '
-        + 'اختره يدوياً، أو أضف الخيار للنموذج ليُعبَّأ تلقائياً.</div>';
-      return out;
-    }
-    function fuelWashHtml(e){
-      var v = activeVeh(e); if (!v) return '';
-      return '<h4>🧰 بعد الإسناد</h4>'
-        + '<div class="row">'
-        + '<a class="btnx' + (projMiss(e, v) ? ' gh' : '') + '" target="_blank" rel="noopener" href="'
-        + esc(washUrl(e, v)) + '">🧼 شريحة غسيل — '
-        + (projMiss(e, v) ? 'بلا مشروع ⛔' : 'معبّأة') + '</a>'
-        + '<a class="btnx gh" target="_blank" rel="noopener" href="' + esc(LAB_FUEL) + '">⛽ الوقود — تفعيل وزيادة</a>'
-        + '<button class="btnx gh" id="afxFuelCopy">📋 انسخ كل صف الوقود</button>'
-        + '</div>'
-        + '<div class="muted">اللوحة <b style="direction:ltr">' + esc(v.plate || '—') + '</b>'
-        + (v.rental_office ? ' · مكتب ' + esc(v.rental_office) : '')
-        + ((v.project || e.project) ? ' · ' + esc(v.project || e.project) : '') + '. '
-        + 'نموذج الغسيل يفتح معبّأً. تطبيق الوقود لا يقبل التعبئة من الرابط — انسخ البيانات والصقها فيه.</div>'
-        + missHtml(e, v)
-        + '<div class="muted" style="margin-top:8px"><b>صفّ تطبيق الوقود</b> — بأسماء حقوله وقيَمه الحرفية، '
-        + 'لأن التطبيق لا يقبل التعبئة من الرابط (جُرّب). انسخ القيمة واخترها في التطبيق:</div>'
-        + fuelTableHtml(e, v)
-        + '<pre id="afxFuelRow" style="display:none">' + esc(fuelRow(e, v)) + '</pre>';
-    }
     function empPane(e, pane){
       pane.innerHTML = '<div class="afx muted">جارٍ التحميل من القاعدة…</div>';
       rpc('employee_overview', { p_iqama: normId(e.iqama) }).then(function(o){
@@ -8173,7 +8344,6 @@ async function handleAccidentFile(input){
                     ? 'يصل «الصندوق الموحّد» عند المسؤول عن الإسناد مباشرة، ويتحدث هنا تلقائياً.'
                     : 'يصل المدير أولاً. باعتماده وحده ينتقل الطلب للأسطول — وتتابع حالته هنا.') + '</span>'
               : '<span class="muted">لا يوجد طلب.</span>')) + '</div><div id="afxReqHist"></div>';
-        h += fuelWashHtml(e);   /* v78 */
         pane.innerHTML = h + '</div>';
         paintIds(e, pane, canEdit, canDel);
         paintApproval(e, pane);
@@ -8247,21 +8417,6 @@ async function handleAccidentFile(input){
             };
           }
         }).catch(function(){});
-        pane.querySelectorAll('[data-fc]').forEach(function(b){
-          b.onclick = function(){
-            var rows = fuelFields(e, activeVeh(e)), r = rows[+b.getAttribute('data-fc')];
-            if (!r || !r[1]) return;
-            try { navigator.clipboard.writeText(r[1]); note('📋 ' + r[0] + ' — نُسخت', 'green'); }
-            catch(_){ note('انسخها يدوياً', 'amber'); }
-          };
-        });
-        var fc = pane.querySelector('#afxFuelCopy');
-        if (fc) fc.onclick = function(){
-          var t = (pane.querySelector('#afxFuelRow') || {}).textContent || '';
-          if (!t.trim()) return note('لا بيانات', 'amber');
-          try { navigator.clipboard.writeText(t); note('📋 نُسخت بيانات المندوب — الصقها في تطبيق الوقود', 'green'); }
-          catch(_){ note('انسخها يدوياً', 'amber'); }
-        };
         var rq = pane.querySelector('#afxReq');
         if (rq) rq.onclick = function(){ var idx = state.employees.indexOf(e); if (idx >= 0) window.__wfReqSend(idx); setTimeout(function(){ empPane(e, pane); }, 1500); };
       }).catch(function(err){ pane.innerHTML = '<div class="afx warn">تعذّر التحميل: ' + esc(err.message) + '</div>'; });
