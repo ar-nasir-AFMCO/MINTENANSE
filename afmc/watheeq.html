@@ -8964,6 +8964,8 @@ body.wx-card-open #wx4Pill{ display:none !important; }
        مركبة نشطة في الأسطول — فالزر لا يُفتح على فراغ.
        نموذج الغسيل يقبل التعبئة من الرابط فنفتحه معبّأً بتسعة حقول،
        وتطبيق الوقود لا يقبلها فنضع بياناته جاهزة للنسخ بجانبه. */
+    /* v82: ايميل المندوب ثابت في نموذج الغسيل وتطبيق الوقود — بقرار صاحب المنصة */
+    var DRIVER_EMAIL = 'AFAMCO@GMIL.COM';
     var LAB_FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSc45otbZY6bqJfJYl2VZLXT73KlRttn_i67Y5lADtM9G4k5ww/viewform';
     var LAB_F = { name:'1156777051', iqama:'1970767550', email:'1619132559', plate:'1581913447',
                   plate_ar:'1046381303', project:'129957825', area:'820389940', office:'1414804338' };
@@ -8990,6 +8992,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     };
     var FORM_ALIAS = { JADAH:'JEDDAH', JEEDAH:'JEDDAH', DAMAM:'DAMMAM', MAKA:'MECCA',
       MAJMA:'MAJMAAH', QASEEM:'QASSIM', STARLINKS:'STARLINK',
+      AFMCO:'ETIHAD',          /* v82: مركبات AFMCO مكتبها الفعلي الاتحاد */
       'الرياض':'RIYADH', 'جدة':'JEDDAH', 'الدمام':'DAMMAM', 'مكة':'MECCA', 'الطائف':'TAIF' };
     var FORM_FUZZ = { area:2, office:1, project:0 };
     function fnk(x){ return String(x == null ? '' : x).toUpperCase()
@@ -9032,7 +9035,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       var q = [['usp','pp_url'],
         ['entry.' + LAB_F.name,    e.name_ar || e.name_en || ''],
         ['entry.' + LAB_F.iqama,   normId(e.iqama) || ''],
-        ['entry.' + LAB_F.email,   (me && me.email) || ''],
+        ['entry.' + LAB_F.email,   DRIVER_EMAIL],   /* v82: ثابت */
         ['entry.' + LAB_F.plate,   (v && v.plate) || ''],
         ['entry.' + LAB_F.project, matchOpt((v && v.project) || e.project || '', 'project')],
         ['entry.' + LAB_F.area,    matchOpt((v && v.area) || e.area || '', 'area')],
@@ -9073,7 +9076,8 @@ body.wx-card-open #wx4Pill{ display:none !important; }
                'FARIS - الفارس','SMSA - AVIS','WASEL - واصل','TRAVIL -  ترفل','OWN CAR - سيارة خاصة','LUMI'],
       fuel: ['PETROL - بنزين','DIESLE - ديزل']
     };
-    var FUEL_ALIAS = { NINJA:'NINJA AFMCO', 'NINJA-DIEANA':'NINJA Dyna', SHIPMENT:'SHIPMENT AFMCO',
+    var FUEL_ALIAS = { AFMCO:'ETIHAD',   /* v82 */
+      NINJA:'NINJA AFMCO', 'NINJA-DIEANA':'NINJA Dyna', SHIPMENT:'SHIPMENT AFMCO',
       'المشرفين والصيانة':'AFMCO SUPERVISOR', TRAFEL:'TRAVIL', DESIL:'DIESLE',
       JADAH:'JEDDAH', JEEDAH:'JEDDAH', DAMAM:'DAMMAM', MAKA:'MECCA', MAJMA:'MAJMAAH',
       QASEEM:'QASSIM', YANBU:'', 'الرياض':'RIYADH' };
@@ -9105,7 +9109,8 @@ body.wx-card-open #wx4Pill{ display:none !important; }
         ['اسم المشروع - PROJECT NAME', fuelOpt(raw.project, 'project'), raw.project],
         ['نوع الوقود - FUEL TYPE', fuelOpt(raw.fuel, 'fuel'), raw.fuel],
         ['مكتب الايجار - RENT OFFICE', fuelOpt(raw.office, 'office'), raw.office],
-        ['رقم اللوحة - PLATE NUMBER', (v && v.plate) || '', '']
+        ['رقم اللوحة - PLATE NUMBER', (v && v.plate) || '', ''],
+        ['ايميل المندوب - DRIVER EMAIL', DRIVER_EMAIL, '']
       ];
     }
     function fuelTableHtml(e, v){
