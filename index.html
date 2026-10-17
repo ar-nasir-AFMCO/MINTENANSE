@@ -25,6 +25,34 @@
   }
   function reply(o){ return new Response(JSON.stringify(o), { status: 200, headers: { 'Content-Type': 'application/json' } }); }
 
+  /* ═══ v86: سرّ خاص لكل جهاز (مقابل v56 في القاعدة) ═══
+     المفتاح المشترك منشور في هذه الصفحة، فحامله كان يقدر ينتحل معرّف أي
+     جهاز. هنا يأخذ كل جهاز سرّاً يخصّه أول اتصال، ويُرسله مع كل طلب.
+     انتقالي بقصد: الدوال تقبل السرّ اختياراً، فالأجهزة التي لم تُحدَّث
+     بعد تبقى تعمل. ولا شيء من هذا يمسّ بيانات دخول المشرفين. */
+  var SEC_KEY = 'dbb_dev_secret', _claim = null;
+  function devId(){ try { return localStorage.getItem('dbb_dev_id') || ''; } catch(e){ return ''; } }
+  function devSecret(){ try { return localStorage.getItem(SEC_KEY) || ''; } catch(e){ return ''; } }
+  function ensureSecret(){
+    var d = devId();
+    if (!d) return Promise.resolve('');
+    var s = devSecret(); if (s) return Promise.resolve(s);
+    if (_claim) return _claim;
+    _claim = rpc('dbb_claim', { p_token: APP_KEY, p_device: d }).then(function(r){
+      if (r && r.ok && r.secret){ try { localStorage.setItem(SEC_KEY, r.secret); } catch(e){} return r.secret; }
+      return '';            /* مسجَّل سلفاً (سرّه ضاع) — يكمل بلا سرّ حتى يُعيد المدير الإصدار */
+    }).catch(function(){ return ''; });   /* القاعدة بلا v56 بعد — يكمل كما كان */
+    return _claim;
+  }
+  function authRpc(fn, args){
+    return ensureSecret().then(function(sec){
+      args.p_device = devId() || null;
+      args.p_secret = sec || null;
+      return rpc(fn, args);
+    });
+  }
+  try { setTimeout(ensureSecret, 3000); } catch(e){}   /* يسجّل نفسه ولو لم يكتب شيئاً */
+
   window.fetch = function(input, init){
     var url = ''; try { url = typeof input === 'string' ? input : (input && input.url) || ''; } catch(e){}
     if (!CLOUD.test(url)) return realFetch(input, init);
@@ -34,13 +62,11 @@
       if (!o.file) return Promise.resolve(reply({ ok: false }));
       var payload = o.payload; try { if (typeof payload === 'string') payload = JSON.parse(payload); } catch(e){}
       /* v55: نُصرّح بمعرّف الجهاز، فترفض القاعدة الكتابة على ملف جهاز آخر */
-      var __dev = ''; try { __dev = localStorage.getItem('dbb_dev_id') || ''; } catch(e){}
-      return rpc('dbb_push', { p_token: APP_KEY, p_file: String(o.file), p_payload: payload,
-                               p_device: __dev || null }).then(reply);
+      return authRpc('dbb_push', { p_token: APP_KEY, p_file: String(o.file), p_payload: payload }).then(reply);
     }
     var q = {}; (url.split('?')[1] || '').split('&').forEach(function(p){ var kv = p.split('='); if (kv[0]) q[kv[0]] = decodeURIComponent(kv[1] || ''); });
-    if (q.mode === 'list') return rpc('dbb_list', { p_token: APP_KEY }).then(reply);
-    if (q.mode === 'get' && q.file) return rpc('dbb_get', { p_token: APP_KEY, p_file: q.file }).then(reply);
+    if (q.mode === 'list') return authRpc('dbb_list', { p_token: APP_KEY }).then(reply);
+    if (q.mode === 'get' && q.file) return authRpc('dbb_get', { p_token: APP_KEY, p_file: q.file }).then(reply);
     return Promise.resolve(reply({ ok: false }));   /* أي طلب آخر (مثل app-master) لا يذهب لأي مكان */
   };
   window.fetch.__wfSbDbb = true;
@@ -933,7 +959,7 @@ details[open] > summary{margin-bottom:10px}
 (function(){
 'use strict';
 
-var APP_BUILD='2026-10-17-r1533';
+var APP_BUILD='2026-10-17-r1618';
 var LS_DATA='dbb_maint_v1', LS_USER='dbb_maint_user_v1';
 var LIVE=['مفتوح','في الورشة','بانتظار قطع'];
 var AGE_WARN=72, AGE_BAD=168; /* ساعات: 3 أيام / 7 أيام */
