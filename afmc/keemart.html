@@ -72,9 +72,25 @@
       timers[key] = setTimeout(function(){ write(key); }, 400);
     }
     function flush(){ Object.keys(pend).forEach(write); }
+    /* مفتاح انتقل إلى IndexedDB ثم عاد يظهر في localStorage: مسارٌ قديم
+       أعاد كتابته. لا نمسحه مباشرة — نحفظ نسخته جانباً في IndexedDB ثم
+       نفرّغه. فإن كانت IndexedDB فارغة تبنّيناه، وإن كانت عامرة بقي
+       الاثنان محفوظَين ولم يضع شيء. */
+    function reconcile(key){
+      var raw = null; try { raw = localStorage.getItem(key); } catch(e){}
+      if (raw == null) return Promise.resolve(false);
+      var o = null; try { o = JSON.parse(raw); } catch(e){ o = null; }
+      return get(key).then(function(cur){
+        if (cur == null && o != null) return put(key, o).then(function(){ trim(key); return true; });
+        if (o == null) { trim(key); return true; }
+        return put(key + '__ls_backup', { at: new Date().toISOString(), data: o })
+          .then(function(){ trim(key); return true; })
+          .catch(function(){ return false; });
+      }).catch(function(){ return false; });
+    }
     try { window.addEventListener('pagehide', flush);
           document.addEventListener('visibilitychange', function(){ if (document.hidden) flush(); }); } catch(e){}
-    return { get:get, put:put, load:load, save:save, trim:trim };
+    return { get:get, put:put, load:load, save:save, trim:trim, reconcile:reconcile };
   })();
 
   /* الترحيل يبدأ من هنا لا من داخل التطبيقات: استدعاؤه في init كان
@@ -82,9 +98,16 @@
      التطبيق نسخته المحلية أولاً كما يفعل اليوم، ثم تُنقل ويُفرَّغ القديم. */
   try {
     var WFBIG_KEYS = { watheeq: ['watheeq_db_v1'], fleet: ['fleetOS_v5_vehicles'] }[APP] || [];
-    if (WFBIG_KEYS.length) setTimeout(function(){
-      WFBIG_KEYS.forEach(function(k){ try { window.WFBig.load(k).catch(function(){}); } catch(e){} });
-    }, 1500);
+    if (WFBIG_KEYS.length) {
+      setTimeout(function(){
+        WFBIG_KEYS.forEach(function(k){ try { window.WFBig.load(k).catch(function(){}); } catch(e){} });
+      }, 1500);
+      /* ويُراجَع دورياً: الدلو مشترك بين ستة تطبيقات، وما يعود إليه
+         يخنق البقية حتى يفشل الحفظ عند أوّل نموّ. */
+      setInterval(function(){
+        WFBIG_KEYS.forEach(function(k){ try { window.WFBig.reconcile(k); } catch(e){} });
+      }, 30000);
+    }
   } catch(e){}
   var WA = /wa\.me|api\.whatsapp|whatsapp:|web\.whatsapp/i;
 
