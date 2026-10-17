@@ -12,6 +12,70 @@
 (function(){
   var APP = window.WF_CLOUD_APP || '';
   window.WF_CLOUD = true;
+
+  /* ═══ v88: مخزن كبير في IndexedDB ═══
+     تطبيقات أفامكو كلها على أصل واحد، فتتقاسم دلو localStorage الواحد
+     وحدّه ٥ ميجا. وثيق ١٣٨٠ك · نينجا ١٠٤٧ك · الأسطول ١٠١٧ك · كيمارت
+     ٥٦١ك — وكلها مجرّد نسخة سريعة من سوبابيس، لكنها تخنق الدلو على
+     البقية حتى يفشل الحفظ عند أول نمو. هنا تنتقل إلى IndexedDB حيث
+     المساحة بالمئات، ولا يُحذف شيء: يُنسَخ ثم يُقرأ ويُتحقَّق منه قبل
+     تفريغ القديم، وإن تعذّر أي من ذلك بقي كل شيء كما كان. */
+  window.WFBig = (function(){
+    var DBN = 'wfsb_big', ST = 'kv', _p = null;
+    function open(){
+      if (_p) return _p;
+      _p = new Promise(function(res, rej){
+        if (!window.indexedDB) return rej(new Error('no idb'));
+        var r = indexedDB.open(DBN, 1);
+        r.onupgradeneeded = function(){ try { r.result.createObjectStore(ST); } catch(e){} };
+        r.onsuccess = function(){ res(r.result); };
+        r.onerror   = function(){ rej(r.error); };
+      });
+      return _p;
+    }
+    function tx(mode){ return open().then(function(d){ return d.transaction(ST, mode).objectStore(ST); }); }
+    function get(k){ return tx('readonly').then(function(s){ return new Promise(function(res){
+      var q = s.get(k); q.onsuccess = function(){ res(q.result === undefined ? null : q.result); };
+      q.onerror = function(){ res(null); }; }); }).catch(function(){ return null; }); }
+    function put(k, v){ return tx('readwrite').then(function(s){ return new Promise(function(res, rej){
+      var q = s.put(v, k); q.onsuccess = function(){ res(true); }; q.onerror = function(){ rej(q.error); }; }); }); }
+    var warned = {};
+    /* يقرأ من IndexedDB، وإن كان فارغاً رحّل ما في localStorage مرّة واحدة */
+    function load(key, parse){
+      return get(key).then(function(v){
+        if (v != null) { trim(key); return v; }
+        var raw = null; try { raw = localStorage.getItem(key); } catch(e){}
+        if (raw == null) return null;
+        var o = null; try { o = parse ? parse(raw) : JSON.parse(raw); } catch(e){ return null; }
+        if (o == null) return null;
+        return put(key, o).then(function(){ return get(key); }).then(function(chk){
+          if (chk == null) return o;                 /* لم يُتحقَّق — نُبقي القديم */
+          trim(key); return o;
+        }).catch(function(){ return o; });
+      });
+    }
+    function trim(key){ try { localStorage.removeItem(key); } catch(e){} }
+    var timers = {}, pend = {};
+    function write(key){
+      if (timers[key]) { clearTimeout(timers[key]); timers[key] = null; }
+      if (!(key in pend)) return;
+      var v = pend[key]; delete pend[key];
+      put(key, v).catch(function(){
+        if (warned[key]) return; warned[key] = 1;
+        try { console.warn('WFBig: تعذّر الحفظ في تخزين الجهاز —', key); } catch(e){}
+      });
+    }
+    /* الحفظ مؤجَّل قليلاً: الكتابة الواحدة تكفي عن عشر — والمعلّق يُكتب عند الإغلاق */
+    function save(key, val){
+      pend[key] = val;
+      clearTimeout(timers[key]);
+      timers[key] = setTimeout(function(){ write(key); }, 400);
+    }
+    function flush(){ Object.keys(pend).forEach(write); }
+    try { window.addEventListener('pagehide', flush);
+          document.addEventListener('visibilitychange', function(){ if (document.hidden) flush(); }); } catch(e){}
+    return { get:get, put:put, load:load, save:save, trim:trim };
+  })();
   var WA = /wa\.me|api\.whatsapp|whatsapp:|web\.whatsapp/i;
 
   /* ---------- 1) Ninja/Keemart: تخزين منفصل لكل نظام ---------- */
