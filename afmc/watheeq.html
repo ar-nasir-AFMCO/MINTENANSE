@@ -2913,14 +2913,25 @@ boot();
               if(v.current_driver.name_ar) activeName[normName(v.current_driver.name_ar)] = 1;
             }
           });
-          var changed = 0;
+          var changed = 0, prop = [];
           (state.employees || []).forEach(function(e){
             if(!e || e.employment_status !== 'active') return;     /* لا نُعيد التفعيل تلقائياً */
             var id = normId(e.iqama), nm = normName(e.name_ar);
             var isFleetActive = activeId[id] || (nm && activeName[nm]);
-            if(!isFleetActive){ if(wfMarkOffWork(e)) changed++; }   /* لا تفويض نشط → متوقف عن العمل */
+            if(!isFleetActive){ prop.push({iqama:e.iqama, name:e.name_ar||e.name_en||e.iqama}); }  /* v93: اقتراح فقط — لا كتابة تلقائية */
             else if(e.salary_only === true){ e.salary_only = false; changed++; } /* عاد بتفويض → تنظيف علم قديم */
           });
+          /* v93: الإيقاف الجماعي صار اقتراحاً يُعرض للمراجعة، ولا يُكتب إلا بضغطة منك.
+             السبب: هذه الدالة أوقفت ٣٢ موظفاً في ثانية واحدة بلا إذن يوم 2026-10-17. */
+          window.wfOffWorkProposal = prop;
+          try{ var b=document.getElementById('wfOffWorkBadge');
+               if(!b && prop.length){ b=document.createElement('div'); b.id='wfOffWorkBadge';
+                 b.style.cssText='position:fixed;inset-inline-end:14px;bottom:14px;z-index:9999;background:#95570f;color:#fff;'+
+                   'padding:8px 12px;border-radius:10px;font:13px system-ui;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.25)';
+                 b.onclick=function(){ try{ wfOffWorkReview(); }catch(_){ alert('مرشّحون للإيقاف: '+(window.wfOffWorkProposal||[]).length); } };
+                 document.body.appendChild(b); }
+               if(b){ if(!prop.length){ b.remove(); } else { b.textContent='مرشّحون لـ«متوقف عن العمل»: '+prop.length+' — للمراجعة'; } }
+          }catch(_){}
           if(changed){
             try{ if(typeof recomputeStats === 'function') recomputeStats(); }catch(_){}
             try{ if(typeof persist === 'function') persist(); }catch(_){}
@@ -2930,6 +2941,44 @@ boot();
       });
     }catch(e){}
   }
+
+  /* v93: شاشة مراجعة المرشّحين للإيقاف — لا يُوقف أحد إلا بضغطة صريحة منك */
+  function wfOffWorkReview(){
+    var list = window.wfOffWorkProposal || [];
+    if(!list.length){ alert('لا يوجد مرشّحون للإيقاف.'); return; }
+    var ov = document.getElementById('wfOffWorkOv');
+    if(ov) ov.remove();
+    ov = document.createElement('div'); ov.id='wfOffWorkOv';
+    ov.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center';
+    var rows = list.map(function(x,i){
+      return '<label style="display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid #eee">'+
+             '<input type="checkbox" class="wfow-c" data-iq="'+x.iqama+'" checked> '+
+             '<span style="flex:1">'+(x.name||'')+'</span>'+
+             '<code style="color:#777">'+x.iqama+'</code></label>';
+    }).join('');
+    ov.innerHTML = '<div style="background:#fff;max-width:620px;width:92%;max-height:80vh;overflow:auto;border-radius:14px;padding:16px;font:14px system-ui" dir="rtl">'+
+      '<h3 style="margin:0 0 6px">مرشّحون لـ«متوقف عن العمل» ('+list.length+')</h3>'+
+      '<p style="margin:0 0 10px;color:#666">هؤلاء لا يوجد لهم تفويض نشط في الأسطول. راجع القائمة وأزل من لا تريد إيقافه، ثم اضغط «طبّق».</p>'+
+      rows+
+      '<div style="display:flex;gap:8px;margin-top:14px">'+
+      '<button id="wfowApply" style="flex:1;padding:9px;border:0;border-radius:9px;background:#95570f;color:#fff;cursor:pointer">طبّق الإيقاف على المحدَّدين</button>'+
+      '<button id="wfowClose" style="flex:1;padding:9px;border:1px solid #ccc;border-radius:9px;background:#fff;cursor:pointer">إغلاق بلا تغيير</button>'+
+      '</div></div>';
+    document.body.appendChild(ov);
+    ov.querySelector('#wfowClose').onclick=function(){ ov.remove(); };
+    ov.querySelector('#wfowApply').onclick=function(){
+      var ids={}; Array.prototype.forEach.call(ov.querySelectorAll('.wfow-c'), function(c){ if(c.checked) ids[c.getAttribute('data-iq')]=1; });
+      var n=0;
+      (state.employees||[]).forEach(function(e){ if(e && ids[e.iqama] && e.employment_status==='active'){ if(wfMarkOffWork(e)) n++; } });
+      if(n){ try{ recomputeStats(); }catch(_){}
+             try{ persist(); }catch(_){}
+             try{ renderAll(); }catch(_){} }
+      ov.remove();
+      var b=document.getElementById('wfOffWorkBadge'); if(b) b.remove();
+      alert('تم إيقاف '+n+' موظف.');
+    };
+  }
+  window.wfOffWorkReview = wfOffWorkReview;
 
   /* ---------- (٥) قفل تعديل/حذف الرواتب والسلفيات لغير الأدمن ---------- */
   ['addAdvance','delAdvance','addFinancePeriod','delFinancePeriod'].forEach(function(fn){
