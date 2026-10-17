@@ -7807,15 +7807,22 @@ async function handleAccidentFile(input){
       if (d < b1){ b2 = b1; b1 = d; best = VT_OPT[i]; } else if (d < b2) b2 = d; }
     return (b1 <= 1 && b2 > b1) ? best : '';   /* حرف واحد، وبلا منافس — وإلا فراغ */
   }
-  /* النماذج الثلاثة في التطبيق، وحقول كلٍّ منها */
+  /* النماذج الثلاثة في التطبيق، وحقول كلٍّ منها.
+     btn هو نصّ الزرّ، وهو نفسه القيمة الوحيدة المقبولة في «سبب التغير»:
+     جرّبتُ إرسال «توقف عن العمل - STOP WORKING» — وهو في ١٦٢٣ سجلاً
+     قديماً — فلم يُنتخَب أي زرّ، وبقيت حقول السيارة القديمة مخفية لأنها
+     معلّقة على السبب. فالقيم القديمة لم تعد من خيارات التطبيق.
+     والسبب التفصيلي (حادث · صيانة · إجازة) ينزل في «الملاحظات» بدله،
+     فلا يضيع ولا يكسر الحقل الإلزامي. */
+  var FUEL_NOTE_COL = 'الرجاء كتابة الملاحظات هنا -  PLEASE WRITE THE NOTES HERE';
   var FUEL_FORMS = {
     'new':  { lbl:'🆕 استلام جديد', btn:'استلام جديد - NEW RECEIPT', old:false, nw:true,
-              reasons:['استلام جديد - RECEIVE A NEW CAR'] },
+              notes:[] },
     'rep':  { lbl:'🔄 استلام بديل', btn:'استلام بديل - REPLACEMENT', old:true, nw:true,
-              reasons:['استلام بديل - REPLACEMENT','حادث - ACCIDENT','صيانة - MAINTENANCE',
-                       'استلام السيارة الاصلية - RECEIVE THE ORIGINAL CAR'] },
+              notes:['حادث - ACCIDENT','صيانة - MAINTENANCE',
+                     'استلام السيارة الاصلية - RECEIVE THE ORIGINAL CAR'] },
     'stop': { lbl:'⏸ إيقاف سيارة', btn:'أيقاف سيارة - STOP CAR', old:true, nw:false,
-              reasons:['توقف عن العمل - STOP WORKING','اجازة - VACATION','أيقاف سيارة - STOP CAR'] }
+              notes:['توقف عن العمل - STOP WORKING','اجازة - VACATION'] }
   };
   var FUEL_ORDER = ['new', 'rep', 'stop'];
   function fToday(){ var d = new Date(); return d.getFullYear() + '-'
@@ -7847,8 +7854,8 @@ async function handleAccidentFile(input){
     var pv = fPrevVeh(v.plate, d.driver_id);
     if (!mode || !FUEL_FORMS[mode]) mode = !v.current_driver ? 'stop' : (pv ? 'rep' : 'new');
     var f = FUEL_FORMS[mode];
-    var c = { mode: mode, form: f, d: d, v: v, prev: pv,
-              reason: (f.reasons.indexOf(reason) >= 0 ? reason : f.reasons[0]) };
+    var c = { mode: mode, form: f, d: d, v: v, prev: pv, reason: f.btn,
+              note: (f.notes.indexOf(reason) >= 0 ? reason : '') };
     if (mode === 'stop'){
       c.oldV = v; c.oldDate = (!v.current_driver && d.date_deliver) || fToday();
       c.newV = null; c.newDate = '';
@@ -7873,6 +7880,7 @@ async function handleAccidentFile(input){
     var fu = String(v.fuel || '').trim();
     row('نوع الوقود - FUEL TYPE', fuelOpt(fu, 'fuel'), fu);
     row('سبب التغير - REASON FOR CHANGING', c.reason);
+    if (c.note) row(FUEL_NOTE_COL, c.note);
     if (f.old){
       var ov = c.oldV, ovt = ov ? String(ov.vehicle_type || '').trim() : '';
       row('نوع السياره القديمة  -OLD VEHICLE TYPE', ov ? vtOpt(ovt) : '', ov ? ovt : 'لا سابقة في السجل');
@@ -7911,6 +7919,35 @@ async function handleAccidentFile(input){
       .filter(function(p){ return String(p[1] || '') !== ''; })
       .map(function(p){ return encodeURIComponent(p[0]) + '=' + encodeURIComponent(p[1]); }).join('&');
     return LAB_FORM + '?' + q;
+  }
+  /* ═══ v84: تطبيق الوقود يقبل التعبئة من الرابط ═══
+     الخلاصة القديمة («جُرّب ولا يقبل») كانت ناقصة لا خاطئة: جرّبتُ
+     تمرير أسماء الأعمدة في الرابط مباشرة فتجاهلها التطبيق. والصحيح
+     معامل واحد اسمه defaults يحمل جسم JSON بكل الحقول. جرّبتُه على
+     التطبيق نفسه فامتلأ: الحقول النصّية، والقوائم المنسدلة (المنطقة
+     والمشروع والمكتب والفرع)، وأزرار «سبب التغير» تُختار من نفسها،
+     والتواريخ — شرط إرسالها MM/DD/YYYY لا YYYY-MM-DD. */
+  var FUEL_APP = 'https://www.appsheet.com/start/0fcc64c6-f3fb-4be7-9002-2fd17dd57ebf';
+  var FUEL_APPNAME = 'PETROLCHIPES-986933318';
+  var FUEL_VIEW = 'UPDATE_Form';
+  function usDate(x){
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(x || '').trim());
+    return m ? (m[2] + '/' + m[3] + '/' + m[1]) : String(x || '');
+  }
+  function fuelUrl(c){
+    var d = {};
+    fuelRows(c).forEach(function(r){
+      if (!r[1]) return;                      /* ما لا يُطابَق لا يُرسَل — يُترك للمستخدم */
+      d[r[0]] = /DATE/.test(r[0]) ? usDate(r[1]) : r[1];
+    });
+    return FUEL_APP + '#appName=' + encodeURIComponent(FUEL_APPNAME)
+      + '&view=' + encodeURIComponent(FUEL_VIEW)
+      + '&defaults=' + encodeURIComponent(JSON.stringify(d));
+  }
+  /* الحقول التي لم تُطابَق — هي وحدها ما يحتاج يداً */
+  function fuelGaps(c){
+    return fuelRows(c).filter(function(r){ return !r[1]; })
+      .map(function(r){ return r[0].split(/\s*-\s*/)[0].trim() + (r[2] ? ' («' + r[2] + '»)' : ''); });
   }
   /* v80: المشروع حقل إلزامي في نموذج الغسيل. لو مشروع المركبة ليس من
      خياراته — وهذا حال NINJA و KEEMART وهما أكبر مشروعين — فالشريحة لا
@@ -7985,20 +8022,29 @@ async function handleAccidentFile(input){
     h += '<div class="fx-chips">' + FUEL_ORDER.map(function(k){
       return '<button class="fx-chip' + (k === c.mode ? ' on' : '') + '" data-fm="' + k + '">'
         + esc(FUEL_FORMS[k].lbl) + '</button>'; }).join('') + '</div>';
-    if (f.reasons.length > 1) h += '<div class="fx-hint">سبب التغيير:</div><div class="fx-chips">'
-      + f.reasons.map(function(r){
-          return '<button class="fx-chip' + (r === c.reason ? ' on' : '') + '" data-fr="'
-            + esc(r) + '">' + esc(r.split(' - ')[0]) + '</button>'; }).join('') + '</div>';
+    if (f.notes.length) h += '<div class="fx-hint">سبب تفصيلي — اختياري، يُكتب في خانة الملاحظات:</div>'
+      + '<div class="fx-chips">'
+      + [''].concat(f.notes).map(function(r){
+          return '<button class="fx-chip' + (r === c.note ? ' on' : '') + '" data-fr="'
+            + esc(r) + '">' + esc(r ? r.split(/\s*-\s*/)[0].trim() : 'بلا') + '</button>'; }).join('')
+      + '</div>';
     if (f.old && !c.oldV) h += '<div class="fx-box fx-warn">⚠️ لا توجد مركبة سابقة لهذا المندوب في '
       + 'سجلّ الأسطول — فحقول «السيارة القديمة» تُترك لك لتكتبها في التطبيق.</div>';
+    var gaps = fuelGaps(c);
     h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'
+      + '<a class="btn btn-green" target="_blank" rel="noopener" href="' + esc(fuelUrl(c))
+      + '">⛽ شريحة الوقود — معبّأة</a>'
       + '<a class="btn' + (miss ? '' : ' btn-green') + '" target="_blank" rel="noopener" href="'
       + esc(washUrl(c)) + '">🧼 شريحة غسيل — ' + (miss ? 'بلا مشروع ⛔' : 'معبّأة') + '</a>'
-      + '<a class="btn" target="_blank" rel="noopener" href="' + esc(LAB_FUEL) + '">⛽ تطبيق الوقود</a>'
       + '<button class="btn" id="fxCopyAll">📋 انسخ الصفّ كاملاً</button></div>';
     h += fuelMissHtml(c);
-    h += '<div class="fx-hint">في التطبيق اضغط <b>«' + esc(f.btn) + '»</b>، ثم انسخ كل قيمة من هنا '
-      + 'واخترها هناك. التطبيق لا يقبل التعبئة من الرابط (جُرّب)، فالنسخ هو الطريق.</div>';
+    h += '<div class="fx-hint">زرّ الوقود يفتح نموذج التطبيق وقد اختار <b>«' + esc(f.btn)
+      + '»</b> وعبّأ الحقول أدناه. راجِعها قبل الحفظ — الحفظ يبقى بيدك.'
+      + (gaps.length ? ' <b style="color:var(--amber-l)">ما لم يُطابَق فيُترك فارغاً: '
+          + esc(gaps.join(' · ')) + ' — اكتبه هناك يدوياً.</b>' : '')
+      + '</div>';
+    h += '<div class="fx-hint" style="margin-top:10px">الصفّ كما يصل التطبيق — للمراجعة، '
+      + 'ولنسخ أي قيمة يدوياً عند الحاجة:</div>';
     h += fuelTblHtml(c);
     h += '<pre id="fxRowText" style="display:none">' + esc(fuelRowText(c)) + '</pre>';
     return h;
