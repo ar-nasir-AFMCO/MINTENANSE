@@ -280,9 +280,16 @@
     }
     if (key === 'fleetos') {
       /* الأسطول هو المرجع — لكن الإيقاف الجماعي التلقائي لا يُنفَّذ بصمت:
-         يظهر في «مراجعة البيانات» ويطبّقه المدير. */
+         يظهر في «مراجعة البيانات» ويطبّقه المدير.
+         v91: كان يرجّع قائمة فارغة في وثيق، لأن المتغيّر vehicles لا وجود
+         له خارج الأسطول. فتبويب «تحديثات من الأسطول» يقارن كل موظف فعّال
+         بلا شيء، فيعلّمهم جميعاً «تفويض ملغى؟» — ٣٤٨ موظفاً في كل فتحة،
+         وزرّ «إيقاف الكل» يوقفهم جميعاً. الآن يُقرأ الأسطول من القاعدة. */
       if (typeof vehicles !== 'undefined' && Array.isArray(vehicles)) return Promise.resolve({ ok: true, data: { vehicles: vehicles } });
-      return Promise.resolve({ ok: true, data: { vehicles: [] } });
+      return getAll('vehicles?select=plate_no,data&deleted_at=is.null&order=plate_no.asc').then(function(rows){
+        var vs = (rows || []).map(function(r){ var o = r.data || {}; if (!o.plate) o.plate = r.plate_no; return o; });
+        return { ok: true, data: { vehicles: vs } };
+      }).catch(function(){ return { ok: true, data: { vehicles: null } }; });   /* null = تعذّرت القراءة، لا «لا أحد مفوَّض» */
     }
     if (PER_ITEM[key]) {
       return getAll('app_records?select=key,data,updated_at&app=eq.wf&coll=eq.' + key + '&deleted_at=is.null&order=key.asc').then(function(rows){
@@ -2431,7 +2438,17 @@ boot();
   function renderFleetUpdTab(){
     modalBody.innerHTML='<div class="wfi-sec">🔄 تحديثات من الأسطول</div><div class="wfi-warn">جارٍ التحميل من Drive…</div>';
     cloudGet('fleetos').then(function(r){
-      var veh=(r&&r.data&&Array.isArray(r.data.vehicles))?r.data.vehicles:[];
+      var veh=(r&&r.data&&Array.isArray(r.data.vehicles))?r.data.vehicles:null;
+      /* v91: حارس. قائمة الأسطول الفارغة تعني «تعذّرت القراءة» لا «لا أحد
+         مفوَّض». بدونه كان التبويب يعلّم كل موظف فعّال (٣٤٨) في كل فتحة،
+         وزرّ «إيقاف الكل» يوقفهم جميعاً بضغطة. */
+      if(!veh || !veh.length){
+        modalBody.innerHTML='<div class="wfi-sec">🔄 تحديثات من الأسطول</div>'
+          +'<div class="wfi-warn">تعذّرت قراءة مركبات الأسطول الآن، فلا تُعرض أي مقارنة — '
+          +'عرضُها على قائمة فارغة يعني تعليم كل موظف فعّال خطأً. '
+          +'افتح الأسطول مرة ثم أعد المحاولة، أو راجع اتصال القاعدة.</div>';
+        return;
+      }
       var activeId={}, activeName={};
       veh.forEach(function(v){
         if(v.current_driver && (!v.current_driver.date_deliver) && v.current_driver.status==='Active'){
