@@ -4081,6 +4081,13 @@ boot();
   /* ---------------- حماية التخزين (التاريخ الطويل يكبر الحجم) ---------------- */
   var _origPersist = window.persist;
   window.persist = function(){
+    /* v88: إلى IndexedDB — وإلا بقي يكتب ١٣٨٠ك في الدلو المشترك
+       ويُلغي أثر الترحيل في كل حفظ. */
+    if(window.WFBig){
+      WFBig.save('watheeq_db_v1', {employees: state.employees});
+      var q0=document.getElementById('wx3Quota'); if(q0) q0.remove();
+      return;
+    }
     try{
       localStorage.setItem('watheeq_db_v1', JSON.stringify({employees: state.employees}));
       var q=document.getElementById('wx3Quota'); if(q) q.remove();
