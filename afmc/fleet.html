@@ -76,6 +76,16 @@
           document.addEventListener('visibilitychange', function(){ if (document.hidden) flush(); }); } catch(e){}
     return { get:get, put:put, load:load, save:save, trim:trim };
   })();
+
+  /* الترحيل يبدأ من هنا لا من داخل التطبيقات: استدعاؤه في init كان
+     يُتجاوَز أحياناً فيبقى المفتاح الكبير في الدلو. التأخير يسيط ليقرأ
+     التطبيق نسخته المحلية أولاً كما يفعل اليوم، ثم تُنقل ويُفرَّغ القديم. */
+  try {
+    var WFBIG_KEYS = { watheeq: ['watheeq_db_v1'], fleet: ['fleetOS_v5_vehicles'] }[APP] || [];
+    if (WFBIG_KEYS.length) setTimeout(function(){
+      WFBIG_KEYS.forEach(function(k){ try { window.WFBig.load(k).catch(function(){}); } catch(e){} });
+    }, 1500);
+  } catch(e){}
   var WA = /wa\.me|api\.whatsapp|whatsapp:|web\.whatsapp/i;
 
   /* ---------- 1) Ninja/Keemart: تخزين منفصل لكل نظام ---------- */
