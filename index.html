@@ -933,7 +933,7 @@ details[open] > summary{margin-bottom:10px}
 (function(){
 'use strict';
 
-var APP_BUILD='2026-10-13-r0208';
+var APP_BUILD='2026-10-17-r1533';
 var LS_DATA='dbb_maint_v1', LS_USER='dbb_maint_user_v1';
 var LIVE=['مفتوح','في الورشة','بانتظار قطع'];
 var AGE_WARN=72, AGE_BAD=168; /* ساعات: 3 أيام / 7 أيام */
@@ -1063,22 +1063,87 @@ function normalize(x){
   if(!x.seq) x.seq=1000;
   return x;
 }
+/* ═══ v85: تخزين منقسم — الثقيل في IndexedDB ═══
+   «تعذّر الحفظ: مساحة المتصفح ممتلئة» لم يكن سببه الصور (الصور في
+   IndexedDB منذ البداية). السبب أن تطبيقات أفامكو الستة كلها على أصل
+   واحد (ar-nasir-afmco.github.io) تتقاسم دلو localStorage الواحد وحدّه
+   ٥ ميجا، والدلو امتلأ: وثيق ١٣٨٠ك · نينجا ١٠٤٧ك · الأسطول ١٠١٧ك ·
+   الصيانة ٨٥٤ك · كيمارت ٥٣١ك = ٥٠٣١ كيلو من ٥١٢٠. والصيانة تكتب كتلتها
+   كاملة (٨٥٤ك) في كل حفظ، فتحتاج فراغاً بقدرها — ولم يبق إلا ٨٩ك.
+   الحلّ: يبقى في localStorage الخفيف الذي تحتاجه وحدات أخرى
+   (الإعدادات والأجهزة ≈١٢ك)، وينتقل الثقيل إلى IndexedDB حيث المساحة
+   بالمئات. لا يُحذف شيء — يُنقل ويُتحقَّق منه قبل تفريغ القديم. */
+var HEAVY=['bikes','orders','reports','events','moves','stock'];
+var IDB_DB='maintdb';            /* لا يبدأ بـ p فلا يظهر في IDB.all() للصور */
+function slimOf(x){ var o={}; Object.keys(x).forEach(function(k){ if(HEAVY.indexOf(k)<0) o[k]=x[k] }); return o }
+function heavyOf(x){ var o={}; HEAVY.forEach(function(k){ o[k]=x[k]||[] }); return o }
+function hasHeavy(x){ return !!x && HEAVY.some(function(k){ return (x[k]||[]).length>0 }) }
+var _hydrated=false, _lsFull=false;
 function load(){
   try{ var raw=localStorage.getItem(LS_DATA); db=normalize(raw?JSON.parse(raw):blankDB()); }
   catch(e){ db=blankDB(); }
+  if(!_hydrated) hydrate();
 }
+/* القراءة من IndexedDB بعد الإقلاع — فالإعدادات والأجهزة حاضرة فوراً
+   من localStorage، والقوائم الثقيلة تلحق خلال أجزاء من الثانية. */
+function hydrate(){
+  var lsHeavy=hasHeavy(db);
+  return IDB.get(IDB_DB).then(function(h){
+    if(h && hasHeavy(h)){
+      HEAVY.forEach(function(k){ if(Array.isArray(h[k])) db[k]=h[k] });
+      db=normalize(db); _hydrated=true;
+      if(lsHeavy) trimLS();                 /* بقايا ترحيل سابق لم يكتمل */
+      try{ render() }catch(e){}
+      return;
+    }
+    if(lsHeavy) return migrateToIDB();      /* أول تشغيل بعد التحديث */
+    _hydrated=true;
+  }).catch(function(){ _hydrated=true; });   /* لا IndexedDB؟ يبقى كل شيء كما كان */
+}
+function migrateToIDB(){
+  var snap=heavyOf(db);
+  return IDB.put(IDB_DB, snap).then(function(){ return IDB.get(IDB_DB) })
+    .then(function(chk){
+      var ok = chk && HEAVY.every(function(k){ return (chk[k]||[]).length === (snap[k]||[]).length });
+      if(!ok) throw new Error('تعذّر التحقّق');
+      _hydrated=true; trimLS();             /* لا يُفرَّغ القديم إلا بعد قراءته والتأكد منه */
+      try{ toast('نُقل السجل إلى تخزين الجهاز — تحرّرت مساحة المتصفح') }catch(e){}
+    })
+    .catch(function(){ _hydrated=true; });   /* فشل الترحيل؟ يبقى في localStorage كما كان */
+}
+function trimLS(){
+  try{ localStorage.setItem(LS_DATA, JSON.stringify(slimOf(db))); _lsFull=false; }catch(e){}
+}
+var _idbT=null, _idbErr=0;
+function idbSave(){
+  if(!_hydrated) return;                     /* لا نكتب قبل أن نقرأ */
+  clearTimeout(_idbT);
+  _idbT=setTimeout(function(){ _idbT=null;
+    IDB.put(IDB_DB, heavyOf(db)).then(function(){ _idbErr=0 })
+      .catch(function(){ if(++_idbErr===1) try{ toast('تعذّر حفظ السجل في تخزين الجهاز') }catch(e){} });
+  }, 400);
+}
+function idbFlush(){ if(_idbT){ clearTimeout(_idbT); _idbT=null;
+  try{ IDB.put(IDB_DB, heavyOf(db)) }catch(e){} } }
+try{ window.addEventListener('pagehide', idbFlush);
+     document.addEventListener('visibilitychange', function(){ if(document.hidden) idbFlush() }); }catch(e){}
 function save(quiet){
-  try{ localStorage.setItem(LS_DATA, JSON.stringify(db)); }
-  catch(e){ alert('تعذّر الحفظ: مساحة المتصفح ممتلئة. نزّل نسخة احتياطية ثم امسح صوراً قديمة.'); return false; }
+  var payload = _hydrated ? slimOf(db) : db;   /* قبل الترحيل: السلوك القديم حرفاً */
+  try{ localStorage.setItem(LS_DATA, JSON.stringify(payload)); _lsFull=false; }
+  catch(e){
+    if(!_hydrated){ alert('تعذّر الحفظ: مساحة المتصفح ممتلئة. نزّل نسخة احتياطية ثم أعد فتح التطبيق ليُنقل السجل إلى تخزين الجهاز.'); return false; }
+    if(!_lsFull){ _lsFull=true; try{ toast('مساحة المتصفح ممتلئة — الإعدادات لم تُحفظ، والسجل محفوظ') }catch(_){ } }
+  }
+  idbSave();
   if(!quiet && bc) try{ bc.postMessage({t:'sync', from:tabId}) }catch(e){}
   sySchedule();
   return true;
 }
 var bc=null;
 try{ bc=new BroadcastChannel('dbb_maint'); bc.onmessage=function(e){
-  if(e.data && e.data.from!==tabId){ load(); render(); toast('وصلت تحديثات من نافذة أخرى'); }
+  if(e.data && e.data.from!==tabId){ _hydrated=false; load(); render(); toast('وصلت تحديثات من نافذة أخرى'); }
 }; }catch(e){}
-window.addEventListener('storage',function(e){ if(e.key===LS_DATA){ load(); render(); } });
+window.addEventListener('storage',function(e){ if(e.key===LS_DATA){ _hydrated=false; load(); render(); } });
 
 /* ---------------- السجل ---------------- */
 function logEv(kind, text, ref, before, after){
@@ -2940,6 +3005,7 @@ function wipe(){
   guard(function(){
     confirmBox('مسح كل البيانات','سيُحذف كل شيء من هذا المتصفح: الدبابات، الأوامر، السجل، والصور.','امسح كل شيء',function(){
       localStorage.removeItem(LS_DATA);
+      IDB.del(IDB_DB);                    /* v85: السجل الثقيل أيضاً — IDB.all() تُرجع الصور وحدها */
       IDB.all().then(function(all){ Object.keys(all).forEach(function(k){ IDB.del(k) }) });
       db=blankDB(); logEv('data','مسح كامل للبيانات'); save(); render(); toast('تم المسح');
     },true);
