@@ -61,6 +61,9 @@
   window.__dbbFetch = function(since){
     return authRpc('dbb_fetch', { p_token: APP_KEY, p_since: since || null });
   };
+  window.__dbbSave = function(payload){
+    return authRpc('dbb_save', { p_token: APP_KEY, p_payload: payload || {} });
+  };
 
   window.fetch = function(input, init){
     var url = ''; try { url = typeof input === 'string' ? input : (input && input.url) || ''; } catch(e){}
@@ -968,7 +971,7 @@ details[open] > summary{margin-bottom:10px}
 (function(){
 'use strict';
 
-var APP_BUILD='2026-10-17-r1735';
+var APP_BUILD='2026-10-17-r1829';
 var LS_DATA='dbb_maint_v1', LS_USER='dbb_maint_user_v1';
 var LIVE=['مفتوح','في الورشة','بانتظار قطع'];
 var AGE_WARN=72, AGE_BAD=168; /* ساعات: 3 أيام / 7 أيام */
@@ -2823,6 +2826,56 @@ function syFetch(url, opt){
   if(ctl){ opt.signal=ctl.signal; setTimeout(function(){ try{ ctl.abort() }catch(e){} }, 25000) }
   return fetch(url, opt);
 }
+/* ═══ v89: الكتابة سجلاً سجلاً ═══
+   كان كل تعديل يرفع الكتلة كاملة — ٦٣٣ كيلو. هنا نرسل ما تغيّر فقط،
+   ونقارن بخريطة «ما أُرسل» محفوظة على الجهاز.
+   والكتلة تبقى — فشواهد الحذف لا تصل إلا بها — لكن مخنوقة: مرة كل
+   عشر دقائق وعند إغلاق الصفحة، لا مع كل ضغطة. */
+var SENT_KEY='dbb_sent_v1', BLOB_KEY='dbb_blob_last', BLOB_EVERY=600000;
+var SENT_COLLS=['reports','stock','moves','events','bikes','orders'];
+var sentMap=null;
+function sentLoad(){
+  if(sentMap) return Promise.resolve(sentMap);
+  return (window.IDB? IDB.get(SENT_KEY) : Promise.resolve(null)).then(function(v){
+    sentMap = v || {}; SENT_COLLS.forEach(function(c){ if(!sentMap[c]) sentMap[c]={} });
+    return sentMap;
+  }).catch(function(){ sentMap={}; SENT_COLLS.forEach(function(c){ sentMap[c]={} }); return sentMap; });
+}
+function stamp(c,r){ return c==='moves'||c==='events' ? '1' : String(r.updatedAt||r.ts||''); }
+/* يرجّع ما تغيّر منذ آخر إرسال ناجح */
+function syChanged(m){
+  var out={}, n=0;
+  SENT_COLLS.forEach(function(c){
+    var cur=db[c]||[], arr=[], seen=m[c]||{};
+    cur.forEach(function(r){
+      if(!r||!r.id) return;
+      var st=stamp(c,r);
+      if(seen[r.id]===st) return;
+      arr.push(r);
+    });
+    if(arr.length){ out[c]=arr; n+=arr.length; }
+  });
+  return { payload:out, n:n };
+}
+function syMark(m, payload){
+  SENT_COLLS.forEach(function(c){
+    (payload[c]||[]).forEach(function(r){ m[c][r.id]=stamp(c,r); });
+  });
+  try{ if(window.IDB) IDB.put(SENT_KEY, m); }catch(e){}
+}
+/* الحفظ سجلاً سجلاً — يرجّع عدد ما أُرسل أو null إن تعذّر */
+function syPushRows(){
+  if(typeof window.__dbbSave!=='function') return Promise.resolve(null);
+  return sentLoad().then(function(m){
+    var d=syChanged(m);
+    if(!d.n) return 0;
+    return window.__dbbSave(d.payload).then(function(r){
+      if(!r || r.ok!==true) return null;
+      syMark(m, d.payload);
+      return d.n;
+    });
+  }).catch(function(){ return null; });
+}
 var SY_SINCE='dbb_sync_since';
 var sySince=null; try{ sySince=localStorage.getItem(SY_SINCE)||null }catch(e){}
 /* يرجّع عدد ما تغيّر، أو null إن لم تكن القاعدة تدعم الطريقة الجديدة */
@@ -2831,6 +2884,13 @@ async function syPullRows(){
   var got=await window.__dbbFetch(sySince);
   if(!got || got.ok!==true || !got.now) return null;
   var n=syAbsorb({ data: got });
+  /* v89: ما استلمناه من القاعدة موجود فيها أصلاً — نعلّمه مُرسَلاً
+     فلا يُرفع مرة أخرى، ولا يصير أول تشغيل رفعةً بحجم ميجا. */
+  try{ var m=await sentLoad();
+       SENT_COLLS.forEach(function(c){ (got[c]||[]).forEach(function(r){
+         if(r&&r.id) m[c][r.id]=stamp(c,r); }); });
+       if(window.IDB) IDB.put(SENT_KEY, m);
+  }catch(e){}
   sySince=got.now; try{ localStorage.setItem(SY_SINCE, sySince) }catch(e){}
   return n;
 }
@@ -2845,11 +2905,18 @@ async function syTick(first){
   var changed=0;
   try{
     var mine=devFile();
-    if(syDirty || first){
+    /* v89: السجلات أولاً — رخيصة وفورية */
+    var sent=null;
+    try{ sent=await syPushRows(); }catch(e){ sent=null; }
+    /* والكتلة مخنوقة: شواهد الحذف لا تصل إلا بها، لكن لا داعي لكل ضغطة */
+    var lastBlob=0; try{ lastBlob=+(localStorage.getItem(BLOB_KEY)||0) }catch(e){}
+    var needBlob = (syDirty || first) && (sent===null || first || (Date.now()-lastBlob > BLOB_EVERY));
+    if(needBlob){
       await syFetch(SYNC_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
         body: JSON.stringify({ t:SYNC_TOKEN, file:mine, payload: syPayload() }) });
       syDirty=false;
-    }
+      try{ localStorage.setItem(BLOB_KEY, String(Date.now())) }catch(e){}
+    } else if(sent!==null && sent>=0){ syDirty=false; }
     /* v87: صفوف من القاعدة. وإن تعذّر — الطريق القديم كما هو، فلا ينكسر جهاز */
     var rows=null;
     try{ rows=await syPullRows() }catch(e){ rows=null }
