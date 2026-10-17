@@ -8331,6 +8331,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
   function loadMeta(c){
     var m = lsGet(metaKey(c), null);
     if (!m || !sess || m.user !== sess.user_id) m = { user: sess && sess.user_id, cursor: null, hashes: {}, first: true };
+    if (!m.seen) m.seen = {};          /* v92: ختم الخادم لكل سجل — رخصة الكتابة فوقه */
     c.meta = m; return m;
   }
   function saveMeta(c){ lsSet(metaKey(c), c.meta); }
@@ -8373,10 +8374,10 @@ body.wx-card-open #wx4Pill{ display:none !important; }
         var i = idx[k], local = (i != null) ? list[i] : null;
         if (row.deleted_at) {
           if (local) { list.splice(i, 1); changed++; idx = {}; list.forEach(function(it, j){ var kk = c.key(it); if (kk) idx[kk] = j; }); }
-          delete m.hashes[k]; return;
+          delete m.hashes[k]; delete m.seen[k]; return;
         }
         var obj = c.fromServer(row, local), h = rowHash(c, obj);
-        if (c.apply) { if (!local || rowHash(c, local) !== h) { (c._toApply = c._toApply || []).push(obj); changed++; } m.hashes[k] = h; delete c.force[k]; return; }
+        if (c.apply) { if (!local || rowHash(c, local) !== h) { (c._toApply = c._toApply || []).push(obj); changed++; } m.hashes[k] = h; m.seen[k] = row.edited_at || row.updated_at || null; delete c.force[k]; return; }
         if (local) {
           var lh = rowHash(c, local);
           var dirty = (m.hashes[k] != null) && lh !== m.hashes[k];      /* تعديل محلي لم يُرفع بعد */
@@ -8387,7 +8388,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
           var metaDiff = (local.approved_at || null) !== (obj.approved_at || null);
           if (lh !== h || metaDiff) { replaceInPlace(local, obj); changed++; }
         } else { list.push(obj); idx[k] = list.length - 1; changed++; }
-        m.hashes[k] = h; delete c.force[k];
+        m.hashes[k] = h; m.seen[k] = row.edited_at || row.updated_at || null; delete c.force[k];
       });
       /* أول مزامنة لمستخدم غير المدير: القاعدة هي المرجع — يُحذف من الجهاز ما لا يحقّ له رؤيته */
       if (full && m.first && me && !me.all_projects) {
@@ -8435,14 +8436,21 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     list.forEach(function(it){
       var k = c.key(it); if (!k || present[k]) return; present[k] = 1;
       var h = rowHash(c, it);
-      if (forceAll || m.hashes[k] !== h) { var r = c.toRow(it); r.edited_at = ts; rows.push(r); hs[k] = h; }
+      /* ═══ v92: الختم رخصةُ كتابة لا طابعُ وقت ═══
+         كان يُرسَل nowIso() دائماً، فالحارس في sync_vehicles
+         (veh.edited_at > ts) لا يُفعَّل أبداً — وتبويبٌ نائم ثلاث ساعات
+         يدفع لقطته القديمة فيمحو شغل غيره. رصدناها على أربع مركبات:
+         4910BG و 5091KNR و 130ED و 3035JZR، والسجل فيها نقص (٣←٢، ٦←٥).
+         الصواب: نرسل ختم آخر نسخة رأيناها من الخادم. فإن كان الخادم
+         أحدث رُفضت الدفعة وعادت stale، وأخذنا نسخته. */
+      if (forceAll || m.hashes[k] !== h) { var r = c.toRow(it); r.edited_at = m.seen[k] || ts; rows.push(r); hs[k] = h; }
     });
     var gone = c.apply ? [] : Object.keys(m.hashes).filter(function(k){ return !present[k]; });
     if (gone.length > 10 && !confirm('سيتم حذف ' + gone.length + ' ' + c.label + ' من القاعدة لأنها حُذفت من هذا الجهاز.\nهل أنت متأكد؟ (إلغاء = لا تحذف)')) {
       gone.forEach(function(k){ delete m.hashes[k]; }); saveMeta(c); gone = [];
     }
     gone.forEach(function(k){
-      var r = { edited_at: ts, deleted: true }; if (c.id === 'employees') r.iqama = k; else if (c.id === 'vehicles') r.plate = k; else r.key = k;
+      var r = { edited_at: m.seen[k] || ts, deleted: true }; if (c.id === 'employees') r.iqama = k; else if (c.id === 'vehicles') r.plate = k; else r.key = k;
       rows.push(r); hs[k] = null;
     });
     if (!rows.length) return Promise.resolve({ sent: 0 });
@@ -8455,8 +8463,10 @@ body.wx-card-open #wx4Pill{ display:none !important; }
           (r.failed || []).forEach(function(f){ bad[f.key] = 1; res.failed.push(f); });
           res.ok += r.ok || 0; res.issues += r.issues || 0;
           ch.forEach(function(row){
-            var k = row.iqama || row.plate || row.key; if (bad[k]) return;
-            if (hs[k] === null) delete m.hashes[k]; else m.hashes[k] = hs[k];
+            var k = row.iqama || row.plate || row.key;
+            if (bad[k]) { delete m.seen[k]; return; }          /* رُفضت → ننسى الختم ونأخذ نسخة الخادم */
+            if (hs[k] === null) { delete m.hashes[k]; delete m.seen[k]; }
+            else { m.hashes[k] = hs[k]; m.seen[k] = row.edited_at; }
           });
           saveMeta(c);
         });
