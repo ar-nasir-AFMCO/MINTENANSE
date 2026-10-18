@@ -504,11 +504,12 @@ var C = {name:0, store:1, ord:2, del:3, late:4, major:5, ont:6, majr:7, pre:8, n
          lateN:24, earlyN:25, absent:26, miss:27, lateH:28, earlyH:29, status:30, veh:31};
 
 function city(s){ return String(s).split(/\d/)[0].trim(); }
-function n(x){ return Number(x||0).toLocaleString('ar-EG'); }
+function n(x){ if(x===null||x===undefined||(typeof x==='number'&&isNaN(x))) return '—'; return Number(x||0).toLocaleString('ar-EG'); }
+function qn(x){ return window.KM_LIVE ? '—' : n(x); }
 function n1(x){ return Number(x||0).toLocaleString('ar-EG',{minimumFractionDigits:1,maximumFractionDigits:1}); }
 function p1(x){ return Number(x||0).toFixed(1)+'%'; }
 function p2(x){ return Number(x||0).toFixed(2)+'%'; }
-function mins(x){ var m=Math.floor(x||0), s=Math.round(((x||0)-m)*60); return m+' د '+(s<10?'0':'')+s+' ث'; }
+function mins(x){ if(window.KM_LIVE||x==null) return '—'; var m=Math.floor(x||0), s=Math.round(((x||0)-m)*60); return m+' د '+(s<10?'0':'')+s+' ث'; }
 function hrs(x){ return n1(x)+' س'; }
 
 var BR = BRANCHES.map(function(r){ var o={}; Object.keys(B).forEach(function(k){ o[k]=r[B[k]]; }); o.city=city(o.store); return o; });
@@ -562,8 +563,8 @@ function capView(st){ return CAPS.filter(function(c){
   var s = st===undefined ? F.state : st;
   if(s&&CAP_STATE[s]&&!CAP_STATE[s](c)) return false; return true; }); }
 
-function pillOnt(v){ return '<span class="pill '+(v>=98?'p-ok':v>=96?'p-warn':'p-bad')+'">'+p2(v)+'</span>'; }
-function pillR(v){ return '<span class="pill '+(v>=85?'p-ok':v>=70?'p-warn':'p-bad')+'">'+p1(v)+'</span>'; }
+function pillOnt(v){ if(window.KM_LIVE||v==null) return '<span class="pill p-mute">—</span>'; return '<span class="pill '+(v>=98?'p-ok':v>=96?'p-warn':'p-bad')+'">'+p2(v)+'</span>'; }
+function pillR(v){ if(window.KM_LIVE||v==null) return '<span class="pill p-mute">—</span>'; return '<span class="pill '+(v>=85?'p-ok':v>=70?'p-warn':'p-bad')+'">'+p1(v)+'</span>'; }
 function pillSC(v){ return v==null?'<span class="pill p-mute">—</span>'
   :'<span class="pill '+(v>=100?'p-ok':v>=95?'p-warn':'p-bad')+'">'+p1(v)+'</span>'; }
 function cnt(v){ return v?'<span class="pill p-bad">'+n(v)+'</span>':'<span class="flag">٠</span>'; }
@@ -592,8 +593,18 @@ function vMetrics(){
   var ont=t.ord?t.ow/t.ord:0, r20=t.ord?t.r20/t.ord:0;
   var waste=t.ord?(t.major+t.neg+t.pre)/t.ord*100:0;
   var idx=V.length?Math.round(t.wp/V.length):0;
-  document.getElementById('hdCum').textContent=V.length+' مندوباً · '+brView().length+' فرعاً داخل الفلتر';
-  document.getElementById('cum').innerHTML=[
+  var nd=0; if(window.KM_LIVE){ var dd={}; (window.DAILY||[]).forEach(function(d){ dd[d.date]=1; }); nd=Object.keys(dd).length||1; }
+  document.getElementById('hdCum').textContent=V.length+' مندوباً · '+brView().length+' فرعاً داخل الفلتر'+(window.KM_LIVE?' · '+nd+' يوماً':'');
+  var tiles = window.KM_LIVE ? [
+    ['المؤشر التشغيلي',idx,'حجم + التزام + انضباط',idx>=75?'up':idx>=55?'':'down'],
+    ['الطلبات',n(t.ord),nd?(t.ord/nd).toFixed(0)+' في اليوم':'',''],
+    ['المناديب النشطون',n(V.length),'داخل الفلتر',''],
+    ['طلبات لكل ساعة',t.effH?(t.ord/t.effH).toFixed(2):'—','لكل ساعة فعّالة',''],
+    ['ساعات فعلية',hrs(t.actH),'الفعّالة '+hrs(t.effH),''],
+    ['التزام الوردية',p1(t.reqH?t.actH/t.reqH*100:0),'الفعلي ÷ المجدول',t.actH>=t.reqH?'up':'down'],
+    ['نسبة الالتزام (توصيل)','—','من لوحة كيمارت الموقّعة',''],
+    ['سرعة ٢٠ د · الهدر','—','من لوحة كيمارت الموقّعة','']
+  ] : [
     ['المؤشر العام',idx,'متوسط المناديب',idx>=75?'up':idx>=55?'':'down'],
     ['الطلبات المدفوعة',n(t.ord),(t.ord/DAYS).toFixed(0)+' في اليوم',''],
     ['المسلّمة',n(t.del),p1(t.ord?t.del/t.ord*100:0)+' من المدفوعة',''],
@@ -602,23 +613,45 @@ function vMetrics(){
     ['الهدر',p2(waste),'جسيم + سلبي + تعليم مسبق',waste<=1?'up':'down'],
     ['طلبات لكل ساعة',t.effH?(t.del/t.effH).toFixed(2):'—','لكل ساعة فعّالة',''],
     ['تأخير جسيم',n(t.major),'من '+n(t.late)+' متأخر','']
-  ].map(function(k){ return '<div class="tile"><div class="l">'+k[0]+'</div><div class="v">'+k[1]+
+  ];
+  document.getElementById('cum').innerHTML=tiles.map(function(k){ return '<div class="tile"><div class="l">'+k[0]+'</div><div class="v">'+k[1]+
     '</div><div class="d '+k[3]+'">'+k[2]+'</div></div>'; }).join('');
 
-  var b=t.ord/DAYS;
-  var shape=[0.92,1.05,1.11,0.86,0.74,0.97,1.08,1.14,1.02,0.90,0.81,1.06,1.12,1.03,0.95];
-  var ords=shape.map(function(s){ return Math.round(b*s); });
-  var onts=[97.6,97.1,96.4,98.0,98.4,97.3,96.8,96.1,97.5,98.1,98.3,97.0,96.6,97.2,97.7];
-  var days=[]; for(var i=2;i<=16;i++) days.push(i);
+  var ords, days;
+  if(window.KM_LIVE){
+    var byDay={}; var ids={};
+    (window.DAILY||[]).forEach(function(d){
+      if(F.city&&city(d.store)!==F.city) return;
+      if(F.branch&&d.store!==F.branch) return;
+      if(F.q){ var cc=CAPS.filter(function(x){return String(x.cid)===String(d.cid);})[0];
+        var q=F.q.toLowerCase(); if(!(cc&&(cc.name.toLowerCase().indexOf(q)>=0||String(cc.cid).indexOf(q)>=0))) return; }
+      byDay[d.date]=(byDay[d.date]||0)+(+d.ord||0);
+    });
+    var dk=Object.keys(byDay).sort();
+    days=dk.map(function(x){ return String(x).slice(5); });
+    ords=dk.map(function(x){ return Math.round(byDay[x]); });
+  } else {
+    var b=t.ord/DAYS;
+    var shape=[0.92,1.05,1.11,0.86,0.74,0.97,1.08,1.14,1.02,0.90,0.81,1.06,1.12,1.03,0.95];
+    ords=shape.map(function(s){ return Math.round(b*s); });
+    days=[]; for(var i=2;i<=16;i++) days.push(i);
+  }
   var mx=Math.max.apply(null,ords)||1;
   document.getElementById('chOrd').innerHTML=ords.map(function(v){
     return '<div class="b" title="'+n(v)+' طلب"><i style="height:'+Math.round(v/mx*100)+'%"></i></div>'; }).join('');
   document.getElementById('xOrd').innerHTML=days.map(function(d){ return '<span>'+d+'</span>'; }).join('');
-  document.getElementById('chOnt').innerHTML=onts.map(function(v){
-    var h=Math.max(4,Math.round((v-94)/5*100));
-    var c=v>=98?'var(--ok)':v>=96.5?'var(--brand2)':'var(--bad)';
-    return '<div class="b" title="'+p1(v)+'"><i style="height:'+h+'%;background:'+c+'"></i></div>'; }).join('');
-  document.getElementById('xOnt').innerHTML=days.map(function(d){ return '<span>'+d+'</span>'; }).join('');
+  if(window.KM_LIVE){
+    document.getElementById('chOnt').innerHTML='<div class="flag" style="align-self:center;margin:auto">نسبة الالتزام اليومية تجيء من لوحة كيمارت الموقّعة — غير مسحوبة.</div>';
+    document.getElementById('xOnt').innerHTML='';
+  } else {
+    var onts=[97.6,97.1,96.4,98.0,98.4,97.3,96.8,96.1,97.5,98.1,98.3,97.0,96.6,97.2,97.7];
+    var dd=[]; for(var j=2;j<=16;j++) dd.push(j);
+    document.getElementById('chOnt').innerHTML=onts.map(function(v){
+      var h=Math.max(4,Math.round((v-94)/5*100));
+      var c=v>=98?'var(--ok)':v>=96.5?'var(--brand2)':'var(--bad)';
+      return '<div class="b" title="'+p1(v)+'"><i style="height:'+h+'%;background:'+c+'"></i></div>'; }).join('');
+    document.getElementById('xOnt').innerHTML=dd.map(function(d){ return '<span>'+d+'</span>'; }).join('');
+  }
 
   var BV=brView().sort(function(a,b){ return b.wpi-a.wpi; });
   document.getElementById('brN').textContent=BV.length+' من '+BR.length;
@@ -626,9 +659,9 @@ function vMetrics(){
     ['الفرع','المدينة','المؤشر','مناديب','الطلبات','إنتاجية','مسلّمة','متأخر','جسيم','الالتزام','١٥ د','٢٠ د','٣٠ د','سلبي','إيجابي','مسبق'],
     BV.map(function(x){ return '<tr><td>'+x.store+'</td><td>'+x.city+'</td><td>'+meter(x.wpi)+'</td>'+
       '<td class="num">'+n(x.caps)+'</td><td class="num">'+n(x.ord)+'</td><td class="num">'+x.eff.toFixed(1)+'</td>'+
-      '<td class="num">'+n(x.del)+'</td><td class="num">'+n(x.late)+'</td><td class="num">'+n(x.major)+'</td>'+
+      '<td class="num">'+qn(x.del)+'</td><td class="num">'+qn(x.late)+'</td><td class="num">'+qn(x.major)+'</td>'+
       '<td>'+pillOnt(x.ont)+'</td><td>'+pillR(x.r15)+'</td><td>'+pillR(x.r20)+'</td><td>'+pillR(x.r30)+'</td>'+
-      '<td class="num">'+n(x.neg)+'</td><td class="num">'+n(x.pos)+'</td><td class="num">'+n(x.pre)+'</td></tr>'; }));
+      '<td class="num">'+qn(x.neg)+'</td><td class="num">'+qn(x.pos)+'</td><td class="num">'+qn(x.pre)+'</td></tr>'; }));
 
   var m={}; V.forEach(function(c){
     m[c.city]=m[c.city]||{city:c.city,caps:0,ord:0,del:0,late:0,major:0,neg:0,ow:0,r20:0,actH:0};
@@ -640,9 +673,10 @@ function vMetrics(){
     Object.keys(m).map(function(k){ return m[k]; }).sort(function(a,b){ return b.ord-a.ord; })
       .map(function(x){ return '<tr><td>'+x.city+'</td><td class="num">'+(brc[x.city]||0)+'</td>'+
         '<td class="num">'+n(x.caps)+'</td><td class="num">'+n(x.ord)+'</td><td class="num">'+n1(x.actH)+'</td>'+
-        '<td class="num">'+(x.actH?(x.del/x.actH).toFixed(2):'—')+'</td>'+
-        '<td>'+pillOnt(x.ow/x.ord)+'</td><td>'+pillR(x.r20/x.ord)+'</td><td class="num">'+n(x.neg)+'</td></tr>'; }));
+        '<td class="num">'+(x.actH?(x.ord/x.actH).toFixed(2):'—')+'</td>'+
+        '<td>'+pillOnt(x.ow/x.ord)+'</td><td>'+pillR(x.r20/x.ord)+'</td><td class="num">'+qn(x.neg)+'</td></tr>'; }));
 
+  if(window.KM_LIVE){ document.getElementById('dur').innerHTML='<div class="flag">مدد الاستلام/النقل/التسليم ونِسب السرعة تجيء من لوحة كيمارت الموقّعة — غير مسحوبة. المسحوب حيّاً: الطلبات والساعات والدوام والالتزام.</div>'; return; }
   var d=V.reduce(function(a,c){ a.o+=c.ord; a.pk+=c.dPick*c.ord; a.tr+=c.dTrans*c.ord; a.rt+=c.dRet*c.ord;
     a.dl+=c.dDel*c.ord; a.r15+=c.r15*c.ord; a.r20+=c.r20*c.ord; a.r30+=c.r30*c.ord; return a; },
     {o:0,pk:0,tr:0,rt:0,dl:0,r15:0,r20:0,r30:0});
@@ -670,10 +704,10 @@ function vBoard(){
   document.getElementById('bdTop').innerHTML =
     top.map(function(c,i){ return '<div class="tile"><div class="l">المركز '+(i+1)+'</div>'+
       '<div class="v" style="font-size:16px">'+c.name+'</div>'+
-      '<div class="d up">مؤشر '+c.wpi+' · '+n(c.ord)+' طلب · '+p2(c.ont)+'</div></div>'; }).join('') +
+      '<div class="d up">مؤشر '+c.wpi+' · '+n(c.ord)+' طلب'+(window.KM_LIVE?'':' · '+p2(c.ont))+'</div></div>'; }).join('') +
     bot.map(function(c){ return '<div class="tile"><div class="l">المركز '+c.rank+'</div>'+
       '<div class="v" style="font-size:16px">'+c.name+'</div>'+
-      '<div class="d down">مؤشر '+c.wpi+' · '+n(c.ord)+' طلب · '+p2(c.ont)+'</div></div>'; }).join('');
+      '<div class="d down">مؤشر '+c.wpi+' · '+n(c.ord)+' طلب'+(window.KM_LIVE?'':' · '+p2(c.ont))+'</div></div>'; }).join('');
 
   document.getElementById('capN').textContent=V.length+' من '+CAPS.length;
   document.getElementById('tCaps').innerHTML=T(
@@ -683,9 +717,9 @@ function vBoard(){
       return '<tr data-cid="'+c.cid+'"><td><span class="'+rk+'">'+(i+1)+'</span></td><td>'+c.name+'</td>'+
         '<td class="flag">'+c.cid+'</td><td>'+c.store+'</td><td>'+meter(c.wpi)+'</td>'+
         '<td class="num">'+n(c.ord)+'</td><td class="num">'+c.perDay.toFixed(1)+'</td>'+
-        '<td class="num">'+n(c.del)+'</td><td class="num">'+n(c.late)+'</td><td class="num">'+n(c.major)+'</td>'+
+        '<td class="num">'+qn(c.del)+'</td><td class="num">'+qn(c.late)+'</td><td class="num">'+qn(c.major)+'</td>'+
         '<td>'+pillOnt(c.ont)+'</td><td>'+pillR(c.r15)+'</td><td>'+pillR(c.r20)+'</td><td>'+pillR(c.r30)+'</td>'+
-        '<td class="num">'+n(c.neg)+'</td><td class="num">'+n(c.pos)+'</td><td class="num">'+n(c.pre)+'</td>'+
+        '<td class="num">'+qn(c.neg)+'</td><td class="num">'+qn(c.pos)+'</td><td class="num">'+qn(c.pre)+'</td>'+
         '<td class="num flag">'+mins(c.dPick)+'</td><td class="num flag">'+mins(c.dDel)+'</td></tr>'; }));
 }
 
@@ -698,7 +732,7 @@ function vShift(){
     ['ساعات فعلية',hrs(t.actH),'الفعّالة '+hrs(t.effH),''],
     ['التزام الوردية',p1(t.reqH?t.actH/t.reqH*100:0),'الفعلي ÷ المجدول',t.actH>=t.reqH?'up':'down'],
     ['نسبة الحضور',p1(t.expD?t.actD/t.expD*100:0),n(t.actD)+' من '+n(t.expD)+' يوم',t.actD>=t.expD*0.97?'up':'down'],
-    ['طلبات لكل ساعة',t.effH?(t.del/t.effH).toFixed(2):'—','لكل ساعة فعّالة',''],
+    ['طلبات لكل ساعة',t.effH?((window.KM_LIVE?t.ord:t.del)/t.effH).toFixed(2):'—','لكل ساعة فعّالة',''],
     ['تأخّر عن الوردية',n(t.lateN),hrs(t.lateH)+' مجموع المدة',t.lateN===0?'up':'down'],
     ['خروج مبكر',n(t.earlyN),hrs(t.earlyH)+' مجموع المدة',t.earlyN===0?'up':'down'],
     ['غياب',n(t.absent),'أيام',t.absent===0?'up':'down'],
@@ -726,14 +760,23 @@ function vShift(){
 function vPredict(){
   var V=capView(), t=agg(V), k=HORIZON/DAYS;
   var ont=t.ord?t.ow/t.ord:0;
-  document.getElementById('prTiles').innerHTML=[
+  var dpd=DAYS; if(window.KM_LIVE){ var dd={}; (window.DAILY||[]).forEach(function(d){ dd[d.date]=1; }); dpd=Object.keys(dd).length||1; k=HORIZON/dpd; }
+  var prT = window.KM_LIVE ? [
+    ['طلبات متوقّعة',n(Math.round(t.ord*k)),'على وتيرة '+(t.ord/dpd).toFixed(0)+' في اليوم',''],
+    ['ساعات متوقّعة',hrs(t.actH*k),'مجدول '+hrs(t.reqH*k),''],
+    ['مناديب نشطون',n(V.length),'داخل الفلتر',''],
+    ['التزام الوردية المتوقّع',p1(t.reqH?t.actH/t.reqH*100:0),'إن بقيت الوتيرة',t.actH>=t.reqH?'up':'down'],
+    ['مناديب تحت المراقبة',n(V.filter(function(c){ return c.wpi<60; }).length),'مؤشر تشغيلي تحت ٦٠',''],
+    ['جودة التوصيل المتوقّعة','—','من لوحة كيمارت الموقّعة','']
+  ] : [
     ['طلبات متوقّعة',n(Math.round(t.ord*k)),'على وتيرة '+(t.ord/DAYS).toFixed(0)+' في اليوم',''],
     ['ساعات متوقّعة',hrs(t.actH*k),'مجدول '+hrs(t.reqH*k),''],
     ['متأخر متوقّع',n(Math.round(t.late*k)),'منها '+n(Math.round(t.major*k))+' جسيم',t.late*k<600?'':'down'],
     ['تقييم سلبي متوقّع',n(Math.round(t.neg*k)),'مقابل '+n(Math.round(t.pos*k))+' إيجابي',''],
     ['الالتزام المتوقّع',p2(ont),'إن بقيت الوتيرة',ont>=97?'up':'down'],
     ['مناديب تحت المراقبة',n(V.filter(function(c){ return c.wpi<60||c.ont<96; }).length),'مؤشر تحت ٦٠ أو التزام تحت ٩٦٪','']
-  ].map(function(x){ return '<div class="tile"><div class="l">'+x[0]+'</div><div class="v">'+x[1]+
+  ];
+  document.getElementById('prTiles').innerHTML=prT.map(function(x){ return '<div class="tile"><div class="l">'+x[0]+'</div><div class="v">'+x[1]+
     '</div><div class="d '+x[3]+'">'+x[2]+'</div></div>'; }).join('');
 
   var risk=V.map(function(c){
@@ -1146,12 +1189,82 @@ function kmPaintBridge(){
   set(3, Object.keys(window.KM_RIDERS||{}).length.toLocaleString('ar-EG'), 'أسماء مخزّنة');
 }
 
+function kmBuildLive(){
+  var A = window.DAILY_ALL || window.DAILY || [];
+  if (!A.length) { window.KM_LIVE=false; return; }
+  window.KM_LIVE = true;
+  var NM = window.KM_RIDERS || {};
+  var days = {}; A.forEach(function(d){ days[d.date]=1; });
+  var nDays = Object.keys(days).length || 1;
+
+  var cm = {};
+  A.forEach(function(d){
+    var c = cm[d.cid] || (cm[d.cid] = { cid:String(d.cid),
+      name:(NM[d.cid]&&NM[d.cid].name)||d.name||String(d.cid),
+      store:d.store||'', ord:0, reqH:0, actH:0, effH:0, lateH:0, earlyH:0,
+      lateN:0, earlyN:0, absent:0, actD:0, expD:0, _dates:{} });
+    c.ord += (+d.ord||0); c.reqH += (+d.req||0); c.actH += (+d.act||0); c.effH += (+d.eff||0);
+    c.lateH += (+d.late||0); c.earlyH += (+d.early||0);
+    if ((+d.late||0)>0) c.lateN++;
+    if ((+d.early||0)>0) c.earlyN++;
+    var ab = /غياب|Absen/i.test(d.status||'');
+    if (ab) c.absent++; else if ((+d.act||0)>0) c.actD++;
+    c.expD++;
+    if (d.store) c.store = d.store;
+    c._dates[d.date]=1;
+  });
+
+  function q(){ return null; }
+  window.CAPS = Object.keys(cm).map(function(k){
+    var c = cm[k]; c.city = city(c.store);
+    c.perDay = c.ord / (Object.keys(c._dates).length||1);
+    c.shiftComp = c.reqH ? c.actH/c.reqH*100 : null;
+    c.attRate   = c.expD ? c.actD/c.expD*100 : null;
+    c.oph       = c.effH ? c.ord/c.effH : null;
+    c.miss = null;
+    c.del=q(); c.late=q(); c.major=q(); c.majr=q(); c.ont=q(); c.r15=q(); c.r20=q(); c.r30=q();
+    c.neg=q(); c.pos=q(); c.pre=q(); c.dPick=q(); c.dTrans=q(); c.dRet=q(); c.dDel=q();
+    c.q=false;
+    // مؤشر تشغيلي من الحجم + التزام الوردية + الانضباط (بلا جودة التوصيل)
+    var vol  = Math.min(c.ord/450,1)*40;
+    var comp = Math.max(0,Math.min(1,(c.shiftComp||0)/100))*40;
+    var disc = Math.max(0,1-(c.lateN+c.earlyN+c.absent*2)/6)*20;
+    c.wpi = Math.round(vol+comp+disc);
+    return c;
+  });
+  window.CAPS.slice().sort(function(a,b){ return b.wpi-a.wpi; }).forEach(function(c,i){ c.rank=i+1; });
+  CAPS = window.CAPS;
+
+  var bm = {};
+  window.CAPS.forEach(function(c){
+    var b = bm[c.store] || (bm[c.store] = { store:c.store, city:c.city, caps:0, ord:0, eff:0, actH:0, reqH:0 });
+    b.caps++; b.ord += c.ord; b.eff += c.effH; b.actH += c.actH; b.reqH += c.reqH;
+  });
+  window.BR = Object.keys(bm).map(function(k){
+    var b = bm[k];
+    b.del=null; b.late=null; b.major=null; b.majr=null; b.ont=null; b.r15=null; b.r20=null; b.r30=null;
+    b.neg=null; b.pos=null; b.pre=null; b.dPick=null; b.dTrans=null; b.dRet=null; b.dDel=null;
+    var comp = b.reqH ? Math.min(1,b.actH/b.reqH) : 0;
+    b.wpi = Math.round(Math.min(b.ord/2600,1)*50 + comp*50);
+    b.q=false; return b;
+  });
+  BR = window.BR;
+
+  try {
+    document.getElementById('fCity').innerHTML='<option value="">كل المدن</option>'+
+      uniq(BR.map(function(b){ return b.city; })).map(function(c){ return '<option>'+c+'</option>'; }).join('');
+    document.getElementById('fBranch').innerHTML='<option value="">كل الفروع</option>'+
+      uniq(BR.map(function(b){ return b.store; })).map(function(x){ return '<option>'+x+'</option>'; }).join('');
+  } catch(e){}
+}
+
 function kmApplyRange(){
   var A = window.DAILY_ALL || [];
   if (!A.length) return;
   var f=document.getElementById('dFrom'), t=document.getElementById('dTo');
   var a = f && f.value, b = t && t.value;
   window.DAILY = (a && b) ? A.filter(function(d){ return d.date >= a && d.date <= b; }) : A;
+  kmBuildLive();
   var caps={}; window.DAILY.forEach(function(d){ caps[d.cid]=1; });
   kmSetMsg(window.DAILY.length.toLocaleString('ar-EG') + ' صفاً · ' +
            Object.keys(caps).length.toLocaleString('ar-EG') + ' مندوباً' +
