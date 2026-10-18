@@ -1053,6 +1053,20 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         </div>
 
         <div class="sec">
+          <h3><svg class="i"><use href="#i-bolt"/></svg>متابعة كيمارت — تجريبي</h3>
+          <div class="card" style="padding:16px 18px">
+            <div class="sub" style="margin-bottom:10px">أداء التوصيل والدوام لمناديب كيمارت — المورّد ٥٩ «واجهة الدم للخدمات اللوجستية». ٨٧ مندوباً · ٢٤ فرعاً · ٧ مدن. تجريبي: يقرأ ولا يكتب في بيانات المنصة.</div>
+            <div class="bar2" style="margin-top:0">
+              <button class="btn ghost" id="kmToggle"><svg class="i"><use href="#i-bolt"/></svg>فتح هنا</button>
+              <a class="btn ghost" href="keemart-follow.html" target="_blank" rel="noopener"><svg class="i"><use href="#i-ext"/></svg>فتح في تبويب</a>
+            </div>
+            <div id="kmWrap" class="hide" style="margin-top:12px;border:1px solid #e6e1d6;border-radius:12px;overflow:hidden">
+              <iframe id="kmFrame" title="متابعة كيمارت" style="width:100%;height:78vh;border:0;background:#fff"></iframe>
+            </div>
+          </div>
+        </div>
+
+        <div class="sec">
           <h3><svg class="i"><use href="#i-plug"/></svg>الوقود — AppSheet</h3>
           <div class="card" style="padding:16px 18px">
             <div class="sub" style="margin-bottom:10px">تطبيق الوقود على AppSheet لا يقبل التعبئة من الرابط: AppSheet لا يفتح حقول نموذج بقيم من query string. البابان الممكنان: (أ) إضافة <code>LINKTOFORM</code> داخل التطبيق نفسه — يحتاج صلاحية تعديل عليه، (ب) الكتابة في الجدول الذي يقف خلفه. إلى أن نفتح أحدهما، نسخ الصف جاهزاً هو أسرع طريق.</div>
@@ -1291,7 +1305,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261017181431";
+  var BUILD = "20261018200109";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -3065,6 +3079,15 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   var labCard = null;
   function labInit(){
     $('labFuelOpen').href = LAB_FUEL;
+    if (!labInit.__km){ labInit.__km = 1;
+      var kb = $('kmToggle');
+      if (kb) kb.onclick = function(){
+        var w = $('kmWrap'), f = $('kmFrame');
+        if (w.classList.contains('hide')){
+          if (!f.src) f.src = 'keemart-follow.html';
+          w.classList.remove('hide'); kb.innerHTML = ico('bolt') + 'إخفاء';
+        } else { w.classList.add('hide'); kb.innerHTML = ico('bolt') + 'فتح هنا'; }
+      }; }
     /* نينجا انتقلت لتبويب «المناديب» */
     if (!labInit.__dbb){ labInit.__dbb = 1;
       $('dbbRefresh').onclick = dbbLoad;
@@ -3075,7 +3098,8 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       ['الوقود · AppSheet', 'تطبيق الوقود. لا يقبل التعبئة من الرابط — انظر القسم أدناه.', LAB_FUEL],
       ['Samurai · تجريبي', 'أداء المورّد والكباتن. داخل «المناديب» لمدير النظام.', ''],
       ['Keeta · تجريبي', 'حضور مناديب كيتا من صفحة Keemart.', ''],
-      ['تقرير استخدام المركبات', 'عدد أيام الاستخدام لكل مركبة ولكل مشروع — أداة مستقلة خارج المنصة.', '']
+      ['تقرير استخدام المركبات', 'عدد أيام الاستخدام لكل مركبة ولكل مشروع — أداة مستقلة خارج المنصة.', ''],
+      ['متابعة كيمارت · تجريبي', 'أداء التوصيل والدوام لمناديب المورّد ٥٩ — في القسم أعلاه.', 'keemart-follow.html']
     ].map(function(x){
       return '<div class="card" style="padding:14px 16px"><b>' + esc(x[0]) + '</b>'
         + '<div class="sub" style="margin:6px 0 10px">' + esc(x[1]) + '</div>'
@@ -3800,6 +3824,10 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     var check = function(){
       fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).then(function(v){
         if (!v || !v.build || v.build === BUILD || $('verBtn')) return;
+        /* v97: إن جرّبنا التحديث لهذه النسخة ورجعت الصفحة بنفس البناء، فالنشر ناقص
+           (index.html لم يُرفع مع version.json) — لا نُزعج المستخدم بلا فائدة. */
+        var tried = null; try { tried = sessionStorage.getItem('wf_ver_try'); } catch(e){}
+        if (tried === v.build) return;
         clearInterval(verT);
         var b = document.createElement('button');
         b.id = 'verBtn'; b.className = 'tbtn'; b.style.cssText = 'border-color:#eadbbd;background:#fffaf0;color:#6f5424';
@@ -3807,6 +3835,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         b.title = 'التحديث يتم عند ضغطك فقط، ولا يقاطع عملك';
         b.onclick = function(){
           $('frames').querySelectorAll('iframe').forEach(function(f){ try { var w = f.contentWindow; if (w.wfSupabase) w.wfSupabase.push(); if (w.wfSupabaseDash) w.wfSupabaseDash.flush(); } catch(e){} });
+          try { sessionStorage.setItem('wf_ver_try', v.build); } catch(e){}
           setTimeout(function(){ location.replace(location.pathname + '?v=' + encodeURIComponent(v.build) + location.hash); }, 600);
         };
         var bar = $('fbar'); if (bar) bar.parentNode.insertBefore(b, bar);

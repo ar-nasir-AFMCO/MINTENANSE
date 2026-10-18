@@ -1,0 +1,1168 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>متابعة كيمارت — نموذج</title>
+<style>
+  :root{
+    --bg:#f4f2ed; --surface:#ffffff; --surface2:#f8f6f1; --border:#e6e1d6;
+    --ink:#16211f; --ink2:#4a5654; --ink3:#6b7674;
+    --brand:#0e5e5c; --brand2:#3f8a87; --brand-soft:#e4efed;
+    --ok:#1d6b45; --ok-soft:#e7f3ec;
+    --warn:#95570f; --warn-soft:#fbf0de;
+    --bad:#a3372b; --bad-soft:#fbe9e6;
+    --plum:#5b4a86; --plum-soft:#efeaf3;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:14px/1.6 system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif}
+  .wrap{max-width:1240px;margin:0 auto;padding:16px 16px 60px}
+  code{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:1px 5px;font-size:12px}
+
+  header{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+  h1{font-size:20px;margin:0;font-weight:700}
+  .sub{color:var(--ink3);font-size:12.5px;margin-top:3px}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:var(--brand-soft);color:var(--brand);
+        border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:600}
+  .chip.mute{background:var(--surface2);color:var(--ink3)}
+  .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+
+  .banner{background:var(--warn-soft);border:1px solid #f2ddb5;color:var(--warn);border-radius:12px;
+          padding:11px 13px;font-size:13px;font-weight:600;margin-bottom:12px}
+
+  .bar{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px;
+       display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  .bar label{font-size:12.5px;color:var(--ink2);display:flex;align-items:center;gap:6px}
+  .bar input,.bar select{font:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--border);
+        border-radius:8px;background:var(--surface2);color:var(--ink)}
+  .bar .grow{flex:1;min-width:150px}
+  .btn{font:inherit;font-size:13px;font-weight:600;padding:6px 13px;border-radius:8px;cursor:pointer;
+       border:1px solid var(--brand);background:var(--brand);color:#fff}
+  .btn.ghost{background:var(--surface);color:var(--ink2);border-color:var(--border)}
+
+  .nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+  .nav button{font:inherit;font-size:13.5px;font-weight:700;padding:9px 16px;border-radius:10px;cursor:pointer;
+       border:1px solid var(--border);background:var(--surface);color:var(--ink2)}
+  .nav button[aria-selected=true]{background:var(--brand);border-color:var(--brand);color:#fff}
+
+  section{margin-bottom:18px}
+  .hd{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 2px 8px}
+  .hd h2{font-size:15px;margin:0;font-weight:700}
+  .hd .n{font-size:12.5px;color:var(--ink3)}
+
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(142px,1fr));gap:10px}
+  .tile{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 13px}
+  .tile .l{font-size:12px;color:var(--ink3)}
+  .tile .v{font-size:22px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+  .tile .d{font-size:11.5px;margin-top:2px;color:var(--ink3)}
+  .tile .d.up{color:var(--ok)} .tile .d.down{color:var(--bad)}
+  .tile.sel{border-color:var(--brand);box-shadow:0 0 0 2px var(--brand-soft)}
+  .tile.click{cursor:pointer}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+  .card .ch{font-size:13.5px;font-weight:700;padding:11px 13px;border-bottom:1px solid var(--border);
+            background:var(--surface2);display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .card .ch small{font-weight:400;color:var(--ink3)}
+  .pad{padding:13px}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+  th{background:var(--surface2);color:var(--ink2);font-weight:600;font-size:11.5px;position:sticky;top:0;z-index:1}
+  tbody tr:hover{background:var(--surface2)}
+  .num{font-variant-numeric:tabular-nums}
+  .scroll{max-height:540px;overflow:auto}
+
+  .pill{display:inline-block;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+  .p-ok{background:var(--ok-soft);color:var(--ok)}
+  .p-warn{background:var(--warn-soft);color:var(--warn)}
+  .p-bad{background:var(--bad-soft);color:var(--bad)}
+  .p-mute{background:var(--surface2);color:var(--ink3)}
+  .p-plum{background:var(--plum-soft);color:var(--plum)}
+
+  .meter{position:relative;height:6px;border-radius:4px;background:var(--surface2);min-width:62px;
+         display:inline-block;vertical-align:middle}
+  .meter i{position:absolute;inset-inline-start:0;top:0;bottom:0;border-radius:4px}
+
+  .cols2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:860px){ .cols2{grid-template-columns:1fr} }
+
+  .chart{display:flex;align-items:stretch;gap:4px;height:124px;padding-top:6px}
+  .chart .b{flex:1;height:100%;background:var(--surface2);border-radius:4px;position:relative;min-width:7px;cursor:default}
+  .chart .b i{position:absolute;inset-inline:0;bottom:0;background:var(--brand2);border-radius:4px}
+  .xlab{display:flex;gap:4px;margin-top:5px}
+  .xlab span{flex:1;text-align:center;font-size:9.5px;color:var(--ink3);min-width:7px}
+
+  .rule{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;
+        border-bottom:1px solid var(--border)}
+  .rule:last-child{border-bottom:0}
+  .rule .nm{font-weight:600;color:var(--ink);font-size:13px}
+  .rule .ds{font-size:12px;color:var(--ink3)}
+  .rule input{width:70px;font:inherit;font-size:13px;padding:4px 7px;border:1px solid var(--border);
+              border-radius:7px;background:var(--surface2);text-align:center}
+
+  .note{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;
+        font-size:13px;color:var(--ink2)}
+  .note b{color:var(--ink)}
+  .note ul{margin:8px 0 0;padding-inline-start:18px}
+  .note li{margin:4px 0}
+  .flag{font-size:11.5px;color:var(--ink3)}
+  .rk{display:inline-block;min-width:22px;font-weight:700;color:var(--ink3)}
+  .rk.top{color:var(--ok)} .rk.bot{color:var(--bad)}
+  .exp{font:inherit;font-size:12px;font-weight:600;padding:4px 10px;border-radius:7px;cursor:pointer;
+       border:1px solid var(--border);background:var(--surface);color:var(--brand)}
+  .exp:hover{background:var(--brand-soft)}
+  .drop{position:absolute;inset-inline:0;top:calc(100% + 4px);z-index:30;background:var(--surface);
+        border:1px solid var(--border);border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.12);
+        max-height:260px;overflow:auto;display:none}
+  .drop.on{display:block}
+  .drop div{padding:8px 11px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px}
+  .drop div:last-child{border-bottom:0}
+  .drop div:hover,.drop div.sel{background:var(--brand-soft)}
+  .drop .nm{font-weight:600}
+  .drop .mt{font-size:11.5px;color:var(--ink3)}
+  .drop .none{color:var(--ink3);cursor:default}
+  .chosen{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink2)}
+  tr.clk{cursor:pointer}
+  tr.sel-row{background:var(--brand-soft) !important;box-shadow:inset 2px 0 0 var(--brand)}
+  tr.clk:hover{background:var(--brand-soft)}
+  .ov{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.45);display:none;align-items:center;
+      justify-content:center;padding:14px}
+  .ov.on{display:flex}
+  .modal{background:var(--surface);border-radius:14px;max-width:1000px;width:100%;max-height:88vh;
+         overflow:auto;border:1px solid var(--border)}
+  .mh{padding:14px 16px;border-bottom:1px solid var(--border);background:var(--surface2);
+      display:flex;justify-content:space-between;align-items:flex-start;gap:10px;position:sticky;top:0;z-index:2}
+  .mh h3{margin:0;font-size:17px}
+  .mh .x{font:inherit;font-size:18px;line-height:1;border:0;background:transparent;cursor:pointer;color:var(--ink3);padding:4px 8px}
+  .mtabs{display:flex;gap:6px;padding:10px 16px 0;flex-wrap:wrap}
+  .mtabs button{font:inherit;font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer;
+       border:1px solid var(--border);background:var(--surface2);color:var(--ink2)}
+  .mtabs button[aria-selected=true]{background:var(--brand);border-color:var(--brand);color:#fff}
+  .mbody{padding:14px 16px 18px}
+  .cmp{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+  .cmp:last-child{border-bottom:0}
+  .cmp .k{width:150px;font-size:12.5px;color:var(--ink2)}
+  .cmp .bar2{flex:1;height:9px;border-radius:5px;background:var(--surface2);position:relative}
+  .cmp .bar2 i{position:absolute;inset-inline-start:0;top:0;bottom:0;border-radius:5px;background:var(--brand2)}
+  .cmp .bar2 u{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink3);text-decoration:none}
+  .cmp .vv{width:108px;text-align:left;font-size:12.5px;font-variant-numeric:tabular-nums}
+  @media (max-width:640px){ th,td{padding:7px 6px;font-size:12px} .wrap{padding:10px 10px 50px}
+    .cmp .k{width:104px} .cmp .vv{width:84px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>متابعة كيمارت</h1>
+      <div class="sub">واجهة الدم للخدمات اللوجستية · المورّد ٥٩ · ٨٧ مندوباً · ٢٤ فرعاً · ٧ مدن</div>
+    </div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap">
+      <span class="chip"><span class="dot"></span> الجسر متصل — آخر سحب قبل ٣ دقائق</span>
+      <span class="chip mute">٢ – ١٦ أكتوبر ٢٠٢٦ · ١٥ يوماً</span>
+    </div>
+  </header>
+
+  <div class="banner">كل الأرقام حقيقية — أداء التوصيل وتقرير الدوام مدموجان على المعرّف. ٨٧ من ٨٧ طابقوا.</div>
+
+  <div class="bar">
+    <label>من <input type="date" value="2026-10-02"></label>
+    <label>إلى <input type="date" value="2026-10-16"></label>
+    <label>المدينة <select id="fCity"><option value="">كل المدن</option></select></label>
+    <label>الفرع <select id="fBranch"><option value="">كل الفروع</option></select></label>
+    <label class="grow">بحث <input id="fQ" placeholder="ابحث بالاسم أو المعرّف" style="width:100%"></label>
+    <button class="btn" id="go">تحديث</button>
+    <button class="btn ghost" id="clr">إلغاء التصفية</button>
+  </div>
+
+  <div class="nav" role="tablist">
+    <button role="tab" aria-selected="true"  data-v="metrics">📊 المؤشرات</button>
+    <button role="tab" aria-selected="false" data-v="board">🏆 الترتيب</button>
+    <button role="tab" aria-selected="false" data-v="shift">⏱️ الدوام التفصيلي</button>
+    <button role="tab" aria-selected="false" data-v="predict">🔮 التوقّعات</button>
+    <button role="tab" aria-selected="false" data-v="flags">🚩 الإنذارات</button>
+    <button role="tab" aria-selected="false" data-v="link">🔗 الربط بوثيق</button>
+    <button role="tab" aria-selected="false" data-v="bridge" id="navBridge">⚙️ الجسر</button>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;margin:-6px 2px 12px">
+    <label class="flag" style="display:flex;gap:6px;align-items:center;cursor:pointer">
+      <input type="checkbox" id="isAdmin" checked> أنا مدير النظام — تبويب «الجسر» يظهر لي وحدي
+    </label>
+  </div>
+
+  <!-- ═══ المؤشرات ═══ -->
+  <div id="v-metrics">
+    <section>
+      <div class="hd"><h2>التراكمي للفترة</h2><span class="n" id="hdCum"></span></div>
+      <div class="tiles" id="cum"></div>
+    </section>
+    <section class="cols2">
+      <div class="card">
+        <div class="ch">الطلبات في كل يوم <small>١٥ يوماً</small></div>
+        <div class="pad"><div class="chart" id="chOrd"></div><div class="xlab" id="xOrd"></div></div>
+      </div>
+      <div class="card">
+        <div class="ch">نسبة الالتزام في كل يوم <small>الهدف ٩٧٪</small></div>
+        <div class="pad"><div class="chart" id="chOnt"></div><div class="xlab" id="xOnt"></div></div>
+      </div>
+    </section>
+    <section>
+      <div class="card">
+        <div class="ch">الفروع <span><small id="brN"></small> <button class="exp" data-x="tBr" data-f="الفروع">تصدير</button></span></div>
+        <div class="scroll"><table id="tBr"></table></div>
+      </div>
+    </section>
+    <section class="cols2">
+      <div class="card">
+        <div class="ch">المدن <span><small>مجمّعة من المناديب والفروع</small> <button class="exp" data-x="tCity" data-f="المدن">تصدير</button></span></div>
+        <div class="scroll" style="max-height:330px"><table id="tCity"></table></div>
+      </div>
+      <div class="card">
+        <div class="ch">المدد ومعدلات السرعة <small>موزونة بالطلبات</small></div>
+        <div class="pad" id="dur"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ═══ الترتيب ═══ -->
+  <div id="v-board" style="display:none">
+    <section>
+      <div class="hd"><h2>ترتيب المناديب بالمؤشر</h2><span class="n" id="bdN"></span></div>
+      <div class="tiles" id="bdTop"></div>
+    </section>
+    <section>
+      <div class="card">
+        <div class="ch">أداء التوصيل <span><small id="capN"></small> <button class="exp" data-x="tCaps" data-f="أداء-التوصيل">تصدير</button></span></div>
+        <div class="scroll"><table id="tCaps"></table></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ═══ الدوام ═══ -->
+  <div id="v-shift" style="display:none">
+    <section>
+      <div class="hd"><h2>الدوام التفصيلي التراكمي</h2><span class="n" id="shHd"></span></div>
+      <div class="tiles" id="shTiles"></div>
+    </section>
+    <section>
+      <div class="card">
+        <div class="ch">سجل الدوام لكل مندوب <span><small id="shN"></small> <button class="exp" data-x="tShift" data-f="سجل-الدوام">تصدير</button></span></div>
+        <div class="scroll"><table id="tShift"></table></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ═══ التوقّعات ═══ -->
+  <div id="v-predict" style="display:none">
+    <section>
+      <div class="hd"><h2>إسقاط على ٣٠ يوماً</h2><span class="n">على وتيرة الفترة الحالية</span></div>
+      <div class="tiles" id="prTiles"></div>
+    </section>
+    <section>
+      <div class="card">
+        <div class="ch">من يحتاج تدخّلاً <span><small id="prN"></small> <button class="exp" data-x="tPr" data-f="تحت-المراقبة">تصدير</button></span></div>
+        <div class="scroll" style="max-height:420px"><table id="tPr"></table></div>
+      </div>
+    </section>
+    <section>
+      <div class="card">
+        <div class="ch">طاقة الفروع <span><small>الفجوة بين المجدول والمنفَّذ</small> <button class="exp" data-x="tCap2" data-f="طاقة-الفروع">تصدير</button></span></div>
+        <div class="scroll" style="max-height:360px"><table id="tCap2"></table></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ═══ الإنذارات ═══ -->
+  <div id="v-flags" style="display:none">
+    <section>
+      <div class="hd"><h2>الحالة الآن</h2><span class="n">اضغط أي بطاقة لتصفية الجدول تحتها</span></div>
+      <div class="tiles" id="states"></div>
+    </section>
+    <section>
+      <div class="card">
+        <div class="ch">المخالفات <span><small id="flN"></small> <button class="exp" data-x="tFlags" data-f="المخالفات">تصدير</button></span></div>
+        <div class="scroll"><table id="tFlags"></table></div>
+      </div>
+    </section>
+    <section>
+      <div class="card">
+        <div class="ch">قواعد التنبيه <small>تُضبط مثل قواعد نينجا</small></div>
+        <div class="pad" id="rules"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ═══ الربط ═══ -->
+  <div id="v-link" style="display:none">
+    <section>
+      <div class="card">
+        <div class="ch">ربط المعرّف بالموظف في وثيق
+          <span><small id="linkN"></small> <button class="exp" data-x="tLink" data-f="ربط-المناديب">تصدير</button></span>
+        </div>
+        <div class="pad" style="border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input id="lkQ" placeholder="ابحث بالمعرّف أو الاسم" style="font:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);flex:1;min-width:160px">
+          <div style="position:relative;flex:1;min-width:230px">
+            <input id="lkIq" autocomplete="off" placeholder="اكتب رقم الإقامة أو الاسم — يبحث في وثيق"
+              style="font:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);width:100%">
+            <div id="lkDrop" class="drop"></div>
+          </div>
+          <button class="btn" id="lkGo" disabled>اربط</button>
+        </div>
+        <div class="scroll"><table id="tLink"></table></div>
+        <div class="pad flag">اختر المندوب من الجدول ثم اكتب رقم الإقامة أو الاسم في الحقل فوق — ربط معرّف كيمارت بموظف في وثيق يقفل فترة المعرّف السابق ويبدأ الجديد من نفس التاريخ — وأداؤه السابق يبقى منسوباً له ولا يُحذف.</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ═══ الجسر — لمدير النظام ═══ -->
+  <div id="v-bridge" style="display:none">
+    <section>
+      <div class="card">
+        <div class="ch">حالة الجسر مع بوابة كيمارت <small>يظهر لمدير النظام فقط — بديل «حالة الربط بساموراي» في نينجا</small></div>
+        <div class="pad">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+            <span class="chip"><span class="dot"></span> متصل — جلستك في البوابة سارية</span>
+            <span class="chip mute">السحب كل ١٥ دقيقة ما دام التبويب مفتوح</span>
+            <button class="btn" style="margin-inline-start:auto">اسحب الآن</button>
+          </div>
+          <div class="tiles" style="margin-bottom:12px">
+            <div class="tile"><div class="l">آخر سحب ناجح</div><div class="v" style="font-size:17px">١٨:٥٨</div><div class="d">أداء التوصيل · ٨٧ صفاً</div></div>
+            <div class="tile"><div class="l">أيام مخزّنة</div><div class="v">١٥</div><div class="d">٢ – ١٦ أكتوبر</div></div>
+            <div class="tile"><div class="l">صفوف في القاعدة</div><div class="v">١٬٣٠٥</div><div class="d">يوم × مندوب</div></div>
+            <div class="tile"><div class="l">أخطاء ٢٤ ساعة</div><div class="v">١</div><div class="d down">انتهاء جلسة</div></div>
+          </div>
+          <div class="ch" style="border-radius:9px;border:1px solid var(--border);margin-bottom:0">سجل السحب
+            <button class="exp" data-x="tPull" data-f="سجل-السحب">تصدير</button></div>
+          <table id="tPull"></table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="note">
+    <b>لماذا جسر وليس سحباً من القاعدة؟</b>
+    بوابة كيمارت على منصة KeeTa، وكل نداء فيها موقّع بترويسة <code>Auth-ZL</code> طولها ٤٠ حرفاً تتغيّر مع كل طلب
+    ومعها <code>Auth-ZL-ts</code> بالمللي ثانية. التوقيع يتولّد في المتصفح، فلا تستطيع القاعدة تكراره كما تفعل مع ساموراي.
+    <ul>
+      <li><b>الجسر</b> يعمل داخل متصفحك وأنت مسجّل دخولك، يقرأ نفس أرقام اللوحة والدوام ويدفعها إلى القاعدة.</li>
+      <li>القاعدة تخزّنها في <code>keemart_captain_days</code> — يوم لكل مندوب، لا يُحذف منها شيء وتُؤرشف كل سنة على حدة.</li>
+      <li>الدوام يدخل سجل المنصة عبر <code>import_attendance</code> بمشروع KEEMART، مربوطاً بموظفي وثيق.</li>
+      <li>المصادر: <code>/api/osg/getdetail/17452</code> للأداء · <code>attendanceReport</code> للدوام · <code>riderApply</code> للتسجيل.</li>
+    </ul>
+  </div>
+
+</div>
+
+<div class="ov" id="ov"><div class="modal">
+  <div class="mh">
+    <div><h3 id="mName"></h3><div class="sub" id="mSub"></div></div>
+    <button class="x" id="mX">✕</button>
+  </div>
+  <div class="mtabs" id="mTabs">
+    <button data-m="shift" aria-selected="true">الدوام التفصيلي</button>
+    <button data-m="cmp" aria-selected="false">مقابل الفريق</button>
+    <button data-m="days" aria-selected="false">الأيام</button>
+  </div>
+  <div class="mbody" id="mBody"></div>
+</div></div>
+
+<script>
+var BRANCHES = [
+  ["Dammam0001-Mazruiyah", 1006, 1000, 66, 5, 93.44, 0.5, 0, 2, 41, 43, 23.3, 97.3, 45.0, 76.5, 1.24, 12.69, 11.98, 14.25],
+  ["Jeddah0010-Alajaweed", 291, 290, 4, 1, 98.63, 0.34, 0, 0, 12, 14, 20.7, 98.6, 55.9, 87.2, 2.24, 10.84, 9.12, 13.23],
+  ["Riyadh0022-Rahmaniyyah", 234, 230, 2, 0, 99.15, 0.0, 0, 0, 5, 8, 28.8, 93.5, 35.7, 69.6, 1.72, 13.5, 16.5, 15.69],
+  ["Riyadh0010-Mahdiyah", 1415, 1362, 14, 1, 99.01, 0.07, 0, 1, 18, 48, 28.4, 98.5, 46.8, 86.1, 2.17, 11.11, 9.16, 13.44],
+  ["Jeddah0005-Mraykh", 690, 686, 28, 3, 95.94, 0.43, 2, 0, 21, 21, 32.7, 97.4, 67.2, 82.5, 1.61, 9.46, 11.63, 11.67],
+  ["Riyadh0018-Sahafah", 2074, 2057, 65, 4, 96.87, 0.19, 0, 0, 22, 80, 25.7, 99.8, 62.5, 90.9, 1.51, 10.31, 12.0, 11.92],
+  ["Riyadh0024-Shubra", 1354, 1348, 28, 7, 97.86, 0.52, 0, 0, 27, 52, 25.9, 99.2, 62.7, 91.2, 1.86, 9.77, 7.95, 11.77],
+  ["Jeddah0008-Ruwais", 359, 358, 7, 0, 97.49, 0.0, 4, 0, 16, 14, 25.6, 99.7, 78.1, 97.2, 1.1, 9.04, 6.57, 10.54],
+  ["Riyadh0023-Uraija", 1332, 1321, 76, 4, 94.22, 0.3, 1, 3, 26, 69, 19.1, 99.4, 51.9, 90.4, 1.9, 10.83, 11.69, 13.01],
+  ["Riyadh0028-Nasiriyyah", 1813, 1782, 32, 7, 98.07, 0.39, 0, 0, 47, 79, 22.6, 97.5, 63.7, 87.3, 1.42, 10.26, 9.5, 12.02],
+  ["Jeddah0002-Bryman", 954, 948, 18, 0, 98.01, 0.0, 1, 1, 24, 43, 22.0, 93.9, 53.5, 79.7, 3.09, 10.65, 12.83, 14.28],
+  ["Al Kharj0001-Muntazah", 1447, 1434, 21, 1, 98.55, 0.07, 0, 3, 42, 67, 21.4, 97.9, 48.0, 79.5, 1.27, 12.47, 12.0, 13.96],
+  ["Makkah0004-Naseem", 486, 483, 7, 0, 98.35, 0.0, 2, 1, 29, 36, 13.4, 96.9, 21.0, 56.0, 2.09, 15.49, 12.15, 17.91],
+  ["Makkah0001-Khadra", 461, 455, 21, 3, 95.44, 0.65, 0, 0, 26, 20, 22.8, 90.5, 24.0, 70.3, 2.18, 14.06, 18.12, 16.65],
+  ["Riyadh0027-Malaz", 630, 619, 9, 1, 98.57, 0.16, 2, 0, 16, 30, 20.6, 98.5, 50.6, 83.7, 2.08, 10.32, 11.68, 12.83],
+  ["Riyadh0026-Rabwah", 1402, 1345, 21, 3, 98.5, 0.21, 1, 9, 23, 60, 22.4, 98.3, 50.6, 86.1, 2.12, 10.38, 9.32, 12.87],
+  ["Al Khobar0003-Jisr", 323, 320, 9, 0, 97.21, 0.0, 2, 1, 8, 13, 24.6, 93.4, 22.9, 62.1, 1.8, 15.09, 7.92, 17.27],
+  ["Al Taif0003-Shahar", 1196, 1189, 33, 6, 97.07, 0.5, 8, 3, 110, 83, 14.3, 87.8, 31.5, 60.3, 1.37, 15.86, 12.6, 17.62],
+  ["Riyadh0003-Malqa", 632, 620, 10, 0, 98.42, 0.0, 0, 0, 3, 26, 23.8, 84.7, 31.6, 61.5, 5.98, 11.28, 9.76, 17.51],
+  ["Riyadh0013-Tuwaiq", 762, 749, 10, 0, 98.69, 0.0, 0, 0, 11, 45, 16.6, 100.0, 69.9, 98.0, 1.08, 10.15, 8.17, 11.3],
+  ["Jeddah0007-Manar", 390, 388, 42, 5, 89.23, 1.28, 0, 1, 10, 15, 25.9, 98.2, 50.8, 85.3, 1.9, 11.02, 7.93, 13.25],
+  ["Riyadh0012-Laban", 2568, 2543, 60, 4, 97.66, 0.16, 0, 4, 49, 85, 29.9, 98.6, 58.9, 90.1, 1.66, 10.2, 10.28, 12.27],
+  ["Makkah0002-Shoqiyah", 1111, 1089, 7, 3, 99.37, 0.27, 1, 2, 45, 37, 29.4, 81.1, 29.1, 57.0, 2.35, 13.92, 11.37, 16.75],
+  ["Dammam0007-Safa", 35, 35, 5, 1, 85.71, 2.86, 0, 0, 0, 2, 17.5, 94.3, 31.4, 62.9, 2.04, 13.15, 9.09, 15.5]
+];
+var CAPTAINS = [
+  ["ABDUL AZIZ", "Al Kharj0001-Muntazah", 17, 17, 2, 0, 88.24, 0.0, 0, 0, 2, 94.1, 41.2, 76.5, 1.43, 12.53, 10.35, 14.27, "30243", 12.0, 12.28, 12.28, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["Paraim Ali", "Riyadh0022-Rahmaniyyah", 234, 230, 2, 0, 99.15, 0.0, 0, 0, 5, 93.5, 35.7, 69.6, 1.72, 13.5, 16.5, 15.69, "6922", 108.0, 117.91, 117.91, 9.0, 9.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["MAHMOOD RAYADH", "Riyadh0010-Mahdiyah", 544, 520, 7, 0, 98.71, 0.0, 0, 1, 8, 99.0, 47.5, 86.2, 1.95, 11.27, 9.33, 13.42, "40189", 192.0, 217.52, 217.52, 16.0, 16.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["ISMAIL MUHAMMAD", "Al Taif0003-Shahar", 174, 174, 6, 1, 95.98, 0.57, 1, 0, 13, 89.6, 32.9, 57.2, 1.61, 15.71, 12.82, 17.63, "47189", 144.0, 151.08, 151.08, 12.0, 12.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["ALI HAYDER", "Al Taif0003-Shahar", 155, 154, 6, 0, 96.13, 0.0, 2, 0, 14, 81.2, 24.0, 56.5, 1.43, 17.45, 14.11, 19.17, "40200", 144.0, 147.03, 147.03, 12.0, 12.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["FARAD HOSSAIN", "Riyadh0013-Tuwaiq", 248, 242, 2, 0, 99.19, 0.0, 0, 0, 3, 100.0, 67.8, 98.3, 0.98, 10.2, 8.68, 11.26, "56202", 156.0, 161.42, 161.42, 13.0, 13.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["ELFATIH IBRAHIM", "Riyadh0023-Uraija", 243, 242, 12, 1, 95.06, 0.41, 0, 1, 6, 99.6, 56.6, 92.1, 2.68, 9.64, 9.95, 12.53, "44233", 108.0, 118.2, 118.2, 9.0, 9.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["MD SOROB", "Riyadh0024-Shubra", 81, 81, 6, 1, 91.36, 1.23, 0, 0, 1, 97.5, 56.2, 87.5, 1.17, 11.44, 9.16, 12.65, "44244", 36.0, 41.99, 41.99, 3.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["YASER ABBAS", "Riyadh0018-Sahafah", 328, 324, 22, 3, 93.29, 0.91, 0, 0, 5, 98.8, 52.2, 84.0, 1.64, 11.67, 14.14, 13.42, "36001", 168.0, 177.1, 177.1, 14.0, 14.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["MD TANVIR", "Riyadh0013-Tuwaiq", 263, 261, 4, 0, 98.48, 0.0, 0, 0, 4, 100.0, 75.1, 98.5, 0.91, 9.55, 7.65, 10.54, "57217", 156.0, 160.68, 160.57, 13.0, 13.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["Wahid Fazal", "Riyadh0028-Nasiriyyah", 285, 282, 2, 2, 99.3, 0.7, 0, 0, 5, 96.5, 57.1, 82.6, 0.85, 11.35, 9.34, 12.59, "35246", 132.0, 141.34, 141.34, 11.0, 11.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["Mohammed Abdo", "Riyadh0027-Malaz", 306, 301, 9, 1, 97.06, 0.33, 1, 0, 9, 98.0, 50.0, 80.0, 2.53, 10.17, 11.81, 13.23, "6932", 168.0, 174.53, 174.06, 14.0, 14.0, 1.0, 0.0, 0.0, 0.0, 0.6, 0.0, "Currently employed", "Motorcycle"],
+  ["MOHAMED SHEHATA", "Al Khobar0003-Jisr", 323, 320, 9, 0, 97.21, 0.0, 2, 1, 8, 93.4, 22.9, 62.1, 1.8, 15.09, 7.92, 17.27, "64060", 156.0, 166.6, 166.6, 13.0, 13.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["AHMED OMER", "Al Taif0003-Shahar", 30, 29, 4, 0, 86.67, 0.0, 0, 0, 3, 86.2, 34.5, 58.6, 1.21, 15.84, 12.38, 17.12, "41235", 24.0, 24.81, 24.81, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["Arif Afjal", "Riyadh0012-Laban", 423, 415, 15, 1, 96.45, 0.24, 0, 1, 7, 98.6, 60.2, 89.2, 1.18, 10.71, 10.35, 12.26, "52117", 168.0, 180.4, 180.4, 14.0, 14.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["AHMED ALHAMMADI", "Makkah0002-Shoqiyah", 392, 388, 4, 1, 98.98, 0.26, 1, 1, 18, 83.2, 28.4, 58.0, 1.79, 14.66, 12.26, 16.94, "10648", 168.0, 175.24, 175.24, 14.0, 14.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["ISSA BAKAR", "Al Taif0003-Shahar", 225, 225, 3, 2, 98.67, 0.89, 1, 0, 11, 90.7, 31.1, 61.3, 1.24, 15.65, 11.59, 17.3, "57218", 168.0, 173.81, 173.81, 14.0, 14.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["MOHANED BDRALDEEN", "Al Taif0003-Shahar", 105, 105, 4, 2, 96.19, 1.9, 0, 0, 8, 92.3, 35.6, 62.5, 0.97, 14.62, 12.13, 16.4, "35214", 72.0, 75.41, 75.41, 6.0, 6.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["NAJM ALDAIN", "Al Kharj0001-Muntazah", 94, 91, 2, 0, 97.87, 0.0, 0, 0, 1, 98.9, 44.0, 90.1, 1.18, 11.94, 10.48, 13.32, "60175", 48.0, 51.26, 51.26, 4.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["omar alosimi", "Riyadh0018-Sahafah", 325, 323, 2, 0, 99.38, 0.0, 0, 0, 2, 100.0, 64.7, 94.7, 1.89, 9.95, 13.52, 11.89, "10704", 156.0, 164.99, 164.99, 13.0, 13.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["AUAD YAHYA", "Riyadh0012-Laban", 356, 353, 5, 0, 98.6, 0.0, 0, 0, 6, 98.6, 66.3, 91.5, 1.77, 9.37, 9.73, 11.5, "7139", 156.0, 135.29, 135.29, 13.0, 11.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["ABDEL RHMAN", "Jeddah0005-Mraykh", 269, 267, 10, 1, 96.28, 0.37, 0, 0, 6, 97.0, 65.5, 79.4, 1.87, 9.61, 10.41, 12.22, "48109", 120.0, 124.95, 124.95, 10.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["sahish tharani", "Riyadh0018-Sahafah", 400, 400, 10, 0, 97.5, 0.0, 0, 0, 8, 100.0, 61.8, 91.8, 1.1, 10.37, 12.86, 11.55, "10281", 180.0, 189.16, 189.16, 15.0, 15.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["Mohammad B", "Al Kharj0001-Muntazah", 291, 289, 7, 1, 97.59, 0.34, 0, 1, 7, 97.6, 38.8, 79.9, 1.09, 13.22, 12.24, 14.5, "30278", 156.0, 161.46, 161.46, 13.0, 13.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["MD NAHID", "Riyadh0026-Rabwah", 141, 137, 2, 1, 98.58, 0.71, 0, 6, 2, 94.9, 48.2, 75.9, 2.44, 10.43, 10.12, 13.55, "52173", 108.0, 117.69, 117.69, 9.0, 9.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["MD RIPON", "Riyadh0026-Rabwah", 369, 350, 5, 0, 98.64, 0.0, 0, 0, 9, 98.6, 52.3, 90.9, 1.67, 10.72, 8.33, 12.63, "60122", 168.0, 183.67, 183.64, 14.0, 14.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["MD MAHFUZUR", "Jeddah0002-Bryman", 297, 295, 11, 0, 96.3, 0.0, 1, 1, 8, 98.6, 59.3, 88.8, 2.98, 9.53, 12.08, 12.88, "61087", 156.0, 160.8, 160.8, 13.0, 13.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["NOUMAN BASHIR", "Riyadh0028-Nasiriyyah", 243, 237, 2, 0, 99.18, 0.0, 0, 0, 6, 100.0, 86.9, 97.9, 1.79, 7.06, 4.73, 9.32, "43031", 156.0, 158.56, 158.56, 13.0, 13.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["ABDULKAREEM SALEH", "Riyadh0010-Mahdiyah", 423, 408, 2, 1, 99.53, 0.24, 0, 0, 5, 97.1, 37.0, 82.6, 2.17, 12.12, 9.96, 14.41, "8333", 180.0, 192.47, 192.47, 15.0, 15.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["Ahmed Saeed", "Riyadh0003-Malqa", 391, 382, 3, 0, 99.23, 0.0, 0, 0, 3, 87.4, 35.3, 65.2, 5.79, 10.69, 8.89, 16.7, "53117", 168.0, 186.36, 186.05, 14.0, 14.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["KHALED SABRY", "Jeddah0008-Ruwais", 359, 358, 7, 0, 97.49, 0.0, 4, 0, 16, 99.7, 78.1, 97.2, 1.1, 9.04, 6.57, 10.54, "418009", 168.0, 186.71, 186.54, 14.0, 14.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["mageb alammari", "Makkah0004-Naseem", 164, 163, 5, 0, 96.95, 0.0, 0, 0, 7, 98.8, 20.2, 56.4, 1.26, 15.91, 9.82, 17.41, "10962", 108.0, 111.6, 111.6, 9.0, 9.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["SABUJ MIAH", "Al Kharj0001-Muntazah", 359, 356, 1, 0, 99.72, 0.0, 0, 0, 11, 97.2, 51.4, 77.2, 1.22, 12.61, 13.16, 14.05, "30242", 156.0, 166.37, 166.37, 13.0, 13.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["Khadilmul Islam", "Riyadh0026-Rabwah", 269, 254, 3, 0, 98.88, 0.0, 0, 2, 4, 99.6, 41.3, 84.3, 2.65, 10.55, 10.56, 13.51, "6923", 144.0, 155.53, 155.53, 12.0, 12.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["ADNAN QAID", "Riyadh0026-Rabwah", 339, 330, 5, 1, 98.53, 0.29, 1, 0, 4, 98.8, 61.4, 92.1, 1.78, 9.46, 6.85, 11.64, "8215", 168.0, 177.51, 177.51, 14.0, 14.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["SAJID AHMAD", "Dammam0001-Mazruiyah", 96, 93, 7, 1, 92.71, 1.04, 0, 0, 3, 94.6, 29.0, 66.7, 1.02, 15.03, 10.97, 16.42, "10699", 84.0, 75.94, 75.94, 7.0, 6.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["Mohamed Ali", "Dammam0007-Safa", 18, 18, 2, 0, 88.89, 0.0, 0, 0, 0, 94.4, 27.8, 66.7, 2.33, 12.83, 9.87, 15.53, "47241", 12.0, 10.28, 10.39, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.61, "Currently employed", "Car"],
+  ["MAHMOOD SAEED", "Riyadh0028-Nasiriyyah", 312, 308, 8, 4, 97.44, 1.28, 0, 0, 8, 97.4, 57.3, 86.3, 1.21, 11.2, 7.82, 12.87, "39028", 180.0, 197.76, 197.76, 15.0, 15.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["Bulbul Ahmed", "Riyadh0028-Nasiriyyah", 356, 350, 10, 1, 96.35, 0.28, 0, 0, 12, 95.6, 56.9, 83.7, 1.55, 11.28, 12.32, 13.15, "44228", 168.0, 181.49, 181.49, 14.0, 14.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["Amjed Alawami", "Riyadh0010-Mahdiyah", 111, 109, 1, 0, 99.1, 0.0, 0, 0, 2, 98.2, 60.6, 89.9, 3.19, 8.67, 7.53, 11.91, "51053", 48.0, 52.09, 52.09, 4.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["MOHAMMED ALZAWM", "Al Kharj0001-Muntazah", 158, 157, 4, 0, 97.47, 0.0, 0, 1, 7, 99.4, 49.0, 76.4, 1.49, 12.33, 10.58, 14.11, "34196", 108.0, 102.38, 102.38, 9.0, 8.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["RAFAT ALI", "Riyadh0024-Shubra", 344, 344, 5, 1, 98.55, 0.29, 0, 0, 13, 99.4, 58.4, 89.5, 2.44, 9.61, 8.03, 12.14, "10472", 156.0, 167.07, 167.07, 13.0, 13.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["HATEM ALI", "Riyadh0024-Shubra", 319, 317, 3, 2, 99.06, 0.63, 0, 0, 4, 99.1, 60.3, 91.2, 1.67, 10.24, 8.05, 11.97, "42093", 144.0, 151.27, 151.27, 12.0, 12.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["TANJIM OVI", "Jeddah0002-Bryman", 310, 310, 4, 0, 98.39, 0.0, 0, 0, 6, 97.1, 68.9, 90.3, 2.68, 8.72, 10.61, 11.94, "40212", 156.0, 163.55, 163.55, 13.0, 13.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["Hoque Emadul", "Al Kharj0001-Muntazah", 273, 271, 2, 0, 99.27, 0.0, 0, 0, 8, 99.3, 53.5, 85.6, 1.26, 11.36, 10.29, 12.77, "6919", 156.0, 162.13, 162.13, 13.0, 13.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["SEDQI ABDULLAH", "Riyadh0018-Sahafah", 381, 376, 11, 0, 97.11, 0.0, 0, 0, 4, 100.0, 66.4, 92.8, 1.29, 9.76, 8.94, 11.24, "34033", 180.0, 202.27, 202.27, 15.0, 15.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["ALMONZER ABU", "Riyadh0023-Uraija", 266, 264, 19, 0, 92.86, 0.0, 0, 2, 9, 100.0, 57.6, 90.5, 1.65, 10.69, 12.03, 12.63, "73030", 120.0, 140.38, 140.23, 10.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["TAMER ALLAM", "Dammam0001-Mazruiyah", 119, 119, 24, 2, 79.83, 1.68, 0, 1, 5, 96.6, 37.3, 70.3, 1.85, 12.95, 10.88, 15.06, "35157", 60.0, 60.72, 60.63, 5.0, 5.0, 1.0, 0.0, 0.0, 0.0, 1.74, 0.0, "Currently employed", "Car"],
+  ["Md Arifur", "Riyadh0012-Laban", 370, 366, 4, 0, 98.92, 0.0, 0, 0, 4, 99.2, 67.2, 92.1, 1.73, 9.49, 7.87, 11.68, "49118", 120.0, 125.92, 125.92, 10.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["Md Suzon", "Riyadh0012-Laban", 303, 301, 7, 0, 97.69, 0.0, 0, 0, 9, 98.3, 51.2, 89.4, 1.83, 10.66, 13.24, 12.71, "56121", 132.0, 139.46, 139.46, 11.0, 11.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["Nasr Saleh", "Riyadh0012-Laban", 307, 306, 4, 0, 98.7, 0.0, 0, 1, 7, 98.4, 53.6, 91.8, 1.48, 10.83, 11.38, 12.64, "61156", 132.0, 138.59, 138.59, 11.0, 11.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["SULTAN MOHAMMED", "Jeddah0010-Alajaweed", 291, 290, 4, 1, 98.63, 0.34, 0, 0, 12, 98.6, 55.9, 87.2, 2.24, 10.84, 9.12, 13.23, "31192", 180.0, 158.56, 158.34, 15.0, 13.0, 0.0, 1.0, 0.0, 2.0, 0.0, 1.81, "Currently employed", "Motorcycle"],
+  ["MOHAMMED TAREQ", "Dammam0001-Mazruiyah", 338, 336, 14, 1, 95.86, 0.3, 0, 0, 6, 97.6, 47.6, 78.6, 1.24, 12.3, 13.39, 13.92, "31184", 156.0, 162.44, 162.44, 13.0, 13.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["Hasan Ahmed", "Riyadh0003-Malqa", 241, 238, 7, 0, 97.1, 0.0, 0, 0, 0, 80.3, 25.6, 55.5, 6.29, 12.23, 10.94, 18.82, "73025", 144.0, 152.75, 152.75, 12.0, 12.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["hasan ali", "Makkah0001-Khadra", 313, 310, 8, 0, 97.44, 0.0, 0, 0, 20, 92.9, 25.8, 73.2, 1.85, 13.75, 16.89, 15.95, "10731", 156.0, 166.14, 166.14, 13.0, 13.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["MD WARIS", "Riyadh0028-Nasiriyyah", 288, 287, 1, 0, 99.65, 0.0, 0, 0, 13, 100.0, 69.0, 93.4, 1.43, 9.07, 8.48, 10.89, "36029", 156.0, 163.52, 163.52, 13.0, 13.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["SADDAM HOSIN", "Riyadh0028-Nasiriyyah", 329, 318, 9, 0, 97.26, 0.0, 0, 0, 3, 96.2, 61.2, 83.0, 1.67, 10.73, 12.55, 12.5, "10482", 156.0, 175.13, 175.02, 13.0, 13.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["AHMED KHEDER", "Dammam0001-Mazruiyah", 154, 153, 9, 0, 94.16, 0.0, 0, 1, 7, 96.7, 47.1, 79.7, 1.2, 11.86, 12.33, 13.35, "47138", 72.0, 73.94, 73.9, 6.0, 6.0, 1.0, 0.0, 0.0, 0.0, 0.88, 0.0, "Currently employed", "Car"],
+  ["Mazin Khaleel", "Dammam0007-Safa", 17, 17, 3, 1, 82.35, 5.88, 0, 0, 0, 94.1, 35.3, 58.8, 1.72, 13.49, 8.3, 15.46, "418055", 12.0, 11.36, 11.4, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.6, "Currently employed", "Car"],
+  ["ELTAYEB FAKR", "Riyadh0023-Uraija", 162, 161, 4, 0, 97.53, 0.0, 0, 0, 2, 100.0, 57.8, 94.4, 2.8, 9.45, 10.59, 12.46, "44187", 84.0, 83.42, 82.86, 7.0, 7.0, 0.0, 1.0, 0.0, 0.0, 0.0, 5.63, "Currently employed", "Motorcycle"],
+  ["YOUSEF ALHAMDANI", "Riyadh0018-Sahafah", 305, 301, 8, 0, 97.38, 0.0, 0, 0, 0, 100.0, 67.9, 94.0, 1.82, 9.4, 9.57, 11.3, "10702", 168.0, 180.61, 180.61, 14.0, 14.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["NADER AHMED", "Makkah0002-Shoqiyah", 426, 416, 1, 1, 99.77, 0.23, 0, 0, 16, 78.8, 29.3, 55.0, 2.77, 13.54, 12.5, 16.78, "9597", 168.0, 176.64, 176.64, 14.0, 14.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["MOHAMED ALI", "Riyadh0027-Malaz", 324, 318, 0, 0, 100.0, 0.0, 1, 0, 7, 99.1, 51.3, 87.1, 1.65, 10.46, 11.57, 12.46, "47241", 12.0, 10.28, 10.39, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.61, "Currently employed", "Car"],
+  ["Md MUSTAFIZUR", "Riyadh0012-Laban", 442, 436, 12, 1, 97.29, 0.23, 0, 2, 8, 98.6, 52.8, 87.6, 2.07, 10.33, 11.87, 12.86, "52119", 156.0, 171.48, 170.62, 13.0, 13.0, 1.0, 0.0, 0.0, 0.0, 0.29, 0.0, "Currently employed", "Motorcycle"],
+  ["ahmed alademi", "Makkah0001-Khadra", 148, 145, 13, 3, 91.22, 2.03, 0, 0, 6, 85.5, 20.0, 64.1, 2.89, 14.71, 20.63, 18.15, "10726", 84.0, 75.15, 75.15, 7.0, 6.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["MOHAMMED RAFI", "Makkah0002-Shoqiyah", 293, 285, 2, 1, 99.32, 0.34, 0, 1, 11, 81.4, 29.8, 58.6, 2.51, 13.48, 8.8, 16.46, "6920", 144.0, 148.64, 148.64, 12.0, 12.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["MD MAKSUD", "Jeddah0007-Manar", 390, 388, 42, 5, 89.23, 1.28, 0, 1, 10, 98.2, 50.8, 85.3, 1.9, 11.02, 7.93, 13.25, "45146", 180.0, 192.52, 192.52, 15.0, 15.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["SUHAIL QAID", "Dammam0001-Mazruiyah", 299, 299, 12, 1, 95.99, 0.33, 0, 0, 20, 98.3, 49.2, 77.9, 1.1, 12.73, 10.93, 14.08, "46177", 132.0, 136.72, 136.72, 11.0, 11.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["TAHA BUTT", "Jeddah0002-Bryman", 347, 343, 3, 0, 99.14, 0.0, 0, 0, 10, 86.9, 34.7, 62.4, 3.55, 13.36, 16.08, 17.59, "11578", 168.0, 182.78, 182.78, 14.0, 14.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["NADIM MIAH", "Al Kharj0001-Muntazah", 255, 253, 3, 0, 98.82, 0.0, 0, 1, 6, 96.8, 49.4, 73.9, 1.42, 12.88, 13.9, 14.61, "30245", 132.0, 139.0, 139.0, 11.0, 11.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["Gaber Rajib", "Riyadh0012-Laban", 11, 11, 0, 0, 100.0, 0.0, 0, 0, 1, 100.0, 45.5, 81.8, 1.51, 10.68, 8.35, 12.5, "44087", 24.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 1.0, 2.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["osamah qubaty", "Makkah0004-Naseem", 171, 169, 2, 0, 98.83, 0.0, 0, 1, 15, 95.8, 22.8, 54.5, 3.19, 14.92, 15.07, 18.39, "10650", 156.0, 161.62, 161.62, 13.0, 13.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["MARWAN AHMED", "Riyadh0024-Shubra", 279, 279, 6, 3, 97.85, 1.08, 0, 0, 3, 98.9, 67.6, 92.8, 1.37, 9.52, 7.5, 11.26, "45009", 144.0, 164.98, 164.98, 12.0, 12.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["ELJALI ABBAS", "Riyadh0013-Tuwaiq", 251, 246, 4, 0, 98.41, 0.0, 0, 0, 4, 100.0, 66.5, 97.1, 1.36, 10.75, 8.07, 12.16, "30464", 156.0, 157.67, 157.33, 13.0, 13.0, 1.0, 0.0, 0.0, 0.0, 0.19, 0.0, "Currently employed", "Motorcycle"],
+  ["MAHMOUD ALZAIN", "Riyadh0023-Uraija", 201, 201, 22, 0, 89.05, 0.0, 0, 0, 5, 97.0, 42.8, 80.1, 1.57, 12.25, 12.88, 14.3, "30312", 132.0, 139.31, 139.21, 11.0, 11.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["Majid BILAL", "Riyadh0012-Laban", 356, 355, 13, 2, 96.35, 0.56, 0, 0, 7, 98.6, 60.8, 90.4, 1.56, 10.05, 7.72, 12.2, "36129", 144.0, 146.48, 146.48, 12.0, 11.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["ABDULRAZZAQ QAHMEAN", "Makkah0004-Naseem", 151, 151, 0, 0, 99.34, 0.0, 2, 0, 7, 96.0, 20.0, 57.3, 1.78, 15.68, 11.58, 17.9, "10649", 156.0, 166.6, 166.6, 13.0, 13.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["ADEL ALSAIDI", "Riyadh0024-Shubra", 331, 327, 8, 0, 97.58, 0.0, 0, 0, 6, 99.7, 67.0, 92.4, 2.0, 9.31, 7.82, 11.4, "10643", 156.0, 166.22, 166.22, 13.0, 13.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["ABDULQDDUS MOHAMMAD", "Al Taif0003-Shahar", 119, 118, 3, 0, 97.48, 0.0, 4, 1, 2, 85.6, 23.7, 64.4, 1.58, 16.55, 12.82, 18.36, "35213", 120.0, 110.06, 110.06, 10.0, 9.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["QSSSI ALI", "Riyadh0026-Rabwah", 284, 274, 6, 1, 97.89, 0.35, 0, 1, 4, 97.8, 45.3, 79.6, 2.43, 10.88, 11.61, 13.7, "42221", 96.0, 108.34, 106.28, 8.0, 8.0, 1.0, 0.0, 0.0, 0.0, 0.98, 0.0, "Currently employed", "Car"],
+  ["MD MER ALI", "Riyadh0023-Uraija", 198, 195, 7, 2, 96.46, 1.01, 0, 0, 0, 100.0, 51.3, 91.3, 1.45, 11.52, 14.19, 13.18, "49029", 120.0, 123.83, 123.83, 10.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["ZIYAD SALEH", "Al Taif0003-Shahar", 156, 156, 6, 0, 96.15, 0.0, 0, 1, 45, 88.5, 28.2, 57.1, 1.54, 15.98, 12.17, 17.82, "36196", 132.0, 136.18, 135.65, 11.0, 11.0, 1.0, 0.0, 0.0, 0.0, 0.21, 0.0, "Currently employed", "Car"],
+  ["HAMZAH MUSLEH", "Riyadh0018-Sahafah", 335, 333, 12, 1, 96.42, 0.3, 0, 0, 3, 99.7, 61.9, 88.0, 1.47, 10.68, 13.25, 12.27, "11185", 144.0, 151.53, 151.53, 12.0, 12.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["ESLAM GOMAA", "Riyadh0023-Uraija", 262, 258, 12, 1, 95.04, 0.38, 1, 0, 4, 99.6, 45.3, 93.8, 1.47, 11.34, 10.83, 13.06, "49216", 132.0, 129.5, 129.5, 11.0, 11.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["YAHYA BAKUR", "Al Taif0003-Shahar", 232, 228, 1, 1, 99.14, 0.43, 0, 1, 14, 86.8, 39.6, 63.4, 1.25, 15.28, 12.81, 16.99, "54201", 168.0, 172.08, 172.08, 14.0, 14.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Car"],
+  ["EMAD EAGPT", "Jeddah0005-Mraykh", 421, 419, 18, 2, 95.72, 0.48, 2, 0, 15, 97.6, 68.3, 84.5, 1.45, 9.36, 12.4, 11.31, "52211", 156.0, 147.93, 147.93, 13.0, 12.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, "Currently employed", "Motorcycle"],
+  ["ABDULMAJEED ABDO", "Riyadh0010-Mahdiyah", 337, 325, 4, 0, 98.81, 0.0, 0, 0, 3, 99.4, 53.5, 89.2, 2.19, 10.41, 7.94, 12.76, "73095", 156.0, 180.98, 180.06, 13.0, 13.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "Currently employed", "Motorcycle"]
+];
+
+var DAYS = 15, HORIZON = 30;
+window.DAILY = window.DAILY || [];   /* صفوف يومية — يملؤها الجسر */
+var PERIODS = [{"cid": "8215", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.25, "eff": 12.25, "ord": 24.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0026-Rabwah", "status": "Currently employed"}, {"cid": "8217", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 13.5, "eff": 13.5, "ord": 24.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0027-Malaz", "status": "Currently employed"}, {"cid": "49216", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.64, "eff": 12.64, "ord": 26.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0023-Uraija", "status": "Currently employed"}, {"cid": "45146", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.63, "eff": 12.63, "ord": 20.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Jeddah0007-Manar", "status": "Currently employed"}, {"cid": "8333", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 14.97, "eff": 14.97, "ord": 29.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0010-Mahdiyah", "status": "Currently employed"}, {"cid": "418055", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 11.36, "eff": 11.4, "ord": 19.0, "late": 0.0, "early": 0.6, "absent": 0.0, "miss": 0.0, "store": "Dammam0007-Safa", "status": "Currently employed"}, {"cid": "54201", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.76, "eff": 12.76, "ord": 24.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "46177", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.19, "eff": 12.19, "ord": 32.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Dammam0001-Mazruiyah", "status": "Currently employed"}, {"cid": "42093", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.63, "eff": 12.63, "ord": 21.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0024-Shubra", "status": "Currently employed"}, {"cid": "34033", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 13.25, "eff": 13.25, "ord": 29.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0018-Sahafah", "status": "Currently employed"}, {"cid": "9597", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 13.08, "eff": 13.08, "ord": 30.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Makkah0002-Shoqiyah", "status": "Currently employed"}, {"cid": "30242", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.75, "eff": 12.75, "ord": 29.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Kharj0001-Muntazah", "status": "Currently employed"}, {"cid": "30278", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 13.44, "eff": 13.44, "ord": 32.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Kharj0001-Muntazah", "status": "Currently employed"}, {"cid": "43031", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.07, "eff": 12.07, "ord": 7.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0028-Nasiriyyah", "status": "Currently employed"}, {"cid": "47138", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.96, "eff": 12.96, "ord": 28.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Dammam0001-Mazruiyah", "status": "Currently employed"}, {"cid": "10281", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.85, "eff": 12.85, "ord": 29.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0018-Sahafah", "status": "Currently employed"}, {"cid": "47189", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.78, "eff": 12.78, "ord": 16.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "39028", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 13.04, "eff": 13.04, "ord": 22.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0028-Nasiriyyah", "status": "Currently employed"}, {"cid": "47241", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 10.28, "eff": 10.39, "ord": 19.0, "late": 0.0, "early": 1.61, "absent": 0.0, "miss": 0.0, "store": "Dammam0007-Safa", "status": "Currently employed"}, {"cid": "10472", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.25, "eff": 12.25, "ord": 20.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0024-Shubra", "status": "Currently employed"}, {"cid": "10482", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.9, "eff": 12.9, "ord": 35.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0028-Nasiriyyah", "status": "Currently employed"}, {"cid": "35214", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.68, "eff": 12.68, "ord": 21.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "10643", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.41, "eff": 12.41, "ord": 26.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0024-Shubra", "status": "Currently employed"}, {"cid": "10648", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.51, "eff": 12.51, "ord": 30.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Makkah0002-Shoqiyah", "status": "Currently employed"}, {"cid": "10649", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.42, "eff": 12.42, "ord": 19.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Makkah0004-Naseem", "status": "Currently employed"}, {"cid": "10650", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 14.15, "eff": 14.15, "ord": 19.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Makkah0004-Naseem", "status": "Currently employed"}, {"cid": "35246", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 13.09, "eff": 13.09, "ord": 41.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0028-Nasiriyyah", "status": "Currently employed"}, {"cid": "10702", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 13.96, "eff": 13.96, "ord": 23.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0018-Sahafah", "status": "Currently employed"}, {"cid": "10704", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.5, "eff": 12.5, "ord": 23.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0018-Sahafah", "status": "Currently employed"}, {"cid": "31192", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.21, "eff": 12.21, "ord": 18.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Jeddah0010-Alajaweed", "status": "Currently employed"}, {"cid": "10726", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.4, "eff": 12.4, "ord": 23.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Makkah0001-Khadra", "status": "Currently employed"}, {"cid": "10731", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.55, "eff": 12.55, "ord": 27.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Makkah0001-Khadra", "status": "Currently employed"}, {"cid": "64060", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.43, "eff": 12.43, "ord": 27.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Khobar0003-Jisr", "status": "Currently employed"}, {"cid": "10962", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.42, "eff": 12.42, "ord": 20.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Makkah0004-Naseem", "status": "Currently employed"}, {"cid": "60122", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.86, "eff": 12.86, "ord": 21.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0026-Rabwah", "status": "Currently employed"}, {"cid": "6919", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.72, "eff": 12.72, "ord": 31.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Kharj0001-Muntazah", "status": "Currently employed"}, {"cid": "6920", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 13.63, "eff": 13.63, "ord": 26.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Makkah0002-Shoqiyah", "status": "Currently employed"}, {"cid": "6922", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 13.05, "eff": 13.05, "ord": 27.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0022-Rahmaniyyah", "status": "Currently employed"}, {"cid": "6932", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.08, "eff": 12.08, "ord": 21.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0027-Malaz", "status": "Currently employed"}, {"cid": "56121", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.8, "eff": 12.8, "ord": 28.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0012-Laban", "status": "Currently employed"}, {"cid": "52117", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.25, "eff": 12.25, "ord": 28.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0012-Laban", "status": "Currently employed"}, {"cid": "11185", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.61, "eff": 12.61, "ord": 29.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0018-Sahafah", "status": "Currently employed"}, {"cid": "7139", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.52, "eff": 12.52, "ord": 32.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0012-Laban", "status": "Currently employed"}, {"cid": "48109", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.1, "eff": 12.1, "ord": 32.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Jeddah0005-Mraykh", "status": "Currently employed"}, {"cid": "52211", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.13, "eff": 12.13, "ord": 29.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Jeddah0005-Mraykh", "status": "Currently employed"}, {"cid": "36001", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.62, "eff": 12.62, "ord": 22.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0018-Sahafah", "status": "Currently employed"}, {"cid": "36029", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.46, "eff": 12.46, "ord": 25.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0028-Nasiriyyah", "status": "Currently employed"}, {"cid": "44228", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 14.04, "eff": 14.04, "ord": 31.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0028-Nasiriyyah", "status": "Currently employed"}, {"cid": "44233", "src": "day", "lbl": "يوم مفرد", "expD": 0.0, "actD": 0.0, "req": 0.0, "act": 0.0, "eff": 0.0, "ord": 0.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0023-Uraija", "status": "Currently employed"}, {"cid": "44244", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 13.3, "eff": 13.3, "ord": 21.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0024-Shubra", "status": "Currently employed"}, {"cid": "40189", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 13.17, "eff": 13.17, "ord": 32.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0010-Mahdiyah", "status": "Currently employed"}, {"cid": "40200", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.23, "eff": 12.23, "ord": 14.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "40212", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.51, "eff": 12.51, "ord": 22.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Jeddah0002-Bryman", "status": "Currently employed"}, {"cid": "11578", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.75, "eff": 12.75, "ord": 25.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Jeddah0002-Bryman", "status": "Currently employed"}, {"cid": "73030", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 14.81, "eff": 14.81, "ord": 29.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0023-Uraija", "status": "Currently employed"}, {"cid": "36196", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.82, "eff": 12.82, "ord": 11.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "73095", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 15.51, "eff": 15.0, "ord": 33.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0010-Mahdiyah", "status": "Currently employed"}, {"cid": "61087", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.39, "eff": 12.39, "ord": 22.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Jeddah0002-Bryman", "status": "Currently employed"}, {"cid": "61156", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.63, "eff": 12.63, "ord": 29.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0012-Laban", "status": "Currently employed"}, {"cid": "53117", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 13.91, "eff": 13.91, "ord": 28.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0003-Malqa", "status": "Currently employed"}, {"cid": "57218", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.93, "eff": 12.93, "ord": 21.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "49029", "src": "day", "lbl": "يوم مفرد", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 13.2, "eff": 13.2, "ord": 21.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0023-Uraija", "status": "Currently employed"}, {"cid": "8215", "src": "wide", "lbl": "مدى موسّع", "expD": 15.0, "actD": 15.0, "req": 180.0, "act": 190.67, "eff": 190.67, "ord": 383.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0026-Rabwah", "status": "Currently employed"}, {"cid": "8217", "src": "wide", "lbl": "مدى موسّع", "expD": 15.0, "actD": 15.0, "req": 180.0, "act": 199.37, "eff": 199.37, "ord": 375.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0027-Malaz", "status": "Currently employed"}, {"cid": "49216", "src": "wide", "lbl": "مدى موسّع", "expD": 12.0, "actD": 12.0, "req": 144.0, "act": 142.78, "eff": 142.78, "ord": 309.0, "late": 0.0, "early": 0.0, "absent": 1.0, "miss": 1.0, "store": "Riyadh0023-Uraija", "status": "Currently employed"}, {"cid": "45146", "src": "wide", "lbl": "مدى موسّع", "expD": 16.0, "actD": 16.0, "req": 192.0, "act": 205.39, "eff": 205.39, "ord": 458.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Jeddah0007-Manar", "status": "Currently employed"}, {"cid": "8333", "src": "wide", "lbl": "مدى موسّع", "expD": 15.0, "actD": 15.0, "req": 180.0, "act": 192.47, "eff": 192.47, "ord": 416.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0010-Mahdiyah", "status": "Currently employed"}, {"cid": "418009", "src": "wide", "lbl": "مدى موسّع", "expD": 15.0, "actD": 15.0, "req": 180.0, "act": 199.59, "eff": 199.41, "ord": 405.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Jeddah0008-Ruwais", "status": "Currently employed"}, {"cid": "418055", "src": "wide", "lbl": "مدى موسّع", "expD": 2.0, "actD": 2.0, "req": 24.0, "act": 18.7, "eff": 18.12, "ord": 32.0, "late": 0.0, "early": 5.88, "absent": 0.0, "miss": 0.0, "store": "Dammam0007-Safa", "status": "Currently employed"}, {"cid": "41235", "src": "wide", "lbl": "مدى موسّع", "expD": 2.0, "actD": 2.0, "req": 24.0, "act": 24.81, "eff": 24.81, "ord": 30.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "664", "src": "wide", "lbl": "مدى موسّع", "expD": 0.0, "actD": 0.0, "req": 0.0, "act": 0.0, "eff": 0.0, "ord": 0.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0003-Malqa", "status": "Currently employed"}, {"cid": "54201", "src": "wide", "lbl": "مدى موسّع", "expD": 15.0, "actD": 15.0, "req": 180.0, "act": 184.26, "eff": 184.26, "ord": 261.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "46177", "src": "wide", "lbl": "مدى موسّع", "expD": 12.0, "actD": 12.0, "req": 144.0, "act": 148.93, "eff": 148.93, "ord": 359.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Dammam0001-Mazruiyah", "status": "Currently employed"}, {"cid": "42093", "src": "wide", "lbl": "مدى موسّع", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 163.86, "eff": 163.86, "ord": 347.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0024-Shubra", "status": "Currently employed"}, {"cid": "42221", "src": "wide", "lbl": "مدى موسّع", "expD": 8.0, "actD": 8.0, "req": 96.0, "act": 108.34, "eff": 106.28, "ord": 252.0, "late": 0.98, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0026-Rabwah", "status": "Currently employed"}, {"cid": "34033", "src": "wide", "lbl": "مدى موسّع", "expD": 16.0, "actD": 16.0, "req": 192.0, "act": 215.27, "eff": 215.27, "ord": 442.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0018-Sahafah", "status": "Currently employed"}, {"cid": "9597", "src": "wide", "lbl": "مدى موسّع", "expD": 15.0, "actD": 15.0, "req": 180.0, "act": 188.8, "eff": 188.8, "ord": 493.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Makkah0002-Shoqiyah", "status": "Currently employed"}, {"cid": "34196", "src": "wide", "lbl": "مدى موسّع", "expD": 9.0, "actD": 8.0, "req": 108.0, "act": 102.38, "eff": 102.38, "ord": 158.0, "late": 0.0, "early": 0.0, "absent": 1.0, "miss": 1.0, "store": "Al Kharj0001-Muntazah", "status": "Currently employed"}, {"cid": "30242", "src": "wide", "lbl": "مدى موسّع", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 179.43, "eff": 179.43, "ord": 413.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Kharj0001-Muntazah", "status": "Currently employed"}, {"cid": "30243", "src": "wide", "lbl": "مدى موسّع", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.28, "eff": 12.28, "ord": 17.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Kharj0001-Muntazah", "status": "Currently employed"}, {"cid": "30245", "src": "wide", "lbl": "مدى موسّع", "expD": 11.0, "actD": 11.0, "req": 132.0, "act": 139.0, "eff": 139.0, "ord": 253.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Kharj0001-Muntazah", "status": "Currently employed"}, {"cid": "30278", "src": "wide", "lbl": "مدى موسّع", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 174.04, "eff": 174.04, "ord": 343.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Kharj0001-Muntazah", "status": "Currently employed"}, {"cid": "30312", "src": "wide", "lbl": "مدى موسّع", "expD": 12.0, "actD": 12.0, "req": 144.0, "act": 151.55, "eff": 151.45, "ord": 231.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0023-Uraija", "status": "Currently employed"}, {"cid": "30433", "src": "wide", "lbl": "مدى موسّع", "expD": 0.0, "actD": 0.0, "req": 0.0, "act": 0.0, "eff": 0.0, "ord": 0.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0013-Tuwaiq", "status": "Currently employed"}, {"cid": "30464", "src": "wide", "lbl": "مدى موسّع", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 169.98, "eff": 169.65, "ord": 279.0, "late": 0.19, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0013-Tuwaiq", "status": "Currently employed"}, {"cid": "51053", "src": "wide", "lbl": "مدى موسّع", "expD": 4.0, "actD": 4.0, "req": 48.0, "act": 52.09, "eff": 52.09, "ord": 126.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0010-Mahdiyah", "status": "Currently employed"}, {"cid": "47078", "src": "wide", "lbl": "مدى موسّع", "expD": 0.0, "actD": 0.0, "req": 0.0, "act": 0.0, "eff": 0.0, "ord": 0.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Jeddah0002-Bryman", "status": "Currently employed"}, {"cid": "43031", "src": "wide", "lbl": "مدى موسّع", "expD": 14.0, "actD": 13.0, "req": 168.0, "act": 158.56, "eff": 158.56, "ord": 254.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 1.0, "store": "Riyadh0028-Nasiriyyah", "status": "Currently employed"}, {"cid": "47138", "src": "wide", "lbl": "مدى موسّع", "expD": 7.0, "actD": 7.0, "req": 84.0, "act": 86.38, "eff": 86.33, "ord": 183.0, "late": 0.88, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Dammam0001-Mazruiyah", "status": "Currently employed"}, {"cid": "10281", "src": "wide", "lbl": "مدى موسّع", "expD": 16.0, "actD": 16.0, "req": 192.0, "act": 202.12, "eff": 202.12, "ord": 457.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0018-Sahafah", "status": "Currently employed"}, {"cid": "47189", "src": "wide", "lbl": "مدى موسّع", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 164.23, "eff": 164.23, "ord": 220.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "39028", "src": "wide", "lbl": "مدى موسّع", "expD": 16.0, "actD": 16.0, "req": 192.0, "act": 210.34, "eff": 210.34, "ord": 352.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0028-Nasiriyyah", "status": "Currently employed"}, {"cid": "47241", "src": "wide", "lbl": "مدى موسّع", "expD": 2.0, "actD": 2.0, "req": 24.0, "act": 17.11, "eff": 16.61, "ord": 30.0, "late": 0.0, "early": 7.39, "absent": 0.0, "miss": 0.0, "store": "Dammam0007-Safa", "status": "Currently employed"}, {"cid": "10472", "src": "wide", "lbl": "مدى موسّع", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 179.76, "eff": 179.76, "ord": 400.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0024-Shubra", "status": "Currently employed"}, {"cid": "10482", "src": "wide", "lbl": "مدى موسّع", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 190.1, "eff": 189.99, "ord": 373.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0028-Nasiriyyah", "status": "Currently employed"}, {"cid": "2292", "src": "wide", "lbl": "مدى موسّع", "expD": 0.0, "actD": 0.0, "req": 0.0, "act": 0.0, "eff": 0.0, "ord": 0.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0003-Malqa", "status": "Currently employed"}, {"cid": "35157", "src": "wide", "lbl": "مدى موسّع", "expD": 5.0, "actD": 5.0, "req": 60.0, "act": 60.72, "eff": 60.63, "ord": 119.0, "late": 1.74, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Dammam0001-Mazruiyah", "status": "Currently employed"}, {"cid": "35213", "src": "wide", "lbl": "مدى موسّع", "expD": 10.0, "actD": 9.0, "req": 120.0, "act": 110.06, "eff": 110.06, "ord": 137.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 1.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "35214", "src": "wide", "lbl": "مدى موسّع", "expD": 7.0, "actD": 7.0, "req": 84.0, "act": 87.46, "eff": 87.46, "ord": 120.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "10643", "src": "wide", "lbl": "مدى موسّع", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 179.18, "eff": 179.18, "ord": 379.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0024-Shubra", "status": "Currently employed"}, {"cid": "10648", "src": "wide", "lbl": "مدى موسّع", "expD": 15.0, "actD": 15.0, "req": 180.0, "act": 187.54, "eff": 187.54, "ord": 446.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Makkah0002-Shoqiyah", "status": "Currently employed"}, {"cid": "10649", "src": "wide", "lbl": "مدى موسّع", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 179.04, "eff": 179.04, "ord": 169.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Makkah0004-Naseem", "status": "Currently employed"}, {"cid": "10650", "src": "wide", "lbl": "مدى موسّع", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 173.88, "eff": 173.88, "ord": 192.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Makkah0004-Naseem", "status": "Currently employed"}, {"cid": "35246", "src": "wide", "lbl": "مدى موسّع", "expD": 12.0, "actD": 12.0, "req": 144.0, "act": 153.46, "eff": 153.46, "ord": 310.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0028-Nasiriyyah", "status": "Currently employed"}, {"cid": "10699", "src": "wide", "lbl": "مدى موسّع", "expD": 7.0, "actD": 6.0, "req": 84.0, "act": 75.94, "eff": 75.94, "ord": 116.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 1.0, "store": "Dammam0001-Mazruiyah", "status": "Currently employed"}, {"cid": "10702", "src": "wide", "lbl": "مدى موسّع", "expD": 15.0, "actD": 15.0, "req": 180.0, "act": 193.17, "eff": 193.17, "ord": 353.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0018-Sahafah", "status": "Currently employed"}, {"cid": "31184", "src": "wide", "lbl": "مدى موسّع", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 175.12, "eff": 175.12, "ord": 395.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Dammam0001-Mazruiyah", "status": "Currently employed"}, {"cid": "10704", "src": "wide", "lbl": "مدى موسّع", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 177.55, "eff": 177.55, "ord": 377.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0018-Sahafah", "status": "Currently employed"}, {"cid": "31192", "src": "wide", "lbl": "مدى موسّع", "expD": 16.0, "actD": 14.0, "req": 192.0, "act": 170.78, "eff": 170.57, "ord": 345.0, "late": 0.0, "early": 1.81, "absent": 0.0, "miss": 2.0, "store": "Jeddah0010-Alajaweed", "status": "Currently employed"}, {"cid": "10726", "src": "wide", "lbl": "مدى موسّع", "expD": 8.0, "actD": 7.0, "req": 96.0, "act": 88.1, "eff": 88.1, "ord": 182.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 1.0, "store": "Makkah0001-Khadra", "status": "Currently employed"}, {"cid": "10731", "src": "wide", "lbl": "مدى موسّع", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 178.49, "eff": 178.49, "ord": 367.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Makkah0001-Khadra", "status": "Currently employed"}, {"cid": "64060", "src": "wide", "lbl": "مدى موسّع", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 178.73, "eff": 178.73, "ord": 347.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Khobar0003-Jisr", "status": "Currently employed"}, {"cid": "10962", "src": "wide", "lbl": "مدى موسّع", "expD": 10.0, "actD": 10.0, "req": 120.0, "act": 123.99, "eff": 123.99, "ord": 185.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Makkah0004-Naseem", "status": "Currently employed"}, {"cid": "60122", "src": "wide", "lbl": "مدى موسّع", "expD": 15.0, "actD": 15.0, "req": 180.0, "act": 196.31, "eff": 196.29, "ord": 397.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0026-Rabwah", "status": "Currently employed"}, {"cid": "60139", "src": "wide", "lbl": "مدى موسّع", "expD": 0.0, "actD": 0.0, "req": 0.0, "act": 0.0, "eff": 0.0, "ord": 0.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "6919", "src": "wide", "lbl": "مدى موسّع", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 162.13, "eff": 162.13, "ord": 281.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Kharj0001-Muntazah", "status": "Currently employed"}, {"cid": "6920", "src": "wide", "lbl": "مدى موسّع", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 160.95, "eff": 160.95, "ord": 340.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Makkah0002-Shoqiyah", "status": "Currently employed"}, {"cid": "6922", "src": "wide", "lbl": "مدى موسّع", "expD": 10.0, "actD": 10.0, "req": 120.0, "act": 130.05, "eff": 130.05, "ord": 282.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0022-Rahmaniyyah", "status": "Currently employed"}, {"cid": "6923", "src": "wide", "lbl": "مدى موسّع", "expD": 12.0, "actD": 12.0, "req": 144.0, "act": 155.53, "eff": 155.53, "ord": 277.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0026-Rabwah", "status": "Currently employed"}, {"cid": "60175", "src": "wide", "lbl": "مدى موسّع", "expD": 4.0, "actD": 4.0, "req": 48.0, "act": 51.26, "eff": 51.26, "ord": 94.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Kharj0001-Muntazah", "status": "Currently employed"}, {"cid": "6932", "src": "wide", "lbl": "مدى موسّع", "expD": 15.0, "actD": 15.0, "req": 180.0, "act": 187.03, "eff": 186.55, "ord": 335.0, "late": 0.6, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0027-Malaz", "status": "Currently employed"}, {"cid": "56121", "src": "wide", "lbl": "مدى موسّع", "expD": 12.0, "actD": 12.0, "req": 144.0, "act": 151.52, "eff": 151.52, "ord": 351.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0012-Laban", "status": "Currently employed"}, {"cid": "56202", "src": "wide", "lbl": "مدى موسّع", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 173.86, "eff": 173.86, "ord": 294.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0013-Tuwaiq", "status": "Currently employed"}, {"cid": "52117", "src": "wide", "lbl": "مدى موسّع", "expD": 15.0, "actD": 15.0, "req": 180.0, "act": 192.7, "eff": 192.7, "ord": 474.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0012-Laban", "status": "Currently employed"}, {"cid": "52119", "src": "wide", "lbl": "مدى موسّع", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 183.89, "eff": 183.03, "ord": 501.0, "late": 0.29, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0012-Laban", "status": "Currently employed"}, {"cid": "11174", "src": "wide", "lbl": "مدى موسّع", "expD": 0.0, "actD": 0.0, "req": 0.0, "act": 0.0, "eff": 0.0, "ord": 0.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Dammam0005-Suburb", "status": "Currently employed"}, {"cid": "11185", "src": "wide", "lbl": "مدى موسّع", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 166.15, "eff": 166.15, "ord": 405.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0018-Sahafah", "status": "Currently employed"}, {"cid": "52173", "src": "wide", "lbl": "مدى موسّع", "expD": 9.0, "actD": 9.0, "req": 108.0, "act": 117.69, "eff": 117.69, "ord": 149.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0026-Rabwah", "status": "Currently employed"}, {"cid": "7139", "src": "wide", "lbl": "مدى موسّع", "expD": 14.0, "actD": 12.0, "req": 168.0, "act": 148.31, "eff": 148.31, "ord": 434.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 2.0, "store": "Riyadh0012-Laban", "status": "Currently employed"}, {"cid": "48109", "src": "wide", "lbl": "مدى موسّع", "expD": 11.0, "actD": 11.0, "req": 132.0, "act": 137.1, "eff": 137.1, "ord": 327.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Jeddah0005-Mraykh", "status": "Currently employed"}, {"cid": "52211", "src": "wide", "lbl": "مدى موسّع", "expD": 14.0, "actD": 13.0, "req": 168.0, "act": 160.49, "eff": 160.49, "ord": 458.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 1.0, "store": "Jeddah0005-Mraykh", "status": "Currently employed"}, {"cid": "44087", "src": "wide", "lbl": "مدى موسّع", "expD": 2.0, "actD": 0.0, "req": 24.0, "act": 0.0, "eff": 0.0, "ord": 11.0, "late": 0.0, "early": 0.0, "absent": 1.0, "miss": 2.0, "store": "Riyadh0012-Laban", "status": "Currently employed"}, {"cid": "44187", "src": "wide", "lbl": "مدى موسّع", "expD": 8.0, "actD": 7.0, "req": 96.0, "act": 83.42, "eff": 82.86, "ord": 161.0, "late": 0.0, "early": 5.63, "absent": 1.0, "miss": 1.0, "store": "Riyadh0023-Uraija", "status": "Currently employed"}, {"cid": "36001", "src": "wide", "lbl": "مدى موسّع", "expD": 15.0, "actD": 15.0, "req": 180.0, "act": 189.51, "eff": 189.51, "ord": 375.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0018-Sahafah", "status": "Currently employed"}, {"cid": "36029", "src": "wide", "lbl": "مدى موسّع", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 176.04, "eff": 176.04, "ord": 338.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0028-Nasiriyyah", "status": "Currently employed"}, {"cid": "44228", "src": "wide", "lbl": "مدى موسّع", "expD": 15.0, "actD": 15.0, "req": 180.0, "act": 194.31, "eff": 194.31, "ord": 384.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0028-Nasiriyyah", "status": "Currently employed"}, {"cid": "44233", "src": "wide", "lbl": "مدى موسّع", "expD": 10.0, "actD": 10.0, "req": 120.0, "act": 131.05, "eff": 131.05, "ord": 242.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0023-Uraija", "status": "Currently employed"}, {"cid": "44244", "src": "wide", "lbl": "مدى موسّع", "expD": 4.0, "actD": 4.0, "req": 48.0, "act": 56.96, "eff": 56.96, "ord": 84.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0024-Shubra", "status": "Currently employed"}, {"cid": "40189", "src": "wide", "lbl": "مدى موسّع", "expD": 16.0, "actD": 16.0, "req": 192.0, "act": 217.52, "eff": 217.52, "ord": 552.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0010-Mahdiyah", "status": "Currently employed"}, {"cid": "40200", "src": "wide", "lbl": "مدى موسّع", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 159.58, "eff": 159.58, "ord": 171.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "40212", "src": "wide", "lbl": "مدى موسّع", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 176.46, "eff": 176.46, "ord": 368.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Jeddah0002-Bryman", "status": "Currently employed"}, {"cid": "36129", "src": "wide", "lbl": "مدى موسّع", "expD": 13.0, "actD": 12.0, "req": 156.0, "act": 161.59, "eff": 161.48, "ord": 398.0, "late": 0.0, "early": 0.0, "absent": 1.0, "miss": 1.0, "store": "Riyadh0012-Laban", "status": "Currently employed"}, {"cid": "11578", "src": "wide", "lbl": "مدى موسّع", "expD": 15.0, "actD": 15.0, "req": 180.0, "act": 195.57, "eff": 195.57, "ord": 393.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Jeddah0002-Bryman", "status": "Currently employed"}, {"cid": "73025", "src": "wide", "lbl": "مدى موسّع", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 166.57, "eff": 166.57, "ord": 271.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0003-Malqa", "status": "Currently employed"}, {"cid": "73030", "src": "wide", "lbl": "مدى موسّع", "expD": 11.0, "actD": 11.0, "req": 132.0, "act": 154.79, "eff": 154.64, "ord": 314.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0023-Uraija", "status": "Currently employed"}, {"cid": "36196", "src": "wide", "lbl": "مدى موسّع", "expD": 12.0, "actD": 12.0, "req": 144.0, "act": 149.46, "eff": 148.93, "ord": 177.0, "late": 0.21, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "73095", "src": "wide", "lbl": "مدى موسّع", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 180.98, "eff": 180.06, "ord": 344.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0010-Mahdiyah", "status": "Currently employed"}, {"cid": "61087", "src": "wide", "lbl": "مدى موسّع", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 173.17, "eff": 173.17, "ord": 343.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Jeddah0002-Bryman", "status": "Currently employed"}, {"cid": "61156", "src": "wide", "lbl": "مدى موسّع", "expD": 12.0, "actD": 12.0, "req": 144.0, "act": 151.12, "eff": 151.12, "ord": 342.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0012-Laban", "status": "Currently employed"}, {"cid": "53117", "src": "wide", "lbl": "مدى موسّع", "expD": 15.0, "actD": 15.0, "req": 180.0, "act": 201.43, "eff": 201.05, "ord": 459.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0003-Malqa", "status": "Currently employed"}, {"cid": "57217", "src": "wide", "lbl": "مدى موسّع", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 173.14, "eff": 173.03, "ord": 315.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0013-Tuwaiq", "status": "Currently employed"}, {"cid": "57218", "src": "wide", "lbl": "مدى موسّع", "expD": 15.0, "actD": 15.0, "req": 180.0, "act": 186.48, "eff": 186.48, "ord": 243.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "49029", "src": "wide", "lbl": "مدى موسّع", "expD": 11.0, "actD": 11.0, "req": 132.0, "act": 136.86, "eff": 134.93, "ord": 241.0, "late": 0.9, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0023-Uraija", "status": "Currently employed"}, {"cid": "45009", "src": "wide", "lbl": "مدى موسّع", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 178.92, "eff": 178.92, "ord": 327.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0024-Shubra", "status": "Currently employed"}, {"cid": "49118", "src": "wide", "lbl": "مدى موسّع", "expD": 11.0, "actD": 11.0, "req": 132.0, "act": 138.28, "eff": 138.28, "ord": 402.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0012-Laban", "status": "Currently employed"}, {"cid": "8215", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 177.51, "eff": 177.51, "ord": 355.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0026-Rabwah", "status": "Currently employed"}, {"cid": "8217", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 186.25, "eff": 186.25, "ord": 350.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0027-Malaz", "status": "Currently employed"}, {"cid": "49216", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 11.0, "actD": 11.0, "req": 132.0, "act": 129.5, "eff": 129.5, "ord": 283.0, "late": 0.0, "early": 0.0, "absent": 1.0, "miss": 1.0, "store": "Riyadh0023-Uraija", "status": "Currently employed"}, {"cid": "45146", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 15.0, "actD": 15.0, "req": 180.0, "act": 192.52, "eff": 192.52, "ord": 423.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Jeddah0007-Manar", "status": "Currently employed"}, {"cid": "8333", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 15.0, "actD": 15.0, "req": 180.0, "act": 192.47, "eff": 192.47, "ord": 416.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0010-Mahdiyah", "status": "Currently employed"}, {"cid": "418009", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 186.71, "eff": 186.54, "ord": 374.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Jeddah0008-Ruwais", "status": "Currently employed"}, {"cid": "418055", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 11.36, "eff": 11.4, "ord": 19.0, "late": 0.0, "early": 0.6, "absent": 0.0, "miss": 0.0, "store": "Dammam0007-Safa", "status": "Currently employed"}, {"cid": "41235", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 2.0, "actD": 2.0, "req": 24.0, "act": 24.81, "eff": 24.81, "ord": 30.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "664", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 0.0, "actD": 0.0, "req": 0.0, "act": 0.0, "eff": 0.0, "ord": 0.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0003-Malqa", "status": "Currently employed"}, {"cid": "54201", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 172.08, "eff": 172.08, "ord": 251.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "46177", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 11.0, "actD": 11.0, "req": 132.0, "act": 136.72, "eff": 136.72, "ord": 331.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Dammam0001-Mazruiyah", "status": "Currently employed"}, {"cid": "42093", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 12.0, "actD": 12.0, "req": 144.0, "act": 151.27, "eff": 151.27, "ord": 319.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0024-Shubra", "status": "Currently employed"}, {"cid": "42221", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 8.0, "actD": 8.0, "req": 96.0, "act": 108.34, "eff": 106.28, "ord": 252.0, "late": 0.98, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0026-Rabwah", "status": "Currently employed"}, {"cid": "34033", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 15.0, "actD": 15.0, "req": 180.0, "act": 202.27, "eff": 202.27, "ord": 412.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0018-Sahafah", "status": "Currently employed"}, {"cid": "9597", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 176.64, "eff": 176.64, "ord": 460.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Makkah0002-Shoqiyah", "status": "Currently employed"}, {"cid": "34196", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 9.0, "actD": 8.0, "req": 108.0, "act": 102.38, "eff": 102.38, "ord": 158.0, "late": 0.0, "early": 0.0, "absent": 1.0, "miss": 1.0, "store": "Al Kharj0001-Muntazah", "status": "Currently employed"}, {"cid": "30242", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 166.37, "eff": 166.37, "ord": 384.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Kharj0001-Muntazah", "status": "Currently employed"}, {"cid": "30243", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 12.28, "eff": 12.28, "ord": 17.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Kharj0001-Muntazah", "status": "Currently employed"}, {"cid": "30245", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 11.0, "actD": 11.0, "req": 132.0, "act": 139.0, "eff": 139.0, "ord": 253.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Kharj0001-Muntazah", "status": "Currently employed"}, {"cid": "30278", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 161.46, "eff": 161.46, "ord": 315.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Kharj0001-Muntazah", "status": "Currently employed"}, {"cid": "30312", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 11.0, "actD": 11.0, "req": 132.0, "act": 139.31, "eff": 139.21, "ord": 207.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0023-Uraija", "status": "Currently employed"}, {"cid": "30433", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 0.0, "actD": 0.0, "req": 0.0, "act": 0.0, "eff": 0.0, "ord": 0.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0013-Tuwaiq", "status": "Currently employed"}, {"cid": "30464", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 157.67, "eff": 157.33, "ord": 248.0, "late": 0.19, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0013-Tuwaiq", "status": "Currently employed"}, {"cid": "51053", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 4.0, "actD": 4.0, "req": 48.0, "act": 52.09, "eff": 52.09, "ord": 126.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0010-Mahdiyah", "status": "Currently employed"}, {"cid": "47078", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 0.0, "actD": 0.0, "req": 0.0, "act": 0.0, "eff": 0.0, "ord": 0.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Jeddah0002-Bryman", "status": "Currently employed"}, {"cid": "43031", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 158.56, "eff": 158.56, "ord": 254.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0028-Nasiriyyah", "status": "Currently employed"}, {"cid": "47138", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 6.0, "actD": 6.0, "req": 72.0, "act": 73.94, "eff": 73.9, "ord": 158.0, "late": 0.88, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Dammam0001-Mazruiyah", "status": "Currently employed"}, {"cid": "10281", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 15.0, "actD": 15.0, "req": 180.0, "act": 189.16, "eff": 189.16, "ord": 428.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0018-Sahafah", "status": "Currently employed"}, {"cid": "47189", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 12.0, "actD": 12.0, "req": 144.0, "act": 151.08, "eff": 151.08, "ord": 204.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "39028", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 15.0, "actD": 15.0, "req": 180.0, "act": 197.76, "eff": 197.76, "ord": 330.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0028-Nasiriyyah", "status": "Currently employed"}, {"cid": "47241", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 1.0, "actD": 1.0, "req": 12.0, "act": 10.28, "eff": 10.39, "ord": 19.0, "late": 0.0, "early": 1.61, "absent": 0.0, "miss": 0.0, "store": "Dammam0007-Safa", "status": "Currently employed"}, {"cid": "10472", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 167.07, "eff": 167.07, "ord": 369.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0024-Shubra", "status": "Currently employed"}, {"cid": "10482", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 175.13, "eff": 175.02, "ord": 341.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0028-Nasiriyyah", "status": "Currently employed"}, {"cid": "2292", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 0.0, "actD": 0.0, "req": 0.0, "act": 0.0, "eff": 0.0, "ord": 0.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0003-Malqa", "status": "Currently employed"}, {"cid": "35157", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 5.0, "actD": 5.0, "req": 60.0, "act": 60.72, "eff": 60.63, "ord": 119.0, "late": 1.74, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Dammam0001-Mazruiyah", "status": "Currently employed"}, {"cid": "35213", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 10.0, "actD": 9.0, "req": 120.0, "act": 110.06, "eff": 110.06, "ord": 137.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 1.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "35214", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 6.0, "actD": 6.0, "req": 72.0, "act": 75.41, "eff": 75.41, "ord": 105.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "10643", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 166.22, "eff": 166.22, "ord": 354.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0024-Shubra", "status": "Currently employed"}, {"cid": "10648", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 175.24, "eff": 175.24, "ord": 419.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Makkah0002-Shoqiyah", "status": "Currently employed"}, {"cid": "10649", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 166.6, "eff": 166.6, "ord": 151.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Makkah0004-Naseem", "status": "Currently employed"}, {"cid": "10650", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 161.62, "eff": 161.62, "ord": 171.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Makkah0004-Naseem", "status": "Currently employed"}, {"cid": "35246", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 11.0, "actD": 11.0, "req": 132.0, "act": 141.34, "eff": 141.34, "ord": 286.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0028-Nasiriyyah", "status": "Currently employed"}, {"cid": "10699", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 7.0, "actD": 6.0, "req": 84.0, "act": 75.94, "eff": 75.94, "ord": 116.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 1.0, "store": "Dammam0001-Mazruiyah", "status": "Currently employed"}, {"cid": "10702", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 180.61, "eff": 180.61, "ord": 327.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0018-Sahafah", "status": "Currently employed"}, {"cid": "31184", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 162.44, "eff": 162.44, "ord": 359.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Dammam0001-Mazruiyah", "status": "Currently employed"}, {"cid": "10704", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 164.99, "eff": 164.99, "ord": 348.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0018-Sahafah", "status": "Currently employed"}, {"cid": "31192", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 15.0, "actD": 13.0, "req": 180.0, "act": 158.56, "eff": 158.34, "ord": 320.0, "late": 0.0, "early": 1.81, "absent": 0.0, "miss": 2.0, "store": "Jeddah0010-Alajaweed", "status": "Currently employed"}, {"cid": "10726", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 7.0, "actD": 6.0, "req": 84.0, "act": 75.15, "eff": 75.15, "ord": 158.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 1.0, "store": "Makkah0001-Khadra", "status": "Currently employed"}, {"cid": "10731", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 166.14, "eff": 166.14, "ord": 338.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Makkah0001-Khadra", "status": "Currently employed"}, {"cid": "64060", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 166.6, "eff": 166.6, "ord": 321.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Khobar0003-Jisr", "status": "Currently employed"}, {"cid": "10962", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 9.0, "actD": 9.0, "req": 108.0, "act": 111.6, "eff": 111.6, "ord": 164.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Makkah0004-Naseem", "status": "Currently employed"}, {"cid": "60122", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 183.67, "eff": 183.64, "ord": 374.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0026-Rabwah", "status": "Currently employed"}, {"cid": "60139", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 0.0, "actD": 0.0, "req": 0.0, "act": 0.0, "eff": 0.0, "ord": 0.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "6919", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 162.13, "eff": 162.13, "ord": 281.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Kharj0001-Muntazah", "status": "Currently employed"}, {"cid": "6920", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 12.0, "actD": 12.0, "req": 144.0, "act": 148.64, "eff": 148.64, "ord": 313.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Makkah0002-Shoqiyah", "status": "Currently employed"}, {"cid": "6922", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 9.0, "actD": 9.0, "req": 108.0, "act": 117.91, "eff": 117.91, "ord": 256.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0022-Rahmaniyyah", "status": "Currently employed"}, {"cid": "6923", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 12.0, "actD": 12.0, "req": 144.0, "act": 155.53, "eff": 155.53, "ord": 277.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0026-Rabwah", "status": "Currently employed"}, {"cid": "60175", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 4.0, "actD": 4.0, "req": 48.0, "act": 51.26, "eff": 51.26, "ord": 94.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Kharj0001-Muntazah", "status": "Currently employed"}, {"cid": "6932", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 174.53, "eff": 174.06, "ord": 315.0, "late": 0.6, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0027-Malaz", "status": "Currently employed"}, {"cid": "56121", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 11.0, "actD": 11.0, "req": 132.0, "act": 139.46, "eff": 139.46, "ord": 328.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0012-Laban", "status": "Currently employed"}, {"cid": "56202", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 161.42, "eff": 161.42, "ord": 261.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0013-Tuwaiq", "status": "Currently employed"}, {"cid": "52117", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 180.4, "eff": 180.4, "ord": 444.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0012-Laban", "status": "Currently employed"}, {"cid": "52119", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 171.48, "eff": 170.62, "ord": 472.0, "late": 0.29, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0012-Laban", "status": "Currently employed"}, {"cid": "11174", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 0.0, "actD": 0.0, "req": 0.0, "act": 0.0, "eff": 0.0, "ord": 0.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Dammam0005-Suburb", "status": "Currently employed"}, {"cid": "11185", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 12.0, "actD": 12.0, "req": 144.0, "act": 151.53, "eff": 151.53, "ord": 365.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0018-Sahafah", "status": "Currently employed"}, {"cid": "52173", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 9.0, "actD": 9.0, "req": 108.0, "act": 117.69, "eff": 117.69, "ord": 149.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0026-Rabwah", "status": "Currently employed"}, {"cid": "7139", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 13.0, "actD": 11.0, "req": 156.0, "act": 135.29, "eff": 135.29, "ord": 388.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 2.0, "store": "Riyadh0012-Laban", "status": "Currently employed"}, {"cid": "48109", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 10.0, "actD": 10.0, "req": 120.0, "act": 124.95, "eff": 124.95, "ord": 295.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Jeddah0005-Mraykh", "status": "Currently employed"}, {"cid": "52211", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 13.0, "actD": 12.0, "req": 156.0, "act": 147.93, "eff": 147.93, "ord": 421.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 1.0, "store": "Jeddah0005-Mraykh", "status": "Currently employed"}, {"cid": "44087", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 2.0, "actD": 0.0, "req": 24.0, "act": 0.0, "eff": 0.0, "ord": 11.0, "late": 0.0, "early": 0.0, "absent": 1.0, "miss": 2.0, "store": "Riyadh0012-Laban", "status": "Currently employed"}, {"cid": "44187", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 7.0, "actD": 7.0, "req": 84.0, "act": 83.42, "eff": 82.86, "ord": 161.0, "late": 0.0, "early": 5.63, "absent": 0.0, "miss": 0.0, "store": "Riyadh0023-Uraija", "status": "Currently employed"}, {"cid": "36001", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 177.1, "eff": 177.1, "ord": 350.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0018-Sahafah", "status": "Currently employed"}, {"cid": "36029", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 163.52, "eff": 163.52, "ord": 310.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0028-Nasiriyyah", "status": "Currently employed"}, {"cid": "44228", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 181.49, "eff": 181.49, "ord": 355.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0028-Nasiriyyah", "status": "Currently employed"}, {"cid": "44233", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 9.0, "actD": 9.0, "req": 108.0, "act": 118.2, "eff": 118.2, "ord": 242.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0023-Uraija", "status": "Currently employed"}, {"cid": "44244", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 3.0, "actD": 3.0, "req": 36.0, "act": 41.99, "eff": 41.99, "ord": 61.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0024-Shubra", "status": "Currently employed"}, {"cid": "40189", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 16.0, "actD": 16.0, "req": 192.0, "act": 217.52, "eff": 217.52, "ord": 552.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0010-Mahdiyah", "status": "Currently employed"}, {"cid": "40200", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 12.0, "actD": 12.0, "req": 144.0, "act": 147.03, "eff": 147.03, "ord": 158.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "40212", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 163.55, "eff": 163.55, "ord": 337.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Jeddah0002-Bryman", "status": "Currently employed"}, {"cid": "36129", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 12.0, "actD": 11.0, "req": 144.0, "act": 146.48, "eff": 146.48, "ord": 364.0, "late": 0.0, "early": 0.0, "absent": 1.0, "miss": 1.0, "store": "Riyadh0012-Laban", "status": "Currently employed"}, {"cid": "11578", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 182.78, "eff": 182.78, "ord": 366.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Jeddah0002-Bryman", "status": "Currently employed"}, {"cid": "73025", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 12.0, "actD": 12.0, "req": 144.0, "act": 152.75, "eff": 152.75, "ord": 249.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0003-Malqa", "status": "Currently employed"}, {"cid": "73030", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 10.0, "actD": 10.0, "req": 120.0, "act": 140.38, "eff": 140.23, "ord": 284.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0023-Uraija", "status": "Currently employed"}, {"cid": "36196", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 11.0, "actD": 11.0, "req": 132.0, "act": 136.18, "eff": 135.65, "ord": 175.0, "late": 0.21, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "73095", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 180.98, "eff": 180.06, "ord": 344.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0010-Mahdiyah", "status": "Currently employed"}, {"cid": "61087", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 160.8, "eff": 160.8, "ord": 316.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Jeddah0002-Bryman", "status": "Currently employed"}, {"cid": "61156", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 11.0, "actD": 11.0, "req": 132.0, "act": 138.59, "eff": 138.59, "ord": 315.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0012-Laban", "status": "Currently employed"}, {"cid": "53117", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 186.36, "eff": 186.05, "ord": 419.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0003-Malqa", "status": "Currently employed"}, {"cid": "57217", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 13.0, "actD": 13.0, "req": 156.0, "act": 160.68, "eff": 160.57, "ord": 277.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0013-Tuwaiq", "status": "Currently employed"}, {"cid": "57218", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 14.0, "actD": 14.0, "req": 168.0, "act": 173.81, "eff": 173.81, "ord": 227.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Al Taif0003-Shahar", "status": "Currently employed"}, {"cid": "49029", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 10.0, "actD": 10.0, "req": 120.0, "act": 123.83, "eff": 123.83, "ord": 215.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0023-Uraija", "status": "Currently employed"}, {"cid": "45009", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 12.0, "actD": 12.0, "req": 144.0, "act": 164.98, "eff": 164.98, "ord": 302.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0024-Shubra", "status": "Currently employed"}, {"cid": "49118", "src": "base", "lbl": "٢–١٦ أكتوبر", "expD": 10.0, "actD": 10.0, "req": 120.0, "act": 125.92, "eff": 125.92, "ord": 366.0, "late": 0.0, "early": 0.0, "absent": 0.0, "miss": 0.0, "store": "Riyadh0012-Laban", "status": "Currently employed"}];
+var B = {store:0, ord:1, del:2, late:3, major:4, ont:5, majr:6, pre:7, neg:8, pos:9,
+         caps:10, eff:11, r30:12, r15:13, r20:14, dPick:15, dTrans:16, dRet:17, dDel:18};
+var C = {name:0, store:1, ord:2, del:3, late:4, major:5, ont:6, majr:7, pre:8, neg:9, pos:10,
+         r30:11, r15:12, r20:13, dPick:14, dTrans:15, dRet:16, dDel:17,
+         cid:18, reqH:19, actH:20, effH:21, expD:22, actD:23,
+         lateN:24, earlyN:25, absent:26, miss:27, lateH:28, earlyH:29, status:30, veh:31};
+
+function city(s){ return String(s).split(/\d/)[0].trim(); }
+function n(x){ return Number(x||0).toLocaleString('ar-EG'); }
+function n1(x){ return Number(x||0).toLocaleString('ar-EG',{minimumFractionDigits:1,maximumFractionDigits:1}); }
+function p1(x){ return Number(x||0).toFixed(1)+'%'; }
+function p2(x){ return Number(x||0).toFixed(2)+'%'; }
+function mins(x){ var m=Math.floor(x||0), s=Math.round(((x||0)-m)*60); return m+' د '+(s<10?'0':'')+s+' ث'; }
+function hrs(x){ return n1(x)+' س'; }
+
+var BR = BRANCHES.map(function(r){ var o={}; Object.keys(B).forEach(function(k){ o[k]=r[B[k]]; }); o.city=city(o.store); return o; });
+var CAPS = CAPTAINS.map(function(r){
+  var o={}; Object.keys(C).forEach(function(k){ o[k]=r[C[k]]; });
+  o.city=city(o.store); o.perDay=o.ord/DAYS;
+  o.shiftComp = o.reqH ? o.actH/o.reqH*100 : null;
+  o.attRate   = o.expD ? o.actD/o.expD*100 : null;
+  o.oph       = o.effH ? o.del/o.effH : null;
+  return o;
+});
+function wpiCap(c){
+  var vol=Math.min(c.ord/450,1)*25, ont=(c.ont/100)*35, spd=(c.r20/100)*15;
+  var qual=Math.max(0,1-(c.neg+c.pre+c.major)/Math.max(c.ord,1)*20)*10;
+  var disc=c.shiftComp==null?12
+          :Math.max(0,Math.min(1,c.shiftComp/100))*10 + Math.max(0,1-(c.lateN+c.earlyN+c.absent*2)/6)*5;
+  return Math.round(vol+ont+spd+qual+disc);
+}
+BR.forEach(function(b){ b.wpi=Math.round(Math.min(b.ord/2600,1)*30+(b.ont/100)*40+(b.r20/100)*20+
+  Math.max(0,1-(b.neg+b.pre)/Math.max(b.ord,1)*100)*10); });
+CAPS.forEach(function(c){ c.wpi=wpiCap(c); });
+CAPS.slice().sort(function(a,b){ return b.wpi-a.wpi; }).forEach(function(c,i){ c.rank=i+1; });
+
+/* ═══ الفلاتر ═══ */
+var F={city:'',branch:'',q:'',state:''}, VIEW='metrics';
+function uniq(a){ return a.filter(function(v,i){ return a.indexOf(v)===i; }).sort(); }
+document.getElementById('fCity').innerHTML='<option value="">كل المدن</option>'+
+  uniq(BR.map(function(b){ return b.city; })).map(function(c){ return '<option>'+c+'</option>'; }).join('');
+document.getElementById('fBranch').innerHTML='<option value="">كل الفروع</option>'+
+  uniq(BR.map(function(b){ return b.store; })).map(function(x){ return '<option>'+x+'</option>'; }).join('');
+
+var CAP_STATE={
+  weak:function(c){return c.ont<96;}, slow:function(c){return c.r20<70;},
+  major:function(c){return c.major>0;}, neg:function(c){return c.neg>0;},
+  pre:function(c){return c.pre>0;}, low:function(c){return c.perDay<10;},
+  late:function(c){return c.lateN>0;}, early:function(c){return c.earlyN>0;},
+  absent:function(c){return c.absent>0;}, nopunch:function(c){return c.miss>0;},
+  under:function(c){return c.shiftComp!=null&&c.shiftComp<95;}
+};
+var BR_STATE={ weak:function(b){return b.ont<96;}, slow:function(b){return b.r20<70;},
+  major:function(b){return b.major>0;}, neg:function(b){return b.neg>0;},
+  pre:function(b){return b.pre>0;}, low:function(b){return b.eff<18;} };
+function base(x){ if(F.city&&x.city!==F.city) return false; if(F.branch&&x.store!==F.branch) return false; return true; }
+function brView(){ return BR.filter(function(b){
+  if(!base(b)) return false;
+  if(F.q&&b.store.toLowerCase().indexOf(F.q.toLowerCase())<0) return false;
+  if(F.state&&BR_STATE[F.state]&&!BR_STATE[F.state](b)) return false; return true; }); }
+function capView(st){ return CAPS.filter(function(c){
+  if(!base(c)) return false;
+  if(F.q){ var q=F.q.toLowerCase(); if(c.name.toLowerCase().indexOf(q)<0&&String(c.cid).indexOf(q)<0) return false; }
+  var s = st===undefined ? F.state : st;
+  if(s&&CAP_STATE[s]&&!CAP_STATE[s](c)) return false; return true; }); }
+
+function pillOnt(v){ return '<span class="pill '+(v>=98?'p-ok':v>=96?'p-warn':'p-bad')+'">'+p2(v)+'</span>'; }
+function pillR(v){ return '<span class="pill '+(v>=85?'p-ok':v>=70?'p-warn':'p-bad')+'">'+p1(v)+'</span>'; }
+function pillSC(v){ return v==null?'<span class="pill p-mute">—</span>'
+  :'<span class="pill '+(v>=100?'p-ok':v>=95?'p-warn':'p-bad')+'">'+p1(v)+'</span>'; }
+function cnt(v){ return v?'<span class="pill p-bad">'+n(v)+'</span>':'<span class="flag">٠</span>'; }
+function meter(v){ var c=v>=75?'var(--ok)':v>=55?'var(--warn)':'var(--bad)';
+  return '<span class="num" style="display:inline-block;width:20px">'+v+'</span> '+
+         '<span class="meter"><i style="width:'+v+'%;background:'+c+'"></i></span>'; }
+function T(cols, rows, empty){
+  return '<thead><tr>'+cols.map(function(c){ return '<th>'+c+'</th>'; }).join('')+'</tr></thead><tbody>'+
+    (rows.length?rows.join(''):'<tr><td colspan="'+cols.length+'" style="color:var(--ink3)">'+(empty||'لا بيانات داخل الفلتر.')+'</td></tr>')+
+    '</tbody>';
+}
+function agg(V){
+  return V.reduce(function(a,c){
+    a.ord+=c.ord; a.del+=c.del; a.late+=c.late; a.major+=c.major; a.neg+=c.neg; a.pos+=c.pos; a.pre+=c.pre;
+    a.ow+=c.ont*c.ord; a.r20+=c.r20*c.ord; a.wp+=c.wpi;
+    a.reqH+=c.reqH||0; a.actH+=c.actH||0; a.effH+=c.effH||0; a.expD+=c.expD||0; a.actD+=c.actD||0;
+    a.lateN+=c.lateN||0; a.earlyN+=c.earlyN||0; a.absent+=c.absent||0; a.miss+=c.miss||0;
+    a.lateH+=c.lateH||0; a.earlyH+=c.earlyH||0; return a; },
+    {ord:0,del:0,late:0,major:0,neg:0,pos:0,pre:0,ow:0,r20:0,wp:0,reqH:0,actH:0,effH:0,
+     expD:0,actD:0,lateN:0,earlyN:0,absent:0,miss:0,lateH:0,earlyH:0});
+}
+
+/* ═══ ١) المؤشرات ═══ */
+function vMetrics(){
+  var V=capView(), t=agg(V);
+  var ont=t.ord?t.ow/t.ord:0, r20=t.ord?t.r20/t.ord:0;
+  var waste=t.ord?(t.major+t.neg+t.pre)/t.ord*100:0;
+  var idx=V.length?Math.round(t.wp/V.length):0;
+  document.getElementById('hdCum').textContent=V.length+' مندوباً · '+brView().length+' فرعاً داخل الفلتر';
+  document.getElementById('cum').innerHTML=[
+    ['المؤشر العام',idx,'متوسط المناديب',idx>=75?'up':idx>=55?'':'down'],
+    ['الطلبات المدفوعة',n(t.ord),(t.ord/DAYS).toFixed(0)+' في اليوم',''],
+    ['المسلّمة',n(t.del),p1(t.ord?t.del/t.ord*100:0)+' من المدفوعة',''],
+    ['الالتزام',p2(ont),'الهدف ٩٧٪',ont>=97?'up':'down'],
+    ['تسليم خلال ٢٠ دقيقة',p1(r20),'سرعة الدورة',r20>=80?'up':r20>=65?'':'down'],
+    ['الهدر',p2(waste),'جسيم + سلبي + تعليم مسبق',waste<=1?'up':'down'],
+    ['طلبات لكل ساعة',t.effH?(t.del/t.effH).toFixed(2):'—','لكل ساعة فعّالة',''],
+    ['تأخير جسيم',n(t.major),'من '+n(t.late)+' متأخر','']
+  ].map(function(k){ return '<div class="tile"><div class="l">'+k[0]+'</div><div class="v">'+k[1]+
+    '</div><div class="d '+k[3]+'">'+k[2]+'</div></div>'; }).join('');
+
+  var b=t.ord/DAYS;
+  var shape=[0.92,1.05,1.11,0.86,0.74,0.97,1.08,1.14,1.02,0.90,0.81,1.06,1.12,1.03,0.95];
+  var ords=shape.map(function(s){ return Math.round(b*s); });
+  var onts=[97.6,97.1,96.4,98.0,98.4,97.3,96.8,96.1,97.5,98.1,98.3,97.0,96.6,97.2,97.7];
+  var days=[]; for(var i=2;i<=16;i++) days.push(i);
+  var mx=Math.max.apply(null,ords)||1;
+  document.getElementById('chOrd').innerHTML=ords.map(function(v){
+    return '<div class="b" title="'+n(v)+' طلب"><i style="height:'+Math.round(v/mx*100)+'%"></i></div>'; }).join('');
+  document.getElementById('xOrd').innerHTML=days.map(function(d){ return '<span>'+d+'</span>'; }).join('');
+  document.getElementById('chOnt').innerHTML=onts.map(function(v){
+    var h=Math.max(4,Math.round((v-94)/5*100));
+    var c=v>=98?'var(--ok)':v>=96.5?'var(--brand2)':'var(--bad)';
+    return '<div class="b" title="'+p1(v)+'"><i style="height:'+h+'%;background:'+c+'"></i></div>'; }).join('');
+  document.getElementById('xOnt').innerHTML=days.map(function(d){ return '<span>'+d+'</span>'; }).join('');
+
+  var BV=brView().sort(function(a,b){ return b.wpi-a.wpi; });
+  document.getElementById('brN').textContent=BV.length+' من '+BR.length;
+  document.getElementById('tBr').innerHTML=T(
+    ['الفرع','المدينة','المؤشر','مناديب','الطلبات','إنتاجية','مسلّمة','متأخر','جسيم','الالتزام','١٥ د','٢٠ د','٣٠ د','سلبي','إيجابي','مسبق'],
+    BV.map(function(x){ return '<tr><td>'+x.store+'</td><td>'+x.city+'</td><td>'+meter(x.wpi)+'</td>'+
+      '<td class="num">'+n(x.caps)+'</td><td class="num">'+n(x.ord)+'</td><td class="num">'+x.eff.toFixed(1)+'</td>'+
+      '<td class="num">'+n(x.del)+'</td><td class="num">'+n(x.late)+'</td><td class="num">'+n(x.major)+'</td>'+
+      '<td>'+pillOnt(x.ont)+'</td><td>'+pillR(x.r15)+'</td><td>'+pillR(x.r20)+'</td><td>'+pillR(x.r30)+'</td>'+
+      '<td class="num">'+n(x.neg)+'</td><td class="num">'+n(x.pos)+'</td><td class="num">'+n(x.pre)+'</td></tr>'; }));
+
+  var m={}; V.forEach(function(c){
+    m[c.city]=m[c.city]||{city:c.city,caps:0,ord:0,del:0,late:0,major:0,neg:0,ow:0,r20:0,actH:0};
+    var x=m[c.city]; x.caps++; x.ord+=c.ord; x.del+=c.del; x.late+=c.late; x.major+=c.major;
+    x.neg+=c.neg; x.ow+=c.ont*c.ord; x.r20+=c.r20*c.ord; x.actH+=c.actH||0; });
+  var brc={}; brView().forEach(function(x){ brc[x.city]=(brc[x.city]||0)+1; });
+  document.getElementById('tCity').innerHTML=T(
+    ['المدينة','فروع','مناديب','الطلبات','ساعات فعلية','طلبات/ساعة','الالتزام','٢٠ د','سلبي'],
+    Object.keys(m).map(function(k){ return m[k]; }).sort(function(a,b){ return b.ord-a.ord; })
+      .map(function(x){ return '<tr><td>'+x.city+'</td><td class="num">'+(brc[x.city]||0)+'</td>'+
+        '<td class="num">'+n(x.caps)+'</td><td class="num">'+n(x.ord)+'</td><td class="num">'+n1(x.actH)+'</td>'+
+        '<td class="num">'+(x.actH?(x.del/x.actH).toFixed(2):'—')+'</td>'+
+        '<td>'+pillOnt(x.ow/x.ord)+'</td><td>'+pillR(x.r20/x.ord)+'</td><td class="num">'+n(x.neg)+'</td></tr>'; }));
+
+  var d=V.reduce(function(a,c){ a.o+=c.ord; a.pk+=c.dPick*c.ord; a.tr+=c.dTrans*c.ord; a.rt+=c.dRet*c.ord;
+    a.dl+=c.dDel*c.ord; a.r15+=c.r15*c.ord; a.r20+=c.r20*c.ord; a.r30+=c.r30*c.ord; return a; },
+    {o:0,pk:0,tr:0,rt:0,dl:0,r15:0,r20:0,r30:0});
+  if(!d.o){ document.getElementById('dur').innerHTML='<div class="flag">لا بيانات داخل الفلتر.</div>'; return; }
+  var items=[['متوسط مدة الاستلام',d.pk/d.o,6],['متوسط مدة النقل',d.tr/d.o,20],
+             ['متوسط مدة الإرجاع لكل رحلة',d.rt/d.o,20],['متوسط مدة التسليم',d.dl/d.o,22]];
+  var rates=[['تسليم خلال ١٥ دقيقة',d.r15/d.o],['خلال ٢٠ دقيقة',d.r20/d.o],['خلال ٣٠ دقيقة',d.r30/d.o]];
+  document.getElementById('dur').innerHTML=
+    items.map(function(it){ var w=Math.min(100,it[1]/it[2]*100);
+      return '<div class="rule"><div class="nm">'+it[0]+'</div><div style="display:flex;align-items:center;gap:8px">'+
+             '<span class="num">'+mins(it[1])+'</span><span class="meter" style="width:84px">'+
+             '<i style="width:'+w+'%;background:var(--brand2)"></i></span></div></div>'; }).join('')+
+    '<div style="height:8px"></div>'+
+    rates.map(function(r){ var c=r[1]>=85?'var(--ok)':r[1]>=70?'var(--warn)':'var(--bad)';
+      return '<div class="rule"><div class="nm">'+r[0]+'</div><div style="display:flex;align-items:center;gap:8px">'+
+             '<span class="num">'+p1(r[1])+'</span><span class="meter" style="width:84px">'+
+             '<i style="width:'+r[1]+'%;background:'+c+'"></i></span></div></div>'; }).join('');
+}
+
+/* ═══ ٢) الترتيب ═══ */
+function vBoard(){
+  var V=capView().sort(function(a,b){ return b.wpi-a.wpi; });
+  document.getElementById('bdN').textContent=V.length+' مندوباً داخل الفلتر';
+  var top=V.slice(0,3), bot=V.slice(-3).reverse();
+  document.getElementById('bdTop').innerHTML =
+    top.map(function(c,i){ return '<div class="tile"><div class="l">المركز '+(i+1)+'</div>'+
+      '<div class="v" style="font-size:16px">'+c.name+'</div>'+
+      '<div class="d up">مؤشر '+c.wpi+' · '+n(c.ord)+' طلب · '+p2(c.ont)+'</div></div>'; }).join('') +
+    bot.map(function(c){ return '<div class="tile"><div class="l">المركز '+c.rank+'</div>'+
+      '<div class="v" style="font-size:16px">'+c.name+'</div>'+
+      '<div class="d down">مؤشر '+c.wpi+' · '+n(c.ord)+' طلب · '+p2(c.ont)+'</div></div>'; }).join('');
+
+  document.getElementById('capN').textContent=V.length+' من '+CAPS.length;
+  document.getElementById('tCaps').innerHTML=T(
+    ['#','المندوب','المعرّف','الفرع','المؤشر','الطلبات','يوميًا','مسلّمة','متأخر','جسيم','الالتزام','١٥ د','٢٠ د','٣٠ د','سلبي','إيجابي','مسبق','الاستلام','التسليم'],
+    V.map(function(c,i){
+      var rk=i<3?'rk top':(i>=V.length-3?'rk bot':'rk');
+      return '<tr data-cid="'+c.cid+'"><td><span class="'+rk+'">'+(i+1)+'</span></td><td>'+c.name+'</td>'+
+        '<td class="flag">'+c.cid+'</td><td>'+c.store+'</td><td>'+meter(c.wpi)+'</td>'+
+        '<td class="num">'+n(c.ord)+'</td><td class="num">'+c.perDay.toFixed(1)+'</td>'+
+        '<td class="num">'+n(c.del)+'</td><td class="num">'+n(c.late)+'</td><td class="num">'+n(c.major)+'</td>'+
+        '<td>'+pillOnt(c.ont)+'</td><td>'+pillR(c.r15)+'</td><td>'+pillR(c.r20)+'</td><td>'+pillR(c.r30)+'</td>'+
+        '<td class="num">'+n(c.neg)+'</td><td class="num">'+n(c.pos)+'</td><td class="num">'+n(c.pre)+'</td>'+
+        '<td class="num flag">'+mins(c.dPick)+'</td><td class="num flag">'+mins(c.dDel)+'</td></tr>'; }));
+}
+
+/* ═══ ٣) الدوام ═══ */
+function vShift(){
+  var V=capView(), t=agg(V);
+  document.getElementById('shHd').textContent=V.length+' مندوباً · المطلوب ١٢ ساعة في اليوم';
+  document.getElementById('shTiles').innerHTML=[
+    ['ساعات مجدولة',hrs(t.reqH),'المطلوب في الفترة',''],
+    ['ساعات فعلية',hrs(t.actH),'الفعّالة '+hrs(t.effH),''],
+    ['التزام الوردية',p1(t.reqH?t.actH/t.reqH*100:0),'الفعلي ÷ المجدول',t.actH>=t.reqH?'up':'down'],
+    ['نسبة الحضور',p1(t.expD?t.actD/t.expD*100:0),n(t.actD)+' من '+n(t.expD)+' يوم',t.actD>=t.expD*0.97?'up':'down'],
+    ['طلبات لكل ساعة',t.effH?(t.del/t.effH).toFixed(2):'—','لكل ساعة فعّالة',''],
+    ['تأخّر عن الوردية',n(t.lateN),hrs(t.lateH)+' مجموع المدة',t.lateN===0?'up':'down'],
+    ['خروج مبكر',n(t.earlyN),hrs(t.earlyH)+' مجموع المدة',t.earlyN===0?'up':'down'],
+    ['غياب',n(t.absent),'أيام',t.absent===0?'up':'down'],
+    ['بصمة ناقصة',n(t.miss),'دخول أو خروج غير مسجّل',t.miss===0?'up':'down']
+  ].map(function(k){ return '<div class="tile"><div class="l">'+k[0]+'</div><div class="v">'+k[1]+
+    '</div><div class="d '+k[3]+'">'+k[2]+'</div></div>'; }).join('');
+
+  var S=V.slice().sort(function(a,b){ return (b.actH||0)-(a.actH||0); });
+  document.getElementById('shN').textContent=S.length+' من '+CAPS.length;
+  document.getElementById('tShift').innerHTML=T(
+    ['المندوب','المعرّف','الفرع','أيام متوقّعة','أيام فعلية','الحضور','مجدول','فعلي','فعّال','التزام الوردية','طلبات/ساعة','تأخّر','مدته','خروج مبكر','مدته','غياب','بصمة','الحالة','المركبة'],
+    S.map(function(c){ return '<tr data-cid="'+c.cid+'"><td>'+c.name+'</td><td class="flag">'+c.cid+'</td><td>'+c.store+'</td>'+
+      '<td class="num">'+n(c.expD)+'</td><td class="num">'+n(c.actD)+'</td>'+
+      '<td>'+(c.attRate==null?'<span class="pill p-mute">—</span>'
+             :'<span class="pill '+(c.attRate>=98?'p-ok':c.attRate>=90?'p-warn':'p-bad')+'">'+p1(c.attRate)+'</span>')+'</td>'+
+      '<td class="num">'+n1(c.reqH)+'</td><td class="num">'+n1(c.actH)+'</td><td class="num">'+n1(c.effH)+'</td>'+
+      '<td>'+pillSC(c.shiftComp)+'</td><td class="num">'+(c.oph==null?'—':c.oph.toFixed(2))+'</td>'+
+      '<td>'+cnt(c.lateN)+'</td><td class="num flag">'+(c.lateH?n1(c.lateH)+' س':'—')+'</td>'+
+      '<td>'+cnt(c.earlyN)+'</td><td class="num flag">'+(c.earlyH?n1(c.earlyH)+' س':'—')+'</td>'+
+      '<td>'+cnt(c.absent)+'</td><td>'+cnt(c.miss)+'</td>'+
+      '<td class="flag">'+(c.status||'—')+'</td><td class="flag">'+(c.veh||'—')+'</td></tr>'; }));
+}
+
+/* ═══ ٤) التوقّعات ═══ */
+function vPredict(){
+  var V=capView(), t=agg(V), k=HORIZON/DAYS;
+  var ont=t.ord?t.ow/t.ord:0;
+  document.getElementById('prTiles').innerHTML=[
+    ['طلبات متوقّعة',n(Math.round(t.ord*k)),'على وتيرة '+(t.ord/DAYS).toFixed(0)+' في اليوم',''],
+    ['ساعات متوقّعة',hrs(t.actH*k),'مجدول '+hrs(t.reqH*k),''],
+    ['متأخر متوقّع',n(Math.round(t.late*k)),'منها '+n(Math.round(t.major*k))+' جسيم',t.late*k<600?'':'down'],
+    ['تقييم سلبي متوقّع',n(Math.round(t.neg*k)),'مقابل '+n(Math.round(t.pos*k))+' إيجابي',''],
+    ['الالتزام المتوقّع',p2(ont),'إن بقيت الوتيرة',ont>=97?'up':'down'],
+    ['مناديب تحت المراقبة',n(V.filter(function(c){ return c.wpi<60||c.ont<96; }).length),'مؤشر تحت ٦٠ أو التزام تحت ٩٦٪','']
+  ].map(function(x){ return '<div class="tile"><div class="l">'+x[0]+'</div><div class="v">'+x[1]+
+    '</div><div class="d '+x[3]+'">'+x[2]+'</div></div>'; }).join('');
+
+  var risk=V.map(function(c){
+    var r=0, why=[];
+    if(c.ont<96){ r+=3; why.push('التزام '+p1(c.ont)); }
+    if(c.r20<70){ r+=2; why.push('بطيء '+p1(c.r20)); }
+    if(c.perDay<10){ r+=2; why.push(c.perDay.toFixed(1)+' طلب/يوم'); }
+    if(c.oph!=null&&c.oph<1.3){ r+=2; why.push(c.oph.toFixed(2)+' طلب/ساعة'); }
+    if(c.shiftComp!=null&&c.shiftComp<95){ r+=2; why.push('وردية '+p1(c.shiftComp)); }
+    if(c.absent>0){ r+=2; why.push(n(c.absent)+' غياب'); }
+    if(c.lateN+c.earlyN>0){ r+=1; why.push(n(c.lateN+c.earlyN)+' تأخّر/مبكر'); }
+    if(c.neg>0){ r+=1; why.push(n(c.neg)+' سلبي'); }
+    if(c.pre>0){ r+=1; why.push(n(c.pre)+' مسبق'); }
+    c.risk=r; c.why=why; return c;
+  }).filter(function(c){ return c.risk>=3; }).sort(function(a,b){ return b.risk-a.risk; });
+  document.getElementById('prN').textContent=risk.length+' مندوباً';
+  document.getElementById('tPr').innerHTML=T(
+    ['المندوب','المعرّف','الفرع','درجة الخطر','المؤشر','الطلبات','طلبات/ساعة','الأسباب'],
+    risk.map(function(c){
+      var cl=c.risk>=7?'p-bad':c.risk>=5?'p-warn':'p-mute';
+      return '<tr data-cid="'+c.cid+'"><td>'+c.name+'</td><td class="flag">'+c.cid+'</td><td>'+c.store+'</td>'+
+        '<td><span class="pill '+cl+'">'+n(c.risk)+'</span></td><td>'+meter(c.wpi)+'</td>'+
+        '<td class="num">'+n(c.ord)+'</td><td class="num">'+(c.oph==null?'—':c.oph.toFixed(2))+'</td>'+
+        '<td class="flag">'+c.why.join(' · ')+'</td></tr>'; }), 'ما في مندوب تحت المراقبة داخل الفلتر.');
+
+  var m={}; V.forEach(function(c){
+    m[c.store]=m[c.store]||{store:c.store,city:c.city,caps:0,reqH:0,actH:0,ord:0,del:0};
+    var x=m[c.store]; x.caps++; x.reqH+=c.reqH||0; x.actH+=c.actH||0; x.ord+=c.ord; x.del+=c.del; });
+  document.getElementById('tCap2').innerHTML=T(
+    ['الفرع','المدينة','مناديب','ساعات مجدولة','ساعات فعلية','الفجوة','طلبات','طلبات/ساعة','متوقّع ٣٠ يوماً'],
+    Object.keys(m).map(function(k2){ return m[k2]; }).sort(function(a,b){ return b.ord-a.ord; })
+      .map(function(x){
+        var gap=x.actH-x.reqH;
+        return '<tr><td>'+x.store+'</td><td>'+x.city+'</td><td class="num">'+n(x.caps)+'</td>'+
+          '<td class="num">'+n1(x.reqH)+'</td><td class="num">'+n1(x.actH)+'</td>'+
+          '<td><span class="pill '+(gap>=0?'p-ok':'p-warn')+'">'+(gap>=0?'+':'')+n1(gap)+' س</span></td>'+
+          '<td class="num">'+n(x.ord)+'</td>'+
+          '<td class="num">'+(x.actH?(x.del/x.actH).toFixed(2):'—')+'</td>'+
+          '<td class="num">'+n(Math.round(x.ord*k))+'</td></tr>'; }));
+}
+
+/* ═══ ٥) الإنذارات ═══ */
+var STATES=[
+  ['weak','التزام تحت ٩٦٪'],['slow','سرعة ٢٠ د تحت ٧٠٪'],['major','عليه تأخير جسيم'],
+  ['neg','عليه تقييم سلبي'],['pre','تعليم مسبق كمسلّم'],['low','حجم منخفض'],
+  ['late','تأخّر عن الوردية'],['early','خروج مبكر'],['absent','غياب'],
+  ['nopunch','بصمة ناقصة'],['under','التزام وردية تحت ٩٥٪']
+];
+function vFlags(){
+  document.getElementById('states').innerHTML=STATES.map(function(s){
+    var c=CAPS.filter(CAP_STATE[s[0]]).length;
+    var ex=BR_STATE[s[0]]?' · و'+n(BR.filter(BR_STATE[s[0]]).length)+' فرعاً':'';
+    return '<div class="tile click '+(F.state===s[0]?'sel':'')+'" data-s="'+s[0]+'">'+
+      '<div class="l">'+s[1]+'</div><div class="v">'+n(c)+'</div><div class="d">مندوباً'+ex+'</div></div>'; }).join('');
+  [].forEach.call(document.querySelectorAll('.tile.click'), function(t2){
+    t2.addEventListener('click', function(){ F.state=(F.state===t2.dataset.s)?'':t2.dataset.s; render(); }); });
+
+  var V=capView();
+  var rows=V.map(function(c){
+    var fl=[];
+    if(c.ont<96) fl.push('<span class="pill p-bad">التزام '+p1(c.ont)+'</span>');
+    if(c.r20<70) fl.push('<span class="pill p-warn">بطيء '+p1(c.r20)+'</span>');
+    if(c.perDay<10) fl.push('<span class="pill p-warn">'+c.perDay.toFixed(1)+' طلب/يوم</span>');
+    if(c.major>0) fl.push('<span class="pill p-bad">'+n(c.major)+' جسيم</span>');
+    if(c.neg>0) fl.push('<span class="pill p-bad">'+n(c.neg)+' سلبي</span>');
+    if(c.pre>0) fl.push('<span class="pill p-warn">'+n(c.pre)+' مسبق</span>');
+    if(c.lateN>0) fl.push('<span class="pill p-warn">تأخّر '+n(c.lateN)+'</span>');
+    if(c.earlyN>0) fl.push('<span class="pill p-warn">مبكر '+n(c.earlyN)+'</span>');
+    if(c.absent>0) fl.push('<span class="pill p-bad">غياب '+n(c.absent)+'</span>');
+    if(c.miss>0) fl.push('<span class="pill p-mute">بصمة '+n(c.miss)+'</span>');
+    if(c.shiftComp!=null&&c.shiftComp<95) fl.push('<span class="pill p-warn">وردية '+p1(c.shiftComp)+'</span>');
+    return fl.length?{c:c,fl:fl}:null;
+  }).filter(Boolean).sort(function(a,b){ return b.fl.length-a.fl.length; });
+  document.getElementById('flN').textContent=rows.length+' مندوباً عليه ملاحظة';
+  document.getElementById('tFlags').innerHTML=T(
+    ['المندوب','المعرّف','الفرع','عدد الملاحظات','الملاحظات'],
+    rows.map(function(r){ return '<tr data-cid="'+r.c.cid+'"><td>'+r.c.name+'</td><td class="flag">'+r.c.cid+'</td>'+
+      '<td>'+r.c.store+'</td><td><span class="pill '+(r.fl.length>=4?'p-bad':r.fl.length>=2?'p-warn':'p-mute')+'">'+
+      n(r.fl.length)+'</span></td><td>'+r.fl.join(' ')+'</td></tr>'; }), 'ما في ملاحظات داخل الفلتر.');
+
+  var R=[
+    ['التزام ضعيف','نسبة الالتزام تحت الحدّ','٩٦','٪'],
+    ['بطيء','نسبة التسليم خلال ٢٠ دقيقة تحت الحدّ','٧٠','٪'],
+    ['حجم منخفض','متوسط الطلبات في اليوم تحت الحدّ','١٠','طلب/يوم'],
+    ['تأخير جسيم','طلبات جسيمة فوق الحدّ','١','طلب'],
+    ['تقييم سلبي','تقييمات سلبية فوق الحدّ','١','تقييم'],
+    ['تعليم مسبق كمسلّم','طلبات عُلّمت مسلّمة قبل وصولها','١','طلب'],
+    ['حضر ولم يسلّم','سجّل حضوراً ولم يسلّم ولا طلب في ورديته','١','وردية'],
+    ['تأخّر عن الوردية','مرّات التأخّر في الدخول فوق الحدّ','١','مرّة'],
+    ['خروج مبكر','مرّات الخروج قبل نهاية الوردية فوق الحدّ','١','مرّة'],
+    ['غياب','أيام الغياب فوق الحدّ','١','يوم'],
+    ['بصمة ناقصة','دخول أو خروج غير مسجّل','١','مرّة'],
+    ['التزام وردية ضعيف','الحضور الفعلي أقل من المجدول بهذه النسبة','٩٥','٪'],
+    ['متوقّف عن العمل','مرّ على آخر يوم عمله الحدّ أو أكثر','٣','أيام'],
+    ['بلا ربط بوثيق','مندوب يعمل ومعرّفه غير مربوط بموظف','—','']
+  ];
+  document.getElementById('rules').innerHTML=R.map(function(r){
+    return '<div class="rule"><div><div class="nm">'+r[0]+'</div><div class="ds">'+r[1]+'</div></div>'+
+      '<div style="display:flex;align-items:center;gap:6px">'+
+      (r[2]==='—'?'<span class="pill p-mute">تلقائي</span>'
+                 :'<input value="'+r[2]+'"><span class="flag">'+r[3]+'</span>')+'</div></div>'; }).join('');
+}
+
+
+/* ═══ سجل السحب (الجسر) ═══ */
+function vBridge(){
+  var rows=[
+    ['١٨:٥٨','أداء التوصيل','٨٧','p-ok','تمّ'],
+    ['١٨:٥٦','تقرير الدوام','٩٣','p-ok','تمّ'],
+    ['١٨:٤٣','الفروع','٢٤','p-ok','تمّ'],
+    ['١٨:٢٨','أداء التوصيل','٨٧','p-ok','تمّ'],
+    ['١٨:١٣','أداء التوصيل','—','p-warn','الجلسة منتهية — سجّل دخولك'],
+    ['١٧:٥٨','أداء التوصيل','٨٧','p-ok','تمّ']
+  ];
+  document.getElementById('tPull').innerHTML=T(['الوقت','النوع','الصفوف','النتيجة'],
+    rows.map(function(r){ return '<tr><td>'+r[0]+'</td><td>'+r[1]+'</td><td class="num">'+r[2]+'</td>'+
+      '<td><span class="pill '+r[3]+'">'+r[4]+'</span></td></tr>'; }));
+}
+
+/* ═══ التصدير — CSV من الجدول المعروض ═══ */
+function toCSV(tbl){
+  var out=[];
+  [].forEach.call(tbl.querySelectorAll('tr'), function(tr){
+    var cells=[].map.call(tr.querySelectorAll('th,td'), function(c){
+      var v=(c.innerText||'').replace(/\s+/g,' ').trim().replace(/"/g,'""');
+      return '"'+v+'"'; });
+    if(cells.length) out.push(cells.join(','));
+  });
+  return out.join('\n');
+}
+function wireExport(){
+  [].forEach.call(document.querySelectorAll('.exp'), function(b){
+    if(b.__w) return; b.__w=true;
+    b.addEventListener('click', function(ev){
+      ev.stopPropagation();
+      var tbl=document.getElementById(b.dataset.x);
+      if(!tbl){ return; }
+      var csv='﻿'+toCSV(tbl);
+      var a=document.createElement('a');
+      a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+      a.download='كيمارت-'+b.dataset.f+'.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+    });
+  });
+}
+
+/* ═══ نافذة تفاصيل المندوب ═══ */
+var MCAP=null, MTAB='shift';
+function teamAvg(){
+  var V=CAPS, k=V.length;
+  var t=agg(V);
+  return { ord:t.ord/k, del:t.del/k, ont:t.ord?t.ow/t.ord:0, r20:t.ord?t.r20/t.ord:0,
+           actH:t.actH/k, effH:t.effH/k, reqH:t.reqH/k,
+           oph:t.effH?t.del/t.effH:0, sc:t.reqH?t.actH/t.reqH*100:0,
+           att:t.expD?t.actD/t.expD*100:0, wpi:t.wp/k };
+}
+function openCap(cid){
+  MCAP = CAPS.filter(function(c){ return String(c.cid)===String(cid); })[0];
+  if(!MCAP) return;
+  MTAB='shift';
+  document.getElementById('mName').textContent = MCAP.name;
+  document.getElementById('mSub').innerHTML =
+    'المعرّف <b>'+MCAP.cid+'</b> · '+MCAP.store+' · '+MCAP.city+
+    ' · المركز <b>'+MCAP.rank+'</b> من '+CAPS.length+
+    ' · المؤشر <b>'+MCAP.wpi+'</b> · '+(MCAP.status||'—')+' · '+(MCAP.veh||'—');
+  document.getElementById('ov').classList.add('on');
+  mRender();
+}
+function mRender(){
+  [].forEach.call(document.querySelectorAll('#mTabs button'), function(b){
+    b.setAttribute('aria-selected', String(b.dataset.m===MTAB)); });
+  var c=MCAP, h='';
+  if(MTAB==='shift'){
+    h = '<div class="tiles">' + [
+      ['أيام متوقّعة', n(c.expD), 'في الفترة',''],
+      ['أيام فعلية', n(c.actD), 'نسبة الحضور '+(c.attRate==null?'—':p1(c.attRate)), c.attRate>=98?'up':'down'],
+      ['ساعات مجدولة', n1(c.reqH)+' س','المطلوب',''],
+      ['ساعات فعلية', n1(c.actH)+' س','الفعّالة '+n1(c.effH)+' س',''],
+      ['التزام الوردية', c.shiftComp==null?'—':p1(c.shiftComp),'الفعلي ÷ المجدول', c.shiftComp>=100?'up':'down'],
+      ['طلبات لكل ساعة', c.oph==null?'—':c.oph.toFixed(2),'لكل ساعة فعّالة',''],
+      ['تأخّر عن الوردية', n(c.lateN), n1(c.lateH)+' س', c.lateN?'down':'up'],
+      ['خروج مبكر', n(c.earlyN), n1(c.earlyH)+' س', c.earlyN?'down':'up'],
+      ['غياب', n(c.absent),'أيام', c.absent?'down':'up'],
+      ['بصمة ناقصة', n(c.miss),'مرّات', c.miss?'down':'up']
+    ].map(function(k){ return '<div class="tile"><div class="l">'+k[0]+'</div><div class="v">'+k[1]+
+      '</div><div class="d '+k[3]+'">'+k[2]+'</div></div>'; }).join('') + '</div>' +
+    '<div style="height:14px"></div>' +
+    '<div class="card"><div class="ch">أداء التوصيل في الفترة</div><table>' + T(
+      ['مدفوعة','مسلّمة','متأخر','جسيم','الالتزام','١٥ د','٢٠ د','٣٠ د','سلبي','إيجابي','مسبق','الاستلام','النقل','الإرجاع','التسليم'],
+      ['<tr><td class="num">'+n(c.ord)+'</td><td class="num">'+n(c.del)+'</td><td class="num">'+n(c.late)+
+       '</td><td class="num">'+n(c.major)+'</td><td>'+pillOnt(c.ont)+'</td><td>'+pillR(c.r15)+'</td>'+
+       '<td>'+pillR(c.r20)+'</td><td>'+pillR(c.r30)+'</td><td class="num">'+n(c.neg)+'</td>'+
+       '<td class="num">'+n(c.pos)+'</td><td class="num">'+n(c.pre)+'</td>'+
+       '<td class="num flag">'+mins(c.dPick)+'</td><td class="num flag">'+mins(c.dTrans)+'</td>'+
+       '<td class="num flag">'+mins(c.dRet)+'</td><td class="num flag">'+mins(c.dDel)+'</td></tr>']) +
+    '</table></div>';
+  }
+  else if(MTAB==='cmp'){
+    var a=teamAvg();
+    var items=[
+      ['المؤشر', c.wpi, a.wpi, 100, function(v){ return Math.round(v); }],
+      ['الطلبات', c.ord, a.ord, Math.max(c.ord,a.ord)*1.2, function(v){ return n(Math.round(v)); }],
+      ['المسلّمة', c.del, a.del, Math.max(c.del,a.del)*1.2, function(v){ return n(Math.round(v)); }],
+      ['الالتزام', c.ont, a.ont, 100, p2],
+      ['تسليم ٢٠ د', c.r20, a.r20, 100, p1],
+      ['ساعات فعلية', c.actH, a.actH, Math.max(c.actH,a.actH)*1.2, function(v){ return n1(v)+' س'; }],
+      ['التزام الوردية', c.shiftComp||0, a.sc, 130, p1],
+      ['نسبة الحضور', c.attRate||0, a.att, 100, p1],
+      ['طلبات/ساعة', c.oph||0, a.oph, Math.max(c.oph||0,a.oph)*1.3, function(v){ return v.toFixed(2); }]
+    ];
+    h = '<div class="card"><div class="ch">مقابل متوسط الفريق <small>الخط الرمادي = متوسط الـ'+CAPS.length+'</small></div>'+
+        '<div class="pad">' + items.map(function(it){
+      var mx=it[3]||1, w=Math.max(2,Math.min(100,it[1]/mx*100)), av=Math.max(0,Math.min(100,it[2]/mx*100));
+      var better = it[1]>=it[2];
+      return '<div class="cmp"><div class="k">'+it[0]+'</div>'+
+             '<div class="bar2"><i style="width:'+w+'%;background:'+(better?'var(--ok)':'var(--warn)')+'"></i>'+
+             '<u style="inset-inline-start:'+av+'%"></u></div>'+
+             '<div class="vv"><b>'+it[4](it[1])+'</b> <span class="flag">/ '+it[4](it[2])+'</span></div></div>';
+    }).join('') + '</div></div>';
+  }
+  else {
+    var D = (window.DAILY||[]).filter(function(d){ return String(d.cid)===String(c.cid); })
+              .sort(function(a,b){ return a.date<b.date?-1:1; });
+    if(!D.length){
+      var P = PERIODS.filter(function(x){ return String(x.cid)===String(c.cid); });
+      var ord = {'day':0,'base':1,'wide':2};
+      P.sort(function(a,b){ return (ord[a.src]||9)-(ord[b.src]||9); });
+      h = '<div class="tiles" style="margin-bottom:12px">' + [
+        ['سجلات مخزّنة', n(P.length), 'فترات من البوابة',''],
+        ['أطول فترة', n(Math.max.apply(null,P.map(function(x){ return x.expD; }))||0)+' يوم','أيام مجدولة',''],
+        ['إجمالي الساعات', n1(P.reduce(function(a,x){ return a+x.act; },0))+' س','في كل السجلات',''],
+        ['إجمالي الطلبات', n(P.reduce(function(a,x){ return a+x.ord; },0)),'في كل السجلات','']
+      ].map(function(k){ return '<div class="tile"><div class="l">'+k[0]+'</div><div class="v">'+k[1]+
+        '</div><div class="d '+k[3]+'">'+k[2]+'</div></div>'; }).join('') + '</div>';
+
+      h += '<div class="card" style="margin-bottom:12px"><div class="ch">سجلات الدوام من البوابة '+
+           '<span><small>'+P.length+' سجلاً</small> <button class="exp" data-x="tDay" data-f="دوام-'+c.name+'">تصدير</button></span></div>'+
+           '<table id="tDay">' + T(
+        ['الفترة','أيام مجدولة','أيام فعلية','الحضور','مجدول','فعلي','فعّال','الطلبات','طلبات/ساعة','تأخّر','مبكر','غياب','بصمة','الفرع'],
+        P.map(function(x){
+          var att = x.expD? x.actD/x.expD*100 : null;
+          var oph = x.eff? x.ord/x.eff : null;
+          return '<tr><td>'+x.lbl+'</td><td class="num">'+n(x.expD)+'</td><td class="num">'+n(x.actD)+'</td>'+
+            '<td>'+(att==null?'<span class="pill p-mute">—</span>'
+                   :'<span class="pill '+(att>=98?'p-ok':att>=90?'p-warn':'p-bad')+'">'+p1(att)+'</span>')+'</td>'+
+            '<td class="num">'+n1(x.req)+'</td><td class="num">'+n1(x.act)+'</td><td class="num">'+n1(x.eff)+'</td>'+
+            '<td class="num">'+n(x.ord)+'</td><td class="num">'+(oph==null?'—':oph.toFixed(2))+'</td>'+
+            '<td>'+(x.late?'<span class="pill p-warn">'+n1(x.late)+' س</span>':'<span class="flag">٠</span>')+'</td>'+
+            '<td>'+(x.early?'<span class="pill p-warn">'+n1(x.early)+' س</span>':'<span class="flag">٠</span>')+'</td>'+
+            '<td>'+cnt(x.absent)+'</td><td>'+cnt(x.miss)+'</td><td class="flag">'+x.store+'</td></tr>'; })) +
+        '</table></div>';
+
+      h += '<div class="note"><b>التفصيل يوماً بيوم يأتي من الجسر.</b> '+
+           'تصدير البوابة يرجع فترة مجمّعة بلا عمود تاريخ مهما كان التبويب، فلا يمكن بناء تاريخ ثلاثة أشهر منه. '+
+           'الجسر يحلّها: يضبط تاريخ اليوم في الصفحة، يضغط بحث، يلتقط النتيجة، ثم ينتقل لليوم التالي — '+
+           'ويكتب صفاً لكل يوم في <code>keemart_captain_days</code>. عندها يصير هذا الجدول يومياً بالدخول والخروج.</div>';
+    } else {
+      var tt=D.reduce(function(a,d){ a.req+=d.req||0; a.act+=d.act||0; a.eff+=d.eff||0;
+        a.ord+=d.ord||0; a.late+=d.late||0; a.early+=d.early||0; return a; },
+        {req:0,act:0,eff:0,ord:0,late:0,early:0});
+      h = '<div class="tiles" style="margin-bottom:12px">'+[
+        ['أيام مسجّلة', n(D.length), 'في المدى',''],
+        ['ساعات مجدولة', n1(tt.req)+' س','',''],
+        ['ساعات فعلية', n1(tt.act)+' س','الفعّالة '+n1(tt.eff)+' س',''],
+        ['الطلبات', n(tt.ord), (tt.eff?(tt.ord/tt.eff).toFixed(2):'—')+' لكل ساعة',''],
+        ['تأخّر', n1(tt.late)+' س','مجموع المدة', tt.late?'down':'up'],
+        ['خروج مبكر', n1(tt.early)+' س','مجموع المدة', tt.early?'down':'up']
+      ].map(function(k){ return '<div class="tile"><div class="l">'+k[0]+'</div><div class="v">'+k[1]+
+        '</div><div class="d '+k[3]+'">'+k[2]+'</div></div>'; }).join('')+'</div>';
+
+      var mx=Math.max.apply(null, D.map(function(d){ return d.ord||0; }))||1;
+      h += '<div class="card" style="margin-bottom:12px"><div class="ch">الطلبات في كل يوم</div>'+
+           '<div class="pad"><div class="chart">'+
+           D.map(function(d){ return '<div class="b" title="'+d.date+' · '+n(d.ord)+' طلب">'+
+             '<i style="height:'+Math.round((d.ord||0)/mx*100)+'%"></i></div>'; }).join('')+
+           '</div><div class="xlab">'+D.map(function(d){ return '<span>'+String(d.date).slice(8)+'</span>'; }).join('')+
+           '</div></div></div>';
+
+      h += '<div class="card"><div class="ch">الأيام <span><small>'+D.length+' يوماً</small> '+
+           '<button class="exp" data-x="tDay" data-f="أيام-'+c.name+'">تصدير</button></span></div>'+
+           '<table id="tDay">'+T(
+        ['اليوم','الوردية','الدخول','الخروج','مجدول','فعلي','فعّال','تأخّر','مبكر','الطلبات','طلبات/ساعة','الحالة'],
+        D.map(function(d){
+          var oph = d.eff? (d.ord/d.eff) : null;
+          var st = d.status||'';
+          var cl = /غياب|Absen/i.test(st)?'p-bad' : (d.late||d.early)?'p-warn' : 'p-ok';
+          return '<tr><td>'+d.date+'</td><td class="flag">'+(d.shift||'—')+'</td>'+
+            '<td class="num">'+(d.in||'—')+'</td><td class="num">'+(d.out||'—')+'</td>'+
+            '<td class="num">'+n1(d.req)+'</td><td class="num">'+n1(d.act)+'</td><td class="num">'+n1(d.eff)+'</td>'+
+            '<td class="num flag">'+(d.late?n1(d.late)+' س':'—')+'</td>'+
+            '<td class="num flag">'+(d.early?n1(d.early)+' س':'—')+'</td>'+
+            '<td class="num">'+n(d.ord)+'</td><td class="num">'+(oph==null?'—':oph.toFixed(2))+'</td>'+
+            '<td><span class="pill '+cl+'">'+(st||'حضور')+'</span></td></tr>'; }))+'</table></div>';
+    }
+  }
+  document.getElementById('mBody').innerHTML=h;
+}
+function wireRows(){
+  [].forEach.call(document.querySelectorAll('tr[data-cid]'), function(tr){
+    if(tr.__w) return; tr.__w=true;
+    tr.classList.add('clk');
+    var inLink = !!tr.closest('#tLink');
+    tr.addEventListener('click', function(){
+      if(inLink){
+        [].forEach.call(document.querySelectorAll('#tLink tr.sel-row'), function(x){ x.classList.remove('sel-row'); });
+        tr.classList.add('sel-row');
+        var inp=document.getElementById('lkIq'); if(inp) inp.focus();
+      } else {
+        openCap(tr.dataset.cid);
+      }
+    });
+  });
+}
+document.getElementById('mX').addEventListener('click', function(){ document.getElementById('ov').classList.remove('on'); });
+document.getElementById('ov').addEventListener('click', function(e){ if(e.target.id==='ov') document.getElementById('ov').classList.remove('on'); });
+[].forEach.call(document.querySelectorAll('#mTabs button'), function(b){
+  b.addEventListener('click', function(){ MTAB=b.dataset.m; mRender(); }); });
+
+
+/* ═══ بحث موظفي وثيق — اقتراحات أثناء الكتابة ═══ */
+/* في المنصة: window.WF_EMP = state.employees — هنا عيّنة للتجريب فقط */
+var WF_EMP = window.WF_EMP || [
+  {iqama:'2000000011', name:'عيّنة — محمد أحمد علي',      project:'KEEMART', status:'على رأس العمل'},
+  {iqama:'2000000029', name:'عيّنة — عبدالله سالم',       project:'KEEMART', status:'على رأس العمل'},
+  {iqama:'2000000037', name:'عيّنة — ياسر عبدالرحمن',     project:'KEEMART', status:'على رأس العمل'},
+  {iqama:'2000000045', name:'عيّنة — سعيد مبارك',         project:'NINJA',   status:'على رأس العمل'},
+  {iqama:'2000000053', name:'عيّنة — فهد ناصر',           project:'KEEMART', status:'متوقف عن العمل'},
+  {iqama:'2000000061', name:'عيّنة — خالد إبراهيم',       project:'KEEMART', status:'على رأس العمل'},
+  {iqama:'2000000088', name:'عيّنة — طارق حسن',           project:'المشرفين والصيانة', status:'على رأس العمل'},
+  {iqama:'2000000096', name:'عيّنة — أنس محمود',          project:'KEEMART', status:'على رأس العمل'},
+  {iqama:'2000000100', name:'عيّنة — رامي عثمان',         project:'KEETA',   status:'على رأس العمل'},
+  {iqama:'2000000118', name:'عيّنة — بدر العتيبي',        project:'KEEMART', status:'على رأس العمل'}
+];
+var LK = { emp:null, idx:-1, list:[] };
+function lkSearch(q){
+  q=String(q||'').trim().toLowerCase();
+  if(q.length<2) return [];
+  return WF_EMP.filter(function(e){
+    return String(e.iqama).indexOf(q)>=0 || String(e.name).toLowerCase().indexOf(q)>=0;
+  }).slice(0,8);
+}
+function lkDraw(){
+  var d=document.getElementById('lkDrop');
+  if(!LK.list.length){ d.className='drop'; d.innerHTML=''; return; }
+  d.className='drop on';
+  d.innerHTML = LK.list.map(function(e,i){
+    return '<div data-i="'+i+'" class="'+(i===LK.idx?'sel':'')+'">'+
+      '<div class="nm">'+e.name+'</div>'+
+      '<div class="mt">'+e.iqama+' · '+(e.project||'—')+' · '+(e.status||'—')+'</div></div>';
+  }).join('');
+  [].forEach.call(d.querySelectorAll('div[data-i]'), function(el){
+    el.addEventListener('mousedown', function(ev){ ev.preventDefault(); lkPick(+el.dataset.i); });
+  });
+}
+function lkPick(i){
+  var e=LK.list[i]; if(!e) return;
+  LK.emp=e; LK.list=[]; LK.idx=-1;
+  var inp=document.getElementById('lkIq');
+  inp.value = e.iqama + ' — ' + e.name;
+  document.getElementById('lkDrop').className='drop';
+  document.getElementById('lkGo').disabled = false;
+}
+(function wireLk(){
+  var inp=document.getElementById('lkIq'); if(!inp) return;
+  inp.addEventListener('input', function(){
+    LK.emp=null; document.getElementById('lkGo').disabled=true;
+    LK.list=lkSearch(inp.value); LK.idx=-1;
+    if(!LK.list.length && inp.value.trim().length>=2){
+      var d=document.getElementById('lkDrop');
+      d.className='drop on';
+      d.innerHTML='<div class="none">لا يوجد موظف مطابق في وثيق</div>';
+      return;
+    }
+    lkDraw();
+  });
+  inp.addEventListener('keydown', function(ev){
+    if(!LK.list.length) return;
+    if(ev.key==='ArrowDown'){ ev.preventDefault(); LK.idx=Math.min(LK.idx+1,LK.list.length-1); lkDraw(); }
+    else if(ev.key==='ArrowUp'){ ev.preventDefault(); LK.idx=Math.max(LK.idx-1,0); lkDraw(); }
+    else if(ev.key==='Enter'){ if(LK.idx>=0){ ev.preventDefault(); lkPick(LK.idx); } }
+    else if(ev.key==='Escape'){ LK.list=[]; lkDraw(); }
+  });
+  inp.addEventListener('blur', function(){ setTimeout(function(){ document.getElementById('lkDrop').className='drop'; }, 120); });
+  document.getElementById('lkGo').addEventListener('click', function(){
+    if(!LK.emp) return;
+    var sel=document.querySelector('#tLink tr.sel-row');
+    alert('يُربط '+(sel?sel.dataset.nm:'المندوب المحدّد')+' بالموظف '+LK.emp.name+' ('+LK.emp.iqama+').\n'+
+          'في المنصة تُستدعى keemart_link(captain_id, iqama) فتقفل فترة المعرّف السابق وتبدأ الجديدة من اليوم.');
+  });
+})();
+
+/* ═══ الربط ═══ */
+function vLink(){
+  var q=(document.getElementById('lkQ')||{}).value||'';
+  var V=capView().filter(function(c){
+    if(!q) return true;
+    var s=q.toLowerCase();
+    return c.name.toLowerCase().indexOf(s)>=0 || String(c.cid).indexOf(s)>=0;
+  }).sort(function(a,b){ return b.ord-a.ord; });
+  document.getElementById('linkN').textContent=V.length+' مندوباً — الربط بالمعرّف مرة واحدة';
+  document.getElementById('tLink').innerHTML=T(
+    ['المندوب','معرّف كيمارت','الفرع','المدينة','الطلبات','ساعات','الحالة في البوابة','الربط بوثيق'],
+    V.map(function(c){ return '<tr data-cid="'+c.cid+'" data-nm="'+c.name+'"><td>'+c.name+'</td>'+
+      '<td class="flag">'+c.cid+'</td><td>'+c.store+'</td>'+
+      '<td>'+c.city+'</td><td class="num">'+n(c.ord)+'</td><td class="num">'+n1(c.actH)+'</td>'+
+      '<td class="flag">'+(c.status||'—')+'</td>'+
+      '<td><span class="pill p-mute">بانتظار الربط</span></td></tr>'; }));
+}
+
+var VIEWS={metrics:vMetrics, board:vBoard, shift:vShift, predict:vPredict, flags:vFlags,
+           link:vLink, bridge:vBridge};
+var KEYS=['metrics','board','shift','predict','flags','link','bridge'];
+function render(){
+  var admin=document.getElementById('isAdmin').checked;
+  document.getElementById('navBridge').style.display = admin?'':'none';
+  if(!admin && VIEW==='bridge') VIEW='metrics';
+  KEYS.forEach(function(k){ document.getElementById('v-'+k).style.display=(k===VIEW)?'':'none'; });
+  [].forEach.call(document.querySelectorAll('.nav button'), function(b){
+    b.setAttribute('aria-selected', String(b.dataset.v===VIEW)); });
+  VIEWS[VIEW]();
+  wireExport(); wireRows();
+}
+document.getElementById('isAdmin').addEventListener('change', render);
+var lkq=document.getElementById('lkQ');
+if(lkq) lkq.addEventListener('input', function(){ if(VIEW==='link') vLink(), wireExport(), wireRows(); });
+[].forEach.call(document.querySelectorAll('.nav button'), function(b){
+  b.addEventListener('click', function(){ VIEW=b.dataset.v; render(); }); });
+document.getElementById('fCity').addEventListener('change', function(e){ F.city=e.target.value; render(); });
+document.getElementById('fBranch').addEventListener('change', function(e){ F.branch=e.target.value; render(); });
+document.getElementById('fQ').addEventListener('input', function(e){ F.q=e.target.value; render(); });
+document.getElementById('go').addEventListener('click', function(){ render(); });
+document.getElementById('clr').addEventListener('click', function(){
+  F={city:'',branch:'',q:'',state:''};
+  document.getElementById('fCity').value=''; document.getElementById('fBranch').value='';
+  document.getElementById('fQ').value=''; render(); });
+render();
+
+</script>
+</body>
+</html>
