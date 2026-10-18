@@ -333,6 +333,19 @@
             <div class="tile"><div class="l">صفوف في القاعدة</div><div class="v">١٬٣٠٥</div><div class="d">يوم × مندوب</div></div>
             <div class="tile"><div class="l">أخطاء ٢٤ ساعة</div><div class="v">١</div><div class="d down">انتهاء جلسة</div></div>
           </div>
+          <div class="ch" style="border-radius:9px;border:1px solid var(--border);margin-bottom:10px">استيراد دفعة من الجسر</div>
+          <div style="border:1px solid var(--border);border-radius:9px;padding:12px;margin-bottom:14px">
+            <div class="flag" style="margin-bottom:9px">ملف JSON ينتجه جامع البيانات في بوابة كيمارت — صفّ لكل مندوب في كل يوم. يُرفع إلى <code>keemart_upsert</code> على دفعات، ولا يُحذف منه شيء.</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <input type="file" id="impFile" accept=".json,application/json"
+                style="font:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface2)">
+              <button class="btn" id="impGo" disabled>ارفع إلى القاعدة</button>
+              <span class="flag" id="impMsg">لم يُختر ملف</span>
+            </div>
+            <div style="margin-top:10px;height:8px;border-radius:5px;background:var(--surface2);overflow:hidden">
+              <i id="impBar" style="display:block;height:100%;width:0;background:var(--brand2);transition:width .2s"></i>
+            </div>
+          </div>
           <div class="ch" style="border-radius:9px;border:1px solid var(--border);margin-bottom:0">سجل السحب
             <button class="exp" data-x="tPull" data-f="سجل-السحب">تصدير</button></div>
           <table id="tPull"></table>
@@ -1044,6 +1057,71 @@ document.getElementById('ov').addEventListener('click', function(e){ if(e.target
 [].forEach.call(document.querySelectorAll('#mTabs button'), function(b){
   b.addEventListener('click', function(){ MTAB=b.dataset.m; mRender(); }); });
 
+
+
+/* ═══ استيراد دفعة الجسر إلى keemart_upsert ═══ */
+var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
+var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
+function sbSession(){
+  try { return JSON.parse(localStorage.getItem('wfsb_session') || 'null'); } catch(e){ return null; }
+}
+function sbRpc(fn, args){
+  var ses = sbSession();
+  var h = { 'Content-Type':'application/json', apikey: SB_KEY };
+  if (ses && ses.access_token) h.Authorization = 'Bearer ' + ses.access_token;
+  return fetch(SB_URL + '/rest/v1/rpc/' + fn, { method:'POST', headers:h, body: JSON.stringify(args) })
+    .then(function(r){ return r.text().then(function(tx){
+      if (!r.ok) throw new Error('HTTP ' + r.status + ' — ' + tx.slice(0,160));
+      try { return JSON.parse(tx); } catch(e){ return tx; } }); });
+}
+(function wireImport(){
+  var f = document.getElementById('impFile'), b = document.getElementById('impGo'),
+      m = document.getElementById('impMsg'), bar = document.getElementById('impBar');
+  if (!f) return;
+  var DATA = null;
+  f.addEventListener('change', function(){
+    var file = f.files && f.files[0];
+    DATA = null; b.disabled = true; bar.style.width = '0';
+    if (!file){ m.textContent = 'لم يُختر ملف'; return; }
+    m.textContent = 'جارٍ القراءة…';
+    var rd = new FileReader();
+    rd.onload = function(){
+      try {
+        var j = JSON.parse(rd.result);
+        var rows = Array.isArray(j) ? j : (j.rows || []);
+        if (!rows.length) throw new Error('الملف بلا صفوف');
+        DATA = rows;
+        var days = {}; rows.forEach(function(r){ if (r.work_date) days[r.work_date] = 1; });
+        m.textContent = rows.length.toLocaleString('ar-EG') + ' صفاً · ' +
+                        Object.keys(days).length.toLocaleString('ar-EG') + ' يوماً';
+        b.disabled = false;
+      } catch(e){ m.textContent = 'تعذّرت القراءة: ' + e.message; }
+    };
+    rd.readAsText(file);
+  });
+  b.addEventListener('click', function(){
+    if (!DATA) return;
+    if (!sbSession()){ m.textContent = 'افتح المنصة وسجّل دخولك أولاً'; return; }
+    b.disabled = true;
+    var CH = 400, i = 0, sent = 0;
+    (function next(){
+      if (i >= DATA.length){
+        m.textContent = 'تمّ رفع ' + sent.toLocaleString('ar-EG') + ' صفاً';
+        bar.style.width = '100%'; b.disabled = false; return;
+      }
+      var part = DATA.slice(i, i + CH); i += CH;
+      sbRpc('keemart_upsert', { p_kind: 'attendance', p_rows: part }).then(function(){
+        sent += part.length;
+        m.textContent = 'رُفع ' + sent.toLocaleString('ar-EG') + ' من ' + DATA.length.toLocaleString('ar-EG');
+        bar.style.width = Math.round(i / DATA.length * 100) + '%';
+        setTimeout(next, 120);
+      }).catch(function(e){
+        m.textContent = 'توقّف عند ' + sent.toLocaleString('ar-EG') + ' — ' + e.message;
+        b.disabled = false;
+      });
+    })();
+  });
+})();
 
 /* ═══ بحث موظفي وثيق — اقتراحات أثناء الكتابة ═══ */
 /* في المنصة: window.WF_EMP = state.employees — هنا عيّنة للتجريب فقط */
