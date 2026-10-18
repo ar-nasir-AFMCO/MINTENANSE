@@ -323,27 +323,22 @@
         <div class="ch">حالة الجسر مع بوابة كيمارت <small>يظهر لمدير النظام فقط — بديل «حالة الربط بساموراي» في نينجا</small></div>
         <div class="pad">
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
-            <span class="chip"><span class="dot"></span> متصل — جلستك في البوابة سارية</span>
-            <span class="chip mute">السحب كل ١٥ دقيقة ما دام التبويب مفتوح</span>
-            <button class="btn" style="margin-inline-start:auto">اسحب الآن</button>
+            <span class="chip"><span class="dot"></span> القراءة من قاعدة وثيق</span>
+            <span class="chip mute">السحب من البوابة يتم في الخلفية — الصفحة تقرأ المحفوظ فقط</span>
+            
           </div>
-          <div class="tiles" style="margin-bottom:12px">
-            <div class="tile"><div class="l">آخر سحب ناجح</div><div class="v" style="font-size:17px">١٨:٥٨</div><div class="d">أداء التوصيل · ٨٧ صفاً</div></div>
-            <div class="tile"><div class="l">أيام مخزّنة</div><div class="v">١٥</div><div class="d">٢ – ١٦ أكتوبر</div></div>
-            <div class="tile"><div class="l">صفوف في القاعدة</div><div class="v">١٬٣٠٥</div><div class="d">يوم × مندوب</div></div>
-            <div class="tile"><div class="l">أخطاء ٢٤ ساعة</div><div class="v">١</div><div class="d down">انتهاء جلسة</div></div>
+          <div class="tiles" id="dbTiles" style="margin-bottom:12px">
+            <div class="tile"><div class="l">آخر يوم مخزّن</div><div class="v" style="font-size:17px">—</div><div class="d">—</div></div>
+            <div class="tile"><div class="l">أيام مخزّنة</div><div class="v">٠</div><div class="d">—</div></div>
+            <div class="tile"><div class="l">صفوف في القاعدة</div><div class="v">٠</div><div class="d">يوم × مندوب</div></div>
+            <div class="tile"><div class="l">أسماء مخزّنة</div><div class="v">٠</div><div class="d">keemart_riders</div></div>
           </div>
-          <div class="ch" style="border-radius:9px;border:1px solid var(--border);margin-bottom:10px">استيراد دفعة من الجسر</div>
+          <div class="ch" style="border-radius:9px;border:1px solid var(--border);margin-bottom:10px">ما في القاعدة الآن</div>
           <div style="border:1px solid var(--border);border-radius:9px;padding:12px;margin-bottom:14px">
-            <div class="flag" style="margin-bottom:9px">ملف JSON ينتجه جامع البيانات في بوابة كيمارت — صفّ لكل مندوب في كل يوم. يُرفع إلى <code>keemart_upsert</code> على دفعات، ولا يُحذف منه شيء.</div>
+            <div class="flag" style="margin-bottom:9px">البيانات محفوظة في <code>keemart_captain_days</code> و<code>keemart_riders</code> — صفّ لكل مندوب في كل يوم. الصفحة تقرأ منها مباشرة، ولا يُرفع ولا يُحذف منها شيء من هنا.</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-              <input type="file" id="impFile" accept=".json,application/json"
-                style="font:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface2)">
-              <button class="btn" id="impGo" disabled>ارفع إلى القاعدة</button>
-              <span class="flag" id="impMsg">لم يُختر ملف</span>
-            </div>
-            <div style="margin-top:10px;height:8px;border-radius:5px;background:var(--surface2);overflow:hidden">
-              <i id="impBar" style="display:block;height:100%;width:0;background:var(--brand2);transition:width .2s"></i>
+              <button class="btn" id="dbGo">حدّث من القاعدة</button>
+              <span class="flag" id="dbMsg">—</span>
             </div>
           </div>
           <div class="ch" style="border-radius:9px;border:1px solid var(--border);margin-bottom:0">سجل السحب
@@ -1074,53 +1069,80 @@ function sbRpc(fn, args){
       if (!r.ok) throw new Error('HTTP ' + r.status + ' — ' + tx.slice(0,160));
       try { return JSON.parse(tx); } catch(e){ return tx; } }); });
 }
-(function wireImport(){
-  var f = document.getElementById('impFile'), b = document.getElementById('impGo'),
-      m = document.getElementById('impMsg'), bar = document.getElementById('impBar');
-  if (!f) return;
-  var DATA = null;
-  f.addEventListener('change', function(){
-    var file = f.files && f.files[0];
-    DATA = null; b.disabled = true; bar.style.width = '0';
-    if (!file){ m.textContent = 'لم يُختر ملف'; return; }
-    m.textContent = 'جارٍ القراءة…';
-    var rd = new FileReader();
-    rd.onload = function(){
-      try {
-        var j = JSON.parse(rd.result);
-        var rows = Array.isArray(j) ? j : (j.rows || []);
-        if (!rows.length) throw new Error('الملف بلا صفوف');
-        DATA = rows;
-        var days = {}; rows.forEach(function(r){ if (r.work_date) days[r.work_date] = 1; });
-        m.textContent = rows.length.toLocaleString('ar-EG') + ' صفاً · ' +
-                        Object.keys(days).length.toLocaleString('ar-EG') + ' يوماً';
-        b.disabled = false;
-      } catch(e){ m.textContent = 'تعذّرت القراءة: ' + e.message; }
-    };
-    rd.readAsText(file);
-  });
-  b.addEventListener('click', function(){
-    if (!DATA) return;
-    if (!sbSession()){ m.textContent = 'افتح المنصة وسجّل دخولك أولاً'; return; }
-    b.disabled = true;
-    var CH = 400, i = 0, sent = 0;
-    (function next(){
-      if (i >= DATA.length){
-        m.textContent = 'تمّ رفع ' + sent.toLocaleString('ar-EG') + ' صفاً';
-        bar.style.width = '100%'; b.disabled = false; return;
-      }
-      var part = DATA.slice(i, i + CH); i += CH;
-      sbRpc('keemart_upsert', { p_kind: 'attendance', p_rows: part }).then(function(){
-        sent += part.length;
-        m.textContent = 'رُفع ' + sent.toLocaleString('ar-EG') + ' من ' + DATA.length.toLocaleString('ar-EG');
-        bar.style.width = Math.round(i / DATA.length * 100) + '%';
-        setTimeout(next, 120);
-      }).catch(function(e){
-        m.textContent = 'توقّف عند ' + sent.toLocaleString('ar-EG') + ' — ' + e.message;
-        b.disabled = false;
+/* ═══ القراءة الحيّة من القاعدة — لا رفع ملفات من الصفحة ═══ */
+function sbGet(path){
+  var ses = sbSession();
+  var h = { apikey: SB_KEY };
+  if (ses && ses.access_token) h.Authorization = 'Bearer ' + ses.access_token;
+  return fetch(SB_URL + '/rest/v1/' + path, { headers:h })
+    .then(function(r){ return r.text().then(function(tx){
+      if (!r.ok) throw new Error('HTTP ' + r.status + ' — ' + tx.slice(0,160));
+      return JSON.parse(tx); }); });
+}
+function kmSetMsg(t){ var m=document.getElementById('dbMsg'); if(m) m.textContent=t; }
+
+function kmLoadDB(){
+  if (!sbSession()){ kmSetMsg('افتح المنصة وسجّل دخولك أولاً'); return Promise.resolve(false); }
+  kmSetMsg('جارٍ القراءة…');
+  var SEL = 'work_date,captain_id,branch,shift,check_in,check_out,req_hours,act_hours,eff_hours,'
+          + 'late_hours,early_hours,shift_orders,att_status';
+  var rows = [], STEP = 1000;
+  function page(off){
+    return sbGet('keemart_captain_days?select='+SEL+'&order=work_date.asc&limit='+STEP+'&offset='+off)
+      .then(function(r){
+        rows = rows.concat(r);
+        kmSetMsg('قُرئ ' + rows.length.toLocaleString('ar-EG') + ' صفاً…');
+        if (r.length === STEP) return page(off + STEP);
       });
-    })();
-  });
+  }
+  return page(0).then(function(){
+    return sbGet('keemart_riders?select=captain_id,name,branch,city,status,joined_on,left_on')
+      .catch(function(){ return []; });
+  }).then(function(rid){
+    var NM = {}; (rid||[]).forEach(function(r){ NM[String(r.captain_id)] = r; });
+    window.KM_RIDERS = NM;
+    window.DAILY = rows.map(function(d){
+      return { cid:String(d.captain_id), date:d.work_date, shift:d.shift,
+               in:d.check_in, out:d.check_out,
+               req:+d.req_hours||0, act:+d.act_hours||0, eff:+d.eff_hours||0,
+               late:+d.late_hours||0, early:+d.early_hours||0,
+               ord:+d.shift_orders||0, status:d.att_status, store:d.branch };
+    });
+    var days={}, caps={};
+    window.DAILY.forEach(function(d){ days[d.date]=1; caps[d.cid]=1; });
+    var dk = Object.keys(days).sort();
+    window.KM_RANGE = dk.length ? { from:dk[0], to:dk[dk.length-1], n:dk.length } : null;
+    kmSetMsg(window.DAILY.length.toLocaleString('ar-EG') + ' صفاً · ' +
+             dk.length.toLocaleString('ar-EG') + ' يوماً · ' +
+             Object.keys(caps).length.toLocaleString('ar-EG') + ' مندوباً' +
+             (window.KM_RANGE ? ' · ' + window.KM_RANGE.from + ' → ' + window.KM_RANGE.to : '') +
+             ' · أسماء ' + Object.keys(NM).length.toLocaleString('ar-EG'));
+    kmPaintBridge();
+    try { if (typeof render === 'function') render(); } catch(e){}
+    return true;
+  }).catch(function(e){ kmSetMsg('تعذّرت القراءة: ' + e.message); return false; });
+}
+
+function kmPaintBridge(){
+  var R = window.KM_RANGE, D = window.DAILY || [];
+  var box = document.getElementById('dbTiles');
+  if (!box) return;
+  var caps = {}; D.forEach(function(d){ caps[d.cid]=1; });
+  var tiles = box.querySelectorAll('.tile');
+  function set(i,v,d){ if(!tiles[i]) return;
+    tiles[i].querySelector('.v').textContent = v;
+    var dd = tiles[i].querySelector('.d'); if (dd && d!=null) dd.textContent = d; }
+  set(0, R ? R.to : '—', D.length ? Object.keys(caps).length.toLocaleString('ar-EG')+' مندوباً' : 'لا بيانات');
+  set(1, R ? R.n.toLocaleString('ar-EG') : '٠', R ? R.from+' → '+R.to : '');
+  set(2, D.length.toLocaleString('ar-EG'), 'يوم × مندوب');
+  set(3, Object.keys(window.KM_RIDERS||{}).length.toLocaleString('ar-EG'), 'أسماء مخزّنة');
+}
+
+(function wireDB(){
+  var b = document.getElementById('dbGo');
+  if (b) b.addEventListener('click', function(){ kmLoadDB(); });
+  if (sbSession()) kmLoadDB();
+  else kmSetMsg('سجّل الدخول في المنصة ثم اضغط «حدّث من القاعدة»');
 })();
 
 /* ═══ بحث موظفي وثيق — اقتراحات أثناء الكتابة ═══ */
