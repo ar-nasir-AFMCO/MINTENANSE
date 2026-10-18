@@ -168,8 +168,8 @@
   <div class="banner">كل الأرقام حقيقية — أداء التوصيل وتقرير الدوام مدموجان على المعرّف. ٨٧ من ٨٧ طابقوا.</div>
 
   <div class="bar">
-    <label>من <input type="date" value="2026-10-02"></label>
-    <label>إلى <input type="date" value="2026-10-16"></label>
+    <label>من <input type="date" id="dFrom" value="2026-08-01"></label>
+    <label>إلى <input type="date" id="dTo" value="2026-10-18"></label>
     <label>المدينة <select id="fCity"><option value="">كل المدن</option></select></label>
     <label>الفرع <select id="fBranch"><option value="">كل الفروع</option></select></label>
     <label class="grow">بحث <input id="fQ" placeholder="ابحث بالاسم أو المعرّف" style="width:100%"></label>
@@ -1084,8 +1084,9 @@ function kmSetMsg(t){ var m=document.getElementById('dbMsg'); if(m) m.textConten
 function kmLoadDB(){
   if (!sbSession()){ kmSetMsg('افتح المنصة وسجّل دخولك أولاً'); return Promise.resolve(false); }
   kmSetMsg('جارٍ القراءة…');
-  var SEL = 'work_date,captain_id,branch,shift,check_in,check_out,req_hours,act_hours,eff_hours,'
-          + 'late_hours,early_hours,shift_orders,att_status';
+  var SEL = 'work_date,captain_id,captain_name,branch,city,shift,check_in,check_out,'
+          + 'req_hours,act_hours,eff_hours,late_hours,early_hours,shift_orders,att_status,'
+          + 'orders_per_hour,shift_comp,idle_shift';
   var rows = [], STEP = 1000;
   function page(off){
     return sbGet('keemart_captain_days?select='+SEL+'&order=work_date.asc&limit='+STEP+'&offset='+off)
@@ -1103,11 +1104,14 @@ function kmLoadDB(){
     window.KM_RIDERS = NM;
     window.DAILY = rows.map(function(d){
       return { cid:String(d.captain_id), date:d.work_date, shift:d.shift,
-               in:d.check_in, out:d.check_out,
+               name:d.captain_name, city:d.city,
+               in:(d.check_in||'').slice(0,5), out:(d.check_out||'').slice(0,5),
                req:+d.req_hours||0, act:+d.act_hours||0, eff:+d.eff_hours||0,
                late:+d.late_hours||0, early:+d.early_hours||0,
-               ord:+d.shift_orders||0, status:d.att_status, store:d.branch };
+               ord:+d.shift_orders||0, status:d.att_status, store:d.branch,
+               oph:+d.orders_per_hour||0, comp:+d.shift_comp||0, idle:!!d.idle_shift };
     });
+    window.DAILY_ALL = window.DAILY;
     var days={}, caps={};
     window.DAILY.forEach(function(d){ days[d.date]=1; caps[d.cid]=1; });
     var dk = Object.keys(days).sort();
@@ -1117,6 +1121,10 @@ function kmLoadDB(){
              Object.keys(caps).length.toLocaleString('ar-EG') + ' مندوباً' +
              (window.KM_RANGE ? ' · ' + window.KM_RANGE.from + ' → ' + window.KM_RANGE.to : '') +
              ' · أسماء ' + Object.keys(NM).length.toLocaleString('ar-EG'));
+    var f=document.getElementById('dFrom'), t=document.getElementById('dTo');
+    if (f && window.KM_RANGE) f.value = window.KM_RANGE.from;
+    if (t && window.KM_RANGE) t.value = window.KM_RANGE.to;
+    kmApplyRange();
     kmPaintBridge();
     try { if (typeof render === 'function') render(); } catch(e){}
     return true;
@@ -1137,6 +1145,26 @@ function kmPaintBridge(){
   set(2, D.length.toLocaleString('ar-EG'), 'يوم × مندوب');
   set(3, Object.keys(window.KM_RIDERS||{}).length.toLocaleString('ar-EG'), 'أسماء مخزّنة');
 }
+
+function kmApplyRange(){
+  var A = window.DAILY_ALL || [];
+  if (!A.length) return;
+  var f=document.getElementById('dFrom'), t=document.getElementById('dTo');
+  var a = f && f.value, b = t && t.value;
+  window.DAILY = (a && b) ? A.filter(function(d){ return d.date >= a && d.date <= b; }) : A;
+  var caps={}; window.DAILY.forEach(function(d){ caps[d.cid]=1; });
+  kmSetMsg(window.DAILY.length.toLocaleString('ar-EG') + ' صفاً · ' +
+           Object.keys(caps).length.toLocaleString('ar-EG') + ' مندوباً' +
+           ((a&&b) ? ' · ' + a + ' → ' + b : '') +
+           ' · من أصل ' + A.length.toLocaleString('ar-EG'));
+}
+
+(function wireRange(){
+  ['dFrom','dTo'].forEach(function(id){
+    var e=document.getElementById(id);
+    if (e) e.addEventListener('change', function(){ kmApplyRange(); kmPaintBridge(); });
+  });
+})();
 
 (function wireDB(){
   var b = document.getElementById('dbGo');
