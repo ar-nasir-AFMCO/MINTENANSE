@@ -9172,7 +9172,9 @@ async function handleAccidentFile(input){
   function poke(){ if (!ready) return; clearTimeout(pokeT); pokeT = setTimeout(function(){ if (pushing) return poke(); pullAll().catch(function(){}); }, 400); }
   /* v96: الإيقاف الجماعي «متوقف عن العمل» عبر المسار المعتمد (للمدير، يحترم مرجعية الأسطول وRLS) */
   function offwork(iqamas){ return rpc('apply_offwork', { p_iqamas: (iqamas || []).map(function(x){ return normId(x); }) }); }
-  window.wfSupabase = { pull: pullAll, poke: poke, push: pushAll, issues: showIssues, users: showUsers, logout: logout, me: function(){ return me; }, offwork: offwork };
+  /* v100: المرشّحون من نفس مصدر الإيقاف (قاعدة active_no_vehicle) — فالعدد = القابل للإيقاف */
+  function offworkCands(){ return api('GET', 'v_data_review?select=key,name,project&code=eq.active_no_vehicle&order=project.asc,name.asc'); }
+  window.wfSupabase = { pull: pullAll, poke: poke, push: pushAll, issues: showIssues, users: showUsers, logout: logout, me: function(){ return me; }, offwork: offwork, offworkCands: offworkCands };
 
   function boot(){ if (sess) start(); else showGate(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();

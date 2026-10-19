@@ -2899,48 +2899,25 @@ boot();
     try{ stampRecord(e); }catch(_){}
     return true;
   }
-  /* مزامنة «متوقف عن العمل» من الأسطول تلقائياً (مرجعية الأسطول) */
+  /* v100: مرشّحو «متوقف عن العمل» من القاعدة مباشرة — قاعدة active_no_vehicle في
+     v_data_review، وهي نفس معيار apply_offwork تماماً (نشط · فئة مركبة · لا تفويض
+     نشط في الأسطول · ضمن مشاريع المدير عبر RLS). فالعدد المعروض = القابل للإيقاف
+     فعلاً، ولا يحدث «رُفع ٠» بعد اليوم بسبب اختلاف تعريف «بلا مركبة». */
   function wfSyncOffWorkFromFleet(){
     if(!wfCanManage()) return;   /* v96: الاقتراح والإيقاف للمدير فقط — لا يظهر الزر ولا التنبيه لغيره */
-    try{
-      cloudGet('fleetos').then(function(r){
-        try{
-          var veh = (r && r.data && Array.isArray(r.data.vehicles)) ? r.data.vehicles : [];
-          if(!veh.length) return;                 /* حماية: لا بيانات أسطول → لا تُوقف أحداً */
-          var activeId = {}, activeName = {};
-          veh.forEach(function(v){
-            if(v && v.current_driver && (!v.current_driver.date_deliver) && v.current_driver.status === 'Active'){
-              if(v.current_driver.driver_id) activeId[normId(v.current_driver.driver_id)] = 1;
-              if(v.current_driver.name_ar) activeName[normName(v.current_driver.name_ar)] = 1;
-            }
-          });
-          var changed = 0, prop = [];
-          (state.employees || []).forEach(function(e){
-            if(!e || e.employment_status !== 'active') return;     /* لا نُعيد التفعيل تلقائياً */
-            var id = normId(e.iqama), nm = normName(e.name_ar);
-            var isFleetActive = activeId[id] || (nm && activeName[nm]);
-            if(!isFleetActive){ prop.push({iqama:e.iqama, name:e.name_ar||e.name_en||e.iqama}); }  /* v93: اقتراح فقط — لا كتابة تلقائية */
-            else if(e.salary_only === true){ e.salary_only = false; changed++; } /* عاد بتفويض → تنظيف علم قديم */
-          });
-          /* v93: الإيقاف الجماعي صار اقتراحاً يُعرض للمراجعة، ولا يُكتب إلا بضغطة منك.
-             السبب: هذه الدالة أوقفت ٣٢ موظفاً في ثانية واحدة بلا إذن يوم 2026-10-17. */
-          window.wfOffWorkProposal = prop;
-          try{ var b=document.getElementById('wfOffWorkBadge');
-               if(!b && prop.length){ b=document.createElement('div'); b.id='wfOffWorkBadge';
-                 b.style.cssText='position:fixed;inset-inline-end:14px;bottom:14px;z-index:9999;background:#95570f;color:#fff;'+
-                   'padding:8px 12px;border-radius:10px;font:13px system-ui;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.25)';
-                 b.onclick=function(){ try{ wfOffWorkReview(); }catch(_){ alert('مرشّحون للإيقاف: '+(window.wfOffWorkProposal||[]).length); } };
-                 document.body.appendChild(b); }
-               if(b){ if(!prop.length){ b.remove(); } else { b.textContent='مرشّحون لـ«متوقف عن العمل»: '+prop.length+' — للمراجعة'; } }
-          }catch(_){}
-          if(changed){
-            try{ if(typeof recomputeStats === 'function') recomputeStats(); }catch(_){}
-            try{ if(typeof persist === 'function') persist(); }catch(_){}
-            try{ if(typeof renderAll === 'function') renderAll(); }catch(_){}
-          }
-        }catch(_){}
-      });
-    }catch(e){}
+    if(!(window.wfSupabase && typeof wfSupabase.offworkCands === 'function')) return;
+    wfSupabase.offworkCands().then(function(rows){
+      var prop = (rows || []).map(function(x){ return { iqama:x.key, name:x.name || x.key, project:x.project }; });
+      window.wfOffWorkProposal = prop;
+      try{ var b=document.getElementById('wfOffWorkBadge');
+           if(!b && prop.length){ b=document.createElement('div'); b.id='wfOffWorkBadge';
+             b.style.cssText='position:fixed;inset-inline-end:14px;bottom:14px;z-index:9999;background:#95570f;color:#fff;'+
+               'padding:8px 12px;border-radius:10px;font:13px system-ui;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.25)';
+             b.onclick=function(){ try{ wfOffWorkReview(); }catch(_){ alert('مرشّحون للإيقاف: '+(window.wfOffWorkProposal||[]).length); } };
+             document.body.appendChild(b); }
+           if(b){ if(!prop.length){ b.remove(); } else { b.textContent='مرشّحون لـ«متوقف عن العمل»: '+prop.length+' — للمراجعة'; } }
+      }catch(_){}
+    }).catch(function(){});
   }
 
   /* v93: شاشة مراجعة المرشّحين للإيقاف — لا يُوقف أحد إلا بضغطة صريحة منك */
@@ -10285,7 +10262,9 @@ body.wx-card-open #wx4Pill{ display:none !important; }
   function poke(){ if (!ready) return; clearTimeout(pokeT); pokeT = setTimeout(function(){ if (pushing) return poke(); pullAll().catch(function(){}); }, 400); }
   /* v96: الإيقاف الجماعي «متوقف عن العمل» عبر المسار المعتمد (للمدير، يحترم مرجعية الأسطول وRLS) */
   function offwork(iqamas){ return rpc('apply_offwork', { p_iqamas: (iqamas || []).map(function(x){ return normId(x); }) }); }
-  window.wfSupabase = { pull: pullAll, poke: poke, push: pushAll, issues: showIssues, users: showUsers, logout: logout, me: function(){ return me; }, offwork: offwork };
+  /* v100: المرشّحون من نفس مصدر الإيقاف (قاعدة active_no_vehicle) — فالعدد = القابل للإيقاف */
+  function offworkCands(){ return api('GET', 'v_data_review?select=key,name,project&code=eq.active_no_vehicle&order=project.asc,name.asc'); }
+  window.wfSupabase = { pull: pullAll, poke: poke, push: pushAll, issues: showIssues, users: showUsers, logout: logout, me: function(){ return me; }, offwork: offwork, offworkCands: offworkCands };
 
   function boot(){ if (sess) start(); else showGate(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
