@@ -2901,6 +2901,7 @@ boot();
   }
   /* مزامنة «متوقف عن العمل» من الأسطول تلقائياً (مرجعية الأسطول) */
   function wfSyncOffWorkFromFleet(){
+    if(!wfCanManage()) return;   /* v96: الاقتراح والإيقاف للمدير فقط — لا يظهر الزر ولا التنبيه لغيره */
     try{
       cloudGet('fleetos').then(function(r){
         try{
@@ -2967,15 +2968,24 @@ boot();
     document.body.appendChild(ov);
     ov.querySelector('#wfowClose').onclick=function(){ ov.remove(); };
     ov.querySelector('#wfowApply').onclick=function(){
-      var ids={}; Array.prototype.forEach.call(ov.querySelectorAll('.wfow-c'), function(c){ if(c.checked) ids[c.getAttribute('data-iq')]=1; });
-      var n=0;
-      (state.employees||[]).forEach(function(e){ if(e && ids[e.iqama] && e.employment_status==='active'){ if(wfMarkOffWork(e)) n++; } });
-      if(n){ try{ recomputeStats(); }catch(_){}
-             try{ persist(); }catch(_){}
-             try{ renderAll(); }catch(_){} }
-      ov.remove();
-      var b=document.getElementById('wfOffWorkBadge'); if(b) b.remove();
-      alert('تم إيقاف '+n+' موظف.');
+      /* v96: الإيقاف عبر المسار المعتمد apply_offwork — يحترم مرجعية الأسطول،
+         ويستثني من له مركبة نشطة، ويقتصر على مشاريع المدير (RLS). لا كتابة مباشرة. */
+      var ids=[]; Array.prototype.forEach.call(ov.querySelectorAll('.wfow-c'), function(c){ if(c.checked) ids.push(c.getAttribute('data-iq')); });
+      if(!ids.length){ ov.remove(); return; }
+      if(!(window.wfSupabase && typeof wfSupabase.offwork==='function')){ alert('المزامنة غير جاهزة — افتح المنصّة وسجّل الدخول ثم أعد المحاولة.'); return; }
+      var btn=ov.querySelector('#wfowApply'); btn.disabled=true; var _t=btn.textContent; btn.textContent='جارٍ الإيقاف…';
+      wfSupabase.offwork(ids).then(function(n){
+        ov.remove();
+        var b=document.getElementById('wfOffWorkBadge'); if(b) b.remove();
+        try{ wfSupabase.pull(); }catch(_){}
+        var left=ids.length-(n||0);
+        alert('تم إيقاف '+(n||0)+' موظف — ويظهر في وثيق خلال لحظات.'
+              +(left>0?('\nلم يُوقَف '+left+': إمّا له مركبة نشطة في الأسطول أو خارج مشاريعك.'):''));
+      }).catch(function(e){
+        btn.disabled=false; btn.textContent=_t;
+        var m=(e&&e.message)||String(e);
+        alert(/للمدير فقط/.test(m) ? 'الإيقاف متاح للمدير فقط.' : ('تعذّر الإيقاف: '+m));
+      });
     };
   }
   window.wfOffWorkReview = wfOffWorkReview;
@@ -8594,15 +8604,32 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     }, Promise.resolve()).then(function(){
       pushing = false;
       if (summary.failed.length) {
+        /* ═══ v96: ما يرفضه الخادم لموظفٍ (إيقاف من وثيق / RLS) ليس وثيق مصدره ═══
+           نأخذ نسخة القاعدة لتلك السجلات ونصفّي العالق — بدل تكرار المحاولة
+           وإظهار التنبيه الأحمر للأبد. التغيير الحقيقي يتم من مساره المعتمد
+           (apply_offwork للمدير، أو تبويب المنصّة). لا يمسّ إلا سجلات الموظفين. */
+        var empColl = null; for (var ci = 0; ci < COLLS.length; ci++) { if (COLLS[ci].id === 'employees') empColl = COLLS[ci]; }
+        var empForced = 0;
+        if (empColl) summary.failed.forEach(function(f){
+          if (isLockErr(f.error)) return;                          /* المقفلة يعالجها repairLocked */
+          var k = normId(f.key);
+          if (empColl.meta.hashes[k] != null) { empColl.force[k] = 1; empForced++; }
+        });
+        var residual = summary.failed.filter(function(f){
+          return !isLockErr(f.error) && !(empColl && empColl.meta.hashes[normId(f.key)] != null);
+        });
         var lockOnes = summary.failed.filter(function(f){ return isLockErr(f.error); });
         if (lockOnes.length) {
           repairLocked(summary.failed).then(function(r){            /* v71 */
             if (r && r.n) note('🔁 ' + r.n + ' سجل: أُعيد الاسم/المشروع لنسخة القاعدة وحُفظت بقيّة تعديلاتك — '
                                + 'لتغييرهما ارفع «طلب تصحيح» من تبويب المنصّة.', 'amber');
-            var rest = summary.failed.filter(function(f){ return !isLockErr(f.error); });
-            if (rest.length || !(r && r.n)) failBanner(summary.failed, !!(r && r.n));
+            if (residual.length) failBanner(residual, !!(r && r.n));
+            if (empForced) pullAll();
           });
-        } else failBanner(summary.failed, false);
+        } else {
+          if (empForced) { note('ℹ️ ' + empForced + ' سجل أُعيد إلى نسخة القاعدة — تغييره يتم من مساره المعتمد.', 'amber'); pullAll(); }
+          if (residual.length) failBanner(residual, false);
+        }
       }
       if (summary.stale) { note('🔄 ' + summary.stale + ' سجل عُدِّل من جهاز آخر — تم جلب الأحدث', 'amber'); pullAll(); }
       if (summary.issues) { note('📋 ' + summary.issues + ' ملاحظة جديدة على القواعد — افتح «ملاحظات المزامنة»', 'amber'); refreshIssues(); }
@@ -10256,7 +10283,9 @@ body.wx-card-open #wx4Pill{ display:none !important; }
   /* تحديث مباشر: المنصّة تُبلغ عند أي تغيير في القاعدة → سحب الفروقات فوراً (لا يقاطع رفعاً جارياً) */
   var pokeT = null;
   function poke(){ if (!ready) return; clearTimeout(pokeT); pokeT = setTimeout(function(){ if (pushing) return poke(); pullAll().catch(function(){}); }, 400); }
-  window.wfSupabase = { pull: pullAll, poke: poke, push: pushAll, issues: showIssues, users: showUsers, logout: logout, me: function(){ return me; } };
+  /* v96: الإيقاف الجماعي «متوقف عن العمل» عبر المسار المعتمد (للمدير، يحترم مرجعية الأسطول وRLS) */
+  function offwork(iqamas){ return rpc('apply_offwork', { p_iqamas: (iqamas || []).map(function(x){ return normId(x); }) }); }
+  window.wfSupabase = { pull: pullAll, poke: poke, push: pushAll, issues: showIssues, users: showUsers, logout: logout, me: function(){ return me; }, offwork: offwork };
 
   function boot(){ if (sess) start(); else showGate(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();

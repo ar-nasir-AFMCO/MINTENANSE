@@ -7491,15 +7491,32 @@ async function handleAccidentFile(input){
     }, Promise.resolve()).then(function(){
       pushing = false;
       if (summary.failed.length) {
+        /* ═══ v96: ما يرفضه الخادم لموظفٍ (إيقاف من وثيق / RLS) ليس وثيق مصدره ═══
+           نأخذ نسخة القاعدة لتلك السجلات ونصفّي العالق — بدل تكرار المحاولة
+           وإظهار التنبيه الأحمر للأبد. التغيير الحقيقي يتم من مساره المعتمد
+           (apply_offwork للمدير، أو تبويب المنصّة). لا يمسّ إلا سجلات الموظفين. */
+        var empColl = null; for (var ci = 0; ci < COLLS.length; ci++) { if (COLLS[ci].id === 'employees') empColl = COLLS[ci]; }
+        var empForced = 0;
+        if (empColl) summary.failed.forEach(function(f){
+          if (isLockErr(f.error)) return;                          /* المقفلة يعالجها repairLocked */
+          var k = normId(f.key);
+          if (empColl.meta.hashes[k] != null) { empColl.force[k] = 1; empForced++; }
+        });
+        var residual = summary.failed.filter(function(f){
+          return !isLockErr(f.error) && !(empColl && empColl.meta.hashes[normId(f.key)] != null);
+        });
         var lockOnes = summary.failed.filter(function(f){ return isLockErr(f.error); });
         if (lockOnes.length) {
           repairLocked(summary.failed).then(function(r){            /* v71 */
             if (r && r.n) note('🔁 ' + r.n + ' سجل: أُعيد الاسم/المشروع لنسخة القاعدة وحُفظت بقيّة تعديلاتك — '
                                + 'لتغييرهما ارفع «طلب تصحيح» من تبويب المنصّة.', 'amber');
-            var rest = summary.failed.filter(function(f){ return !isLockErr(f.error); });
-            if (rest.length || !(r && r.n)) failBanner(summary.failed, !!(r && r.n));
+            if (residual.length) failBanner(residual, !!(r && r.n));
+            if (empForced) pullAll();
           });
-        } else failBanner(summary.failed, false);
+        } else {
+          if (empForced) { note('ℹ️ ' + empForced + ' سجل أُعيد إلى نسخة القاعدة — تغييره يتم من مساره المعتمد.', 'amber'); pullAll(); }
+          if (residual.length) failBanner(residual, false);
+        }
       }
       if (summary.stale) { note('🔄 ' + summary.stale + ' سجل عُدِّل من جهاز آخر — تم جلب الأحدث', 'amber'); pullAll(); }
       if (summary.issues) { note('📋 ' + summary.issues + ' ملاحظة جديدة على القواعد — افتح «ملاحظات المزامنة»', 'amber'); refreshIssues(); }
@@ -9153,7 +9170,9 @@ async function handleAccidentFile(input){
   /* تحديث مباشر: المنصّة تُبلغ عند أي تغيير في القاعدة → سحب الفروقات فوراً (لا يقاطع رفعاً جارياً) */
   var pokeT = null;
   function poke(){ if (!ready) return; clearTimeout(pokeT); pokeT = setTimeout(function(){ if (pushing) return poke(); pullAll().catch(function(){}); }, 400); }
-  window.wfSupabase = { pull: pullAll, poke: poke, push: pushAll, issues: showIssues, users: showUsers, logout: logout, me: function(){ return me; } };
+  /* v96: الإيقاف الجماعي «متوقف عن العمل» عبر المسار المعتمد (للمدير، يحترم مرجعية الأسطول وRLS) */
+  function offwork(iqamas){ return rpc('apply_offwork', { p_iqamas: (iqamas || []).map(function(x){ return normId(x); }) }); }
+  window.wfSupabase = { pull: pullAll, poke: poke, push: pushAll, issues: showIssues, users: showUsers, logout: logout, me: function(){ return me; }, offwork: offwork };
 
   function boot(){ if (sess) start(); else showGate(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();

@@ -1305,7 +1305,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261018200109";
+  var BUILD = "20261019153544";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -3824,11 +3824,18 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     var check = function(){
       fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).then(function(v){
         if (!v || !v.build || v.build === BUILD || $('verBtn')) return;
+        /* v98: لا نُزعج إلا بنسخة أحدث فعلاً (البناء ختم زمني متصاعد) — فلو كانت
+           version.json أقدم من المحمّلة (تأخّر نشر، أو إعادة نشر ملف جانبي) نتجاهل. */
+        if (String(v.build) < String(BUILD)) return;
         /* v97: إن جرّبنا التحديث لهذه النسخة ورجعت الصفحة بنفس البناء، فالنشر ناقص
            (index.html لم يُرفع مع version.json) — لا نُزعج المستخدم بلا فائدة. */
         var tried = null; try { tried = sessionStorage.getItem('wf_ver_try'); } catch(e){}
         if (tried === v.build) return;
+        /* v98: أظهرناه لهذه النسخة من قبل (عبر الجلسات) — لا نكرّره. زرٌّ واحد لكل نسخة. */
+        var seen = null; try { seen = localStorage.getItem('wf_ver_seen'); } catch(e){}
+        if (seen === v.build) return;
         clearInterval(verT);
+        try { localStorage.setItem('wf_ver_seen', v.build); } catch(e){}
         var b = document.createElement('button');
         b.id = 'verBtn'; b.className = 'tbtn'; b.style.cssText = 'border-color:#eadbbd;background:#fffaf0;color:#6f5424';
         b.innerHTML = ico('reload') + 'نسخة جديدة — حدّث';
@@ -3841,8 +3848,10 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         var bar = $('fbar'); if (bar) bar.parentNode.insertBefore(b, bar);
       }).catch(function(){});
     };
+    /* v98: فحص واحد عند الفتح ثم كل ٣٠ دقيقة فقط — أزلنا الفحص عند كل تبديل تبويب
+       (كان يُظهر الزر مع كل رجوع للصفحة أثناء النشر المتكرر). */
+    check();
     verT = setInterval(check, 1800000);
-    document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible') check(); });
   }
 
   /* v55: رابط استعادة كلمة المرور من البريد يعود إلى هنا ومعه جلسة مؤقّتة
