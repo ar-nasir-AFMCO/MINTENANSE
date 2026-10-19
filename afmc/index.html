@@ -1305,7 +1305,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261019153544";
+  var BUILD = "20261019173038";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -2752,7 +2752,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       api('GET', 'profiles?select=id,email,full_name,role,approved,created_at,phone,requested,systems&order=created_at.desc'),
       api('GET', 'profile_projects?select=profile_id,project_code'),
       api('GET', 'projects?select=code&is_active=is.true&order=code.asc'),
-      rpc('integration_status'),
+      rpc('integration_status').catch(function(){ return {}; }),   /* v99: ويدجت الحالة بطيء أحياناً — لا يُسقط تبويب الإدارة بخطأ */
       api('GET', 'role_matrix?select=*')
     ]).then(function(r){
       var SYS_AR = { watheeq:'وثيق', fleet:'الأسطول', ninja:'Ninja', keemart:'Keemart', dbb:'الصيانة', housing:'السكنات' }, ord = ROLES.map(function(x){ return x[0]; });
