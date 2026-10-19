@@ -1172,10 +1172,15 @@ function kmLoadDB(){
       });
   }
   return page(0).then(function(){
-    return sbGet('keemart_riders?select=captain_id,name,branch,city,status,joined_on,left_on')
-      .catch(function(){ return []; });
-  }).then(function(rid){
-    var NM = {}; (rid||[]).forEach(function(r){ NM[String(r.captain_id)] = r; });
+    return Promise.all([
+      sbGet('keemart_riders?select=captain_id,name,branch,city,status,joined_on,left_on').catch(function(){ return []; }),
+      sbGet('keemart_links?select=captain_id,iqama&to_date=is.null').catch(function(){ return []; })   /* v102: الروابط المفتوحة لعرض حالة الربط */
+    ]);
+  }).then(function(res){
+    var rid = res[0] || [], lnk = res[1] || [];
+    var LKM = {}; lnk.forEach(function(x){ LKM[String(x.captain_id)] = String(x.iqama); });
+    window.KM_LINKS = LKM;
+    var NM = {}; rid.forEach(function(r){ NM[String(r.captain_id)] = r; });
     window.KM_RIDERS = NM;
     window.DAILY = rows.map(function(d){
       function nz(x){ return (x===null||x===undefined||x==='')?null:+x; }
@@ -1353,7 +1358,7 @@ function kmApplyRange(){
 (function wireRange(){
   ['dFrom','dTo'].forEach(function(id){
     var e=document.getElementById(id);
-    if (e) e.addEventListener('change', function(){ kmApplyRange(); kmPaintBridge(); });
+    if (e) e.addEventListener('change', function(){ kmApplyRange(); kmPaintBridge(); try{ render(); }catch(_){} });
   });
 })();
 
@@ -1431,8 +1436,27 @@ function lkPick(i){
   document.getElementById('lkGo').addEventListener('click', function(){
     if(!LK.emp) return;
     var sel=document.querySelector('#tLink tr.sel-row');
-    alert('يُربط '+(sel?sel.dataset.nm:'المندوب المحدّد')+' بالموظف '+LK.emp.name+' ('+LK.emp.iqama+').\n'+
-          'في المنصة تُستدعى keemart_link(captain_id, iqama) فتقفل فترة المعرّف السابق وتبدأ الجديدة من اليوم.');
+    if(!sel){ alert('اختر المندوب من الجدول أولاً.'); return; }
+    var cid=String(sel.dataset.cid), nm=sel.dataset.nm;
+    if(!confirm('ربط «'+nm+'» بالموظف '+LK.emp.name+' ('+LK.emp.iqama+')؟\n'+
+                'يُقفل المعرّف السابق إن وُجد ويبدأ الجديد من اليوم — والأداء السابق يبقى منسوباً له ولا يُحذف.')) return;
+    var btn=this; btn.disabled=true; var _t=btn.textContent; btn.textContent='جارٍ الربط…';
+    sbRpc('keemart_link', { p_captain:cid, p_iqama:String(LK.emp.iqama) }).then(function(r){
+      btn.disabled=false; btn.textContent=_t;
+      if(!(r && r.ok)){ alert('تعذّر الربط.'); return; }
+      (window.KM_LINKS=window.KM_LINKS||{})[cid]=String(LK.emp.iqama);   /* تحديث فوري للحالة */
+      document.getElementById('lkIq').value=''; LK.emp=null; LK.list=[]; try{ lkDraw(); }catch(_){}
+      document.getElementById('lkGo').disabled=true;
+      if(VIEW==='link'){ try{ vLink(); wireExport(); wireRows(); }catch(_){} }
+      alert(r.unchanged ? 'المندوب مربوط بهذا الموظف أصلاً.'
+                        : ('تم الربط ✅'+(r.closed_prev?' — وأُقفل المعرّف السابق تلقائياً.':'')));
+    }).catch(function(e){
+      btn.disabled=false; btn.textContent=_t;
+      var m=(e&&e.message)||String(e);
+      alert(/غير مصرّح/.test(m) ? 'الربط متاح لمن له صلاحية التعديل على كيمارت فقط.'
+            : /لا يوجد موظف/.test(m) ? 'لا يوجد موظف بهذه الإقامة في وثيق — تأكّد من الرقم.'
+            : ('تعذّر الربط: '+m));
+    });
   });
 })();
 
@@ -1447,11 +1471,13 @@ function vLink(){
   document.getElementById('linkN').textContent=V.length+' مندوباً — الربط بالمعرّف مرة واحدة';
   document.getElementById('tLink').innerHTML=T(
     ['المندوب','معرّف كيمارت','الفرع','المدينة','الطلبات','ساعات','الحالة في البوابة','الربط بوثيق'],
-    V.map(function(c){ return '<tr data-cid="'+c.cid+'" data-nm="'+c.name+'"><td>'+c.name+'</td>'+
+    V.map(function(c){
+      var liq=(window.KM_LINKS||{})[String(c.cid)];   /* v102: حالة الربط الحقيقية من القاعدة */
+      return '<tr data-cid="'+c.cid+'" data-nm="'+c.name+'"><td>'+c.name+'</td>'+
       '<td class="flag">'+c.cid+'</td><td>'+c.store+'</td>'+
       '<td>'+c.city+'</td><td class="num">'+n(c.ord)+'</td><td class="num">'+n1(c.actH)+'</td>'+
       '<td class="flag">'+(c.status||'—')+'</td>'+
-      '<td><span class="pill p-mute">بانتظار الربط</span></td></tr>'; }));
+      '<td>'+(liq?'<span class="pill p-ok">مربوط · '+liq+'</span>':'<span class="pill p-mute">بانتظار الربط</span>')+'</td></tr>'; }));
 }
 
 var VIEWS={metrics:vMetrics, board:vBoard, shift:vShift, predict:vPredict, flags:vFlags,
@@ -1475,7 +1501,7 @@ if(lkq) lkq.addEventListener('input', function(){ if(VIEW==='link') vLink(), wir
 document.getElementById('fCity').addEventListener('change', function(e){ F.city=e.target.value; render(); });
 document.getElementById('fBranch').addEventListener('change', function(e){ F.branch=e.target.value; render(); });
 document.getElementById('fQ').addEventListener('input', function(e){ F.q=e.target.value; render(); });
-document.getElementById('go').addEventListener('click', function(){ render(); });
+document.getElementById('go').addEventListener('click', function(){ kmApplyRange(); kmPaintBridge(); render(); });
 document.getElementById('clr').addEventListener('click', function(){
   F={city:'',branch:'',q:'',state:''};
   document.getElementById('fCity').value=''; document.getElementById('fBranch').value='';
