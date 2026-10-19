@@ -505,11 +505,11 @@ var C = {name:0, store:1, ord:2, del:3, late:4, major:5, ont:6, majr:7, pre:8, n
 
 function city(s){ return String(s).split(/\d/)[0].trim(); }
 function n(x){ if(x===null||x===undefined||(typeof x==='number'&&isNaN(x))) return '—'; return Number(x||0).toLocaleString('ar-EG'); }
-function qn(x){ return window.KM_LIVE ? '—' : n(x); }
+function qn(x){ return (x===null||x===undefined) ? '—' : n(x); }
 function n1(x){ return Number(x||0).toLocaleString('ar-EG',{minimumFractionDigits:1,maximumFractionDigits:1}); }
 function p1(x){ return Number(x||0).toFixed(1)+'%'; }
 function p2(x){ return Number(x||0).toFixed(2)+'%'; }
-function mins(x){ if(window.KM_LIVE||x==null) return '—'; var m=Math.floor(x||0), s=Math.round(((x||0)-m)*60); return m+' د '+(s<10?'0':'')+s+' ث'; }
+function mins(x){ if(x==null) return '—'; var m=Math.floor(x||0), s=Math.round(((x||0)-m)*60); return m+' د '+(s<10?'0':'')+s+' ث'; }
 function hrs(x){ return n1(x)+' س'; }
 
 var BR = BRANCHES.map(function(r){ var o={}; Object.keys(B).forEach(function(k){ o[k]=r[B[k]]; }); o.city=city(o.store); return o; });
@@ -563,8 +563,8 @@ function capView(st){ return CAPS.filter(function(c){
   var s = st===undefined ? F.state : st;
   if(s&&CAP_STATE[s]&&!CAP_STATE[s](c)) return false; return true; }); }
 
-function pillOnt(v){ if(window.KM_LIVE||v==null) return '<span class="pill p-mute">—</span>'; return '<span class="pill '+(v>=98?'p-ok':v>=96?'p-warn':'p-bad')+'">'+p2(v)+'</span>'; }
-function pillR(v){ if(window.KM_LIVE||v==null) return '<span class="pill p-mute">—</span>'; return '<span class="pill '+(v>=85?'p-ok':v>=70?'p-warn':'p-bad')+'">'+p1(v)+'</span>'; }
+function pillOnt(v){ if(v==null) return '<span class="pill p-mute">—</span>'; return '<span class="pill '+(v>=98?'p-ok':v>=96?'p-warn':'p-bad')+'">'+p2(v)+'</span>'; }
+function pillR(v){ if(v==null) return '<span class="pill p-mute">—</span>'; return '<span class="pill '+(v>=85?'p-ok':v>=70?'p-warn':'p-bad')+'">'+p1(v)+'</span>'; }
 function pillSC(v){ return v==null?'<span class="pill p-mute">—</span>'
   :'<span class="pill '+(v>=100?'p-ok':v>=95?'p-warn':'p-bad')+'">'+p1(v)+'</span>'; }
 function cnt(v){ return v?'<span class="pill p-bad">'+n(v)+'</span>':'<span class="flag">٠</span>'; }
@@ -595,15 +595,25 @@ function vMetrics(){
   var idx=V.length?Math.round(t.wp/V.length):0;
   var nd=0; if(window.KM_LIVE){ var dd={}; (window.DAILY||[]).forEach(function(d){ dd[d.date]=1; }); nd=Object.keys(dd).length||1; }
   document.getElementById('hdCum').textContent=V.length+' مندوباً · '+brView().length+' فرعاً داخل الفلتر'+(window.KM_LIVE?' · '+nd+' يوماً':'');
+  var BQ=null;
+  if(window.KM_HASQ){
+    BQ={W:0,OW:0,R20:0,del:0,major:0,neg:0,pre:0,hasOnt:false,hasR20:false};
+    V.forEach(function(c){ if(!c.q) return; var w=(c.b_push||c.del||c.ord||0);
+      BQ.W+=w; if(c.ont!=null){BQ.OW+=c.ont*w;BQ.hasOnt=true;} if(c.r20!=null){BQ.R20+=c.r20*w;BQ.hasR20=true;}
+      BQ.del+=c.del||0; BQ.major+=c.major||0; BQ.neg+=c.neg||0; BQ.pre+=c.pre||0; });
+  }
+  var qOnt = (BQ&&BQ.hasOnt&&BQ.W)?(BQ.OW/BQ.W):null;
+  var qR20 = (BQ&&BQ.hasR20&&BQ.W)?(BQ.R20/BQ.W):null;
+  var qWaste = (BQ&&t.ord)?((BQ.major+BQ.neg+BQ.pre)/t.ord*100):null;
   var tiles = window.KM_LIVE ? [
-    ['المؤشر التشغيلي',idx,'حجم + التزام + انضباط',idx>=75?'up':idx>=55?'':'down'],
+    ['المؤشر التشغيلي',idx,window.KM_HASQ?'حجم + جودة + التزام':'حجم + التزام + انضباط',idx>=75?'up':idx>=55?'':'down'],
     ['الطلبات',n(t.ord),nd?(t.ord/nd).toFixed(0)+' في اليوم':'',''],
     ['المناديب النشطون',n(V.length),'داخل الفلتر',''],
     ['طلبات لكل ساعة',t.effH?(t.ord/t.effH).toFixed(2):'—','لكل ساعة فعّالة',''],
     ['ساعات فعلية',hrs(t.actH),'الفعّالة '+hrs(t.effH),''],
     ['التزام الوردية',p1(t.reqH?t.actH/t.reqH*100:0),'الفعلي ÷ المجدول',t.actH>=t.reqH?'up':'down'],
-    ['نسبة الالتزام (توصيل)','—','من لوحة كيمارت الموقّعة',''],
-    ['سرعة ٢٠ د · الهدر','—','من لوحة كيمارت الموقّعة','']
+    ['نسبة الالتزام (توصيل)',qOnt==null?'—':p2(qOnt),qOnt==null?'من لوحة كيمارت الموقّعة':'الهدف ٩٧٪',qOnt==null?'':(qOnt>=97?'up':'down')],
+    ['تسليم ٢٠د · الهدر',qR20==null?'—':p1(qR20),qWaste==null?'من لوحة كيمارت الموقّعة':('هدر '+p2(qWaste)),qR20==null?'':(qR20>=80?'up':'down')]
   ] : [
     ['المؤشر العام',idx,'متوسط المناديب',idx>=75?'up':idx>=55?'':'down'],
     ['الطلبات المدفوعة',n(t.ord),(t.ord/DAYS).toFixed(0)+' في اليوم',''],
@@ -640,8 +650,28 @@ function vMetrics(){
   document.getElementById('chOrd').innerHTML=ords.map(function(v){
     return '<div class="b" title="'+n(v)+' طلب"><i style="height:'+Math.round(v/mx*100)+'%"></i></div>'; }).join('');
   document.getElementById('xOrd').innerHTML=days.map(function(d){ return '<span>'+d+'</span>'; }).join('');
-  if(window.KM_LIVE){
-    document.getElementById('chOnt').innerHTML='<div class="flag" style="align-self:center;margin:auto">نسبة الالتزام اليومية تجيء من لوحة كيمارت الموقّعة — غير مسحوبة.</div>';
+  if(window.KM_LIVE && window.KM_HASQ){
+    var od={}, ow={};
+    (window.DAILY||[]).forEach(function(d){
+      if(F.city&&city(d.store)!==F.city) return;
+      if(F.branch&&d.store!==F.branch) return;
+      if(d.b_ont==null) return;
+      var w=(d.b_push!=null?d.b_push:(d.b_del!=null?d.b_del:1))||1;
+      od[d.date]=(od[d.date]||0)+d.b_ont*w; ow[d.date]=(ow[d.date]||0)+w;
+    });
+    var ok=Object.keys(od).sort();
+    if(ok.length){
+      document.getElementById('chOnt').innerHTML=ok.map(function(x){ var v=od[x]/ow[x];
+        var h=Math.max(4,Math.round((v-94)/5*100));
+        var c=v>=98?'var(--ok)':v>=96.5?'var(--brand2)':'var(--bad)';
+        return '<div class="b" title="'+p1(v)+'"><i style="height:'+h+'%;background:'+c+'"></i></div>'; }).join('');
+      document.getElementById('xOnt').innerHTML=ok.map(function(x){ return '<span>'+String(x).slice(8)+'</span>'; }).join('');
+    } else {
+      document.getElementById('chOnt').innerHTML='<div class="flag" style="align-self:center;margin:auto">لا نسبة التزام داخل الفلتر.</div>';
+      document.getElementById('xOnt').innerHTML='';
+    }
+  } else if(window.KM_LIVE){
+    document.getElementById('chOnt').innerHTML='<div class="flag" style="align-self:center;margin:auto">نسبة الالتزام اليومية تجيء من لوحة كيمارت الموقّعة — غير مسحوبة بعد.</div>';
     document.getElementById('xOnt').innerHTML='';
   } else {
     var onts=[97.6,97.1,96.4,98.0,98.4,97.3,96.8,96.1,97.5,98.1,98.3,97.0,96.6,97.2,97.7];
@@ -676,7 +706,7 @@ function vMetrics(){
         '<td class="num">'+(x.actH?(x.ord/x.actH).toFixed(2):'—')+'</td>'+
         '<td>'+pillOnt(x.ow/x.ord)+'</td><td>'+pillR(x.r20/x.ord)+'</td><td class="num">'+qn(x.neg)+'</td></tr>'; }));
 
-  if(window.KM_LIVE){ document.getElementById('dur').innerHTML='<div class="flag">مدد الاستلام/النقل/التسليم ونِسب السرعة تجيء من لوحة كيمارت الموقّعة — غير مسحوبة. المسحوب حيّاً: الطلبات والساعات والدوام والالتزام.</div>'; return; }
+  if(window.KM_LIVE && !window.KM_HASQ){ document.getElementById('dur').innerHTML='<div class="flag">مدد الاستلام/النقل/التسليم ونِسب السرعة تجيء من لوحة كيمارت الموقّعة — غير مسحوبة بعد. المسحوب حيّاً: الطلبات والساعات والدوام والالتزام.</div>'; return; }
   var d=V.reduce(function(a,c){ a.o+=c.ord; a.pk+=c.dPick*c.ord; a.tr+=c.dTrans*c.ord; a.rt+=c.dRet*c.ord;
     a.dl+=c.dDel*c.ord; a.r15+=c.r15*c.ord; a.r20+=c.r20*c.ord; a.r30+=c.r30*c.ord; return a; },
     {o:0,pk:0,tr:0,rt:0,dl:0,r15:0,r20:0,r30:0});
@@ -704,10 +734,10 @@ function vBoard(){
   document.getElementById('bdTop').innerHTML =
     top.map(function(c,i){ return '<div class="tile"><div class="l">المركز '+(i+1)+'</div>'+
       '<div class="v" style="font-size:16px">'+c.name+'</div>'+
-      '<div class="d up">مؤشر '+c.wpi+' · '+n(c.ord)+' طلب'+(window.KM_LIVE?'':' · '+p2(c.ont))+'</div></div>'; }).join('') +
+      '<div class="d up">مؤشر '+c.wpi+' · '+n(c.ord)+' طلب'+(c.ont==null?'':' · '+p2(c.ont))+'</div></div>'; }).join('') +
     bot.map(function(c){ return '<div class="tile"><div class="l">المركز '+c.rank+'</div>'+
       '<div class="v" style="font-size:16px">'+c.name+'</div>'+
-      '<div class="d down">مؤشر '+c.wpi+' · '+n(c.ord)+' طلب'+(window.KM_LIVE?'':' · '+p2(c.ont))+'</div></div>'; }).join('');
+      '<div class="d down">مؤشر '+c.wpi+' · '+n(c.ord)+' طلب'+(c.ont==null?'':' · '+p2(c.ont))+'</div></div>'; }).join('');
 
   document.getElementById('capN').textContent=V.length+' من '+CAPS.length;
   document.getElementById('tCaps').innerHTML=T(
@@ -1129,7 +1159,9 @@ function kmLoadDB(){
   kmSetMsg('جارٍ القراءة…');
   var SEL = 'work_date,captain_id,captain_name,branch,city,shift,check_in,check_out,'
           + 'req_hours,act_hours,eff_hours,late_hours,early_hours,shift_orders,att_status,'
-          + 'orders_per_hour,shift_comp,idle_shift';
+          + 'orders_per_hour,shift_comp,idle_shift,'
+          + 'orders_pushed,orders_delivered,late_orders,major_late,ont_rate,r15,r20,r30,'
+          + 'neg_orders,pos_orders,pre_marked,d_pickup,d_transit,d_return,d_deliver,src';
   var rows = [], STEP = 1000;
   function page(off){
     return sbGet('keemart_captain_days?select='+SEL+'&order=work_date.asc&limit='+STEP+'&offset='+off)
@@ -1146,13 +1178,20 @@ function kmLoadDB(){
     var NM = {}; (rid||[]).forEach(function(r){ NM[String(r.captain_id)] = r; });
     window.KM_RIDERS = NM;
     window.DAILY = rows.map(function(d){
+      function nz(x){ return (x===null||x===undefined||x==='')?null:+x; }
       return { cid:String(d.captain_id), date:d.work_date, shift:d.shift,
                name:d.captain_name, city:d.city,
                in:(d.check_in||'').slice(0,5), out:(d.check_out||'').slice(0,5),
                req:+d.req_hours||0, act:+d.act_hours||0, eff:+d.eff_hours||0,
                late:+d.late_hours||0, early:+d.early_hours||0,
                ord:+d.shift_orders||0, status:d.att_status, store:d.branch,
-               oph:+d.orders_per_hour||0, comp:+d.shift_comp||0, idle:!!d.idle_shift };
+               oph:+d.orders_per_hour||0, comp:+d.shift_comp||0, idle:!!d.idle_shift,
+               src:d.src,
+               b_push:nz(d.orders_pushed), b_del:nz(d.orders_delivered),
+               b_late:nz(d.late_orders), b_major:nz(d.major_late),
+               b_ont:nz(d.ont_rate), b_r15:nz(d.r15), b_r20:nz(d.r20), b_r30:nz(d.r30),
+               b_neg:nz(d.neg_orders), b_pos:nz(d.pos_orders), b_pre:nz(d.pre_marked),
+               b_pick:nz(d.d_pickup), b_tr:nz(d.d_transit), b_ret:nz(d.d_return), b_dl:nz(d.d_deliver) };
     });
     window.DAILY_ALL = window.DAILY;
     var days={}, caps={};
@@ -1212,6 +1251,24 @@ function kmBuildLive(){
     c.expD++;
     if (d.store) c.store = d.store;
     c._dates[d.date]=1;
+    /* مؤشرات اللوحة (إن وُجدت ليوم المندوب) */
+    if (d.b_del!=null||d.b_ont!=null||d.b_push!=null){
+      c._bhas=true;
+      c.b_del=(c.b_del||0)+(d.b_del||0); c.b_push=(c.b_push||0)+(d.b_push||0);
+      c.b_late=(c.b_late||0)+(d.b_late||0); c.b_major=(c.b_major||0)+(d.b_major||0);
+      c.b_neg=(c.b_neg||0)+(d.b_neg||0); c.b_pos=(c.b_pos||0)+(d.b_pos||0);
+      c.b_pre=(c.b_pre||0)+(d.b_pre||0);
+      var w=(d.b_push!=null?d.b_push:(d.b_del!=null?d.b_del:0))||0;
+      c._w=(c._w||0)+w;
+      if(d.b_ont!=null) c._ow=(c._ow||0)+d.b_ont*w;
+      if(d.b_r15!=null) c._r15=(c._r15||0)+d.b_r15*w;
+      if(d.b_r20!=null) c._r20=(c._r20||0)+d.b_r20*w;
+      if(d.b_r30!=null) c._r30=(c._r30||0)+d.b_r30*w;
+      if(d.b_pick!=null) c._pk=(c._pk||0)+d.b_pick*w;
+      if(d.b_tr!=null) c._tr=(c._tr||0)+d.b_tr*w;
+      if(d.b_ret!=null) c._rt=(c._rt||0)+d.b_ret*w;
+      if(d.b_dl!=null) c._dl=(c._dl||0)+d.b_dl*w;
+    }
   });
 
   function q(){ return null; }
@@ -1222,18 +1279,39 @@ function kmBuildLive(){
     c.attRate   = c.expD ? c.actD/c.expD*100 : null;
     c.oph       = c.effH ? c.ord/c.effH : null;
     c.miss = null;
-    c.del=q(); c.late=q(); c.major=q(); c.majr=q(); c.ont=q(); c.r15=q(); c.r20=q(); c.r30=q();
-    c.neg=q(); c.pos=q(); c.pre=q(); c.dPick=q(); c.dTrans=q(); c.dRet=q(); c.dDel=q();
-    c.q=false;
-    // مؤشر تشغيلي من الحجم + التزام الوردية + الانضباط (بلا جودة التوصيل)
-    var vol  = Math.min(c.ord/450,1)*40;
-    var comp = Math.max(0,Math.min(1,(c.shiftComp||0)/100))*40;
-    var disc = Math.max(0,1-(c.lateN+c.earlyN+c.absent*2)/6)*20;
-    c.wpi = Math.round(vol+comp+disc);
+    c.majr=q(); c.dTrans=q(); c.dRet=q();
+    if (c._bhas){
+      var W=c._w||0;
+      c.del=c.b_del!=null?c.b_del:null; c.late=c.b_late!=null?c.b_late:null;
+      c.major=c.b_major!=null?c.b_major:null; c.neg=c.b_neg!=null?c.b_neg:null;
+      c.pos=c.b_pos!=null?c.b_pos:null; c.pre=c.b_pre!=null?c.b_pre:null;
+      c.ont   = (W&&c._ow!=null)?c._ow/W:null;
+      c.r15   = (W&&c._r15!=null)?c._r15/W:null;
+      c.r20   = (W&&c._r20!=null)?c._r20/W:null;
+      c.r30   = (W&&c._r30!=null)?c._r30/W:null;
+      c.dPick = (W&&c._pk!=null)?c._pk/W:null;
+      c.dTrans= (W&&c._tr!=null)?c._tr/W:null;
+      c.dRet  = (W&&c._rt!=null)?c._rt/W:null;
+      c.dDel  = (W&&c._dl!=null)?c._dl/W:null;
+      c.q=true;
+    } else {
+      c.del=q(); c.late=q(); c.major=q(); c.ont=q(); c.r15=q(); c.r20=q(); c.r30=q();
+      c.neg=q(); c.pos=q(); c.pre=q(); c.dPick=q(); c.dDel=q();
+      c.q=false;
+    }
+    if (c.q){
+      c.wpi = wpiCap(c);
+    } else {
+      var vol  = Math.min(c.ord/450,1)*40;
+      var comp = Math.max(0,Math.min(1,(c.shiftComp||0)/100))*40;
+      var disc = Math.max(0,1-(c.lateN+c.earlyN+c.absent*2)/6)*20;
+      c.wpi = Math.round(vol+comp+disc);
+    }
     return c;
   });
   window.CAPS.slice().sort(function(a,b){ return b.wpi-a.wpi; }).forEach(function(c,i){ c.rank=i+1; });
   CAPS = window.CAPS;
+  window.KM_HASQ = window.CAPS.some(function(c){ return c.q; });
 
   var bm = {};
   window.CAPS.forEach(function(c){
