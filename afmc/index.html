@@ -1285,7 +1285,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <aside id="inbox" aria-label="الصندوق الموحّد">
   <div class="ih"><b>الصندوق الموحّد</b><button class="btn sm" id="ibNew">+ جديد</button><button class="tbtn" id="ibClose" title="إغلاق">✕</button></div>
   <div class="itabs"><button data-t="req" class="on">الطلبات</button><button data-t="msg">الرسائل</button></div>
-  <div class="ifil"><select id="ibSt"><option value="open">المفتوحة</option><option value="all">الكل</option><option value="closed">المنجزة والمرفوضة</option></select></div>
+  <div class="ifil"><input type="search" id="ibQ" placeholder="بحث: اسم · إقامة · لوحة" style="flex:1;min-width:0"><select id="ibSt"><option value="open">المفتوحة</option><option value="all">الكل</option><option value="closed">المنجزة والمرفوضة</option></select></div>
   <div class="ibody" id="ibBody"></div>
 </aside>
 <div id="njMask"><div class="box" id="njBox"></div></div>
@@ -1293,7 +1293,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261020180557";
+  var BUILD = "20261020184607";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -3733,9 +3733,15 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     function open(){ $('inbox').classList.add('on'); $('ibScrim').classList.add('on'); cur = null; list(); load(); }
     function close(){ $('inbox').classList.remove('on'); $('ibScrim').classList.remove('on'); cur = null; }
     function list(){
-      cur = null; var f = $('ibSt').value;
+      cur = null; var f = $('ibSt').value, q = (($('ibQ') || {}).value || '').trim().toLowerCase();
       var rows = items.filter(function(x){ return (tab === 'msg') === (x.kind === 'message'); })
-        .filter(function(x){ return f === 'all' || (f === 'open' ? (isOpen(x) || (x.kind === 'message' && unread(x))) : !isOpen(x)); });
+        .filter(function(x){ return f === 'all' || (f === 'open' ? (isOpen(x) || (x.kind === 'message' && unread(x))) : !isOpen(x)); })
+        .filter(function(x){   /* بحث برقم الإقامة أو لوحة المركبة أو الاسم */
+          if (!q) return true;
+          var ref = x.ref || {};
+          return [x.title, x.body, x.created_by_name, x.project,
+                  ref.iqama, ref.name, ref.plate, ref.plates, ref.project, ref.employee_id]
+                 .join(' ').toLowerCase().indexOf(q) >= 0; });
       $('ibBody').innerHTML = rows.length ? rows.map(function(x){
         return '<button class="ii' + (unread(x) ? ' unread' : '') + '" data-id="' + x.id + '"><div class="t"><b>' + esc(x.title) + '</b>' + (x.kind === 'message' ? '' : '<span class="st ' + x.status + '">' + ST_AR[x.status] + '</span>') + '</div>'
           + '<div class="m">' + esc(KIND_AR[x.kind] || x.kind) + (x.system ? ' · ' + esc(SYS_AR2[x.system] || x.system) : '') + (x.project ? ' · ' + esc(x.project) : '') + ' · من ' + esc(x.created_by_name || '—') + ' · ' + when(x.updated_at) + '</div></button>'; }).join('')
@@ -3823,6 +3829,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     }
     $('inboxBtn').onclick = function(){ if ($('inbox').classList.contains('on')) close(); else open(); };
     $('ibClose').onclick = close; $('ibScrim').onclick = close; $('ibNew').onclick = compose; $('ibSt').onchange = list;
+    if ($('ibQ')) $('ibQ').oninput = list;   /* بحث المراسلات بالإقامة/اللوحة/الاسم */
     document.querySelectorAll('#inbox .itabs button').forEach(function(b){ b.onclick = function(){ tab = b.getAttribute('data-t'); document.querySelectorAll('#inbox .itabs button').forEach(function(x){ x.classList.toggle('on', x === b); }); list(); }; });
     document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible' && me) load(); });
     return { load: load, open: open, detail: detail, items: function(){ return items; } };
