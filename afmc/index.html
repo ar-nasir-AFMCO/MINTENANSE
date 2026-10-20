@@ -1027,13 +1027,13 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
           <h3><svg class="i"><use href="#i-down"/></svg>ملفات الرواتب</h3>
           <div class="card" style="padding:16px 18px;margin-bottom:12px">
             <div style="font-weight:700;margin-bottom:4px">📤 رفع ملفات الرواتب</div>
-            <div class="sub" style="margin:0 0 10px">ارفع ملفات الرواتب (Excel / CSV / PDF). يُحفظ الاختيار مؤقتاً، وتُربط المعالجة لاحقاً بعد تحديد صيغة الملفات.</div>
+            <div class="sub" style="margin:0 0 10px">ارفع ملفات الرواتب (Excel / CSV / PDF). ⚠️ المعالجة قيد الإعداد — الاختيار لا يُرفع للنظام بعد.</div>
             <input type="file" id="finPayUpload" multiple accept=".xlsx,.xls,.csv,.pdf">
             <div id="finPayList" class="sub" style="margin-top:8px"></div>
           </div>
           <div class="card" style="padding:16px 18px">
             <div style="font-weight:700;margin-bottom:4px">📥 تصدير ملفات الرواتب</div>
-            <div class="sub" style="margin:0 0 10px">تصدير البيانات المالية الحالية من بطاقات الموظفين (نفس تصدير وثيق — انتقل إلى هنا).</div>
+            <div class="sub" style="margin:0 0 10px">تصدير كل الموظفين الماليين (نفس تصدير وثيق — غير مرتبط باختيار المشروع/الشهر أعلاه).</div>
             <div class="bar2" style="margin-bottom:0">
               <button class="btn" id="finExpXlsx"><svg class="i"><use href="#i-down"/></svg>تصدير كامل (Excel)</button>
               <button class="btn" id="finExpAdv"><svg class="i"><use href="#i-down"/></svg>تصدير السلفيات</button>
@@ -1312,7 +1312,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261020202135";
+  var BUILD = "20261020203657";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -3105,25 +3105,19 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 
   /* v106 · «ملفات الرواتب» — انتقلت من وثيق. التصدير يعيد استخدام دوال وثيق عبر إطارها (لا تكرار للمنطق). */
   function finShowPayFiles(){ var s = $('finPayFiles'); if (s) s.classList.toggle('hide', !finCanEdit()); }
-  var _wfFrame = null;
+  /* v106: التصدير يستعمل إطار «وثيق» المفتوح فقط — بلا نسخة مخفية (كانت تشغّل كاتباً ثانياً للقاعدة). */
   function wfExportCall(fn){
-    function rdy(fr){ try { var w = fr && fr.contentWindow; return !!(w && typeof w[fn] === 'function' && w.state && Array.isArray(w.state.employees) && w.state.employees.length > 0); } catch(e){ return false; } }
+    function rdy(fr){ try { var w = fr && fr.contentWindow; return !!(w && typeof w[fn] === 'function' && w.state && Array.isArray(w.state.employees)); } catch(e){ return false; } }
     var ex = document.querySelector('#frames iframe[data-s="watheeq"]');
-    if (rdy(ex)) { try { ex.contentWindow[fn](); } catch(e){} return; }
-    if (rdy(_wfFrame)) { try { _wfFrame.contentWindow[fn](); } catch(e){} return; }
-    toast('جارٍ تجهيز بيانات وثيق…');
-    if (!_wfFrame) { _wfFrame = document.createElement('iframe'); _wfFrame.style.cssText = 'position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;border:0'; _wfFrame.src = vsrc('watheeq.html'); document.body.appendChild(_wfFrame); }
-    var n = 0, iv = setInterval(function(){ n++;
-      if (rdy(_wfFrame)) { clearInterval(iv); try { _wfFrame.contentWindow[fn](); toast('تم التصدير'); } catch(e){ toast('تعذّر التصدير'); } }
-      else if (n > 80) { clearInterval(iv); toast('تعذّر تجهيز بيانات وثيق — افتح وثيق مرة ثم أعد المحاولة'); }
-    }, 500);
+    if (rdy(ex)) { try { ex.contentWindow[fn](); } catch(e){ toast('تعذّر التصدير'); } return; }
+    toast('افتح «وثيق» مرة واحدة ثم ارجع هنا وصدّر — التصدير يعتمد على بيانات وثيق المحمّلة.');
   }
   if ($('finExpXlsx')) $('finExpXlsx').onclick = function(){ wfExportCall('exportXLSX'); };
   if ($('finExpAdv'))  $('finExpAdv').onclick  = function(){ wfExportCall('exportAdvances'); };
   if ($('finExpCsv'))  $('finExpCsv').onclick  = function(){ wfExportCall('exportCSV'); };
   if ($('finPayUpload')) $('finPayUpload').onchange = function(){
     var u = $('finPayUpload'), names = Array.prototype.map.call(u.files, function(f){ return f.name + ' (' + Math.round(f.size/1024) + ' KB)'; });
-    $('finPayList').innerHTML = names.length ? 'ملفات محددة (محفوظة مؤقتاً): ' + names.map(esc).join(' · ') : '';
+    $('finPayList').innerHTML = names.length ? 'ملفات محددة (لم تُرفع بعد — المعالجة قيد الإعداد): ' + names.map(esc).join(' · ') : '';
   };
 
   /* ═══════════ v53 · التجريبي ═══════════ */

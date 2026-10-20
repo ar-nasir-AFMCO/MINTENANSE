@@ -1385,19 +1385,19 @@ var WF_EMP = window.WF_EMP || [
 ];
 var LK = { emp:null, idx:-1, list:[] };
 /* تحميل موظفي وثيق الحقيقيين من القاعدة ليبحث فيهم الربط (كانت عيّنة تجريبية فقط) */
+function kmEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function kmLoadEmps(){
   if(!sbSession()) return Promise.resolve();
+  WF_EMP = []; window.WF_EMP = WF_EMP;   /* لا نترك العيّنة التجريبية كهدف للربط */
   var all=[], STEP=1000;
   function pg(off){
     return sbGet('employees?select=iqama,full_name_ar,full_name_en,project_code,status&deleted_at=is.null&order=iqama.asc&limit='+STEP+'&offset='+off)
       .then(function(r){ all=all.concat(r||[]); if((r||[]).length===STEP) return pg(off+STEP); });
   }
   return pg(0).then(function(){
-    if(all.length){
-      WF_EMP = all.map(function(e){ return { iqama:String(e.iqama), name:e.full_name_ar||e.full_name_en||e.iqama, project:e.project_code||'', status:e.status||'' }; });
-      window.WF_EMP = WF_EMP;
-    }
-  }).catch(function(){});
+    WF_EMP = all.map(function(e){ return { iqama:String(e.iqama), name:e.full_name_ar||e.full_name_en||e.iqama, project:e.project_code||'', status:e.status||'' }; });
+    window.WF_EMP = WF_EMP;
+  }).catch(function(){ WF_EMP = []; window.WF_EMP = WF_EMP; try{ kmSetMsg('تعذّر تحميل موظفي وثيق — تأكّد من تسجيل الدخول وأعد المحاولة'); }catch(_){} });
 }
 function lkSearch(q){
   q=String(q||'').trim().toLowerCase();
@@ -1412,8 +1412,8 @@ function lkDraw(){
   d.className='drop on';
   d.innerHTML = LK.list.map(function(e,i){
     return '<div data-i="'+i+'" class="'+(i===LK.idx?'sel':'')+'">'+
-      '<div class="nm">'+e.name+'</div>'+
-      '<div class="mt">'+e.iqama+' · '+(e.project||'—')+' · '+(e.status||'—')+'</div></div>';
+      '<div class="nm">'+kmEsc(e.name)+'</div>'+
+      '<div class="mt">'+kmEsc(e.iqama)+' · '+kmEsc(e.project||'—')+' · '+kmEsc(e.status||'—')+'</div></div>';
   }).join('');
   [].forEach.call(d.querySelectorAll('div[data-i]'), function(el){
     el.addEventListener('mousedown', function(ev){ ev.preventDefault(); lkPick(+el.dataset.i); });
