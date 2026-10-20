@@ -1055,20 +1055,6 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         </div>
 
         <div class="sec">
-          <h3><svg class="i"><use href="#i-bolt"/></svg>متابعة كيمارت — تجريبي</h3>
-          <div class="card" style="padding:16px 18px">
-            <div class="sub" style="margin-bottom:10px">أداء التوصيل والدوام لمناديب كيمارت — المورّد ٥٩ «واجهة الدم للخدمات اللوجستية». ٨٧ مندوباً · ٢٤ فرعاً · ٧ مدن. تجريبي: يقرأ ولا يكتب في بيانات المنصة.</div>
-            <div class="bar2" style="margin-top:0">
-              <button class="btn ghost" id="kmToggle"><svg class="i"><use href="#i-bolt"/></svg>فتح هنا</button>
-              <a class="btn ghost" href="keemart-follow.html" target="_blank" rel="noopener"><svg class="i"><use href="#i-ext"/></svg>فتح في تبويب</a>
-            </div>
-            <div id="kmWrap" class="hide" style="margin-top:12px;border:1px solid #e6e1d6;border-radius:12px;overflow:hidden">
-              <iframe id="kmFrame" title="متابعة كيمارت" style="width:100%;height:78vh;border:0;background:#fff"></iframe>
-            </div>
-          </div>
-        </div>
-
-        <div class="sec">
           <h3><svg class="i"><use href="#i-plug"/></svg>الوقود — AppSheet</h3>
           <div class="card" style="padding:16px 18px">
             <div class="sub" style="margin-bottom:10px">تطبيق الوقود على AppSheet لا يقبل التعبئة من الرابط: AppSheet لا يفتح حقول نموذج بقيم من query string. البابان الممكنان: (أ) إضافة <code>LINKTOFORM</code> داخل التطبيق نفسه — يحتاج صلاحية تعديل عليه، (ب) الكتابة في الجدول الذي يقف خلفه. إلى أن نفتح أحدهما، نسخ الصف جاهزاً هو أسرع طريق.</div>
@@ -1307,7 +1293,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261020172140";
+  var BUILD = "20261020172941";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -1324,10 +1310,12 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   ];
   var SUBS = { ninja:{ name:'Ninja', desc:'الأداء والدوام والعمليات اللحظية', local:true, panel:'njp', open:function(){ njPanelOpen(); } },
                keemart:{ name:'Keemart', desc:'الحضور والتسوية والفواتير', src:'keemart.html' } ,
+               keemartfollow:{ name:'متابعة كيمارت', desc:'أداء التوصيل والدوام لمناديب كيمارت', src:'keemart-follow.html' },
                attauth:{ name:'الدوام والتفويض', desc:'مقارنة أيام الدوام بأيام التفويض', local:true, panel:'attp', open:function(){ atOpen(); } },
                keeta:{ name:'Keeta · تجريبي', desc:'تجريبي — لمدير النظام وحده. حضور مناديب كيتا يُسحب من صفحة Keemart.', local:true, panel:'keep', open:function(){ keOpen(); } } };
   /* تبويبات «المناديب»: الأنظمة المتاحة + شاشة المقارنة (شاشة داخل البوابة، لا إطار) */
   function segSubs(){ var a = subsFor(); if (!a.length) return a;
+    if (a.indexOf('keemart') >= 0) a = a.concat(['keemartfollow']);   /* متابعة كيمارت — نُشرت كتبويب رئيسي */
     a = a.concat(['attauth']);
     if (me && me.role === 'admin') a.push('keeta');   /* تجريبية — لمدير النظام وحده */
     return a; }
@@ -1967,6 +1955,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       $('aReload').onclick = function(){ atLoad(); };
       $('aQ').oninput = atRender; $('aOnly').onchange = atRender;
       $('aCsv').onclick = atCsv;
+      $('aKpis').addEventListener('click', function(e){ var k = e.target.closest('[data-filt]'); if (k){ $('aOnly').value = k.getAttribute('data-filt'); atRender(); } });
       atIdWire();
       atLoad();
     } else if (!atRAW) atLoad();
@@ -2095,13 +2084,15 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     var s = { a:0, w:0, r:0, n:0 };
     atROWS.forEach(function(r){ s.a += r.nA; s.w += r.nW; s.r += r.nR; s.n += r.nN; });
     var wastePct = s.a ? Math.round(s.r / s.a * 100) : 0;
+    var noId = atROWS.filter(function(r){ return !r.ids.length; }).length;   /* v2: متابعة من بلا معرّف */
     $('aKpis').innerHTML =
        '<div class="at-kpi"><div class="v">' + num(atROWS.length) + '</div><div class="l">مندوب</div></div>'
       + '<div class="at-kpi"><div class="v">' + num(s.a) + '</div><div class="l">أيام تفويض</div></div>'
       + '<div class="at-kpi ok"><div class="v">' + num(s.w) + '</div><div class="l">أيام دوام</div></div>'
       + '<div class="at-kpi bad" title="أيام مفوّض فيها مركبة ولم يُداوم — إيجار مهدور"><div class="v">' + num(s.r) + '</div><div class="l">هدر إيجار · ' + wastePct + '٪</div></div>'
       + '<div class="at-kpi warn"><div class="v">' + num(s.n) + '</div><div class="l">داوم بلا تفويض</div></div>'
-      + '<div class="at-kpi" title="أيام العمل المطلوبة لكل مندوب في هذه الفترة (≈26-27 لكل 30)"><div class="v">' + num(atExpWork()) + '</div><div class="l">المطلوب لكل مندوب</div></div>';
+      + '<div class="at-kpi" title="أيام العمل المطلوبة لكل مندوب في هذه الفترة (≈26-27 لكل 30)"><div class="v">' + num(atExpWork()) + '</div><div class="l">المطلوب لكل مندوب</div></div>'
+      + (noId ? '<div class="at-kpi bad" role="button" tabindex="0" data-filt="noid" title="موظفون نشطون بلا معرّف منصة — سجّل لهم معرّفاً لمتابعة دوامهم. اضغط للتصفية." style="cursor:pointer"><div class="v">' + num(noId) + '</div><div class="l">بلا معرّف ⚠</div></div>' : '');
   }
 
   /* وسم يوضّح سبب ظهور المندوب: موقوف، أو مشروعه في وثيق غير هذا المشروع.
