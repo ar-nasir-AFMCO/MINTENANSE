@@ -1293,7 +1293,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261020190045";
+  var BUILD = "20261020200724";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -1858,7 +1858,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     }).catch(function(){ sec.classList.add('hide'); });
   }
 
-  function loadSummary(){ return rpc('couriers_summary').then(function(s){ summary = s || {}; renderKpis(); }).catch(function(){}); }
+  function loadSummary(retry){ return rpc('couriers_summary').then(function(s){ summary = s || {}; renderKpis(); if ((!s || !Object.keys(s).length) && !retry) setTimeout(function(){ loadSummary(true); }, 1500); }).catch(function(){ if (!retry) setTimeout(function(){ loadSummary(true); }, 1500); }); }
   function sysUi(){
     $('sysbar').querySelectorAll('.sys').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-s') === current); });
     document.querySelectorAll('#tabs button').forEach(function(b){ if (b.getAttribute('data-v') === 'vSys') b.classList.toggle('on', !current && !$('vSys').classList.contains('hide')); });
