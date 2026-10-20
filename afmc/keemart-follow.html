@@ -1364,8 +1364,8 @@ function kmApplyRange(){
 
 (function wireDB(){
   var b = document.getElementById('dbGo');
-  if (b) b.addEventListener('click', function(){ kmLoadDB(); });
-  if (sbSession()) kmLoadDB();
+  if (b) b.addEventListener('click', function(){ kmLoadDB(); kmLoadEmps(); });
+  if (sbSession()){ kmLoadDB(); kmLoadEmps(); }
   else kmSetMsg('سجّل الدخول في المنصة ثم اضغط «حدّث من القاعدة»');
 })();
 
@@ -1384,6 +1384,21 @@ var WF_EMP = window.WF_EMP || [
   {iqama:'2000000118', name:'عيّنة — بدر العتيبي',        project:'KEEMART', status:'على رأس العمل'}
 ];
 var LK = { emp:null, idx:-1, list:[] };
+/* تحميل موظفي وثيق الحقيقيين من القاعدة ليبحث فيهم الربط (كانت عيّنة تجريبية فقط) */
+function kmLoadEmps(){
+  if(!sbSession()) return Promise.resolve();
+  var all=[], STEP=1000;
+  function pg(off){
+    return sbGet('employees?select=iqama,full_name_ar,full_name_en,project_code,status&deleted_at=is.null&order=iqama.asc&limit='+STEP+'&offset='+off)
+      .then(function(r){ all=all.concat(r||[]); if((r||[]).length===STEP) return pg(off+STEP); });
+  }
+  return pg(0).then(function(){
+    if(all.length){
+      WF_EMP = all.map(function(e){ return { iqama:String(e.iqama), name:e.full_name_ar||e.full_name_en||e.iqama, project:e.project_code||'', status:e.status||'' }; });
+      window.WF_EMP = WF_EMP;
+    }
+  }).catch(function(){});
+}
 function lkSearch(q){
   q=String(q||'').trim().toLowerCase();
   if(q.length<2) return [];
