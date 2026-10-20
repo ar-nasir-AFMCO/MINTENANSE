@@ -1293,7 +1293,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261020172941";
+  var BUILD = "20261020180557";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -1308,16 +1308,18 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     { id:'couriers', ic:'scooter', name:'المناديب', desc:'Ninja · Keemart', group:['ninja','keemart'] },
     { id:'housing', ic:'bed', name:'السكنات', desc:'المباني والغرف والنزلاء', src:'housing.html' }
   ];
-  var SUBS = { ninja:{ name:'Ninja', desc:'الأداء والدوام والعمليات اللحظية', local:true, panel:'njp', open:function(){ njPanelOpen(); } },
+  var SUBS = { ninja:{ name:'متابعة نينجا', desc:'الأداء والدوام والعمليات اللحظية', local:true, panel:'njp', open:function(){ njPanelOpen(); } },
                keemart:{ name:'Keemart', desc:'الحضور والتسوية والفواتير', src:'keemart.html' } ,
                keemartfollow:{ name:'متابعة كيمارت', desc:'أداء التوصيل والدوام لمناديب كيمارت', src:'keemart-follow.html' },
                attauth:{ name:'الدوام والتفويض', desc:'مقارنة أيام الدوام بأيام التفويض', local:true, panel:'attp', open:function(){ atOpen(); } },
                keeta:{ name:'Keeta · تجريبي', desc:'تجريبي — لمدير النظام وحده. حضور مناديب كيتا يُسحب من صفحة Keemart.', local:true, panel:'keep', open:function(){ keOpen(); } } };
   /* تبويبات «المناديب»: الأنظمة المتاحة + شاشة المقارنة (شاشة داخل البوابة، لا إطار) */
-  function segSubs(){ var a = subsFor(); if (!a.length) return a;
-    if (a.indexOf('keemart') >= 0) a = a.concat(['keemartfollow']);   /* متابعة كيمارت — نُشرت كتبويب رئيسي */
-    a = a.concat(['attauth']);
-    if (me && me.role === 'admin') a.push('keeta');   /* تجريبية — لمدير النظام وحده */
+  /* تبويبات «المناديب» (فقط): متابعة نينجا · متابعة كيمارت · الدوام والتفويض */
+  function segSubs(){ var sys = subsFor(); if (!sys.length) return sys;
+    var a = [];
+    if (sys.indexOf('ninja') >= 0) a.push('ninja');             /* متابعة نينجا (لوحة njp) */
+    if (sys.indexOf('keemart') >= 0) a.push('keemartfollow');   /* متابعة كيمارت */
+    a.push('attauth');                                          /* الدوام والتفويض */
     return a; }
   var AREA_AR = { employees:'الموظفون', vehicles:'المركبات', attendance:'الحضور', maintenance:'الصيانة' };
   var CODE_AR = { no_phone:'بلا جوال', dup_phone:'جوال مكرر', iqama_expired:'إقامة منتهية', iqama_soon:'إقامة قريبة الانتهاء', license_expired:'رخصة منتهية',
@@ -1899,7 +1901,10 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       f.onload = function(){ var l = fr.querySelector('.loading'); if (l && current && (current === key || sub === key)) l.remove(); };
       fr.appendChild(f);
     }
-    $('fbar').innerHTML = '<button class="tbtn" id="fReload" title="إعادة تحميل">' + ico('reload') + '</button><a class="tbtn" href="' + vsrc(src) + '" target="_blank" rel="noopener">' + ico('ext') + 'نافذة مستقلة</a>';
+    /* أُزيل «نافذة مستقلة»: كان يفتح الصفحة في تبويب مجرّد بلا شريط المنصة،
+       فيختفي البحث والرسائل والتنقّل. الصفحات الآن تبويبات داخل المنصة،
+       فالبحث والرسائل يبقيان معك دائماً. */
+    $('fbar').innerHTML = '<button class="tbtn" id="fReload" title="إعادة تحميل">' + ico('reload') + '</button>';
     $('fReload').onclick = function(){ try { f.contentWindow.location.reload(); } catch(e){ f.src = vsrc(src); } };
   }
   function renderKpis(){
