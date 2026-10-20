@@ -3009,19 +3009,12 @@ boot();
     (document.head || document.documentElement).appendChild(st);
   }
   function wfPayrollHTML(){
+    /* v106: رفع/تصدير ملفات الرواتب انتقلت إلى «العقود والمالية».
+       هنا تبقى الإجراءات الإدارية الخطِرة فقط (ليست من الرواتب). */
     return ''
     + '<div class="wfp-wrap">'
-    +   '<div class="wfp-card"><h3>📤 رفع ملفات الرواتب</h3>'
-    +     '<p class="wfp-muted">ارفع ملفات الرواتب (Excel / CSV / PDF). يتم حفظ الاختيار مؤقتاً، وسيتم ربط المعالجة والاستيراد لاحقاً بعد تحديد صيغة الملفات المطلوبة.</p>'
-    +     '<input type="file" id="wfpUpload" multiple accept=".xlsx,.xls,.csv,.pdf">'
-    +     '<div id="wfpFiles" class="wfp-files"></div></div>'
-    +   '<div class="wfp-card"><h3>📥 تصدير ملفات الرواتب</h3>'
-    +     '<p class="wfp-muted">تصدير البيانات المالية الحالية من النظام. (سنخصّص قوالب التصدير النهائية لاحقاً.)</p>'
-    +     '<div class="wfp-btns">'
-    +       '<button class="wfp-btn" id="wfpExpXlsx">📊 تصدير كامل (Excel)</button>'
-    +       '<button class="wfp-btn" id="wfpExpAdv">💸 تصدير السلفيات</button>'
-    +       '<button class="wfp-btn" id="wfpExpCsv">📄 تصدير CSV</button>'
-    +     '</div></div>'
+    +   '<div class="wfp-card"><h3>📁 ملفات الرواتب</h3>'
+    +     '<p class="wfp-muted">رفع وتصدير ملفات الرواتب انتقلت إلى منصة <b>«العقود والمالية»</b> — كل الرواتب في مكان واحد خارج شاشات التشغيل.</p></div>'
     +   '<div class="wfp-card wfp-danger"><h3>⚠️ منطقة خطرة — إجراءات إدارية</h3>'
     +     '<p class="wfp-muted">حذف كل بطاقات/بيانات الموظفين نهائياً من النظام. لا يمكن التراجع عن هذا الإجراء. متاح للموظف الاداري فقط.</p>'
     +     '<button class="wfp-btn wfp-del" id="wfpDeleteAll">🗑 حذف كل بيانات الموظفين</button></div>'
@@ -3042,17 +3035,7 @@ boot();
     try{ if(typeof toast === 'function') toast('تم حذف كل بيانات الموظفين'); }catch(_){}
   }
   function wfWirePayroll(sec){
-    var up = sec.querySelector('#wfpUpload'), list = sec.querySelector('#wfpFiles');
-    if(up) up.onchange = function(){
-      var names = Array.prototype.map.call(up.files, function(f){ return f.name + ' (' + Math.round(f.size/1024) + ' KB)'; });
-      list.innerHTML = names.length
-        ? '<div class="wfp-muted" style="margin:2px 0 6px">ملفات محددة (محفوظة مؤقتاً — ستُربط المعالجة لاحقاً):</div>'
-          + names.map(function(n){ return '<div class="wfp-file">📎 ' + n + '</div>'; }).join('')
-        : '';
-    };
-    var bx = sec.querySelector('#wfpExpXlsx'); if(bx) bx.onclick = function(){ if(typeof exportXLSX === 'function') exportXLSX(); else alert('التصدير غير متاح حالياً'); };
-    var ba = sec.querySelector('#wfpExpAdv'); if(ba) ba.onclick = function(){ if(typeof exportAdvances === 'function') exportAdvances(); else alert('التصدير غير متاح حالياً'); };
-    var bc = sec.querySelector('#wfpExpCsv'); if(bc) bc.onclick = function(){ if(typeof exportCSV === 'function') exportCSV(); else alert('التصدير غير متاح حالياً'); };
+    /* v106: الرفع/التصدير انتقل للعقود والمالية؛ هنا يبقى الحذف الإداري فقط */
     var bd = sec.querySelector('#wfpDeleteAll'); if(bd) bd.onclick = wfDeleteAllEmployees;
   }
   function wfBuildPayrollTab(){
@@ -3064,7 +3047,7 @@ boot();
     var btn = document.createElement('button');
     btn.setAttribute('data-view', 'wf_payroll');
     btn.id = 'wfPayrollTab';
-    btn.textContent = '📑 ملفات الرواتب';
+    btn.textContent = '⚙️ إجراءات إدارية';
     btn.style.display = 'none';
     nav.appendChild(btn);
     btn.onclick = function(){ if(!wfIsAdmin()) return; try{ window.go('wf_payroll'); }catch(_){} };
