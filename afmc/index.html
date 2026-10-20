@@ -804,10 +804,11 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
             <span class="item"><i class="key k-first">٥</i><b>أول يوم له</b></span>
           </div>
           <div class="at-bar">
-            <input type="search" id="aQ" placeholder="بحث بالاسم أو الإقامة أو المعرّف…" aria-label="بحث">
+            <input type="search" id="aQ" placeholder="بحث بالاسم أو الإقامة أو المعرّف أو رقم المركبة…" aria-label="بحث">
             <select id="aOnly" aria-label="تصفية">
               <option value="">الكل</option>
-              <option value="red">فيه أيام حمراء</option>
+              <option value="red">فيه هدر إيجار</option>
+              <option value="under">أقل من المطلوب (≈26/30)</option>
               <option value="noauth">داوم بلا تفويض</option>
               <option value="noid">بلا معرّف منصة</option>
               <option value="never">لم يداوم إطلاقاً</option>
@@ -821,10 +822,11 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
               <thead><tr>
                 <th scope="col">المندوب</th>
                 <th scope="col">معرّف المنصة</th>
+                <th scope="col">المركبة</th>
                 <th scope="col">أول يوم</th>
                 <th scope="col" class="num">تفويض</th>
                 <th scope="col" class="num">دوام</th>
-                <th scope="col" class="num">أحمر</th>
+                <th scope="col" class="num" title="أيام مفوّض ولم يُداوم عليها — هدر إيجار">هدر</th>
                 <th scope="col">الأيام</th>
               </tr></thead>
               <tbody id="aRows"></tbody>
@@ -1305,7 +1307,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261019175601";
+  var BUILD = "20261020172140";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -1993,9 +1995,9 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     var f = $('aFrom').value, t = $('aTo').value;
     if (!f || !t || f > t) { toast('تحقّق من تاريخي البداية والنهاية.'); return Promise.resolve(); }
     var ps = atProjects();
-    if (!ps.length) { $('aRows').innerHTML = '<tr><td colspan="7" class="at-empty">لا تملك صلاحية على أي مشروع مناديب.</td></tr>'; return; }
+    if (!ps.length) { $('aRows').innerHTML = '<tr><td colspan="8" class="at-empty">لا تملك صلاحية على أي مشروع مناديب.</td></tr>'; return; }
     $('aFoot').textContent = 'جارٍ القراءة…';
-    $('aRows').innerHTML = '<tr><td colspan="7" class="at-empty">جارٍ التحميل…</td></tr>';
+    $('aRows').innerHTML = '<tr><td colspan="8" class="at-empty">جارٍ التحميل…</td></tr>';
     var codes = '(' + ps.map(function(p){ return p.code; }).join(',') + ')';
     return Promise.all([
       atAll('employees?select=id,iqama,full_name_ar,full_name_en,phone,project_code,status&deleted_at=is.null'),
@@ -2016,7 +2018,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       atPaintProjs(); atBuild();
     }).catch(function(e){
       $('aFoot').textContent = 'تعذّر التحميل: ' + e.message;
-      $('aRows').innerHTML = '<tr><td colspan="7" class="at-empty">' + esc(e.message) + '</td></tr>'; });
+      $('aRows').innerHTML = '<tr><td colspan="8" class="at-empty">' + esc(e.message) + '</td></tr>'; });
   }
 
   function atBuild(){
@@ -2071,9 +2073,13 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       });
       var fa = firstAuth[e.id] || null, fw = firstWork[e.id] || null;
       var first = fa && fw ? (fa < fw ? fa : fw) : (fa || fw);
+      /* المركبات المفوّضة في الفترة + أيام الهدر لكل لوحة (مفوّض بلا دوام) */
+      var plA = {}, plR = {};
+      cells.forEach(function(c){ if (c.plate && c.plate !== '—'){ plA[c.plate]=(plA[c.plate]||0)+1; if (c.s==='bad') plR[c.plate]=(plR[c.plate]||0)+1; } });
       return { id:e.id, nm:e.full_name_ar || e.full_name_en || '—', iq:e.iqama, ph:e.phone || '',
         st:e.status, pc:e.project_code,
         ids:(pid[e.id] || []), first:first,
+        plates:Object.keys(plA), plA:plA, plR:plR,
         nA:cells.filter(function(c){ return c.s === 'ok' || c.s === 'bad'; }).length,
         nW:cells.filter(function(c){ return c.s === 'ok' || c.s === 'warn'; }).length,
         nR:cells.filter(function(c){ return c.s === 'bad'; }).length,
@@ -2084,15 +2090,18 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     atKpis(); atRender();
   }
 
+  function atExpWork(){ return Math.round((atDAYS.length || 30) * 26.5 / 30); }   /* المطلوب ≈26-27 لكل 30 */
   function atKpis(){
     var s = { a:0, w:0, r:0, n:0 };
     atROWS.forEach(function(r){ s.a += r.nA; s.w += r.nW; s.r += r.nR; s.n += r.nN; });
+    var wastePct = s.a ? Math.round(s.r / s.a * 100) : 0;
     $('aKpis').innerHTML =
-       '<div class="at-kpi"><div class="v">' + num(atROWS.length) + '</div><div class="l">مندوب نشط</div></div>'
+       '<div class="at-kpi"><div class="v">' + num(atROWS.length) + '</div><div class="l">مندوب</div></div>'
       + '<div class="at-kpi"><div class="v">' + num(s.a) + '</div><div class="l">أيام تفويض</div></div>'
       + '<div class="at-kpi ok"><div class="v">' + num(s.w) + '</div><div class="l">أيام دوام</div></div>'
-      + '<div class="at-kpi bad"><div class="v">' + num(s.r) + '</div><div class="l">مفوّض ولم يداوم</div></div>'
-      + '<div class="at-kpi warn"><div class="v">' + num(s.n) + '</div><div class="l">داوم بلا تفويض</div></div>';
+      + '<div class="at-kpi bad" title="أيام مفوّض فيها مركبة ولم يُداوم — إيجار مهدور"><div class="v">' + num(s.r) + '</div><div class="l">هدر إيجار · ' + wastePct + '٪</div></div>'
+      + '<div class="at-kpi warn"><div class="v">' + num(s.n) + '</div><div class="l">داوم بلا تفويض</div></div>'
+      + '<div class="at-kpi" title="أيام العمل المطلوبة لكل مندوب في هذه الفترة (≈26-27 لكل 30)"><div class="v">' + num(atExpWork()) + '</div><div class="l">المطلوب لكل مندوب</div></div>';
   }
 
   /* وسم يوضّح سبب ظهور المندوب: موقوف، أو مشروعه في وثيق غير هذا المشروع.
@@ -2106,14 +2115,15 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   }
 
   function atFiltered(){
-    var q = $('aQ').value.trim().toLowerCase(), o = $('aOnly').value;
+    var q = $('aQ').value.trim().toLowerCase(), o = $('aOnly').value, expW = atExpWork();
     return atROWS.filter(function(r){
       if (o === 'red' && !r.nR) return false;
+      if (o === 'under' && r.nW >= expW) return false;
       if (o === 'noauth' && !r.nN) return false;
       if (o === 'noid' && r.ids.length) return false;
       if (o === 'never' && r.nW) return false;
       if (o === 'flagged' && (!r.st || r.st === 'active') && r.pc === atProj) return false;
-      if (q) { var hay = (r.nm + ' ' + r.iq + ' ' + r.ids.map(function(x){ return x.id; }).join(' ')).toLowerCase();
+      if (q) { var hay = (r.nm + ' ' + r.iq + ' ' + r.ids.map(function(x){ return x.id; }).join(' ') + ' ' + (r.plates || []).join(' ')).toLowerCase();
         if (hay.indexOf(q) < 0) return false; }
       return true; });
   }
@@ -2136,15 +2146,21 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       var idCell = '<span class="idcell" title="' + esc(all) + '">' + chips
         + (ed ? '<button class="btn ghost sm" data-aids="' + esc(r.id) + '" aria-label="إدارة معرّفات ' + esc(r.nm) + '">إدارة</button>' : '')
         + '</span>';
+      var vehCell = r.plates.length
+        ? r.plates.map(function(pl){ var idle = r.plR[pl] || 0;
+            return '<span class="pill ' + (idle ? 'p-bad' : 'p-ok') + '" style="direction:ltr" title="' + r.plA[pl] + ' يوم تفويض'
+                 + (idle ? ' · ' + idle + ' يوم هدر' : '') + '">' + esc(pl) + (idle ? ' (' + idle + ')' : '') + '</span>'; }).join(' ')
+        : '<span class="pill p-mute">—</span>';
       return '<tr>'
         + '<td class="who">' + esc(r.nm) + atFlags(r) + '<small>' + esc(r.iq) + '</small></td>'
         + '<td>' + idCell + '</td>'
+        + '<td>' + vehCell + '</td>'
         + '<td class="num">' + (r.first || '—') + '</td>'
         + '<td class="num">' + r.nA + '</td>'
         + '<td class="num">' + r.nW + '</td>'
         + '<td class="num">' + (r.nR ? '<span class="pill p-bad">' + r.nR + '</span>' : '0') + '</td>'
         + '<td><div class="strip">' + strip + '</div></td></tr>';
-    }).join('') : '<tr><td colspan="7" class="at-empty">لا نتائج بهذه التصفية</td></tr>';
+    }).join('') : '<tr><td colspan="8" class="at-empty">لا نتائج بهذه التصفية</td></tr>';
 
     $('aRows').querySelectorAll('[data-aids]').forEach(function(b){
       b.onclick = function(){ atIdOpen(b.getAttribute('data-aids')); }; });
@@ -2261,9 +2277,10 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     var f = atFiltered();
     if (!f.length) { toast('لا صفوف للتصدير.'); return; }
     var q = function(v){ var s2 = String(v == null ? '' : v); return /[",\n]/.test(s2) ? '"' + s2.replace(/"/g, '""') + '"' : s2; };
-    var head = ['الاسم','الإقامة','المعرّف','أول يوم','أيام التفويض','أيام الدوام','مفوّض ولم يداوم','داوم بلا تفويض'].concat(atDAYS);
+    var head = ['الاسم','الإقامة','المعرّف','المركبة','أول يوم','أيام التفويض','أيام الدوام','هدر إيجار (مفوّض بلا دوام)','داوم بلا تفويض'].concat(atDAYS);
     var body = f.map(function(r){
-      var base = [r.nm, r.iq, r.ids.map(function(x){ return x.p + ' ' + x.id; }).join(' · '), r.first || '', r.nA, r.nW, r.nR, r.nN];
+      var veh = (r.plates || []).map(function(pl){ var idle = r.plR[pl] || 0; return pl + (idle ? ' (' + idle + ' هدر)' : ''); }).join(' · ');
+      var base = [r.nm, r.iq, r.ids.map(function(x){ return x.p + ' ' + x.id; }).join(' · '), veh, r.first || '', r.nA, r.nW, r.nR, r.nN];
       var days = r.cells.map(function(c){ return c.s === 'ok' ? 'دوام' : c.s === 'bad' ? 'مفوّض بلا دوام' : c.s === 'warn' ? 'دوام بلا تفويض' : ''; });
       return base.concat(days).map(q).join(','); });
     var blob = new Blob(['﻿' + head.map(q).join(',') + '\n' + body.join('\n')], { type:'text/csv;charset=utf-8' });
