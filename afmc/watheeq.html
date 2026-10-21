@@ -763,7 +763,7 @@ function renderEmp(){
     return `<button class="card" onclick="openModal(${idx})">
       <div class="top-line"><div class="avatar">${esc(initials(e.name_ar||e.name_en))}</div>
         <div><div class="nm">${esc(e.name_ar||e.name_en||'—')}</div><div class="sub">${esc(e.iqama)}${e.mobile?' · '+esc(e.mobile):''}</div></div></div>
-      <div class="meta">${statusChip(e)}${e.project?'<span class="chip sand">'+esc(e.project)+'</span>':''}${catChip}${e.finance?'<span class="chip">كرت مالي</span>':''}${e.join_date?'<span class="chip">📅 مباشرة '+esc(String(e.join_date).slice(0,10))+'</span>':''}${acc}</div>
+      <div class="meta">${statusChip(e)}${e.project?'<span class="chip sand">'+esc(e.project)+'</span>':''}${e.area?'<span class="chip">📍 '+esc(e.area)+'</span>':''}${catChip}${e.finance?'<span class="chip">كرت مالي</span>':''}${acc}</div>
     </button>`;}).join('');
 }
 function syncControls(){$('#q').value=state.filter.q||'';$('#fStatus').value=state.filter.status||'';$('#fProject').value=state.filter.project||'';$('#fCat').value=state.filter.cat||'';}
@@ -9865,15 +9865,26 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       return first ? { d: first, src: 'fleet' } : null;
     }
     function joinLabel(sd){ return sd ? '📅 مباشرة: ' + sd.d + (sd.src === 'fleet' ? ' <span style="opacity:.7">(أول تفويض)</span>' : '') : '📅 مباشرة: —'; }
+    var AFX_NOID = null;   /* v106: مجموعة إقامات «بلا معرّف منصة» لوسم الكروت */
     function decorateJoin(){
       var host = document.getElementById('empCards'); if (!host) return;
       Array.prototype.forEach.call(host.querySelectorAll('button.card'), function(card){
-        if (card.querySelector('.afx-join')) return;
         var m = /openModal\((\d+)\)/.exec(card.getAttribute('onclick') || ''); if (!m) return;
         var e = state.employees[+m[1]]; if (!e) return;
-        var sub = card.querySelector('.top-line .sub'); if (!sub) return;
-        var el = document.createElement('div'); el.className = 'sub afx-join'; el.style.marginTop = '2px'; el.innerHTML = joinLabel(startDate(e));
-        sub.parentNode.appendChild(el);
+        if (!card.querySelector('.afx-join')) {
+          var sub = card.querySelector('.top-line .sub');
+          if (sub) { var el = document.createElement('div'); el.className = 'sub afx-join'; el.style.marginTop = '2px'; el.innerHTML = joinLabel(startDate(e)); sub.parentNode.appendChild(el); }
+        }
+        if (AFX_NOID && !card.querySelector('.afx-idbadge')) {
+          var meta = card.querySelector('.meta');
+          if (meta) {
+            var bad = AFX_NOID.has(normId(e.iqama));
+            var badge = document.createElement('span'); badge.className = 'chip afx-idbadge';
+            badge.textContent = bad ? '⚠ بلا معرّف' : '✓ معرّف';
+            badge.style.cssText = bad ? 'background:#fdf2f0;color:#a3372b;font-weight:700' : 'background:#e4efed;color:#0a4644;font-weight:700';
+            meta.appendChild(badge);
+          }
+        }
       });
     }
     var joinObs = false;
@@ -10045,7 +10056,10 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       b.title = 'موظفون بلا معرّف منصة أو بلا مشروع';
       bar.appendChild(b);
       b.onclick = missingOpen;
-      rpc('watheeq_missing_ids').then(function(l){ var n = (l || []).length; var el = document.getElementById('afxMissN'); if (el) el.textContent = n ? '(' + n + ')' : ''; }).catch(function(){});
+      rpc('watheeq_missing_ids').then(function(l){ l = l || []; var el = document.getElementById('afxMissN'); if (el) el.textContent = l.length ? '(' + l.length + ')' : '';
+        AFX_NOID = new Set(l.filter(function(x){ return x.no_id; }).map(function(x){ return normId(x.iqama); }));
+        try { decorateJoin(); } catch(_){}
+      }).catch(function(){});
     }
     function missingOpen(){
       var b = document.getElementById('afxMiss'); if (b) b.disabled = true;
