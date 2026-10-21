@@ -399,6 +399,15 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--t1);font-si
   position:relative;z-index:100;flex-shrink:0;
   height:52px;overflow:visible;
 }
+.fleet-fbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:9px 14px;background:#fff;border-bottom:1px solid var(--b1)}
+.fleet-fbar:empty{display:none}
+.fleet-fbar .ff-label{font-size:12px;color:var(--t3);font-weight:700}
+.fleet-fbar .fg{margin:0!important;display:flex;align-items:center;gap:6px}
+.fleet-fbar .fg .fl{margin:0!important;font-size:11px;color:var(--t3);white-space:nowrap}
+.fleet-fbar .fs{width:auto!important;min-width:120px;height:38px}
+.fleet-fbar .sp-dd{margin:0}
+.fleet-fbar #sortSel{height:38px}
+.fleet-fbar .view-tabs{margin-inline-start:auto}
 .brand{display:flex;align-items:center;gap:10px;flex-shrink:0;text-decoration:none}
 .brand-badge{
   width:36px;height:36px;border-radius:10px;flex-shrink:0;
@@ -1166,6 +1175,9 @@ tbody tr:hover{background:var(--s1)}
 
 </div>
 
+<!-- v106: صفّ التصفية (يُملأ بالـJS من عناصر موجودة) -->
+<div class="fleet-fbar" id="fleetFbar"></div>
+
 <div class="layout">
 
   <!-- SIDEBAR -->
@@ -1442,7 +1454,19 @@ function init(){
   }catch(e){console.warn('init error',e);}
   applyFilters();
   hydrateVehicles();   /* v88 */
+  try{ buildFleetFbar(); }catch(e){}
 }
+/* v106: نقل الفلاتر الأساسية إلى صفّ علوي كالنموذج (الحالة · المشروع · المنطقة · الترتيب · العرض) */
+function buildFleetFbar(){
+  var bar=document.getElementById('fleetFbar'); if(!bar||bar.dataset.built)return;
+  var lbl=document.createElement('span'); lbl.className='ff-label'; lbl.textContent='تصفية:'; bar.appendChild(lbl);
+  var sp=document.getElementById('spDD'); if(sp) bar.appendChild(sp);
+  ['f-project','f-area'].forEach(function(id){ var el=document.getElementById(id); var fg=el&&el.closest('.fg'); if(fg) bar.appendChild(fg); });
+  var sort=document.getElementById('sortSel'); if(sort) bar.appendChild(sort);
+  var vt=document.querySelector('.view-tabs'); if(vt) bar.appendChild(vt);
+  bar.dataset.built='1';
+}
+window.addEventListener('load',function(){ try{ buildFleetFbar(); }catch(e){} });
 /* تُقرأ بعد الإقلاع، ولا تُطبَّق إلا إن كانت الذاكرة فارغة — فلا تدهس
    ما وصل من القاعدة. وتُرحّل ما في localStorage مرّة واحدة ثم تفرّغه. */
 function hydrateVehicles(){
@@ -8773,15 +8797,26 @@ async function handleAccidentFile(input){
       return first ? { d: first, src: 'fleet' } : null;
     }
     function joinLabel(sd){ return sd ? '📅 مباشرة: ' + sd.d + (sd.src === 'fleet' ? ' <span style="opacity:.7">(أول تفويض)</span>' : '') : '📅 مباشرة: —'; }
+    var AFX_NOID = null;   /* v106: مجموعة إقامات «بلا معرّف منصة» لوسم الكروت */
     function decorateJoin(){
       var host = document.getElementById('empCards'); if (!host) return;
       Array.prototype.forEach.call(host.querySelectorAll('button.card'), function(card){
-        if (card.querySelector('.afx-join')) return;
         var m = /openModal\((\d+)\)/.exec(card.getAttribute('onclick') || ''); if (!m) return;
         var e = state.employees[+m[1]]; if (!e) return;
-        var sub = card.querySelector('.top-line .sub'); if (!sub) return;
-        var el = document.createElement('div'); el.className = 'sub afx-join'; el.style.marginTop = '2px'; el.innerHTML = joinLabel(startDate(e));
-        sub.parentNode.appendChild(el);
+        if (!card.querySelector('.afx-join')) {
+          var sub = card.querySelector('.top-line .sub');
+          if (sub) { var el = document.createElement('div'); el.className = 'sub afx-join'; el.style.marginTop = '2px'; el.innerHTML = joinLabel(startDate(e)); sub.parentNode.appendChild(el); }
+        }
+        if (AFX_NOID && !card.querySelector('.afx-idbadge')) {
+          var meta = card.querySelector('.meta');
+          if (meta) {
+            var bad = AFX_NOID.has(normId(e.iqama));
+            var badge = document.createElement('span'); badge.className = 'chip afx-idbadge';
+            badge.textContent = bad ? '⚠ بلا معرّف' : '✓ معرّف';
+            badge.style.cssText = bad ? 'background:#fdf2f0;color:#a3372b;font-weight:700' : 'background:#e4efed;color:#0a4644;font-weight:700';
+            meta.appendChild(badge);
+          }
+        }
       });
     }
     var joinObs = false;
@@ -8926,13 +8961,13 @@ async function handleAccidentFile(input){
     }
     function addExportBtn(){
       if (APP !== 'watheeq') return;
-      var bar = document.querySelector('#view-emp .toolbar'); if (!bar) return;
+      var bar = document.querySelector('#view-emp .tb-top') || document.querySelector('#view-emp .toolbar'); if (!bar) return;   /* v106: صفّ البحث */
       var b = document.getElementById('afxExpBtn');
       if (!b){
         b = document.createElement('button'); b.id = 'afxExpBtn'; b.type = 'button';
         b.className = 'wf-adm-btn';
         b.style.cssText = 'cursor:pointer;border:1px solid #f2ddb5;background:#fff;color:#0a4644;'
-          + 'border-radius:9px;padding:7px 12px;font:inherit;font-weight:600;font-size:13px';
+          + 'border-radius:12px;padding:0 14px;height:42px;box-sizing:border-box;display:inline-flex;align-items:center;gap:5px;font:inherit;font-weight:600;font-size:13px;white-space:nowrap';
         b.onclick = exportVisible;
         bar.appendChild(b);
       }
@@ -8946,14 +8981,17 @@ async function handleAccidentFile(input){
     tickFn(); setInterval(tickFn, 1500);
     /* ---------- (٥) زر «بلا معرف»: موظف بلا معرّف منصة أو بلا مشروع (نفس آلية الأسطول) ---------- */
     function missingBtn(){
-      var bar = document.querySelector('#view-emp .toolbar'); if (!bar || document.getElementById('afxMiss')) return;
+      var bar = document.querySelector('#view-emp .tb-top') || document.querySelector('#view-emp .toolbar'); if (!bar || document.getElementById('afxMiss')) return;   /* v106: صفّ البحث */
       var b = document.createElement('button'); b.id = 'afxMiss'; b.type = 'button';
-      b.style.cssText = 'border:1px solid #f2cdc7;background:#fdf2f0;color:#a3372b;border-radius:10px;padding:8px 13px;font:inherit;font-weight:600;cursor:pointer;white-space:nowrap';
+      b.style.cssText = 'border:1px solid #f2cdc7;background:#fdf2f0;color:#a3372b;border-radius:12px;padding:0 14px;height:42px;box-sizing:border-box;display:inline-flex;align-items:center;gap:5px;font:inherit;font-weight:600;cursor:pointer;white-space:nowrap';
       b.innerHTML = '⚠️ بلا معرف <span id="afxMissN" style="font-weight:700"></span>';
       b.title = 'موظفون بلا معرّف منصة أو بلا مشروع';
       bar.appendChild(b);
       b.onclick = missingOpen;
-      rpc('watheeq_missing_ids').then(function(l){ var n = (l || []).length; var el = document.getElementById('afxMissN'); if (el) el.textContent = n ? '(' + n + ')' : ''; }).catch(function(){});
+      rpc('watheeq_missing_ids').then(function(l){ l = l || []; var el = document.getElementById('afxMissN'); if (el) el.textContent = l.length ? '(' + l.length + ')' : '';
+        AFX_NOID = new Set(l.filter(function(x){ return x.no_id; }).map(function(x){ return normId(x.iqama); }));
+        try { decorateJoin(); } catch(_){}
+      }).catch(function(){});
     }
     function missingOpen(){
       var b = document.getElementById('afxMiss'); if (b) b.disabled = true;
