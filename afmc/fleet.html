@@ -407,7 +407,15 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--t1);font-si
 .fleet-fbar .fs{width:auto!important;min-width:120px;height:38px}
 .fleet-fbar .sp-dd{margin:0}
 .fleet-fbar #sortSel{height:38px}
-.fleet-fbar .view-tabs{margin-inline-start:auto}
+.fleet-fbar .fchips{display:flex;gap:4px}
+.fleet-fbar .ff-sp{flex:1 1 20px;min-width:12px}
+.fleet-fbar .rcount{font-size:12px;color:var(--t3);font-weight:700;white-space:nowrap}
+.fleet-fbar .ff-miss{background:var(--amber-d);color:var(--amber-l);border:1px solid rgba(149,87,15,.3);border-radius:20px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+/* صفّ البحث (كالنموذج): بحث عريض + مفتاح كروت/جدول */
+.fleet-srow{display:flex;align-items:center;gap:9px;padding:10px 14px 0;background:#fff}
+.fleet-srow .search-bar{flex:1 1 auto;max-width:none}
+.fleet-srow .view-tabs{flex-shrink:0;margin-inline-start:auto}
+.topbar .ff-topsp{flex:1}
 .brand{display:flex;align-items:center;gap:10px;flex-shrink:0;text-decoration:none}
 .brand-badge{
   width:36px;height:36px;border-radius:10px;flex-shrink:0;
@@ -1175,7 +1183,8 @@ tbody tr:hover{background:var(--s1)}
 
 </div>
 
-<!-- v106: صفّ التصفية (يُملأ بالـJS من عناصر موجودة) -->
+<!-- v107: صفّ البحث + صفّ التصفية (يُملآن بالـJS من عناصر موجودة — كالنموذج) -->
+<div class="fleet-srow" id="fleetSrow"></div>
 <div class="fleet-fbar" id="fleetFbar"></div>
 
 <div class="layout">
@@ -1456,14 +1465,38 @@ function init(){
   hydrateVehicles();   /* v88 */
   try{ buildFleetFbar(); }catch(e){}
 }
-/* v106: نقل الفلاتر الأساسية إلى صفّ علوي كالنموذج (الحالة · المشروع · المنطقة · الترتيب · العرض) */
+/* v107: تطبيق ترتيب النموذج بالضبط — ثلاثة صفوف:
+   (1) العنوان + الأزرار  (2) البحث + كروت/جدول  (3) تصفية: الحالة·المشروع·المنطقة·الوقود·الترتيب … بلا معرف · العدّاد */
 function buildFleetFbar(){
   var bar=document.getElementById('fleetFbar'); if(!bar||bar.dataset.built)return;
+  var srow=document.getElementById('fleetSrow');
+
+  /* صفّ البحث: نُخرج البحث من الشريط العلوي ونضيف معه مفتاح كروت/جدول */
+  if(srow){
+    var sb=document.querySelector('.topbar .search-bar'); if(sb) srow.appendChild(sb);
+    var vt=document.querySelector('.view-tabs'); if(vt) srow.appendChild(vt);
+    /* نُبقي الأزرار (مركبة جديدة · ⋯) على يسار الشريط العلوي بعد خروج البحث */
+    var tb=document.querySelector('.topbar');
+    if(tb && !tb.querySelector('.ff-topsp')){
+      var tsp=document.createElement('span'); tsp.className='ff-topsp';
+      var brand=tb.querySelector('.brand');
+      if(brand && brand.nextSibling) tb.insertBefore(tsp, brand.nextSibling); else tb.appendChild(tsp);
+    }
+  }
+
+  /* صفّ التصفية */
   var lbl=document.createElement('span'); lbl.className='ff-label'; lbl.textContent='تصفية:'; bar.appendChild(lbl);
   var sp=document.getElementById('spDD'); if(sp) bar.appendChild(sp);
-  ['f-project','f-area'].forEach(function(id){ var el=document.getElementById(id); var fg=el&&el.closest('.fg'); if(fg) bar.appendChild(fg); });
+  ['f-project','f-area','fuelChips'].forEach(function(id){ var el=document.getElementById(id); var fg=el&&el.closest('.fg'); if(fg) bar.appendChild(fg); });
   var sort=document.getElementById('sortSel'); if(sort) bar.appendChild(sort);
-  var vt=document.querySelector('.view-tabs'); if(vt) bar.appendChild(vt);
+  /* فاصل مرن ثم: بلا معرف · العدّاد (كالنموذج، أقصى اليسار) */
+  var gap=document.createElement('span'); gap.className='ff-sp'; bar.appendChild(gap);
+  var miss=document.createElement('span'); miss.className='ff-miss'; miss.textContent='⚠ بلا معرف';
+  miss.title='مركبات مسندة بلا معرف مشروع'; miss.onclick=function(){ try{ checkMissingProjIds(); }catch(e){} };
+  bar.appendChild(miss);
+  var rc=document.getElementById('rcount'); if(rc) bar.appendChild(rc);
+  /* الشريط القديم (main-header) أفرغناه — نخفيه */
+  var mh=document.querySelector('.main-header'); if(mh) mh.style.display='none';
   bar.dataset.built='1';
 }
 window.addEventListener('load',function(){ try{ buildFleetFbar(); }catch(e){} });
