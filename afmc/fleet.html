@@ -403,7 +403,7 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--t1);font-si
 .fleet-fbar:empty{display:none}
 .fleet-fbar .ff-label{font-size:12px;color:var(--t3);font-weight:700}
 .fleet-fbar .fg{margin:0!important;display:flex;align-items:center;gap:6px}
-.fleet-fbar .fg .fl{margin:0!important;font-size:11px;color:var(--t3);white-space:nowrap}
+.fleet-fbar .fg .fl{display:none}
 .fleet-fbar{gap:8px}
 .fleet-fbar .fs{width:auto!important;min-width:100px;height:38px;font-size:12px}
 .fleet-fbar .sp-dd{margin:0}
@@ -1205,7 +1205,7 @@ tbody tr:hover{background:var(--s1)}
       <div class="fg">
         <div class="fl">المشروع</div>
         <select class="fs" id="f-project" onchange="applyFilters()">
-          <option value="">الكل</option>
+          <option value="">كل المشاريع</option>
           <option>KEETA</option><option>KEEMART</option><option>SHIPMENT</option>
           <option>NINJA</option><option>NOON</option><option>ARAMEX</option>
           <option>STARLINKS</option>
@@ -1215,7 +1215,7 @@ tbody tr:hover{background:var(--s1)}
       <div class="fg">
         <div class="fl">المنطقة</div>
         <select class="fs" id="f-area" onchange="applyFilters()">
-          <option value="">الكل</option>
+          <option value="">كل المناطق</option>
           <option>RIYADH</option><option>JADAH</option><option>MAKA</option>
           <option>DAMAM</option><option>TAIF</option><option>MAJMA</option>
           <option>KHARJ</option><option>YANBU</option>
@@ -1488,7 +1488,13 @@ function buildFleetFbar(){
   /* صفّ التصفية */
   var lbl=document.createElement('span'); lbl.className='ff-label'; lbl.textContent='تصفية:'; bar.appendChild(lbl);
   var sp=document.getElementById('spDD'); if(sp) bar.appendChild(sp);
-  ['f-project','f-area','fuelChips'].forEach(function(id){ var el=document.getElementById(id); var fg=el&&el.closest('.fg'); if(fg) bar.appendChild(fg); });
+  ['f-project','f-area'].forEach(function(id){ var el=document.getElementById(id); var fg=el&&el.closest('.fg'); if(fg) bar.appendChild(fg); });
+  /* الوقود كقائمة منسدلة مطابقة للنموذج (بدل الأزرار) */
+  var fuelFg=document.getElementById('fuelChips'); fuelFg=fuelFg&&fuelFg.closest('.fg'); if(fuelFg) fuelFg.style.display='none';
+  var fuelSel=document.createElement('select'); fuelSel.className='fs'; fuelSel.id='fFuelTop';
+  fuelSel.innerHTML='<option value="">الوقود: الكل</option><option value="PETROL">⛽ بترول</option><option value="DESIL">🛢 ديزل</option>';
+  fuelSel.onchange=function(){ fFuel=this.value; try{ applyFilters(); }catch(e){} };
+  bar.appendChild(fuelSel);
   var sort=document.getElementById('sortSel'); if(sort) bar.appendChild(sort);
   /* فاصل مرن ثم: بلا معرف · العدّاد (كالنموذج، أقصى اليسار) */
   var gap=document.createElement('span'); gap.className='ff-sp'; bar.appendChild(gap);
