@@ -428,7 +428,7 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--t1);font-si
 .brand-ver{font-size:10px;color:var(--t3);font-family:'JetBrains Mono',monospace}
 .search-bar{flex:1;min-width:0;max-width:480px;position:relative}
 .search-bar input{
-  width:100%;padding:12px 18px 12px 46px;background:var(--bg3);border:1.5px solid var(--b1);
+  width:100%;padding:12px 18px;background:var(--bg3);border:1.5px solid var(--b1);
   border-radius:var(--r2);color:var(--t1);font-family:inherit;font-size:15px;font-weight:600;outline:none;
   transition:border-color .2s, box-shadow .2s;
 }
@@ -1138,7 +1138,6 @@ tbody tr:hover{background:var(--s1)}
 
   <!-- البحث -->
   <div class="search-bar">
-    <span class="si">🔍</span>
     <input id="gsearch" placeholder="ابحث: لوحة، سائق، نوع، مكتب..." oninput="applyFilters()">
   </div>
 
