@@ -455,7 +455,8 @@ section.view.on{display:block}
 .search{flex:1 1 280px;min-width:220px;position:relative}   /* v106: بحث بارز يشارك الصفّ مع الأزرار */
 .tb-top>*{height:42px;box-sizing:border-box}                /* v106: توحيد ارتفاع عناصر صفّ البحث */
 .tb-top>button{display:inline-flex;align-items:center;gap:6px}
-.tb-top .search input{height:42px;box-sizing:border-box}
+.tb-top .search{position:relative;height:42px;overflow:hidden}
+.tb-top .search input{position:absolute;inset:0;height:42px;width:100%;box-sizing:border-box;border-radius:12px}
 .toolbar>button,.toolbar .wf-adm-btn,.toolbar .btn{height:42px;display:inline-flex;align-items:center;gap:6px}
 .search input{width:100%;height:42px;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:0 42px 0 14px;font-size:14px;color:var(--ink)}
 .search svg{position:absolute;inset-inline-start:14px;top:12px;width:18px;height:18px;color:var(--muted)}
