@@ -9880,14 +9880,22 @@ body.wx-card-open #wx4Pill{ display:none !important; }
           var sub = card.querySelector('.top-line .sub');
           if (sub) { var el = document.createElement('div'); el.className = 'sub afx-join'; el.style.marginTop = '2px'; el.innerHTML = joinLabel(startDate(e)); sub.parentNode.appendChild(el); }
         }
-        if (AFX_NOID && !card.querySelector('.afx-idbadge')) {
+        if (!card.querySelector('.afx-idbadge')) {
           var meta = card.querySelector('.meta');
           if (meta) {
-            var bad = AFX_NOID.has(normId(e.iqama));
+            /* v108: الموظف المتوقّف عن العمل (salary_only) يظهر «متوقف» بدل المعرّف */
+            var stopped = (e.employment_status === 'salary_only');
             var badge = document.createElement('span'); badge.className = 'chip afx-idbadge';
-            badge.textContent = bad ? '⚠ بلا معرّف' : '✓ معرّف';
-            badge.style.cssText = bad ? 'background:#fdf2f0;color:#a3372b;font-weight:700' : 'background:#e4efed;color:#0a4644;font-weight:700';
-            meta.appendChild(badge);
+            if (stopped) {
+              badge.textContent = '⏸ متوقف';
+              badge.style.cssText = 'background:#f4f2ed;color:#6b7674;font-weight:700';
+              meta.appendChild(badge);
+            } else if (AFX_NOID) {
+              var bad = AFX_NOID.has(normId(e.iqama));
+              badge.textContent = bad ? '⚠ بلا معرّف' : '✓ معرّف';
+              badge.style.cssText = bad ? 'background:#fdf2f0;color:#a3372b;font-weight:700' : 'background:#e4efed;color:#0a4644;font-weight:700';
+              meta.appendChild(badge);
+            }
           }
         }
       });

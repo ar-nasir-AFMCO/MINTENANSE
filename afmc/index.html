@@ -1319,7 +1319,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261021053820";
+  var BUILD = "20261021154452";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -2136,7 +2136,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 
   /* وسم يوضّح سبب ظهور المندوب: موقوف، أو مشروعه في وثيق غير هذا المشروع.
      بلا هذا الوسم يبدو الصفّ خطأً في التقرير، وهو في الحقيقة أصحّ من إخفائه. */
-  var AT_ST = { stopped:'موقوف', salary_only:'راتب فقط', archived:'مؤرشف', pending:'بانتظار الاعتماد' };
+  var AT_ST = { stopped:'موقوف', salary_only:'متوقف عن العمل', archived:'مؤرشف', pending:'بانتظار الاعتماد' };
   function atFlags(r){
     var out = '';
     if (r.st && r.st !== 'active') out += '<span class="pill p-warn">' + esc(AT_ST[r.st] || r.st) + '</span>';
