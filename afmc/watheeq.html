@@ -451,6 +451,7 @@ section.view.on{display:block}
 .tb-top{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:10px}   /* v106: صفّ البحث + تصدير/بلا معرف */
 .toolbar{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
 .tb-flabel{font-size:12px;color:var(--muted);font-weight:700;align-self:center;margin-inline-end:2px}
+.tb-sp{flex:1 1 20px;min-width:12px}   /* v106: فراغ يدفع الأزرار لليسار كما في النموذج */
 .search{flex:1 1 280px;min-width:220px;position:relative}   /* v106: بحث بارز يشارك الصفّ مع الأزرار */
 .tb-top>button{height:42px;display:inline-flex;align-items:center;gap:6px}
 .toolbar>button,.toolbar .wf-adm-btn,.toolbar .btn{height:42px;display:inline-flex;align-items:center;gap:6px}
@@ -618,6 +619,7 @@ section.view.on{display:block}
       <select id="fStatus"><option value="">كل الحالات</option><option value="active">موظف</option><option value="stopped">متوقّف / مفوّض</option><option value="salary_only">راتب فقط</option></select>
       <select id="fProject"><option value="">كل المشاريع</option></select>
       <select id="fCat"><option value="">الكل (سيارة/دراجة)</option><option value="car">سائق سيارة</option><option value="motorcycle">سائق دراجة</option></select>
+      <span class="tb-sp"></span>
     </div>
     <div class="cards" id="empCards"></div>
   </section>
