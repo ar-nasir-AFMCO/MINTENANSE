@@ -415,7 +415,12 @@ section.view.on{display:block}
 .h-row p{color:var(--muted);font-size:13px}
 
 /* ---- stat grid ---- */
-.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px}
+.stats{display:flex;flex-direction:column;gap:14px}   /* v106: كروت مجمّعة */
+.stat-glabel{font-size:12px;color:var(--muted);font-weight:700;margin:0 2px 8px}
+.stat-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.stat.sa-r .v{color:#a3372b}.stat.sa-a .v{color:#95570f}.stat.sa-b .v{color:#0e5e5c}
+.stat.sa-r{border-inline-start:3px solid #a3372b}.stat.sa-a{border-inline-start:3px solid #95570f}
+.stat.sa-b{border-inline-start:3px solid #0e5e5c}.stat.sa-g{border-inline-start:3px solid var(--brand)}
 .stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:15px 16px;box-shadow:var(--shadow);text-align:start;transition:.15s;position:relative;overflow:hidden}
 .stat:hover{transform:translateY(-2px);border-color:var(--brand)}
 .stat .v{font-size:26px;font-weight:700;color:var(--brand);line-height:1.1}
@@ -687,22 +692,28 @@ function recomputeStats(){
 
 /* ---------- dashboard ---------- */
 const STAT_DEFS=[
-  {k:'totalEmployees',label:'إجمالي الموظفين',f:null},
-  {k:'withVehicleActive',label:'على رأس العمل',f:{status:'active'}},
-  {k:'stopped',label:'متوقّف / مفوّض',f:{status:'stopped'}},
-  {k:'salaryOnly',label:'راتب فقط',f:{status:'salary_only'}},
-  {k:'withFinance',label:'لديهم كرت مالي',f:{fin:true}},
-  {k:'cars',label:'سائقو السيارات',f:{cat:'car'}},
-  {k:'motorcycles',label:'سائقو الدراجات',f:{cat:'motorcycle'}},
-  {k:'multiVehicle',label:'أكثر من مركبة',f:{multi:true}},
-  {k:'accidents',label:'توالف وحوادث',f:{acc:true}},
-  {k:'withNotes',label:'لديهم ملاحظات',f:{notes:true}},
+  {k:'totalEmployees',label:'إجمالي الموظفين',f:null,g:'القوى العاملة',c:'g'},
+  {k:'withVehicleActive',label:'على رأس العمل',f:{status:'active'},g:'القوى العاملة',c:'g'},
+  {k:'stopped',label:'متوقّف / مفوّض',f:{status:'stopped'},g:'القوى العاملة',c:'r'},
+  {k:'cars',label:'سائقو السيارات',f:{cat:'car'},g:'المركبات والفئات',c:'b'},
+  {k:'motorcycles',label:'سائقو الدراجات',f:{cat:'motorcycle'},g:'المركبات والفئات',c:'b'},
+  {k:'multiVehicle',label:'أكثر من مركبة',f:{multi:true},g:'المركبات والفئات',c:'a'},
+  {k:'withFinance',label:'لديهم كرت مالي',f:{fin:true},g:'المركبات والفئات',c:''},
+  {k:'withNotes',label:'لديهم ملاحظات',f:{notes:true},g:'تنبيهات',c:'a'},
+  {k:'accidents',label:'توالف وحوادث',f:{acc:true},g:'تنبيهات',c:'r'},
+  {k:'salaryOnly',label:'راتب فقط',f:{status:'salary_only'},g:'تنبيهات',c:'a'},
 ];
 function renderDash(){
   const s=state.stats;
   $('#genline').textContent='مدير التوظيف: '+(DB.manager||'—')+' · المصدر: '+(DB.source_version||'')+' · '+(state.employees.length)+' موظفاً';
-  $('#statGrid').innerHTML=STAT_DEFS.map(d=>`<button class="stat" onclick='applyStat(${JSON.stringify(d.f)})'>
-    <div class="v">${fmt(s[d.k]||0)}</div><div class="k">${d.label}</div></button>`).join('');
+  (function(){ var groups={}, order=[];
+    STAT_DEFS.forEach(function(d){ if(!groups[d.g]){groups[d.g]=[];order.push(d.g);} groups[d.g].push(d); });
+    $('#statGrid').innerHTML = order.map(function(g){
+      return '<div class="stat-group"><div class="stat-glabel">'+g+'</div><div class="stat-row">'+
+        groups[g].map(function(d){ return "<button class='stat sa-"+(d.c||'')+"' onclick='applyStat("+JSON.stringify(d.f)+")'><div class='v'>"+fmt(s[d.k]||0)+"</div><div class='k'>"+d.label+"</div></button>"; }).join('')+
+        '</div></div>';
+    }).join('');
+  })();
   const fin=[
     {k:'sumBaseSalary',l:'الرواتب الأساسية',c:''},{k:'sumNet',l:'صافي الرواتب',c:'net'},
     {k:'sumAdvance',l:'السلف',c:'adv'},{k:'sumAccident',l:'التوالف والحوادث',c:'acc'},
