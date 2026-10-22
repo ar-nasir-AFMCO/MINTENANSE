@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>صوت — نظام الشكاوى والتصعيد</title>
+<style>
+:root{
+  --afmco:#0b7a4b;--afmco-d:#064e30;--afmco-l:#0f9e62;--gold:#c99a2e;--gold-l:#e6b84a;
+  --ink:#12251c;--muted:#6b7f74;--line:#e4ece8;--bg:#f4f8f6;--card:#fff;--soft:#f4f8f6;
+  --red:#d84646;--amber:#d9961f;--blue:#2d72c6;--violet:#7a4fc0;--gray:#8a9a92;
+  --sh:0 1px 3px rgba(6,50,34,.05),0 8px 24px rgba(6,50,34,.06);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:-apple-system,"Segoe UI",system-ui,"Noto Kufi Arabic","Tajawal",Arial,sans-serif;
+  color:var(--ink);background:var(--bg);padding:18px}
+.chead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.chead .lead h1{margin:0;font-size:19px;display:flex;align-items:center;gap:9px}
+.chead .lead .exb{font-size:10.5px;background:var(--gold);color:#fff;font-weight:900;padding:2px 9px;border-radius:999px}
+.chead .lead p{margin:4px 0 0;font-size:12.5px;color:var(--muted);max-width:620px;line-height:1.6}
+.chead .acts{display:flex;gap:9px}
+.btn{border:none;border-radius:11px;padding:10px 15px;font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.btn.pri{background:linear-gradient(135deg,var(--afmco),var(--afmco-d));color:#fff;box-shadow:0 6px 16px rgba(11,122,75,.25)}
+.btn.gold{background:linear-gradient(135deg,var(--gold-l),var(--gold));color:#fff}
+.btn.ghost{background:#fff;color:var(--afmco);border:1.5px solid var(--afmco)}
+
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:16px;padding:15px;box-shadow:var(--sh);position:relative;overflow:hidden}
+.kpi .n{font-size:25px;font-weight:900;line-height:1}
+.kpi .l{font-size:11.5px;color:var(--muted);margin-top:6px}
+.kpi .t{position:absolute;top:13px;left:13px;font-size:18px;opacity:.5}
+.kpi.red .n{color:var(--red)}.kpi.amber .n{color:var(--amber)}.kpi.green .n{color:var(--afmco)}.kpi.violet .n{color:var(--violet)}
+
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:14px;padding:11px 13px;box-shadow:var(--sh)}
+.search{position:relative;flex:1;min-width:220px}
+.search input{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:10px 38px 10px 12px;font-size:13px;font-family:inherit;background:var(--soft)}
+.search input:focus{outline:none;border-color:var(--afmco);background:#fff}
+.search .ic{position:absolute;top:50%;right:12px;transform:translateY(-50%);opacity:.5}
+.fsel{border:1.5px solid var(--line);border-radius:11px;padding:10px 12px;font-size:12.5px;font-family:inherit;font-weight:700;background:var(--soft);color:var(--ink);cursor:pointer}
+.fsel:focus{outline:none;border-color:var(--afmco)}
+
+.cols{display:grid;grid-template-columns:1fr 380px;gap:16px;align-items:start}
+@media(max-width:980px){.cols{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(3,1fr)}}
+
+.clist{display:flex;flex-direction:column;gap:10px}
+.crow{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:var(--sh);cursor:pointer;display:flex;gap:13px;align-items:flex-start;position:relative;overflow:hidden;transition:.12s}
+.crow:hover{border-color:var(--afmco-l);transform:translateY(-1px)}
+.crow.sel{border-color:var(--afmco);box-shadow:0 0 0 2px rgba(11,122,75,.15),var(--sh)}
+.crow .pbar{position:absolute;top:0;right:0;width:4px;height:100%}
+.crow.p-urgent .pbar{background:var(--red)}.crow.p-high .pbar{background:var(--amber)}
+.crow.p-med .pbar{background:var(--blue)}.crow.p-low .pbar{background:var(--gray)}
+.crow .ava{width:42px;height:42px;border-radius:12px;background:var(--soft);display:grid;place-items:center;font-size:20px;flex:none}
+.crow .mid{flex:1;min-width:0}
+.crow .tt{font-size:14px;font-weight:800}
+.crow .mt{font-size:11.5px;color:var(--muted);margin-top:5px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:999px;background:var(--soft);color:var(--muted);border:1px solid var(--line)}
+.chip.proj{background:#edf7f1;color:var(--afmco);border-color:#d8ecdf}
+.chip.dept{background:#eaf2fb;color:var(--blue);border-color:#d4e6fb}
+.st{font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:999px}
+.st.open{background:#fde8e8;color:var(--red)}.st.prog{background:#fff2d9;color:var(--amber)}
+.st.esc{background:#ede2fb;color:var(--violet)}.st.done{background:#e3f4ea;color:var(--afmco)}
+.ov{color:var(--red);font-weight:800}
+.noRes{background:#fff;border:1px dashed var(--line);border-radius:14px;padding:40px;text-align:center;color:var(--muted);font-size:13px}
+
+.panel{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh);position:sticky;top:12px;overflow:hidden}
+.panel .ph{background:linear-gradient(135deg,var(--afmco),var(--afmco-d));color:#fff;padding:16px}
+.panel .ph .t{font-size:15px;font-weight:900}
+.panel .ph .s{font-size:11.5px;opacity:.85;margin-top:3px}
+.panel .pb{padding:15px;max-height:64vh;overflow-y:auto}
+.sect{margin-bottom:16px}
+.sect h4{margin:0 0 9px;font-size:12.5px;display:flex;align-items:center;gap:6px;color:var(--muted)}
+.route{display:flex;flex-direction:column}
+.rnode{display:flex;gap:10px;position:relative;padding-bottom:14px}
+.rnode:last-child{padding-bottom:0}
+.rnode .ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:15px;color:#fff;flex:none;z-index:2}
+.rnode::before{content:"";position:absolute;top:34px;right:16px;width:2px;bottom:-2px;background:var(--line)}
+.rnode:last-child::before{display:none}
+.rnode .tx .t{font-size:12.5px;font-weight:800}
+.rnode .tx .d{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5}
+.rnode .tx .tm{font-size:10px;color:var(--muted);margin-top:3px}
+.rnode.done .ic{background:var(--afmco)}.rnode.now .ic{background:var(--gold)}.rnode.wait .ic{background:#c3cfc9}
+.rnode.wait .tx .t{color:var(--muted)}
+.wr{display:flex;flex-wrap:wrap;gap:6px}
+.w{display:flex;align-items:center;gap:6px;background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:3px 10px 3px 4px;font-size:11px;font-weight:700}
+.w .a{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:10px;font-weight:900}
+.msg{display:flex;gap:8px;margin-bottom:11px}
+.msg .a{width:28px;height:28px;border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;font-size:10px;font-weight:900}
+.msg .bu{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:8px 10px;flex:1}
+.msg .who{font-size:10.5px;font-weight:800;margin-bottom:3px;display:flex;justify-content:space-between}
+.msg .who span{color:var(--muted);font-weight:600;font-size:9.5px}
+.msg .tx{font-size:12px;line-height:1.55}
+.reply{display:flex;gap:8px;padding:12px 15px;border-top:1px solid var(--line)}
+.reply input{flex:1;border:1.5px solid var(--line);border-radius:999px;padding:9px 13px;font-size:12.5px;font-family:inherit}
+.reply input:focus{outline:none;border-color:var(--afmco)}
+.reply .s{width:40px;height:40px;border-radius:50%;background:var(--afmco);color:#fff;border:none;cursor:pointer;font-size:16px;flex:none}
+.pacts{display:flex;gap:8px;padding:0 15px 15px}
+.pacts .btn{flex:1;justify-content:center}
+.empty{color:var(--muted);text-align:center;padding:60px 20px;font-size:13px}
+.empty .big{font-size:40px;margin-bottom:10px}
+.foot{margin-top:18px;text-align:center;color:var(--muted);font-size:11px}
+</style>
+</head>
+<body>
+  <div class="chead">
+    <div class="lead">
+      <h1>نظام الشكاوى والتصعيد الموحّد «صوت» <span class="exb">🧪 تجريبي</span></h1>
+      <p>كل شكوى تُسجَّل في مكانها: مربوطة بمشروعها وموظفها والقسم المختص — ويتابعها كل الأطراف، وتُصعَّد للإدارة إن لم تُحَل.</p>
+    </div>
+    <div class="acts">
+      <button class="btn gold" onclick="alert('نسخة الموظف (تطبيق الجوال) قيد الإعداد — تُفعّل بعد اعتماد الشكل.')">📱 نسخة الموظف</button>
+      <button class="btn pri">＋ شكوى جديدة</button>
+    </div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="toolbar">
+    <div class="search"><span class="ic">🔍</span>
+      <input id="q" placeholder="ابحث برقم الشكوى، العنوان، الموظف، المشروع، القسم…"></div>
+    <select class="fsel" id="fProj"><option value="">كل المشاريع</option><option>نينجا</option><option>كيمارت</option></select>
+    <select class="fsel" id="fDept"><option value="">كل الأقسام</option><option>الأسطول</option><option>الموارد البشرية</option><option>المشرف</option></select>
+    <select class="fsel" id="fSt"><option value="">كل الحالات</option><option value="open">جديدة</option><option value="prog">قيد المعالجة</option><option value="esc">مُصعّدة</option><option value="done">منجزة</option></select>
+  </div>
+
+  <div class="cols">
+    <div class="clist" id="clist"></div>
+    <div class="panel" id="panel"></div>
+  </div>
+
+  <div class="foot">نسخة تجريبية للعرض — البيانات هنا تجريبية ولا تُكتب في قاعدة المنصة بعد · صوت 1.0 · AFMCO</div>
+
+<script>
+const AV={A:'#0b7a4b',S:'#c99a2e',F:'#2d72c6',M:'#7a4fc0',H:'#7a4fc0',X:'#8a9a92'};
+const ROUTES={
+  veh:{e:'🚗',name:'عطل / صيانة مركبة',depts:['الأسطول','مدير المشروع'],d0:'الأسطول'},
+  salary:{e:'💰',name:'راتب / مستحقات',depts:['الموارد البشرية','مدير المشروع'],d0:'الموارد البشرية'},
+  id:{e:'🪪',name:'معرّف / حساب منصة',depts:['المشرف','مدير المشروع'],d0:'المشرف'},
+  attend:{e:'🕐',name:'دوام / إجازة',depts:['المشرف','مدير المشروع'],d0:'المشرف'},
+  other:{e:'💬',name:'شكوى عامة',depts:['المشرف','مدير المشروع'],d0:'المشرف'}
+};
+const PRIO={urgent:{l:'عاجل',c:'p-urgent',sla:'4 ساعات'},high:{l:'عالي',c:'p-high',sla:'12 ساعة'},
+  med:{l:'متوسط',c:'p-med',sla:'24 ساعة'},low:{l:'منخفض',c:'p-low',sla:'48 ساعة'}};
+const stCls=s=>({open:'open',prog:'prog',esc:'esc',done:'done'}[s]);
+const stLbl=s=>({open:'جديدة',prog:'قيد المعالجة',esc:'مُصعّدة',done:'منجزة'}[s]);
+
+const DATA=[
+ {id:'SH-1042',cat:'veh',proj:'نينجا',title:'المركبة فصلت أثناء التوصيل',prio:'urgent',emp:'أحمد الزهراني',status:'esc',overdue:false,age:'قبل ساعة',loc:'الرياض — النرجس',plate:'ر ق ب 4471',
+  route:[{s:'done',ic:'👤',t:'الموظف رفع الشكوى',d:'المركبة توقفت فجأة وهو بمنتصف الطلب',tm:'9:05ص'},
+    {s:'done',ic:'🧑‍💼',t:'المشرف اطّلع وعلّق',d:'«استلمت — وجّهتها للأسطول»',tm:'9:14ص'},
+    {s:'now',ic:'🚗',t:'الأسطول يعالج الآن',d:'فتح بلاغ صيانة #ص-884 · ونش في الطريق',tm:'9:22ص'},
+    {s:'wait',ic:'🏢',t:'مدير المشروع (متابِع)',d:'يصله كل تحديث — يتدخّل لو تأخّر الحل',tm:''}],
+  watch:[['أ','A','أحمد — صاحب الشكوى'],['خ','S','خالد — المشرف'],['ع','F','عمر — الأسطول'],['س','M','سامي — المدير']],
+  thread:[{me:0,who:'أحمد الزهراني',av:'A',t:'المركبة فصلت وأنا رايح أوصّل طلب، وقفت على جنب.',tm:'9:05'},
+    {me:1,who:'خالد — المشرف',av:'S',t:'سلامتك. وجّهت البلاغ للأسطول، لا تشغّلها.',tm:'9:14'},
+    {me:1,who:'عمر — الأسطول',av:'F',t:'فتحنا بلاغ صيانة #ص-884 وطلبنا ونش. وصل موقعك؟',tm:'9:22'}]},
+
+ {id:'SH-1039',cat:'salary',proj:'كيمارت',title:'نقص في مستحقات أكتوبر',prio:'high',emp:'ماجد العتيبي',status:'prog',overdue:true,age:'قبل 14 ساعة',loc:'جدة',plate:'',
+  route:[{s:'done',ic:'👤',t:'الموظف رفع الشكوى',d:'فرق في عدد الطلبات المحتسبة',tm:'أمس 7:10م'},
+    {s:'done',ic:'🧑‍💼',t:'المشرف اطّلع',d:'«حوّلتها للموارد البشرية»',tm:'أمس 8:02م'},
+    {s:'now',ic:'💰',t:'الموارد البشرية تراجع',d:'يطابقون كشف كيمارت — ⚠️ تجاوز المهلة',tm:'جارٍ'},
+    {s:'wait',ic:'🏢',t:'مدير المشروع (متابِع)',d:'يصله كل تحديث',tm:''}],
+  watch:[['م','A','ماجد — صاحب الشكوى'],['ن','S','نواف — المشرف'],['هـ','H','هاني — موارد بشرية'],['س','M','سامي — المدير']],
+  thread:[{me:0,who:'ماجد العتيبي',av:'A',t:'مستحقاتي ناقصة، احتسبوا طلبات أقل من اللي سلّمتها.',tm:'أمس'},
+    {me:1,who:'نواف — المشرف',av:'S',t:'حوّلتها للموارد البشرية، بيطابقون الكشف ويردّون عليك.',tm:'أمس'}]},
+
+ {id:'SH-1036',cat:'id',proj:'نينجا',title:'المعرّف موقوف ولا أستلم طلبات',prio:'urgent',emp:'سعد القحطاني',status:'done',overdue:false,age:'قبل يومين',loc:'الرياض',plate:'',
+  route:[{s:'done',ic:'👤',t:'الموظف رفع الشكوى',d:'المعرّف غير مفعّل على التطبيق',tm:'قبل يومين'},
+    {s:'done',ic:'🧑‍💼',t:'المشرف عالجها مباشرة',d:'أعاد تفعيل المعرّف — من صلاحيته',tm:'قبل يومين'},
+    {s:'done',ic:'✅',t:'تم الحل وأُغلقت',d:'الموظف أكّد أنه يستلم الآن',tm:'قبل يومين'}],
+  watch:[['س','A','سعد — صاحب الشكوى'],['خ','S','خالد — المشرف']],
+  thread:[{me:0,who:'سعد القحطاني',av:'A',t:'معرّفي موقوف من الصبح، ما أقدر أستلم.',tm:'قبل يومين'},
+    {me:1,who:'خالد — المشرف',av:'S',t:'فعّلته لك، سجّل خروج ودخول. تمام؟',tm:'قبل يومين'},
+    {me:0,who:'سعد القحطاني',av:'A',t:'تمام ✅ شغّال، يعطيك العافية.',tm:'قبل يومين'}]},
+
+ {id:'SH-1031',cat:'attend',proj:'نينجا',title:'طلب إجازة لم يُعتمد',prio:'low',emp:'تركي الدوسري',status:'open',overdue:false,age:'قبل 3 ساعات',loc:'الرياض',plate:'',
+  route:[{s:'done',ic:'👤',t:'الموظف رفع الطلب',d:'إجازة يومين لظرف عائلي',tm:'6:30ص'},
+    {s:'now',ic:'🧑‍💼',t:'بانتظار المشرف',d:'لم يُطّلع بعد',tm:''},
+    {s:'wait',ic:'🏢',t:'مدير المشروع (متابِع)',d:'',tm:''}],
+  watch:[['ت','A','تركي — صاحب الطلب'],['خ','S','خالد — المشرف']],
+  thread:[{me:0,who:'تركي الدوسري',av:'A',t:'أحتاج إجازة يومين الخميس والجمعة لو ممكن.',tm:'6:30'}]}
+];
+
+let sel=null, q='', fProj='', fDept='', fSt='';
+const $=id=>document.getElementById(id);
+
+function match(d){
+  if(fProj && d.proj!==fProj) return false;
+  if(fDept && !ROUTES[d.cat].depts.includes(fDept)) return false;
+  if(fSt && d.status!==fSt) return false;
+  if(q){const s=q.trim().toLowerCase();
+    if(![d.title,d.id,d.proj,d.emp,ROUTES[d.cat].name,stLbl(d.status),d.loc].join(' ').toLowerCase().includes(s))return false;}
+  return true;
+}
+function renderKpis(){
+  const act=DATA.filter(d=>d.status!=='done');
+  const over=DATA.filter(d=>d.overdue).length;
+  const urg=act.filter(d=>d.prio==='urgent').length;
+  const esc=DATA.filter(d=>d.status==='esc').length;
+  const done=DATA.filter(d=>d.status==='done').length;
+  $('kpis').innerHTML=[
+    ['red',over,'تجاوز المهلة','⏰'],['amber',urg,'عاجلة نشطة','🔴'],
+    ['green',act.length,'مفتوحة','📂'],['violet',esc,'مُصعّدة للإدارة','⬆'],
+    ['',done,'منجزة','✅']
+  ].map(k=>`<div class="kpi ${k[0]}"><span class="t">${k[3]}</span><div class="n">${k[1]}</div><div class="l">${k[2]}</div></div>`).join('');
+}
+function renderList(){
+  const list=DATA.filter(match);
+  if(!list.length){$('clist').innerHTML=`<div class="noRes">ما في نتائج تطابق البحث 🔍</div>`;return;}
+  $('clist').innerHTML=list.map(d=>{const p=PRIO[d.prio];
+    return `<div class="crow ${p.c} ${sel===d.id?'sel':''}" data-id="${d.id}">
+      <div class="pbar"></div>
+      <div class="ava">${ROUTES[d.cat].e}</div>
+      <div class="mid">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+          <div class="tt">${d.title}</div><div class="st ${stCls(d.status)}">${stLbl(d.status)}</div></div>
+        <div class="mt">
+          <span class="chip proj">📁 ${d.proj}</span>
+          <span class="chip dept">${ROUTES[d.cat].e} ${ROUTES[d.cat].d0}</span>
+          <span>👤 ${d.emp}</span><span>${d.id}</span>
+          <span class="${d.overdue?'ov':''}">${d.overdue?'⚠️ تجاوز المهلة':'⏱ '+d.age}</span>
+        </div></div></div>`;}).join('');
+  $('clist').querySelectorAll('.crow').forEach(r=>r.onclick=()=>{sel=r.dataset.id;render();});
+}
+function renderPanel(){
+  const d=DATA.find(x=>x.id===sel);
+  if(!d){$('panel').innerHTML=`<div class="empty"><div class="big">🗂</div>اختر شكوى من القائمة لعرض مسارها والمحادثة والمتابعين.</div>`;return;}
+  const p=PRIO[d.prio];
+  $('panel').innerHTML=`
+    <div class="ph"><div class="t">${d.title}</div>
+      <div class="s">${d.id} · 📁 ${d.proj} · ${ROUTES[d.cat].name}</div></div>
+    <div class="pb">
+      <div class="sect">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">
+          <span class="st ${stCls(d.status)}">${stLbl(d.status)}</span>
+          <span class="chip" style="${d.overdue?'background:#fde8e8;color:var(--red);border-color:#f6cccc':''}">${d.overdue?'⚠️ تجاوز مهلة '+p.sla:'⏱ المهلة '+p.sla}</span>
+          <span class="chip">👤 ${d.emp}</span><span class="chip">📍 ${d.loc}</span>
+          ${d.plate?`<span class="chip">🚗 ${d.plate}</span>`:''}
+        </div>
+      </div>
+      <div class="sect"><h4>🔀 مسار الشكوى</h4>
+        <div class="route">${d.route.map(r=>`<div class="rnode ${r.s}"><div class="ic">${r.ic}</div>
+          <div class="tx"><div class="t">${r.t}</div><div class="d">${r.d}</div>${r.tm?`<div class="tm">🕐 ${r.tm}</div>`:''}</div></div>`).join('')}</div>
+      </div>
+      <div class="sect"><h4>👁 المتابعون (${d.watch.length})</h4>
+        <div class="wr">${d.watch.map(w=>`<span class="w"><span class="a" style="background:${AV[w[1]]}">${w[0]}</span>${w[2]}</span>`).join('')}</div>
+      </div>
+      <div class="sect"><h4>💬 المحادثة</h4>
+        ${d.thread.map(m=>`<div class="msg"><div class="a" style="background:${AV[m.av]}">${m.who[0]}</div>
+          <div class="bu"><div class="who">${m.who}<span>${m.tm}</span></div><div class="tx">${m.t}</div></div></div>`).join('')}
+      </div>
+    </div>
+    ${d.status!=='done'?`
+    <div class="pacts">
+      <button class="btn gold" onclick="esc()">⬆ تصعيد للإدارة</button>
+      <button class="btn ghost" onclick="resolve()">✓ تم الحل</button>
+    </div>
+    <div class="reply"><input id="rin" placeholder="اكتب ردّك للموظف…"><button class="s" onclick="sendReply()">➤</button></div>`:''}`;
+  const rin=$('rin'); if(rin) rin.onkeydown=e=>{if(e.key==='Enter')sendReply();};
+}
+function sendReply(){const d=DATA.find(x=>x.id===sel),i=$('rin');if(!i||!i.value.trim())return;
+  d.thread.push({me:1,who:'أحمد ناصر — إدارة العمليات',av:'A',t:i.value.trim(),tm:'الآن'});render();}
+function esc(){const d=DATA.find(x=>x.id===sel);d.status='esc';d.route.forEach(r=>{if(r.s==='wait')r.s='now';});render();}
+function resolve(){const d=DATA.find(x=>x.id===sel);d.status='done';d.overdue=false;d.route.forEach(r=>r.s='done');
+  d.route.push({s:'done',ic:'✅',t:'تم الحل وأُغلقت',d:'بموافقة إدارة العمليات',tm:'الآن'});render();}
+function render(){renderKpis();renderList();renderPanel();}
+window.esc=esc;window.resolve=resolve;window.sendReply=sendReply;
+$('q').oninput=e=>{q=e.target.value;renderList();};
+$('fProj').onchange=e=>{fProj=e.target.value;renderList();};
+$('fDept').onchange=e=>{fDept=e.target.value;renderList();};
+$('fSt').onchange=e=>{fSt=e.target.value;renderList();};
+render();
+</script>
+</body>
+</html>

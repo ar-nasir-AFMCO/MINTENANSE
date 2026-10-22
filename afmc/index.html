@@ -1062,7 +1062,21 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       <main id="vLab" class="view hide">
         <div class="head"><div><h2>التجريبي</h2><p>صفحات وأدوات قيد التجربة — منفصلة عن شاشات التشغيل، لا تكتب في بيانات المنصة إلا بعد اعتمادها.</p></div></div>
 
-        <div class="sec" style="margin-top:0">
+        <div class="sec" style="margin-top:0" id="sootSec">
+          <h3><svg class="i"><use href="#i-bolt"/></svg>صوت — نظام الشكاوى والتصعيد الموحّد</h3>
+          <div class="card" style="padding:16px 18px">
+            <div class="sub" style="margin-bottom:10px">كل شكوى تُسجَّل في مكانها: مربوطة بمشروعها وموظفها والقسم المختص (الأسطول · الموارد البشرية · المشرف) — ويتابعها كل الأطراف، وتُصعَّد للإدارة إن لم تُحَل. نسخة تجريبية للعرض — لا تكتب في بيانات المنصة بعد.</div>
+            <div class="bar2" style="margin-top:0">
+              <button class="btn ghost" id="sootToggle"><svg class="i"><use href="#i-bolt"/></svg>فتح هنا</button>
+              <a class="btn ghost" id="sootOpen" target="_blank" rel="noopener"><svg class="i"><use href="#i-ext"/></svg>فتح في صفحة مستقلة</a>
+            </div>
+            <div class="card hide" id="sootWrap" style="margin-top:12px;padding:0;overflow:hidden">
+              <iframe id="sootFrame" title="صوت — نظام الشكاوى" style="width:100%;height:80vh;border:0;display:block"></iframe>
+            </div>
+          </div>
+        </div>
+
+        <div class="sec">
           <h3><svg class="i"><use href="#i-send"/></svg>شرائح الغسيل — تعبئة النموذج من المنصة</h3>
           <div class="card" style="padding:16px 18px">
             <div class="bar2" style="margin-top:0">
@@ -1319,7 +1333,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261021154452";
+  var BUILD = "20261022213000";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -3143,6 +3157,17 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   var labCard = null;
   function labInit(){
     $('labFuelOpen').href = LAB_FUEL;
+    /* صوت — نظام الشكاوى والتصعيد (تجريبي، إطار مستقل) */
+    if (!labInit.__soot){ labInit.__soot = 1;
+      var so = $('sootOpen'); if (so) so.href = vsrc('soot.html');
+      var sb = $('sootToggle');
+      if (sb) sb.onclick = function(){
+        var w = $('sootWrap'), f = $('sootFrame');
+        if (w.classList.contains('hide')){
+          if (!f.src) f.src = vsrc('soot.html');
+          w.classList.remove('hide'); sb.innerHTML = ico('bolt') + 'إخفاء';
+        } else { w.classList.add('hide'); sb.innerHTML = ico('bolt') + 'فتح هنا'; }
+      }; }
     if (!labInit.__km){ labInit.__km = 1;
       var kb = $('kmToggle');
       if (kb) kb.onclick = function(){
@@ -3158,6 +3183,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       $('dbbVerClose').onclick = function(){ $('dbbVerWrap').classList.add('hide'); }; }
     dbbLoad();
     $('labCards').innerHTML = [
+      ['صوت · نظام الشكاوى والتصعيد', 'بوابة موحدة: الموظف يرفع، المشرف والقسم المختص يعالجون، والتصعيد للإدارة. في القسم أعلى الصفحة.', 'soot.html'],
       ['شرائح الغسيل · نموذج جوجل', 'النموذج الحالي الذي يُعبّأ يدوياً. من هنا يُفتح معبّأً بتسعة حقول.', LAB_FORM],
       ['الوقود · AppSheet', 'تطبيق الوقود. لا يقبل التعبئة من الرابط — انظر القسم أدناه.', LAB_FUEL],
       ['Samurai · تجريبي', 'أداء المورّد والكباتن. داخل «المناديب» لمدير النظام.', ''],
