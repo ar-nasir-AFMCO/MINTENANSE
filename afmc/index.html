@@ -1069,6 +1069,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
             <div class="bar2" style="margin-top:0">
               <button class="btn ghost" id="sootToggle"><svg class="i"><use href="#i-bolt"/></svg>فتح هنا</button>
               <a class="btn ghost" id="sootOpen" target="_blank" rel="noopener"><svg class="i"><use href="#i-ext"/></svg>فتح في صفحة مستقلة</a>
+              <a class="btn ghost" id="sootApp" target="_blank" rel="noopener"><svg class="i"><use href="#i-ext"/></svg>📱 تطبيق الموظف (جوال)</a>
             </div>
             <div class="card hide" id="sootWrap" style="margin-top:12px;padding:0;overflow:hidden">
               <iframe id="sootFrame" title="صوت — نظام الشكاوى" style="width:100%;height:80vh;border:0;display:block"></iframe>
@@ -1333,7 +1334,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261022213000";
+  var BUILD = "20261022214500";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -3160,6 +3161,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     /* صوت — نظام الشكاوى والتصعيد (تجريبي، إطار مستقل) */
     if (!labInit.__soot){ labInit.__soot = 1;
       var so = $('sootOpen'); if (so) so.href = vsrc('soot.html');
+      var sa = $('sootApp'); if (sa) sa.href = vsrc('soot-app.html');
       var sb = $('sootToggle');
       if (sb) sb.onclick = function(){
         var w = $('sootWrap'), f = $('sootFrame');
