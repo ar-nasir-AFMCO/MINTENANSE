@@ -154,12 +154,14 @@ fun LoginScreen(onLogin: (Session, String, String) -> Unit) {
 @Composable
 fun HomeScreen(session: Session, reload: Int, onOpen: (Complaint) -> Unit, onNew: () -> Unit, onLogout: () -> Unit) {
     var list by remember { mutableStateOf<List<Complaint>>(emptyList()) }
+    var vehicles by remember { mutableStateOf<List<MyVehicle>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(reload) {
         loading = true; error = null
         try { list = Api.myComplaints(session.token) } catch (e: Exception) { error = e.message } finally { loading = false }
     }
+    LaunchedEffect(Unit) { try { vehicles = Api.myVehicles(session.token) } catch (_: Exception) {} }
     Scaffold(containerColor = Bg,
         topBar = { TopBar("هلا ${session.name}", session.projectCode?.let { "مشروع $it" }) { TextButton(onClick = onLogout) { Text("خروج", color = Color.White, fontSize = 13.sp) } } },
         floatingActionButton = { ExtendedFloatingActionButton(onClick = onNew, containerColor = Gold, contentColor = Color.White) { Text("＋ شكوى جديدة", fontWeight = FontWeight.Bold) } }
@@ -169,7 +171,7 @@ fun HomeScreen(session: Session, reload: Int, onOpen: (Complaint) -> Unit, onNew
                 loading -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = Green)
                 error != null -> Text("تعذّر التحميل: $error", Modifier.align(Alignment.Center).padding(24.dp), color = Red)
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    item { ProfileCard(session) }
+                    item { ProfileCard(session, vehicles) }
                     val pending = list.count { it.closePending }
                     if (pending > 0) item {
                         Surface(color = Amber.copy(alpha = .14f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -192,18 +194,33 @@ fun HomeScreen(session: Session, reload: Int, onOpen: (Complaint) -> Unit, onNew
 }
 
 @Composable
-fun ProfileCard(session: Session) {
+fun ProfileCard(session: Session, vehicles: List<MyVehicle>) {
     Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(52.dp).background(Green.copy(alpha = .12f), RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
-                Text("👤", fontSize = 26.sp)
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(52.dp).background(Green.copy(alpha = .12f), RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
+                    Text("👤", fontSize = 26.sp)
+                }
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(session.name, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = GreenD)
+                    Spacer(Modifier.height(3.dp))
+                    Text("🆔 الإقامة: ${session.iqama}", color = Gray, fontSize = 12.sp)
+                    Text("📁 المشروع: ${session.projectCode ?: "—"}", color = Gray, fontSize = 12.sp)
+                }
             }
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text(session.name, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = GreenD)
-                Spacer(Modifier.height(3.dp))
-                Text("🆔 الإقامة: ${session.iqama}", color = Gray, fontSize = 12.sp)
-                Text("📁 المشروع: ${session.projectCode ?: "—"}", color = Gray, fontSize = 12.sp)
+            if (vehicles.isNotEmpty()) {
+                Spacer(Modifier.height(10.dp))
+                Surface(color = Green.copy(alpha = .06f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text("🚗 المركبات المُسندة إليك", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = GreenD)
+                        Spacer(Modifier.height(4.dp))
+                        vehicles.forEach { v ->
+                            Text("• ${v.plate}" + listOfNotNull(v.make, v.model).joinToString(" ").let { if (it.isNotBlank()) " — $it" else "" }
+                                + (v.project?.let { " · $it" } ?: ""), color = Color(0xFF223229), fontSize = 12.sp)
+                        }
+                    }
+                }
             }
         }
     }
@@ -318,7 +335,12 @@ fun ComplaintForm(session: Session, dept: Department, cat: Category, onDone: () 
     val context = LocalContext.current
 
     LaunchedEffect(cat.needsPlate) {
-        if (cat.needsPlate) { try { vehicles = Api.myVehicles(session.token) } catch (_: Exception) {} }
+        if (cat.needsPlate) {
+            try {
+                val vs = Api.myVehicles(session.token); vehicles = vs
+                if (plate.isBlank() && vs.isNotEmpty()) plate = vs[0].plate   // المركبة المفوّض عليها
+            } catch (_: Exception) {}
+        }
     }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
