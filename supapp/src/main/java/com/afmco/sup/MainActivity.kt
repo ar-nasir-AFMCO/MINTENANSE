@@ -2,11 +2,16 @@
 
 package com.afmco.sup
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -51,6 +56,17 @@ fun statusColor(s: String) = when (s) { "open" -> Red; "prog" -> Amber; "esc" ->
 fun deptIcon(code: String?) = when (code) { "veh" -> "🚗"; "house" -> "🏠"; "finance" -> "💵"; "hr" -> "👷"; else -> "🗂" }
 fun fmtAmount(a: Double): String = if (a == a.toLong().toDouble()) a.toLong().toString() else String.format("%.2f", a)
 
+/** حفظ بيانات دخول المشرف للدخول التلقائي */
+object Prefs {
+    private const val F = "soot_sup"
+    fun save(ctx: Context, email: String, pass: String) =
+        ctx.getSharedPreferences(F, Context.MODE_PRIVATE).edit()
+            .putString("email", email).putString("pass", pass).apply()
+    fun email(ctx: Context) = ctx.getSharedPreferences(F, Context.MODE_PRIVATE).getString("email", null)
+    fun pass(ctx: Context) = ctx.getSharedPreferences(F, Context.MODE_PRIVATE).getString("pass", null)
+    fun clear(ctx: Context) = ctx.getSharedPreferences(F, Context.MODE_PRIVATE).edit().clear().apply()
+}
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -72,12 +88,24 @@ class MainActivity : ComponentActivity() {
 fun AppRoot() {
     var session by remember { mutableStateOf<SupSession?>(null) }
     var detail by remember { mutableStateOf<Complaint?>(null) }
+    var booting by remember { mutableStateOf(true) }
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        val em = Prefs.email(context); val ps = Prefs.pass(context)
+        if (!em.isNullOrBlank() && !ps.isNullOrBlank()) {
+            try { session = Api.login(em, ps) } catch (_: Exception) { Prefs.clear(context) }
+        }
+        booting = false
+    }
+
     Surface(Modifier.fillMaxSize(), color = Bg) {
         val s = session
         when {
-            s == null -> LoginScreen { session = it }
-            detail != null -> DetailScreen(s, detail!!) { detail = null }
-            else -> HomeScreen(s, onOpen = { detail = it }, onLogout = { session = null })
+            booting -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Green) }
+            s == null -> LoginScreen(onLogin = { sess, em, ps -> Prefs.save(context, em, ps); session = sess })
+            detail != null -> DetailScreen(s, detail!!, onChanged = { /* refreshed on back */ }) { detail = null }
+            else -> HomeScreen(s, onOpen = { detail = it }, onLogout = { Prefs.clear(context); session = null; detail = null })
         }
     }
 }
@@ -97,7 +125,7 @@ fun TopBar(title: String, subtitle: String? = null, onBack: (() -> Unit)? = null
 }
 
 @Composable
-fun LoginScreen(onLogin: (SupSession) -> Unit) {
+fun LoginScreen(onLogin: (SupSession, String, String) -> Unit) {
     var email by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
@@ -125,9 +153,8 @@ fun LoginScreen(onLogin: (SupSession) -> Unit) {
         Button(onClick = {
             error = null; loading = true
             scope.launch {
-                try { onLogin(Api.login(email.trim(), pass)) }
-                catch (e: Exception) { error = e.message ?: "تعذّر الدخول" }
-                finally { loading = false }
+                try { val em = email.trim(); onLogin(Api.login(em, pass), em, pass) }
+                catch (e: Exception) { error = e.message ?: "تعذّر الدخول"; loading = false }
             }
         }, enabled = !loading && email.isNotBlank() && pass.isNotBlank(),
             modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp)) {
@@ -144,6 +171,7 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onLogout: () ->
     var error by remember { mutableStateOf<String?>(null) }
     var q by remember { mutableStateOf("") }
     var deptFilter by remember { mutableStateOf<String?>(null) }
+    var kpiFilter by remember { mutableStateOf<String?>(null) }
     var refreshKey by remember { mutableStateOf(0) }
 
     LaunchedEffect(refreshKey) {
@@ -153,13 +181,23 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onLogout: () ->
         finally { loading = false }
     }
 
+    fun kpiMatch(c: Complaint): Boolean = when (kpiFilter) {
+        "overdue" -> c.overdue
+        "urgent"  -> c.status != "done" && c.priority == "urgent"
+        "open"    -> c.status != "done"
+        "esc"     -> c.status == "esc"
+        "done"    -> c.status == "done"
+        "pending" -> c.closePending
+        else -> true
+    }
     val filtered = list.filter { c ->
-        (deptFilter == null || c.departmentCode == deptFilter) &&
+        (deptFilter == null || c.departmentCode == deptFilter) && kpiMatch(c) &&
         (q.isBlank() || listOf(c.title, c.code, c.projectName ?: "", c.empName ?: "",
-            c.categoryLabel ?: "", c.plate ?: "", statusLabel(c.status))
+            c.empIqama ?: "", c.categoryLabel ?: "", c.plate ?: "", statusLabel(c.status))
             .joinToString(" ").contains(q.trim(), ignoreCase = true))
     }
     val active = list.filter { it.status != "done" }
+    val pendingN = list.count { it.closePending }
     val depts = listOf("veh" to "المركبات", "house" to "السكن", "finance" to "المالية", "hr" to "التوظيف")
 
     Scaffold(
@@ -181,16 +219,16 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onLogout: () ->
                     verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     item {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Kpi("تجاوز المهلة", list.count { it.overdue }, Red, Modifier.weight(1f))
-                            Kpi("عاجلة", active.count { it.priority == "urgent" }, Amber, Modifier.weight(1f))
-                            Kpi("مفتوحة", active.size, Green, Modifier.weight(1f))
+                            Kpi("تجاوز المهلة", list.count { it.overdue }, Red, kpiFilter == "overdue", Modifier.weight(1f)) { kpiFilter = if (kpiFilter == "overdue") null else "overdue" }
+                            Kpi("عاجلة", active.count { it.priority == "urgent" }, Amber, kpiFilter == "urgent", Modifier.weight(1f)) { kpiFilter = if (kpiFilter == "urgent") null else "urgent" }
+                            Kpi("مفتوحة", active.size, Green, kpiFilter == "open", Modifier.weight(1f)) { kpiFilter = if (kpiFilter == "open") null else "open" }
                         }
                     }
                     item {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Kpi("مُصعّدة", list.count { it.status == "esc" }, Violet, Modifier.weight(1f))
-                            Kpi("منجزة", list.count { it.status == "done" }, Green, Modifier.weight(1f))
-                            Spacer(Modifier.weight(1f))
+                            Kpi("مُصعّدة", list.count { it.status == "esc" }, Violet, kpiFilter == "esc", Modifier.weight(1f)) { kpiFilter = if (kpiFilter == "esc") null else "esc" }
+                            Kpi("بانتظار التأكيد", pendingN, Gold, kpiFilter == "pending", Modifier.weight(1f)) { kpiFilter = if (kpiFilter == "pending") null else "pending" }
+                            Kpi("منجزة", list.count { it.status == "done" }, Green, kpiFilter == "done", Modifier.weight(1f)) { kpiFilter = if (kpiFilter == "done") null else "done" }
                         }
                     }
                     item {
@@ -218,8 +256,13 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onLogout: () ->
 }
 
 @Composable
-fun Kpi(label: String, n: Int, color: Color, modifier: Modifier = Modifier) {
-    Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp), modifier = modifier) {
+fun Kpi(label: String, n: Int, color: Color, selected: Boolean = false, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = if (selected) color.copy(alpha = .12f) else Color.White),
+        shape = RoundedCornerShape(14.dp),
+        border = if (selected) androidx.compose.foundation.BorderStroke(1.5.dp, color) else null,
+        modifier = modifier.clickable { onClick() }
+    ) {
         Column(Modifier.padding(12.dp)) {
             Text("$n", fontSize = 22.sp, fontWeight = FontWeight.Black, color = color)
             Text(label, fontSize = 11.sp, color = Gray)
@@ -236,7 +279,7 @@ fun ComplaintCard(c: Complaint, onClick: () -> Unit) {
             Column(Modifier.padding(14.dp).weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(c.title, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                    StatusBadge(statusLabel(c.status), statusColor(c.status))
+                    if (c.closePending) StatusBadge("⏳ تأكيد الموظف", Gold) else StatusBadge(statusLabel(c.status), statusColor(c.status))
                 }
                 Spacer(Modifier.height(8.dp))
                 Row {
@@ -252,7 +295,7 @@ fun ComplaintCard(c: Complaint, onClick: () -> Unit) {
                     if (c.photos.isNotEmpty()) { Spacer(Modifier.width(6.dp)); Chip("📷 ${c.photos.size}", Gray) }
                 }
                 Spacer(Modifier.height(6.dp))
-                Text("👤 ${c.empName ?: "—"} · ${c.code}", color = Gray, fontSize = 11.sp)
+                Text("👤 ${c.empName ?: "—"}" + (c.empIqama?.let { " · 🆔 $it" } ?: "") + " · ${c.code}", color = Gray, fontSize = 11.sp)
                 if (c.overdue) { Spacer(Modifier.height(4.dp)); Text("⚠️ تجاوز المهلة", color = Red, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
             }
         }
@@ -287,16 +330,39 @@ fun FilterChipItem(text: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-fun DetailScreen(session: SupSession, c: Complaint, onBack: () -> Unit) {
+fun DetailScreen(session: SupSession, c: Complaint, onChanged: () -> Unit, onBack: () -> Unit) {
     var msgs by remember { mutableStateOf<List<Msg>>(emptyList()) }
     var events by remember { mutableStateOf<List<Event>>(emptyList()) }
     var reply by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf(c.status) }
+    var awaiting by remember { mutableStateOf(c.closePending) }
     var toast by remember { mutableStateOf<String?>(null) }
     var refreshKey by remember { mutableStateOf(0) }
     var photoView by remember { mutableStateOf<String?>(null) }
+    var addedPhotos by remember { mutableStateOf<List<String>>(emptyList()) }
+    var uploading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val canAttach = c.departmentCode == "veh" || c.departmentCode == "house"
+
+    BackHandler { onBack() }
+
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            uploading = true
+            scope.launch {
+                try {
+                    val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: throw RuntimeException("تعذّر قراءة الصورة")
+                    val type = context.contentResolver.getType(uri) ?: ""
+                    val ext = if (type.contains("png")) "png" else "jpg"
+                    val url = Api.uploadPhoto(bytes, ext)
+                    Api.addPhoto(session.token, c.id, url)
+                    addedPhotos = addedPhotos + url; toast = "تمت إضافة الصورة"; onChanged(); refreshKey++
+                } catch (e: Exception) { toast = e.message ?: "تعذّر رفع الصورة" } finally { uploading = false }
+            }
+        }
+    }
 
     LaunchedEffect(refreshKey) {
         try { events = Api.events(session.token, c.id); msgs = Api.messages(session.token, c.id) } catch (_: Exception) {}
@@ -327,14 +393,18 @@ fun DetailScreen(session: SupSession, c: Complaint, onBack: () -> Unit) {
             item {
                 Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp)) {
                     Column(Modifier.padding(14.dp)) {
-                        Row { StatusBadge(statusLabel(status), statusColor(status)); Spacer(Modifier.width(6.dp)); Chip(prioLabel(c.priority), prioColor(c.priority)) }
+                        Row {
+                            if (awaiting && status != "done") StatusBadge("⏳ بانتظار تأكيد الموظف", Gold)
+                            else StatusBadge(statusLabel(status), statusColor(status))
+                            Spacer(Modifier.width(6.dp)); Chip(prioLabel(c.priority), prioColor(c.priority))
+                        }
                         Spacer(Modifier.height(8.dp))
                         Row {
                             Chip("${deptIcon(c.departmentCode)} ${c.departmentName ?: "—"}", Violet)
                             Spacer(Modifier.width(6.dp)); Chip(c.categoryLabel ?: c.category, Blue)
                         }
                         Spacer(Modifier.height(8.dp))
-                        Text("👤 ${c.empName ?: "—"}  ·  📁 ${c.projectName ?: c.projectCode ?: "—"}", fontSize = 12.sp, color = Gray)
+                        Text("👤 ${c.empName ?: "—"}" + (c.empIqama?.let { "  ·  🆔 $it" } ?: "") + "  ·  📁 ${c.projectName ?: c.projectCode ?: "—"}", fontSize = 12.sp, color = Gray)
                         if (!c.description.isNullOrBlank()) { Spacer(Modifier.height(8.dp)); Text(c.description, fontSize = 13.sp) }
                         Spacer(Modifier.height(6.dp))
                         if (!c.plate.isNullOrBlank()) InfoLine("🚗 لوحة المركبة", c.plate)
@@ -346,36 +416,52 @@ fun DetailScreen(session: SupSession, c: Complaint, onBack: () -> Unit) {
                     }
                 }
             }
-            if (c.photos.isNotEmpty()) item {
+            if (c.photos.isNotEmpty() || addedPhotos.isNotEmpty() || canAttach) item {
+                val allPhotos = c.photos + addedPhotos
                 Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp)) {
                     Column(Modifier.padding(14.dp)) {
-                        Text("📷 المرفقات (${c.photos.size})", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = GreenD)
-                        Spacer(Modifier.height(10.dp))
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            items(c.photos) { url ->
-                                AsyncImage(
-                                    model = url, contentDescription = null, contentScale = ContentScale.Crop,
-                                    modifier = Modifier.size(120.dp).clip(RoundedCornerShape(12.dp))
-                                        .background(Bg).clickable { photoView = url }
-                                )
+                        Text("📷 المرفقات (${allPhotos.size})", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = GreenD)
+                        if (allPhotos.isNotEmpty()) {
+                            Spacer(Modifier.height(10.dp))
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                items(allPhotos) { url ->
+                                    AsyncImage(
+                                        model = url, contentDescription = null, contentScale = ContentScale.Crop,
+                                        modifier = Modifier.size(120.dp).clip(RoundedCornerShape(12.dp))
+                                            .background(Bg).clickable { photoView = url }
+                                    )
+                                }
+                            }
+                        }
+                        if (canAttach) {
+                            Spacer(Modifier.height(10.dp))
+                            OutlinedButton(onClick = { picker.launch("image/*") }, enabled = !uploading, modifier = Modifier.fillMaxWidth()) {
+                                if (uploading) { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp); Spacer(Modifier.width(8.dp)); Text("جارٍ الرفع…") }
+                                else Text("📷 إرفاق صورة")
                             }
                         }
                     }
                 }
             }
-            if (status != "done") item {
+            if (awaiting && status != "done") item {
+                Surface(color = Gold.copy(alpha = .14f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                    Text("⏳ طلبتَ الإغلاق — بانتظار تأكيد الموظف لإغلاق الشكوى نهائيًا.",
+                        color = Color(0xFF9A6B10), fontSize = 12.5.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(12.dp))
+                }
+            }
+            if (status != "done" && !awaiting) item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = {
                         busy = true
                         scope.launch {
-                            try { Api.escalate(session.token, c.id, "تصعيد للإدارة"); status = "esc"; toast = "تم التصعيد"; refreshKey++ }
+                            try { Api.escalate(session.token, c.id, "تصعيد للإدارة"); status = "esc"; toast = "تم التصعيد"; onChanged(); refreshKey++ }
                             catch (e: Exception) { toast = e.message } finally { busy = false }
                         }
                     }, enabled = !busy, colors = ButtonDefaults.buttonColors(containerColor = Gold), modifier = Modifier.weight(1f)) { Text("⬆ تصعيد") }
                     OutlinedButton(onClick = {
                         busy = true
                         scope.launch {
-                            try { Api.resolve(session.token, c.id, "تم الحل"); status = "done"; toast = "تم الإغلاق"; refreshKey++ }
+                            try { Api.resolve(session.token, c.id, "تم الحل"); awaiting = true; status = "prog"; toast = "بانتظار تأكيد الموظف"; onChanged(); refreshKey++ }
                             catch (e: Exception) { toast = e.message } finally { busy = false }
                         }
                     }, enabled = !busy, modifier = Modifier.weight(1f)) { Text("✓ تم الحل") }

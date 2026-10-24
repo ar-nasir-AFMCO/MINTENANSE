@@ -36,9 +36,13 @@ data class Complaint(
     val toMaintenance: Boolean,
     val toWatheeq: Boolean,
     val empName: String?,
+    val empIqama: String?,
+    val resolvedAt: String?,
     val overdue: Boolean,
     val createdAt: String?
 ) {
+    /** طلب المشرف الإغلاق وينتظر تأكيد الموظف */
+    val closePending: Boolean get() = resolvedAt != null && status != "done"
     companion object {
         fun from(o: JSONObject): Complaint {
             val ph = o.optJSONArray("photos") ?: JSONArray()
@@ -63,6 +67,8 @@ data class Complaint(
                 toMaintenance = o.optBoolean("to_maintenance", false),
                 toWatheeq = o.optBoolean("to_watheeq", false),
                 empName = o.optStringOrNull("emp_name"),
+                empIqama = o.optStringOrNull("emp_iqama"),
+                resolvedAt = o.optStringOrNull("resolved_at"),
                 overdue = o.optBoolean("overdue", false),
                 createdAt = o.optStringOrNull("created_at")
             )
@@ -183,5 +189,23 @@ object Api {
 
     suspend fun resolve(token: String, id: String, note: String) {
         rpc(token, "sup_resolve", JSONObject().put("p_complaint", id).put("p_note", note))
+    }
+
+    /** إرفاق صورة على بلاغ قائم (مشرف/قسم) */
+    suspend fun addPhoto(token: String, id: String, url: String) {
+        rpc(token, "sup_add_photo", JSONObject().put("p_complaint", id).put("p_url", url))
+    }
+
+    /** رفع صورة إلى تخزين Supabase وإرجاع الرابط العام */
+    suspend fun uploadPhoto(bytes: ByteArray, ext: String): String = withContext(Dispatchers.IO) {
+        val name = "s_" + System.currentTimeMillis() + "_" + (0..9999).random() + "." + ext
+        val mt = ("image/" + if (ext == "png") "png" else "jpeg").toMediaType()
+        val req = Request.Builder().url("$SB_URL/storage/v1/object/complaints/$name")
+            .addHeader("apikey", SB_KEY).addHeader("Content-Type", mt.toString())
+            .post(bytes.toRequestBody(mt)).build()
+        client.newCall(req).execute().use { r ->
+            if (!r.isSuccessful) throw RuntimeException("تعذّر رفع الصورة (${r.code})")
+        }
+        "$SB_URL/storage/v1/object/public/complaints/$name"
     }
 }
