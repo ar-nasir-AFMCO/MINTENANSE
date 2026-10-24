@@ -45,8 +45,8 @@ data class Department(val code: String, val nameAr: String, val icon: String?, v
 data class Complaint(
     val id: String, val code: String, val title: String, val status: String,
     val priority: String, val category: String, val departmentCode: String?,
-    val currentDept: String?, val description: String?, val location: String?,
-    val plate: String?, val amount: Double?, val photos: List<String>,
+    val projectCode: String?, val currentDept: String?, val description: String?,
+    val location: String?, val plate: String?, val amount: Double?, val photos: List<String>,
     val slaDueAt: String?, val createdAt: String?
 ) {
     companion object {
@@ -56,6 +56,7 @@ data class Complaint(
                 id = o.optString("id"), code = o.optString("code"), title = o.optString("title"),
                 status = o.optString("status", "open"), priority = o.optString("priority", "med"),
                 category = o.optString("category"), departmentCode = o.optStringOrNull("department_code"),
+                projectCode = o.optStringOrNull("project_code"),
                 currentDept = o.optStringOrNull("current_dept"), description = o.optStringOrNull("description"),
                 location = o.optStringOrNull("location"), plate = o.optStringOrNull("plate"),
                 amount = if (o.isNull("amount")) null else o.optDouble("amount"),
