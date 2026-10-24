@@ -3,3 +3,4 @@ dependencyResolutionManagement { repositories { google(); mavenCentral() } }
 rootProject.name = "DabbabatMaintenance"
 include ":app"
 include ":soot"
+include ":empapp"
