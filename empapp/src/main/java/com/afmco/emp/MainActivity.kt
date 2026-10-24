@@ -2,12 +2,15 @@
 
 package com.afmco.emp
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -48,6 +51,17 @@ fun statusLabel(s: String) = when (s) { "open" -> "جديدة"; "prog" -> "قي�
 fun statusColor(s: String) = when (s) { "open" -> Red; "prog" -> Amber; "esc" -> Violet; "done" -> Green; else -> Gray }
 fun deptIcon(code: String?) = when (code) { "veh" -> "🚗"; "house" -> "🏠"; "finance" -> "💰"; "hr" -> "👤"; else -> "📋" }
 
+/** حفظ بيانات الدخول للدخول التلقائي لاحقًا */
+object Prefs {
+    private const val F = "soot_emp"
+    fun save(ctx: Context, iqama: String, pin: String) =
+        ctx.getSharedPreferences(F, Context.MODE_PRIVATE).edit()
+            .putString("iqama", iqama).putString("pin", pin).apply()
+    fun iqama(ctx: Context) = ctx.getSharedPreferences(F, Context.MODE_PRIVATE).getString("iqama", null)
+    fun pin(ctx: Context) = ctx.getSharedPreferences(F, Context.MODE_PRIVATE).getString("pin", null)
+    fun clear(ctx: Context) = ctx.getSharedPreferences(F, Context.MODE_PRIVATE).edit().clear().apply()
+}
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,14 +80,27 @@ fun AppRoot() {
     var detail by remember { mutableStateOf<Complaint?>(null) }
     var newFlow by remember { mutableStateOf(false) }
     var reload by remember { mutableStateOf(0) }
+    var booting by remember { mutableStateOf(true) }
+    val context = LocalContext.current
+
+    // دخول تلقائي ببيانات محفوظة
+    LaunchedEffect(Unit) {
+        val iq = Prefs.iqama(context); val pn = Prefs.pin(context)
+        if (!iq.isNullOrBlank() && !pn.isNullOrBlank()) {
+            try { session = Api.login(iq, pn) } catch (_: Exception) { Prefs.clear(context) }
+        }
+        booting = false
+    }
 
     Surface(Modifier.fillMaxSize(), color = Bg) {
         val s = session
         when {
-            s == null -> LoginScreen { session = it }
+            booting -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Green) }
+            s == null -> LoginScreen(onLogin = { sess, iq, pn -> Prefs.save(context, iq, pn); session = sess })
             newFlow -> NewComplaintFlow(s, onDone = { newFlow = false; reload++ }, onCancel = { newFlow = false })
-            detail != null -> DetailScreen(s, detail!!) { detail = null }
-            else -> HomeScreen(s, reload, onOpen = { detail = it }, onNew = { newFlow = true }, onLogout = { session = null })
+            detail != null -> DetailScreen(s, detail!!, onChanged = { reload++ }) { detail = null }
+            else -> HomeScreen(s, reload, onOpen = { detail = it }, onNew = { newFlow = true },
+                onLogout = { Prefs.clear(context); session = null; detail = null })
         }
     }
 }
@@ -93,7 +120,7 @@ fun TopBar(title: String, subtitle: String? = null, onBack: (() -> Unit)? = null
 }
 
 @Composable
-fun LoginScreen(onLogin: (Session) -> Unit) {
+fun LoginScreen(onLogin: (Session, String, String) -> Unit) {
     var iqama by remember { mutableStateOf("") }
     var pin by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
@@ -116,7 +143,7 @@ fun LoginScreen(onLogin: (Session) -> Unit) {
         Spacer(Modifier.height(20.dp))
         Button(onClick = {
             error = null; loading = true
-            scope.launch { try { onLogin(Api.login(iqama.trim(), pin.trim())) } catch (e: Exception) { error = e.message ?: "تعذّر الدخول" } finally { loading = false } }
+            scope.launch { try { val iq = iqama.trim(); val pn = pin.trim(); onLogin(Api.login(iq, pn), iq, pn) } catch (e: Exception) { error = e.message ?: "تعذّر الدخول"; loading = false } }
         }, enabled = !loading && iqama.isNotBlank() && pin.isNotBlank(), modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp)) {
             if (loading) CircularProgressIndicator(Modifier.size(22.dp), color = Color.White, strokeWidth = 2.dp)
             else Text("دخول", fontSize = 16.sp, fontWeight = FontWeight.Bold)
@@ -141,13 +168,42 @@ fun HomeScreen(session: Session, reload: Int, onOpen: (Complaint) -> Unit, onNew
             when {
                 loading -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = Green)
                 error != null -> Text("تعذّر التحميل: $error", Modifier.align(Alignment.Center).padding(24.dp), color = Red)
-                list.isEmpty() -> Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("ما عندك شكاوى بعد", color = Gray); Text("ارفع شكوى من الزر الذهبي تحت", color = Gray, fontSize = 12.sp)
-                }
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    item { ProfileCard(session) }
+                    val pending = list.count { it.closePending }
+                    if (pending > 0) item {
+                        Surface(color = Amber.copy(alpha = .14f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                            Text("⏳ لديك $pending شكوى بانتظار تأكيد الإغلاق — افتحها وأكّد الحل", color = Color(0xFF9A6B10),
+                                fontSize = 12.5.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(12.dp))
+                        }
+                    }
+                    item { Text("شكاويّ (${list.size})", fontWeight = FontWeight.Bold, color = GreenD, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp)) }
+                    if (list.isEmpty()) item {
+                        Column(Modifier.fillMaxWidth().padding(top = 30.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("ما عندك شكاوى بعد", color = Gray); Text("ارفع شكوى من الزر الذهبي تحت", color = Gray, fontSize = 12.sp)
+                        }
+                    }
                     items(list) { c -> ComplaintCard(c) { onOpen(c) } }
                     item { Spacer(Modifier.height(70.dp)) }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun ProfileCard(session: Session) {
+    Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(52.dp).background(Green.copy(alpha = .12f), RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
+                Text("👤", fontSize = 26.sp)
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(session.name, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = GreenD)
+                Spacer(Modifier.height(3.dp))
+                Text("🆔 الإقامة: ${session.iqama}", color = Gray, fontSize = 12.sp)
+                Text("📁 المشروع: ${session.projectCode ?: "—"}", color = Gray, fontSize = 12.sp)
             }
         }
     }
@@ -161,7 +217,7 @@ fun ComplaintCard(c: Complaint, onClick: () -> Unit) {
             Column(Modifier.padding(14.dp).weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(c.title, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                    StatusBadge(statusLabel(c.status), statusColor(c.status))
+                    if (c.closePending) StatusBadge("⏳ أكّد الإغلاق", Amber) else StatusBadge(statusLabel(c.status), statusColor(c.status))
                 }
                 Spacer(Modifier.height(8.dp))
                 Row { Chip("${deptIcon(c.departmentCode)} ${c.currentDept ?: ""}", Blue); Spacer(Modifier.width(6.dp)); Chip("📁 ${c.projectCode ?: "—"}", Green) }
@@ -190,6 +246,8 @@ fun NewComplaintFlow(session: Session, onDone: () -> Unit, onCancel: () -> Unit)
     LaunchedEffect(Unit) {
         try { depts = Api.departments() } catch (e: Exception) { error = e.message } finally { loading = false }
     }
+
+    BackHandler { when { cat != null -> cat = null; dept != null -> dept = null; else -> onCancel() } }
 
     val title = when { cat != null -> "${dept?.nameAr} · ${cat?.nameAr}"; dept != null -> dept?.nameAr ?: "شكوى جديدة"; else -> "اختر القسم" }
     Scaffold(containerColor = Bg, topBar = {
@@ -253,8 +311,15 @@ fun ComplaintForm(session: Session, dept: Department, cat: Category, onDone: () 
     var uploading by remember { mutableStateOf(false) }
     var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var vehicles by remember { mutableStateOf<List<MyVehicle>>(emptyList()) }
+    var vehExpanded by remember { mutableStateOf(false) }
+    var manualPlate by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    LaunchedEffect(cat.needsPlate) {
+        if (cat.needsPlate) { try { vehicles = Api.myVehicles(session.token) } catch (_: Exception) {} }
+    }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
@@ -288,7 +353,25 @@ fun ComplaintForm(session: Session, dept: Department, cat: Category, onDone: () 
 
         if (cat.needsPlate) {
             Spacer(Modifier.height(10.dp))
-            OutlinedTextField(plate, { plate = it }, label = { Text("رقم لوحة المركبة") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            if (vehicles.isNotEmpty() && !manualPlate) {
+                ExposedDropdownMenuBox(expanded = vehExpanded, onExpandedChange = { vehExpanded = !vehExpanded }) {
+                    OutlinedTextField(
+                        value = plate.ifBlank { "" }, onValueChange = {}, readOnly = true,
+                        label = { Text("اختر مركبتك") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = vehExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(expanded = vehExpanded, onDismissRequest = { vehExpanded = false }) {
+                        vehicles.forEach { v ->
+                            DropdownMenuItem(text = { Text(v.label) }, onClick = { plate = v.plate; vehExpanded = false })
+                        }
+                    }
+                }
+                TextButton(onClick = { manualPlate = true; plate = "" }) { Text("أو أدخل رقم اللوحة يدويًا", fontSize = 12.sp) }
+            } else {
+                OutlinedTextField(plate, { plate = it }, label = { Text("رقم لوحة المركبة") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                if (vehicles.isNotEmpty()) TextButton(onClick = { manualPlate = false; plate = "" }) { Text("اختر من مركباتك (${vehicles.size})", fontSize = 12.sp) }
+            }
         }
         if (cat.needsAmount) {
             Spacer(Modifier.height(10.dp))
@@ -338,12 +421,15 @@ fun ComplaintForm(session: Session, dept: Department, cat: Category, onDone: () 
 }
 
 @Composable
-fun DetailScreen(session: Session, c: Complaint, onBack: () -> Unit) {
+fun DetailScreen(session: Session, c: Complaint, onChanged: () -> Unit, onBack: () -> Unit) {
     var msgs by remember { mutableStateOf<List<Msg>>(emptyList()) }
     var events by remember { mutableStateOf<List<Event>>(emptyList()) }
     var reply by remember { mutableStateOf("") }
     var refreshKey by remember { mutableStateOf(0) }
+    var busy by remember { mutableStateOf(false) }
+    var toast by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    BackHandler { onBack() }
     LaunchedEffect(refreshKey) {
         try { events = Api.events(session.token, c.id); msgs = Api.messages(session.token, c.id) } catch (_: Exception) {}
     }
@@ -363,10 +449,37 @@ fun DetailScreen(session: Session, c: Complaint, onBack: () -> Unit) {
         }
     ) { pad ->
         LazyColumn(Modifier.padding(pad).fillMaxSize(), contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (c.closePending) item {
+                Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF7E8)), shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth().border(1.5.dp, Amber, RoundedCornerShape(16.dp))) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("⏳ المشرف يفيد بأن الشكوى حُلّت", fontWeight = FontWeight.Bold, color = Color(0xFF9A6B10), fontSize = 14.sp)
+                        Text("تأكيدك هو الخطوة الأخيرة لإغلاق الشكوى.", color = Gray, fontSize = 12.sp)
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Button(onClick = {
+                                busy = true
+                                scope.launch {
+                                    try { Api.confirmClose(session.token, c.id, true, ""); toast = "تم إغلاق الشكوى ✅"; onChanged(); onBack() }
+                                    catch (e: Exception) { toast = e.message; busy = false }
+                                }
+                            }, enabled = !busy, colors = ButtonDefaults.buttonColors(containerColor = Green), modifier = Modifier.weight(1f)) { Text("✅ نعم، تم الحل") }
+                            OutlinedButton(onClick = {
+                                busy = true
+                                scope.launch {
+                                    try { Api.confirmClose(session.token, c.id, false, "الموظف يفيد بأن المشكلة لم تُحل"); toast = "أُعيد فتح الشكوى"; onChanged(); onBack() }
+                                    catch (e: Exception) { toast = e.message; busy = false }
+                                }
+                            }, enabled = !busy, modifier = Modifier.weight(1f)) { Text("لم تُحل بعد") }
+                        }
+                        if (toast != null) { Spacer(Modifier.height(8.dp)); Text(toast!!, color = GreenD, fontSize = 12.sp) }
+                    }
+                }
+            }
             item {
                 Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp)) {
                     Column(Modifier.padding(14.dp)) {
-                        Row { StatusBadge(statusLabel(c.status), statusColor(c.status)); Spacer(Modifier.width(6.dp)); Chip(prioLabel(c.priority), prioColor(c.priority)) }
+                        Row { StatusBadge(if (c.closePending) "⏳ بانتظار تأكيدك" else statusLabel(c.status), if (c.closePending) Amber else statusColor(c.status)); Spacer(Modifier.width(6.dp)); Chip(prioLabel(c.priority), prioColor(c.priority)) }
                         if (!c.description.isNullOrBlank()) { Spacer(Modifier.height(8.dp)); Text(c.description, fontSize = 13.sp) }
                         Spacer(Modifier.height(6.dp))
                         Text("القسم المسؤول: ${c.currentDept ?: "—"}", color = Gray, fontSize = 12.sp)

@@ -47,8 +47,10 @@ data class Complaint(
     val priority: String, val category: String, val departmentCode: String?,
     val projectCode: String?, val currentDept: String?, val description: String?,
     val location: String?, val plate: String?, val amount: Double?, val photos: List<String>,
-    val slaDueAt: String?, val createdAt: String?
+    val slaDueAt: String?, val createdAt: String?, val resolvedAt: String?
 ) {
+    /** المشرف طلب الإغلاق وينتظر تأكيد الموظف */
+    val closePending: Boolean get() = resolvedAt != null && status != "done"
     companion object {
         fun from(o: JSONObject): Complaint {
             val ph = o.optJSONArray("photos") ?: JSONArray()
@@ -61,10 +63,20 @@ data class Complaint(
                 location = o.optStringOrNull("location"), plate = o.optStringOrNull("plate"),
                 amount = if (o.isNull("amount")) null else o.optDouble("amount"),
                 photos = (0 until ph.length()).map { ph.optString(it) },
-                slaDueAt = o.optStringOrNull("sla_due_at"), createdAt = o.optStringOrNull("created_at")
+                slaDueAt = o.optStringOrNull("sla_due_at"), createdAt = o.optStringOrNull("created_at"),
+                resolvedAt = o.optStringOrNull("resolved_at")
             )
         }
     }
+}
+
+data class MyVehicle(val plate: String, val project: String?, val make: String?, val model: String?) {
+    companion object {
+        fun from(o: JSONObject) = MyVehicle(
+            o.optString("plate"), o.optStringOrNull("project"),
+            o.optStringOrNull("make"), o.optStringOrNull("model"))
+    }
+    val label: String get() = plate + listOfNotNull(make, model).joinToString(" ").let { if (it.isNotBlank()) " · $it" else "" }
 }
 
 data class Msg(val authorKind: String, val authorName: String?, val body: String, val createdAt: String?) {
@@ -134,6 +146,18 @@ object Api {
     }
     suspend fun send(token: String, id: String, body: String) {
         rpc("emp_send", JSONObject().put("p_token", token).put("p_complaint", id).put("p_body", body))
+    }
+
+    /** تأكيد أو رفض إغلاق الشكوى (الخطوة النهائية للموظف) */
+    suspend fun confirmClose(token: String, id: String, approve: Boolean, note: String) {
+        rpc("emp_confirm_close", JSONObject().put("p_token", token).put("p_complaint", id)
+            .put("p_approve", approve).put("p_note", note))
+    }
+
+    /** مركبات الموظف النشطة للاختيار بدل الإدخال اليدوي */
+    suspend fun myVehicles(token: String): List<MyVehicle> {
+        val arr = JSONArray(rpc("emp_my_vehicles", JSONObject().put("p_token", token)))
+        return (0 until arr.length()).map { MyVehicle.from(arr.getJSONObject(it)) }
     }
 
     /** رفع صورة إلى تخزين Supabase (bucket عام) وإرجاع الرابط العام */
