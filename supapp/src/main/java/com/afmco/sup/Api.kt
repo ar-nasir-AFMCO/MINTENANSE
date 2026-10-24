@@ -23,35 +23,50 @@ data class Complaint(
     val priority: String,
     val category: String,
     val categoryLabel: String?,
+    val departmentCode: String?,
+    val departmentName: String?,
     val projectCode: String?,
     val projectName: String?,
     val currentDept: String?,
     val description: String?,
     val location: String?,
     val plate: String?,
+    val amount: Double?,
+    val photos: List<String>,
+    val toMaintenance: Boolean,
+    val toWatheeq: Boolean,
     val empName: String?,
     val overdue: Boolean,
     val createdAt: String?
 ) {
     companion object {
-        fun from(o: JSONObject) = Complaint(
-            id = o.optString("id"),
-            code = o.optString("code"),
-            title = o.optString("title"),
-            status = o.optString("status", "open"),
-            priority = o.optString("priority", "med"),
-            category = o.optString("category", "other"),
-            categoryLabel = o.optStringOrNull("category_label"),
-            projectCode = o.optStringOrNull("project_code"),
-            projectName = o.optStringOrNull("project_name"),
-            currentDept = o.optStringOrNull("current_dept"),
-            description = o.optStringOrNull("description"),
-            location = o.optStringOrNull("location"),
-            plate = o.optStringOrNull("plate"),
-            empName = o.optStringOrNull("emp_name"),
-            overdue = o.optBoolean("overdue", false),
-            createdAt = o.optStringOrNull("created_at")
-        )
+        fun from(o: JSONObject): Complaint {
+            val ph = o.optJSONArray("photos") ?: JSONArray()
+            return Complaint(
+                id = o.optString("id"),
+                code = o.optString("code"),
+                title = o.optString("title"),
+                status = o.optString("status", "open"),
+                priority = o.optString("priority", "med"),
+                category = o.optString("category", "other"),
+                categoryLabel = o.optStringOrNull("category_label"),
+                departmentCode = o.optStringOrNull("department_code"),
+                departmentName = o.optStringOrNull("department_name"),
+                projectCode = o.optStringOrNull("project_code"),
+                projectName = o.optStringOrNull("project_name"),
+                currentDept = o.optStringOrNull("current_dept"),
+                description = o.optStringOrNull("description"),
+                location = o.optStringOrNull("location"),
+                plate = o.optStringOrNull("plate"),
+                amount = if (o.isNull("amount")) null else o.optDouble("amount"),
+                photos = (0 until ph.length()).map { ph.optString(it) },
+                toMaintenance = o.optBoolean("to_maintenance", false),
+                toWatheeq = o.optBoolean("to_watheeq", false),
+                empName = o.optStringOrNull("emp_name"),
+                overdue = o.optBoolean("overdue", false),
+                createdAt = o.optStringOrNull("created_at")
+            )
+        }
     }
 }
 

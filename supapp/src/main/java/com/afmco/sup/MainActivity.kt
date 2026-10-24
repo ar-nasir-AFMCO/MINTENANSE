@@ -6,10 +6,17 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import coil.compose.AsyncImage
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -41,6 +48,8 @@ fun prioLabel(p: String) = PRIORITIES.firstOrNull { it.first == p }?.second ?: p
 fun prioColor(p: String) = when (p) { "urgent" -> Red; "high" -> Amber; "med" -> Blue; else -> Gray }
 fun statusLabel(s: String) = when (s) { "open" -> "جديدة"; "prog" -> "قيد المعالجة"; "esc" -> "مُصعّدة"; "done" -> "منجزة"; else -> s }
 fun statusColor(s: String) = when (s) { "open" -> Red; "prog" -> Amber; "esc" -> Violet; "done" -> Green; else -> Gray }
+fun deptIcon(code: String?) = when (code) { "veh" -> "🚗"; "house" -> "🏠"; "finance" -> "💵"; "hr" -> "👷"; else -> "🗂" }
+fun fmtAmount(a: Double): String = if (a == a.toLong().toDouble()) a.toLong().toString() else String.format("%.2f", a)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -134,6 +143,7 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onLogout: () ->
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var q by remember { mutableStateOf("") }
+    var deptFilter by remember { mutableStateOf<String?>(null) }
     var refreshKey by remember { mutableStateOf(0) }
 
     LaunchedEffect(refreshKey) {
@@ -144,10 +154,13 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onLogout: () ->
     }
 
     val filtered = list.filter { c ->
-        q.isBlank() || listOf(c.title, c.code, c.projectName ?: "", c.empName ?: "", c.categoryLabel ?: "", statusLabel(c.status))
-            .joinToString(" ").contains(q.trim(), ignoreCase = true)
+        (deptFilter == null || c.departmentCode == deptFilter) &&
+        (q.isBlank() || listOf(c.title, c.code, c.projectName ?: "", c.empName ?: "",
+            c.categoryLabel ?: "", c.plate ?: "", statusLabel(c.status))
+            .joinToString(" ").contains(q.trim(), ignoreCase = true))
     }
     val active = list.filter { it.status != "done" }
+    val depts = listOf("veh" to "المركبات", "house" to "السكن", "finance" to "المالية", "hr" to "التوظيف")
 
     Scaffold(
         containerColor = Bg,
@@ -181,8 +194,19 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onLogout: () ->
                         }
                     }
                     item {
-                        OutlinedTextField(q, { q = it }, placeholder = { Text("ابحث…") },
+                        OutlinedTextField(q, { q = it }, placeholder = { Text("ابحث… (العنوان/المشروع/الموظف/اللوحة)") },
                             singleLine = true, modifier = Modifier.fillMaxWidth())
+                    }
+                    item {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            item { FilterChipItem("الكل", deptFilter == null) { deptFilter = null } }
+                            items(depts) { (code, name) ->
+                                val n = list.count { it.departmentCode == code }
+                                FilterChipItem("${deptIcon(code)} $name ($n)", deptFilter == code) {
+                                    deptFilter = if (deptFilter == code) null else code
+                                }
+                            }
+                        }
                     }
                     if (filtered.isEmpty()) item { Text("لا شكاوى", color = Gray, modifier = Modifier.padding(20.dp)) }
                     items(filtered) { c -> ComplaintCard(c) { onOpen(c) } }
@@ -216,9 +240,16 @@ fun ComplaintCard(c: Complaint, onClick: () -> Unit) {
                 }
                 Spacer(Modifier.height(8.dp))
                 Row {
-                    Chip("📁 ${c.projectName ?: c.projectCode ?: "—"}", Green)
+                    Chip("${deptIcon(c.departmentCode)} ${c.departmentName ?: "—"}", Violet)
                     Spacer(Modifier.width(6.dp))
                     Chip(c.categoryLabel ?: c.category, Blue)
+                }
+                Spacer(Modifier.height(6.dp))
+                Row {
+                    Chip("📁 ${c.projectName ?: c.projectCode ?: "—"}", Green)
+                    if (!c.plate.isNullOrBlank()) { Spacer(Modifier.width(6.dp)); Chip("🚗 ${c.plate}", GreenD) }
+                    if (c.amount != null) { Spacer(Modifier.width(6.dp)); Chip("💰 ${fmtAmount(c.amount)} ر.س", Gold) }
+                    if (c.photos.isNotEmpty()) { Spacer(Modifier.width(6.dp)); Chip("📷 ${c.photos.size}", Gray) }
                 }
                 Spacer(Modifier.height(6.dp))
                 Text("👤 ${c.empName ?: "—"} · ${c.code}", color = Gray, fontSize = 11.sp)
@@ -243,6 +274,19 @@ fun Chip(text: String, color: Color) {
 }
 
 @Composable
+fun FilterChipItem(text: String, selected: Boolean, onClick: () -> Unit) {
+    Surface(
+        color = if (selected) Green else Color.White,
+        shape = RoundedCornerShape(50),
+        shadowElevation = if (selected) 0.dp else 1.dp,
+        modifier = Modifier.clickable { onClick() }
+    ) {
+        Text(text, color = if (selected) Color.White else GreenD, fontSize = 12.sp,
+            fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
+    }
+}
+
+@Composable
 fun DetailScreen(session: SupSession, c: Complaint, onBack: () -> Unit) {
     var msgs by remember { mutableStateOf<List<Msg>>(emptyList()) }
     var events by remember { mutableStateOf<List<Event>>(emptyList()) }
@@ -251,6 +295,7 @@ fun DetailScreen(session: SupSession, c: Complaint, onBack: () -> Unit) {
     var status by remember { mutableStateOf(c.status) }
     var toast by remember { mutableStateOf<String?>(null) }
     var refreshKey by remember { mutableStateOf(0) }
+    var photoView by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(refreshKey) {
@@ -284,10 +329,37 @@ fun DetailScreen(session: SupSession, c: Complaint, onBack: () -> Unit) {
                     Column(Modifier.padding(14.dp)) {
                         Row { StatusBadge(statusLabel(status), statusColor(status)); Spacer(Modifier.width(6.dp)); Chip(prioLabel(c.priority), prioColor(c.priority)) }
                         Spacer(Modifier.height(8.dp))
+                        Row {
+                            Chip("${deptIcon(c.departmentCode)} ${c.departmentName ?: "—"}", Violet)
+                            Spacer(Modifier.width(6.dp)); Chip(c.categoryLabel ?: c.category, Blue)
+                        }
+                        Spacer(Modifier.height(8.dp))
                         Text("👤 ${c.empName ?: "—"}  ·  📁 ${c.projectName ?: c.projectCode ?: "—"}", fontSize = 12.sp, color = Gray)
                         if (!c.description.isNullOrBlank()) { Spacer(Modifier.height(8.dp)); Text(c.description, fontSize = 13.sp) }
-                        Text("القسم المسؤول: ${c.currentDept ?: "—"}", color = Gray, fontSize = 12.sp)
-                        if (!c.location.isNullOrBlank()) Text("الموقع: ${c.location}", color = Gray, fontSize = 12.sp)
+                        Spacer(Modifier.height(6.dp))
+                        if (!c.plate.isNullOrBlank()) InfoLine("🚗 لوحة المركبة", c.plate)
+                        if (c.amount != null) InfoLine("💰 المبلغ", "${fmtAmount(c.amount)} ر.س")
+                        if (!c.location.isNullOrBlank()) InfoLine("📍 الموقع", c.location)
+                        InfoLine("🗂 القسم المسؤول", c.currentDept ?: c.departmentName ?: "—")
+                        if (c.toMaintenance) { Spacer(Modifier.height(6.dp)); Chip("🔧 محوّلة لتطبيق الصيانة", GreenD) }
+                        if (c.toWatheeq) { Spacer(Modifier.height(6.dp)); Chip("📑 مُسجّلة في وثيق", Blue) }
+                    }
+                }
+            }
+            if (c.photos.isNotEmpty()) item {
+                Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp)) {
+                    Column(Modifier.padding(14.dp)) {
+                        Text("📷 المرفقات (${c.photos.size})", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = GreenD)
+                        Spacer(Modifier.height(10.dp))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            items(c.photos) { url ->
+                                AsyncImage(
+                                    model = url, contentDescription = null, contentScale = ContentScale.Crop,
+                                    modifier = Modifier.size(120.dp).clip(RoundedCornerShape(12.dp))
+                                        .background(Bg).clickable { photoView = url }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -317,6 +389,25 @@ fun DetailScreen(session: SupSession, c: Complaint, onBack: () -> Unit) {
             items(msgs) { m -> MessageRow(m) }
             item { Spacer(Modifier.height(10.dp)) }
         }
+    }
+
+    if (photoView != null) {
+        Dialog(onDismissRequest = { photoView = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            Box(Modifier.fillMaxSize().background(Color(0xE6000000)).clickable { photoView = null },
+                contentAlignment = Alignment.Center) {
+                AsyncImage(model = photoView, contentDescription = null,
+                    contentScale = ContentScale.Fit, modifier = Modifier.fillMaxWidth().padding(12.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun InfoLine(label: String, value: String) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+        Text("$label: ", color = Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Text(value, color = Color(0xFF223229), fontSize = 12.sp)
     }
 }
 
