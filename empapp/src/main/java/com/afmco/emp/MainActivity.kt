@@ -261,7 +261,7 @@ fun NewComplaintFlow(session: Session, onDone: () -> Unit, onCancel: () -> Unit)
     var cat by remember { mutableStateOf<Category?>(null) }
 
     LaunchedEffect(Unit) {
-        try { depts = Api.departments() } catch (e: Exception) { error = e.message } finally { loading = false }
+        try { depts = Api.departments(session.token) } catch (e: Exception) { error = e.message } finally { loading = false }
     }
 
     BackHandler { when { cat != null -> cat = null; dept != null -> dept = null; else -> onCancel() } }

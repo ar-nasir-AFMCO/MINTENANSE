@@ -114,8 +114,8 @@ object Api {
         return Session(o.getString("token"), o.optString("name", iqama), o.optStringOrNull("project_code"), o.optString("iqama", iqama))
     }
 
-    suspend fun departments(): List<Department> {
-        val arr = JSONArray(rpc("emp_departments", JSONObject()))
+    suspend fun departments(token: String): List<Department> {
+        val arr = JSONArray(rpc("emp_departments", JSONObject().put("p_token", token)))
         return (0 until arr.length()).map { Department.from(arr.getJSONObject(it)) }
     }
 
