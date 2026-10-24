@@ -761,7 +761,6 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         <button data-v="vRev" data-need="review"><span class="ic"><svg class="i"><use href="#i-search"/></svg></span><span class="tx"><b>مراجعة البيانات</b></span><span class="cnt hide" id="revCnt"></span></button>
         <button data-v="vFin" data-need="finance"><span class="ic"><svg class="i"><use href="#i-grid"/></svg></span><span class="tx"><b>العقود والمالية</b></span></button>
         <button data-v="vLab" data-need="admin"><span class="ic"><svg class="i"><use href="#i-bolt"/></svg></span><span class="tx"><b>التجريبي</b></span></button>
-        <button data-v="vSoot"><span class="ic"><svg class="i"><use href="#i-send"/></svg></span><span class="tx"><b>الشكاوى «صوت»</b></span></button>
       </nav></div>
       <div class="grp"><div class="lb">الأنظمة</div><nav class="nav" id="sysbar"></nav></div>
     </div>
@@ -1217,14 +1216,6 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         <div class="sub" id="revFoot" style="margin-top:8px"></div>
       </main>
 
-      <!-- ════════ الشكاوى «صوت» ════════ -->
-      <main id="vSoot" class="view hide">
-        <div class="head"><div><h2>الشكاوى «صوت»</h2><p>كل الشكاوى المُسجَّلة في المنصة ببياناتها الكاملة — القسم والمشروع والموظف واللوحة والمبلغ والصور والمسار والمحادثة. ما تراه محكوم بصلاحيتك.</p></div>
-          <a class="btn ghost" href="soot-all.html" target="_blank" rel="noopener"><svg class="i"><use href="#i-ext"/></svg>فتح في صفحة مستقلة</a></div>
-        <div class="card" style="padding:0;overflow:hidden">
-          <iframe id="sootAllFrame" title="صوت — كل الشكاوى" style="width:100%;height:82vh;border:0;display:block"></iframe>
-        </div>
-      </main>
     </div>
   </div>
 </div>
@@ -1357,7 +1348,8 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     { id:'fleet', ic:'car', name:'الأسطول', desc:'المركبات والتسليم والورش', src:'fleet.html' },
     { id:'dbb', ic:'wrench', name:'الصيانة', desc:'سيارات · دبابات · سكنات', src:'maintenance.html' },
     { id:'couriers', ic:'scooter', name:'المناديب', desc:'Ninja · Keemart', group:['ninja','keemart'] },
-    { id:'housing', ic:'bed', name:'السكنات', desc:'المباني والغرف والنزلاء', src:'housing.html' }
+    { id:'housing', ic:'bed', name:'السكنات', desc:'المباني والغرف والنزلاء', src:'housing.html' },
+    { id:'soot', ic:'send', name:'صوت', desc:'الشكاوى والتصعيد الموحّد', src:'soot-all.html' }
   ];
   var SUBS = { ninja:{ name:'متابعة نينجا', desc:'الأداء والدوام والعمليات اللحظية', local:true, panel:'njp', open:function(){ njPanelOpen(); } },
                keemart:{ name:'Keemart', desc:'الحضور والتسوية والفواتير', src:'keemart.html' } ,
@@ -1472,7 +1464,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     if (need === 'finance') return !!(me.perms && (me.perms.finance || me.perms.manage));   /* v53 */
     return true;
   }
-  function allowed(s){ var sy = me.systems || []; return s.group ? s.group.some(function(g){ return sy.indexOf(g) >= 0; }) : sy.indexOf(s.id) >= 0; }
+  function allowed(s){ if (s.id === 'soot') return true; var sy = me.systems || []; return s.group ? s.group.some(function(g){ return sy.indexOf(g) >= 0; }) : sy.indexOf(s.id) >= 0; }
   function subsFor(){ return ['ninja','keemart'].filter(function(g){ return (me.systems || []).indexOf(g) >= 0; }); }
   function start(){
     rpc('my_access').then(function(w){
@@ -1490,7 +1482,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       buildSystems(); gsWire();
       var h = location.hash;
       if (h === '#admin' && can('admin')) show('vAdm'); else if (h === '#review' && can('review')) show('vRev'); else if (h === '#reports') show('vRep');
-      else if (h === '#finance' && can('finance')) show('vFin'); else if (h === '#lab' && can('admin')) show('vLab'); else if (h === '#soot') show('vSoot');   /* v53 */
+      else if (h === '#finance' && can('finance')) show('vFin'); else if (h === '#lab' && can('admin')) show('vLab');   /* v53 */
       else if (h === '#ninja-link' && can('admin')) { var njp = njLinkGrab(); show('vLab'); njTabTo('link'); njLinkSend(njp); }   /* v61 */
       else { var last = null; try { last = localStorage.getItem('afmc_portal_sys'); } catch(e){}
              if (last === 'ninja' || last === 'keemart' || last === 'attauth') openSys('couriers', last); else if (last && SYSTEMS.some(function(s){ return s.id === last && allowed(s); })) openSys(last); else show('vSys'); }
@@ -1499,18 +1491,17 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     }).catch(function(e){ if (!sess) { $('gate').classList.remove('hide'); return; } if (/no session/.test(e.message)) signOut(); else { $('gate').classList.remove('hide'); gateMsg('bad', 'تعذّر الاتصال بالقاعدة: ' + esc(e.message)); } });
   }
   var TITLES = { vSys:'الرئيسية', vRep:'التقارير', vAdm:'الصلاحيات والتكامل', vRev:'مراجعة البيانات',
-                 vFin:'العقود والمالية', vLab:'التجريبي', vSoot:'الشكاوى «صوت»' };   /* v53 */
-  function sootInit(){ var f = $('sootAllFrame'); if (f && !f.getAttribute('src')) f.setAttribute('src', 'soot-all.html'); }
+                 vFin:'العقود والمالية', vLab:'التجريبي' };   /* v53 */
   function show(v, keepSys){
-    ['vSys','vRep','vAdm','vRev','vFin','vLab','vSoot'].forEach(function(x){ $(x).classList.toggle('hide', x !== v); });   /* v53 */
+    ['vSys','vRep','vAdm','vRev','vFin','vLab'].forEach(function(x){ $(x).classList.toggle('hide', x !== v); });   /* v53 */
     document.querySelectorAll('#tabs button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-v') === v && !(v === 'vSys' && current)); });
     if (v !== 'vSys' || !keepSys) { current = null; sysUi(); }
     $('ttl').textContent = TITLES[v]; $('crumb').textContent = 'منصة AFMCO'; $('fbar').innerHTML = '';
     history.replaceState(null, '', v === 'vAdm' ? '#admin' : v === 'vRev' ? '#review' : v === 'vRep' ? '#reports'
-      : v === 'vFin' ? '#finance' : v === 'vLab' ? '#lab' : v === 'vSoot' ? '#soot' : '#');   /* v53 */
+      : v === 'vFin' ? '#finance' : v === 'vLab' ? '#lab' : '#');   /* v53 */
     document.body.classList.remove('menu');
     if (v === 'vAdm') loadAdmin(); if (v === 'vRev') loadReview(); if (v === 'vRep') repInit();
-    if (v === 'vFin') finInit(); if (v === 'vLab') labInit(); if (v === 'vSoot') sootInit();   /* v53 */
+    if (v === 'vFin') finInit(); if (v === 'vLab') labInit();   /* v53 */
     if (v === 'vSys' && !keepSys && me) homeMeta();
   }
   document.querySelectorAll('#tabs button').forEach(function(b){ b.onclick = function(){ var v = b.getAttribute('data-v'); if (v === 'vSys') { try { localStorage.removeItem('afmc_portal_sys'); } catch(e){} } show(v); }; });
