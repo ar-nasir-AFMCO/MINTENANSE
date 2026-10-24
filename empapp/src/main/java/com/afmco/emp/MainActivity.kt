@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -310,7 +311,7 @@ fun NewComplaintDialog(session: Session, onDismiss: () -> Unit, onCreated: () ->
                             Text(v, color = if (sel) Color.White else Gray, fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
                                 modifier = Modifier.padding(vertical = 8.dp).fillMaxWidth()
-                                    .clickableNoRipple { priority = k })
+                                    .clickable { priority = k })
                         }
                     }
                 }
@@ -434,13 +435,3 @@ fun MessageRow(m: Msg) {
     }
 }
 
-/** نقرة بدون أثر مرئي للعناصر البسيطة */
-@Composable
-fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier {
-    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    return this.then(
-        androidx.compose.foundation.clickable(
-            interactionSource = interaction, indication = null, onClick = onClick
-        )
-    )
-}
