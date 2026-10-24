@@ -85,6 +85,7 @@ data class Msg(val authorKind: String, val authorName: String?, val body: String
     }
 }
 
+data class EmpInfo(val phone: String?, val area: String?, val vehicles: List<String>)
 data class Event(val kind: String, val actorName: String?, val note: String?, val createdAt: String?) {
     companion object {
         fun from(o: JSONObject) = Event(
@@ -194,6 +195,25 @@ object Api {
     /** إرفاق صورة على بلاغ قائم (مشرف/قسم) */
     suspend fun addPhoto(token: String, id: String, url: String) {
         rpc(token, "sup_add_photo", JSONObject().put("p_complaint", id).put("p_url", url))
+    }
+
+    /** بيانات الموظف الكاملة: الجوال + المنطقة + مركباته المُسندة */
+    suspend fun empInfo(token: String, iqama: String): EmpInfo {
+        var phone: String? = null; var area: String? = null
+        try {
+            val arr = JSONArray(get(token, "employees?iqama=eq.$iqama&select=phone,area&limit=1"))
+            if (arr.length() > 0) { val o = arr.getJSONObject(0); phone = o.optStringOrNull("phone"); area = o.optStringOrNull("area") }
+        } catch (_: Exception) {}
+        val veh = mutableListOf<String>()
+        try {
+            val arr = JSONArray(rpc(token, "vehicles_by_iqama", JSONObject().put("p_iqama", iqama)))
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                val extra = listOfNotNull(o.optStringOrNull("make"), o.optStringOrNull("model")).joinToString(" ")
+                veh.add(o.optString("plate") + (if (extra.isNotBlank()) " · $extra" else ""))
+            }
+        } catch (_: Exception) {}
+        return EmpInfo(phone, area, veh)
     }
 
     /** رفع صورة إلى تخزين Supabase وإرجاع الرابط العام */

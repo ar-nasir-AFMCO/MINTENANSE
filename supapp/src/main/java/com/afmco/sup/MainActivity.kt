@@ -342,11 +342,16 @@ fun DetailScreen(session: SupSession, c: Complaint, onChanged: () -> Unit, onBac
     var photoView by remember { mutableStateOf<String?>(null) }
     var addedPhotos by remember { mutableStateOf<List<String>>(emptyList()) }
     var uploading by remember { mutableStateOf(false) }
+    var empInfo by remember { mutableStateOf<EmpInfo?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val canAttach = c.departmentCode == "veh" || c.departmentCode == "house"
 
     BackHandler { onBack() }
+
+    LaunchedEffect(c.id) {
+        if (!c.empIqama.isNullOrBlank()) { try { empInfo = Api.empInfo(session.token, c.empIqama) } catch (_: Exception) {} }
+    }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
@@ -411,6 +416,11 @@ fun DetailScreen(session: SupSession, c: Complaint, onChanged: () -> Unit, onBac
                         if (c.amount != null) InfoLine("💰 المبلغ", "${fmtAmount(c.amount)} ر.س")
                         if (!c.location.isNullOrBlank()) InfoLine("📍 الموقع", c.location)
                         InfoLine("🗂 القسم المسؤول", c.currentDept ?: c.departmentName ?: "—")
+                        empInfo?.let { ei ->
+                            if (!ei.phone.isNullOrBlank()) InfoLine("📞 جوال الموظف", ei.phone)
+                            if (!ei.area.isNullOrBlank()) InfoLine("📍 منطقة الموظف", ei.area)
+                            InfoLine("🚗 مركبات الموظف المُسندة", if (ei.vehicles.isNotEmpty()) ei.vehicles.joinToString("، ") else "لا توجد")
+                        }
                         if (c.toMaintenance) { Spacer(Modifier.height(6.dp)); Chip("🔧 محوّلة لتطبيق الصيانة", GreenD) }
                         if (c.toWatheeq) { Spacer(Modifier.height(6.dp)); Chip("📑 مُسجّلة في وثيق", Blue) }
                     }
