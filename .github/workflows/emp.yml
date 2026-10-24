@@ -1,0 +1,37 @@
+name: build-emp-apk
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'empapp/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - '.github/workflows/emp.yml'
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build تطبيق الموظف
+        run: gradle :empapp:assembleDebug --no-daemon --stacktrace
+      - name: Prepare artifact
+        run: cp empapp/build/outputs/apk/debug/empapp-debug.apk soot-employee.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: soot-employee-apk
+          path: soot-employee.apk
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: emp-latest
+          name: "صوت — تطبيق الموظف (APK)"
+          body: "تطبيق الموظف الأصلي (Kotlin/Compose) مربوط بقاعدة وثيق. نسخة تجريبية."
+          files: soot-employee.apk
