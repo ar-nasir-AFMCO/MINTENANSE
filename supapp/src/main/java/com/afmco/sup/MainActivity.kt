@@ -3,6 +3,8 @@
 package com.afmco.sup
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -37,6 +39,21 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+
+/** تحويل رقم الجوال السعودي لصيغة واتساب الدولية (9665XXXXXXXX) */
+private fun waNumber(raw: String): String {
+    var d = raw.filter { it.isDigit() }
+    d = when {
+        d.startsWith("00966") -> d.removePrefix("00")
+        d.startsWith("966")   -> d
+        d.startsWith("05")    -> "966" + d.drop(1)
+        d.startsWith("5") && d.length == 9 -> "966$d"
+        d.startsWith("0")     -> "966" + d.drop(1)
+        else -> d
+    }
+    return d
+}
 
 private val Green = Color(0xFF0B7A4B)
 private val GreenD = Color(0xFF064E30)
@@ -179,6 +196,14 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onLogout: () ->
         try { list = Api.complaints(session.token) }
         catch (e: Exception) { error = e.message }
         finally { loading = false }
+    }
+
+    // تحديث تلقائي صامت كل 25 ثانية طول ما الشاشة مفتوحة
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(25_000L)
+            try { list = Api.complaints(session.token) } catch (_: Exception) {}
+        }
     }
 
     fun kpiMatch(c: Complaint): Boolean = when (kpiFilter) {
@@ -373,6 +398,14 @@ fun DetailScreen(session: SupSession, c: Complaint, onChanged: () -> Unit, onBac
         try { events = Api.events(session.token, c.id); msgs = Api.messages(session.token, c.id) } catch (_: Exception) {}
     }
 
+    // تحديث المحادثة والمسار تلقائيًا كل 25 ثانية
+    LaunchedEffect(c.id) {
+        while (true) {
+            delay(25_000L)
+            try { events = Api.events(session.token, c.id); msgs = Api.messages(session.token, c.id) } catch (_: Exception) {}
+        }
+    }
+
     Scaffold(
         containerColor = Bg,
         topBar = { TopBar(c.title, "${c.code} · ${c.categoryLabel ?: c.category}", onBack = onBack) },
@@ -417,7 +450,34 @@ fun DetailScreen(session: SupSession, c: Complaint, onChanged: () -> Unit, onBac
                         if (!c.location.isNullOrBlank()) InfoLine("📍 الموقع", c.location)
                         InfoLine("🗂 القسم المسؤول", c.currentDept ?: c.departmentName ?: "—")
                         empInfo?.let { ei ->
-                            if (!ei.phone.isNullOrBlank()) InfoLine("📞 جوال الموظف", ei.phone)
+                            if (!ei.phone.isNullOrBlank()) {
+                                InfoLine("📞 جوال الموظف", ei.phone)
+                                Spacer(Modifier.height(8.dp))
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Button(
+                                        onClick = {
+                                            try { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${ei.phone}"))) }
+                                            catch (e: Exception) { toast = "تعذّر فتح الاتصال" }
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Green),
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier.weight(1f).height(46.dp)
+                                    ) { Text("📞 اتصال", fontSize = 14.sp, fontWeight = FontWeight.Bold) }
+                                    Button(
+                                        onClick = {
+                                            try {
+                                                val wa = waNumber(ei.phone)
+                                                val msg = Uri.encode("السلام عليكم، بخصوص الشكوى ${c.code}: ${c.title}")
+                                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$wa?text=$msg")))
+                                            } catch (e: Exception) { toast = "تعذّر فتح واتساب" }
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier.weight(1f).height(46.dp)
+                                    ) { Text("💬 واتساب", fontSize = 14.sp, fontWeight = FontWeight.Bold) }
+                                }
+                                Spacer(Modifier.height(4.dp))
+                            }
                             if (!ei.area.isNullOrBlank()) InfoLine("📍 منطقة الموظف", ei.area)
                             InfoLine("🚗 مركبات الموظف المُسندة", if (ei.vehicles.isNotEmpty()) ei.vehicles.joinToString("، ") else "لا توجد")
                         }
