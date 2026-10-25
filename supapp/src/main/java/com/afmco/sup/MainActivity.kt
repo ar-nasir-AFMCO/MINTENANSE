@@ -108,12 +108,32 @@ fun AppRoot() {
     var booting by remember { mutableStateOf(true) }
     val context = LocalContext.current
 
+    var update by remember { mutableStateOf<UpdateInfo?>(null) }
+    var updateMsg by remember { mutableStateOf<String?>(null) }
+    var updateDone by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    fun runUpdate(info: UpdateInfo) {
+        scope.launch {
+            update = info; updateDone = false
+            updateMsg = "تحديث جديد (${info.versionName}) — جارٍ التنزيل…"
+            try { Updater.downloadAndInstall(context, info); updateMsg = "جاهز للتثبيت — أكمل من شاشة التثبيت"; updateDone = true }
+            catch (e: Exception) { updateMsg = e.message ?: "تعذّر التنزيل"; updateDone = true }
+        }
+    }
+
     LaunchedEffect(Unit) {
         val em = Prefs.email(context); val ps = Prefs.pass(context)
         if (!em.isNullOrBlank() && !ps.isNullOrBlank()) {
             try { session = Api.login(em, ps) } catch (_: Exception) { Prefs.clear(context) }
         }
         booting = false
+    }
+
+    // فحص التحديث الذاتي عند الفتح
+    LaunchedEffect(Unit) {
+        val info = Updater.check(context)
+        if (info != null) runUpdate(info)
     }
 
     Surface(Modifier.fillMaxSize(), color = Bg) {
@@ -124,6 +144,27 @@ fun AppRoot() {
             detail != null -> DetailScreen(s, detail!!, onChanged = { /* refreshed on back */ }) { detail = null }
             else -> HomeScreen(s, onOpen = { detail = it }, onLogout = { Prefs.clear(context); session = null; detail = null })
         }
+    }
+
+    update?.let { info ->
+        AlertDialog(
+            onDismissRequest = { if (updateDone) update = null },
+            icon = { Text("⬇️", fontSize = 28.sp) },
+            title = { Text("تحديث التطبيق", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text(updateMsg ?: "", fontSize = 14.sp)
+                    if (!updateDone) { Spacer(Modifier.height(12.dp)); LinearProgressIndicator(Modifier.fillMaxWidth(), color = Green) }
+                    if (info.notes.isNotBlank()) { Spacer(Modifier.height(10.dp)); Text(info.notes, fontSize = 12.sp, color = Gray) }
+                }
+            },
+            confirmButton = {
+                if (updateDone) TextButton(onClick = { runUpdate(info) }) { Text("إعادة المحاولة", color = Green, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                if (updateDone) TextButton(onClick = { update = null }) { Text("لاحقًا", color = Gray) }
+            }
+        )
     }
 }
 
