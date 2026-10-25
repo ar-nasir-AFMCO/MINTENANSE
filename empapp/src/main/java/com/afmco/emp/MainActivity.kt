@@ -231,6 +231,30 @@ fun AppRoot() {
     var reload by remember { mutableStateOf(0) }
     var booting by remember { mutableStateOf(true) }
     val context = LocalContext.current
+    val lang = LocalLang.current
+
+    var update by remember { mutableStateOf<UpdateInfo?>(null) }
+    var updateMsg by remember { mutableStateOf<String?>(null) }
+    var updateDone by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    val tTitle = when (lang) { Lang.EN -> "App update"; Lang.UR -> "ایپ اپ ڈیٹ"; else -> "تحديث التطبيق" }
+    fun tDownloading(v: String) = when (lang) {
+        Lang.EN -> "New version ($v) — downloading…"; Lang.UR -> "نیا ورژن ($v) — ڈاؤن لوڈ ہو رہا ہے…"
+        else -> "تحديث جديد ($v) — جارٍ التنزيل…" }
+    val tReady = when (lang) { Lang.EN -> "Ready — finish from the install screen"; Lang.UR -> "تیار — انسٹال اسکرین سے مکمل کریں"; else -> "جاهز للتثبيت — أكمل من شاشة التثبيت" }
+    val tFail = when (lang) { Lang.EN -> "Download failed"; Lang.UR -> "ڈاؤن لوڈ ناکام"; else -> "تعذّر التنزيل" }
+    val tRetry = when (lang) { Lang.EN -> "Retry"; Lang.UR -> "دوبارہ کوشش"; else -> "إعادة المحاولة" }
+    val tLater = when (lang) { Lang.EN -> "Later"; Lang.UR -> "بعد میں"; else -> "لاحقًا" }
+
+    fun runUpdate(info: UpdateInfo) {
+        scope.launch {
+            update = info; updateDone = false
+            updateMsg = tDownloading(info.versionName)
+            try { Updater.downloadAndInstall(context, info); updateMsg = tReady; updateDone = true }
+            catch (e: Exception) { updateMsg = e.message ?: tFail; updateDone = true }
+        }
+    }
 
     LaunchedEffect(Unit) {
         val iq = Prefs.iqama(context); val pn = Prefs.pin(context)
@@ -238,6 +262,12 @@ fun AppRoot() {
             try { session = Api.login(iq, pn) } catch (_: Exception) { Prefs.clearCreds(context) }
         }
         booting = false
+    }
+
+    // فحص التحديث الذاتي عند الفتح
+    LaunchedEffect(Unit) {
+        val info = Updater.check(context)
+        if (info != null) runUpdate(info)
     }
 
     Surface(Modifier.fillMaxSize(), color = Bg) {
@@ -250,6 +280,23 @@ fun AppRoot() {
             else -> HomeScreen(s, reload, onOpen = { detail = it }, onNew = { newFlow = true },
                 onLogout = { Prefs.clearCreds(context); session = null; detail = null })
         }
+    }
+
+    update?.let { info ->
+        AlertDialog(
+            onDismissRequest = { if (updateDone) update = null },
+            icon = { Text("⬇️", fontSize = 28.sp) },
+            title = { Text(tTitle, fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text(updateMsg ?: "", fontSize = 14.sp)
+                    if (!updateDone) { Spacer(Modifier.height(12.dp)); LinearProgressIndicator(Modifier.fillMaxWidth(), color = Green) }
+                    if (info.notes.isNotBlank()) { Spacer(Modifier.height(10.dp)); Text(info.notes, fontSize = 12.sp, color = Gray) }
+                }
+            },
+            confirmButton = { if (updateDone) TextButton(onClick = { runUpdate(info) }) { Text(tRetry, color = Green, fontWeight = FontWeight.Bold) } },
+            dismissButton = { if (updateDone) TextButton(onClick = { update = null }) { Text(tLater, color = Gray) } }
+        )
     }
 }
 
