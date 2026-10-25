@@ -5,6 +5,7 @@ on:
     branches: [ main ]
     paths:
       - 'supapp/**'
+      - 'keystore/**'
       - 'settings.gradle'
       - '.github/workflows/sup.yml'
 permissions:
@@ -12,6 +13,9 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      VERSION_CODE: ${{ github.run_number }}
+      VERSION_NAME: "1.${{ github.run_number }}"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -19,10 +23,25 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
+      - name: Restore signing keystore from secret
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            mkdir -p keystore
+            echo "$KEYSTORE_B64" | base64 -d > keystore/afmco-soot.jks
+            echo "keystore restored for signing"
+          else
+            echo "no KEYSTORE_B64 secret set — falling back to default debug signing"
+          fi
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
       - name: Build تطبيق المشرف
         run: gradle :supapp:assembleDebug --no-daemon --stacktrace
       - name: Prepare artifact
         run: cp supapp/build/outputs/apk/debug/supapp-debug.apk soot-supervisor.apk
+      - name: Generate version manifest
+        run: |
+          echo '{"versionCode": ${{ github.run_number }}, "versionName": "1.${{ github.run_number }}", "url": "https://github.com/${{ github.repository }}/releases/download/sup-latest/soot-supervisor.apk", "notes": "تحديث تطبيق المشرف"}' > sup-version.json
+          cat sup-version.json
       - uses: actions/upload-artifact@v4
         with:
           name: soot-supervisor-apk
@@ -32,5 +51,7 @@ jobs:
         with:
           tag_name: sup-latest
           name: "صوت — تطبيق المشرف (APK)"
-          body: "تطبيق المشرف الأصلي (Kotlin/Compose) — دخول بحساب المنصة، مربوط بقاعدة وثيق. نسخة تجريبية."
-          files: soot-supervisor.apk
+          body: "تطبيق المشرف الأصلي (Kotlin/Compose) — دخول بحساب المنصة، مربوط بقاعدة وثيق، تحديث ذاتي. نسخة تجريبية."
+          files: |
+            soot-supervisor.apk
+            sup-version.json
