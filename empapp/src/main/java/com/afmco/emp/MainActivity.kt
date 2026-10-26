@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 private val Green = Color(0xFF0EA47A)
 private val GreenD = Color(0xFF0B8263)
@@ -271,6 +272,14 @@ fun AppRoot() {
         if (info != null) runUpdate(info)
     }
 
+    // إذن الإشعارات (أندرويد 13+)
+    val notifPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    LaunchedEffect(Unit) {
+        Notif.ensure(context)
+        if (android.os.Build.VERSION.SDK_INT >= 33 && !Notif.allowed(context))
+            notifPerm.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+    }
+
     Surface(Modifier.fillMaxSize(), color = Bg) {
         val s = session
         when {
@@ -361,9 +370,30 @@ fun HomeScreen(session: Session, reload: Int, onOpen: (Complaint) -> Unit, onNew
     var vehicles by remember { mutableStateOf<List<MyVehicle>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    // كشف التحديثات لإطلاق الإشعارات الداخلية (null = أول تحميل)
+    var notifSeen by remember { mutableStateOf<Map<String, Pair<String, Boolean>>?>(null) }
+    fun checkNotif(newList: List<Complaint>) {
+        val cur = newList.associate { it.id to (it.status to it.closePending) }
+        val prev = notifSeen
+        if (prev != null) for (c in newList) {
+            val p = prev[c.id] ?: continue
+            if (!p.second && c.closePending) Notif.show(context, "بانتظار تأكيدك", "شكوى ${c.code} جاهزة للإغلاق — افتحها وأكّدها", c.id.hashCode())
+            else if (p.first != "done" && c.status == "done") Notif.show(context, "تم إغلاق شكواك", "${c.code} — ${c.title}", c.id.hashCode() xor 1)
+            else if (p.first != c.status) Notif.show(context, "تحديث على شكواك", "${c.code}: ${statusLabel(c.status, L)}", c.id.hashCode() xor 2)
+        }
+        notifSeen = cur
+    }
     LaunchedEffect(reload) {
         loading = true; error = null
-        try { list = Api.myComplaints(session.token) } catch (e: Exception) { error = e.message } finally { loading = false }
+        try { val n = Api.myComplaints(session.token); list = n; checkNotif(n) } catch (e: Exception) { error = e.message } finally { loading = false }
+    }
+    // فحص دوري كل 30 ثانية طول ما الشاشة مفتوحة
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(30_000L)
+            try { val n = Api.myComplaints(session.token); list = n; checkNotif(n) } catch (_: Exception) {}
+        }
     }
     LaunchedEffect(Unit) { try { vehicles = Api.myVehicles(session.token) } catch (_: Exception) {} }
     Scaffold(containerColor = Bg,
