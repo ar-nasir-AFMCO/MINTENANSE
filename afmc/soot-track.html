@@ -92,7 +92,8 @@ body.adding .leaflet-container{cursor:crosshair}
 .siteitem{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
 .siteitem:last-child{border-bottom:none}
 .siteitem .sq{width:11px;height:11px;border-radius:4px;background:var(--primary);flex:none}
-.siteitem .del{margin-right:auto;background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;border-radius:6px}
+.siteitem .edt,.siteitem .del{background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;border-radius:6px}
+.siteitem .edt:hover{color:var(--amber);background:var(--amber-bg)}
 .siteitem .del:hover{color:var(--red);background:var(--red-bg)}
 .field{display:flex;flex-direction:column;gap:4px;margin-bottom:9px}
 .field label{font-size:11.5px;font-weight:700;color:var(--muted)}
@@ -862,6 +863,15 @@ svg.leaflet-image-layer.leaflet-interactive path {
               <button class="btn sm" id="cancelSite" style="flex:1;justify-content:center">إلغاء</button>
             </div>
           </div>
+          <div id="editForm" style="display:none;margin-top:10px;background:#fdf7ec;border:1px solid #f0e2c4;border-radius:12px;padding:12px">
+            <div style="font-size:11.5px;font-weight:800;color:#b45309;margin-bottom:8px">✎ تعديل الموقع — اسحب الدبّوس للنقل والمقبض لتغيير النطاق</div>
+            <div class="field"><label>اسم الموقع</label><input id="editName"></div>
+            <div class="field"><label>نطاق الحضور (متر)</label><input id="editRadius" type="number"></div>
+            <div class="row">
+              <button class="btn p sm" id="saveEdit" style="flex:1;justify-content:center">حفظ التعديل</button>
+              <button class="btn sm" id="cancelEdit" style="flex:1;justify-content:center">إلغاء</button>
+            </div>
+          </div>
         </div>
         <div class="divider"></div>
         <div class="pad">
@@ -884,6 +894,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   var TOKEN=sessionStorage.getItem('soot_tk')||'';
   // خريطة Leaflet حقيقية (تكبير/تصغير/تنقّل + قمر صناعي)
   var map=null, layerGroup=null, pendingMarker=null, pendingCircle=null, fitted=false;
+  var editing=null, editMarker=null, editCircle=null, editHandle=null;
   function initMap(){
     if(map){ setTimeout(function(){map.invalidateSize();},60); return; }
     map=L.map('map',{zoomControl:true,attributionControl:true}).setView([24.7136,46.6753],11);
@@ -910,7 +921,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
     setTimeout(function(){map.invalidateSize();},120);
   }
   function supIcon(ini,col){return L.divIcon({className:'',html:'<div class="sup-pin" style="width:34px;height:34px;background:'+col+'">'+ini+'</div>',iconSize:[34,34],iconAnchor:[17,17]});}
-  function pinIcon(){return L.divIcon({className:'',html:'<div style="width:20px;height:20px;background:'+cv('--primary')+';border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 5px rgba(0,0,0,.4)"></div>',iconSize:[20,20],iconAnchor:[10,20]});}
+  function pinIcon(col){col=col||cv('--primary');return L.divIcon({className:'',html:'<div style="width:20px;height:20px;background:'+col+';border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 5px rgba(0,0,0,.4)"></div>',iconSize:[20,20],iconAnchor:[10,20]});}
+  function handleIcon(){return L.divIcon({className:'',html:'<div style="width:16px;height:16px;background:#fff;border:3px solid #d97706;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.35);cursor:ew-resize"></div>',iconSize:[16,16],iconAnchor:[8,8]});}
+  function handlePoint(center,radius){var lat=center[0],lng=center[1];var dLng=radius/(111320*Math.cos(lat*Math.PI/180));return [lat,lng+dLng];}
   function placePending(){
     if(!map||!pending)return;
     var r=parseInt(document.getElementById('siteRadius').value)||150;
@@ -921,6 +934,30 @@ svg.leaflet-image-layer.leaflet-interactive path {
     pendingMarker.on('drag',function(ev){var ll=ev.target.getLatLng();pending=[ll.lat,ll.lng];pendingCircle.setLatLng(ll);});
   }
   function clearPending(){if(pendingMarker){map.removeLayer(pendingMarker);pendingMarker=null;}if(pendingCircle){map.removeLayer(pendingCircle);pendingCircle=null;}}
+  function clearEditLayers(){[editMarker,editCircle,editHandle].forEach(function(l){if(l)map.removeLayer(l);});editMarker=editCircle=editHandle=null;}
+  function startEdit(s){
+    if(!map)return;
+    // أغلق وضع الإضافة إن كان مفعّلًا
+    if(adding){adding=false;document.body.classList.remove('adding');clearPending();pending=null;document.getElementById('siteForm').style.display='none';document.getElementById('addSiteBtn').style.display='';}
+    editing={id:s.id,name:s.name,lat:s.lat,lng:s.lng,radius:s.radius,proj:s.proj};
+    document.getElementById('editName').value=s.name;
+    document.getElementById('editRadius').value=s.radius;
+    document.getElementById('editForm').style.display='block';
+    document.getElementById('addSiteBtn').style.display='none';
+    drawMap(); // يخفي النسخة الثابتة للموقع الجاري تعديله
+    map.setView([s.lat,s.lng],Math.max(map.getZoom(),16),{animate:true});
+    drawEdit();
+  }
+  function drawEdit(){
+    clearEditLayers();
+    var c=[editing.lat,editing.lng];
+    editCircle=L.circle(c,{radius:editing.radius,color:'#d97706',weight:2,fillColor:'#d97706',fillOpacity:.15}).addTo(map);
+    editMarker=L.marker(c,{draggable:true,icon:pinIcon('#d97706')}).addTo(map).bindTooltip('اسحب لنقل الموقع',{permanent:true,direction:'top',offset:[0,-18]});
+    editHandle=L.marker(handlePoint(c,editing.radius),{draggable:true,icon:handleIcon()}).addTo(map).bindTooltip('اسحب لتغيير النطاق',{direction:'left'});
+    editMarker.on('drag',function(e){var ll=e.target.getLatLng();editing.lat=ll.lat;editing.lng=ll.lng;editCircle.setLatLng(ll);editHandle.setLatLng(handlePoint([ll.lat,ll.lng],editing.radius));});
+    editHandle.on('drag',function(e){var ll=e.target.getLatLng();var r=Math.round(map.distance(editCircle.getLatLng(),ll));editing.radius=Math.max(20,r);editCircle.setRadius(editing.radius);document.getElementById('editRadius').value=editing.radius;});
+  }
+  function cancelEdit(){editing=null;clearEditLayers();document.getElementById('editForm').style.display='none';document.getElementById('addSiteBtn').style.display='';drawMap();}
   function toMin(t){var p=String(t).split(':');return +p[0]*60+ +p[1];}
   function hhmm(m){if(m==null)return'—';var h=Math.floor(m/60),mm=m%60,ap=h<12?'ص':'م',h12=h%12||12;return h12+':'+('0'+mm).slice(-2)+' '+ap;}
   function dur(m){var h=Math.floor(m/60),mm=m%60;return (h?h+' س ':'')+(mm||!h?mm+' د':'');}
@@ -991,7 +1028,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     if(!map)return;
     layerGroup.clearLayers();
     var pts=[];
-    sites.forEach(function(s){if(!s.lat||!s.lng)return;
+    sites.forEach(function(s){if(!s.lat||!s.lng)return;if(editing&&editing.id===s.id)return;
       L.circle([s.lat,s.lng],{radius:s.radius,color:cv('--primary'),weight:2,opacity:.7,fillColor:cv('--primary'),fillOpacity:.1}).addTo(layerGroup);
       L.circleMarker([s.lat,s.lng],{radius:4,color:cv('--primary'),fillColor:cv('--primary'),fillOpacity:1}).bindTooltip(s.name,{permanent:true,direction:'top',className:'site-tip',offset:[0,-6]}).addTo(layerGroup);
       pts.push([s.lat,s.lng]);
@@ -1011,8 +1048,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
       return '<div class="srow" data-id="'+u.id+'"><div class="ava" style="background:'+avaColor(c)+'">'+initials(u.name)+'</div><div style="flex:1"><div class="nm">'+u.name+'</div><div class="mt">'+sub+'</div></div>'+badge(c)+'</div>';}).join(''):'<div class="pad muted" style="font-size:12.5px">لا مشرفون.</div>';
     Array.prototype.forEach.call(document.querySelectorAll('.srow'),function(e){e.onclick=function(){var u=sups.find(function(x){return x.id===e.dataset.id;});if(u)flash(u);};});}
   function renderSites(){document.getElementById('siteCount').textContent=sites.length;
-    document.getElementById('siteList').innerHTML=sites.length?sites.map(function(s){return '<div class="siteitem"><span class="sq"></span><div><div style="font-weight:700;font-size:12.5px">'+s.name+'</div><div class="muted" style="font-size:11.5px">نطاق '+s.radius+' م'+(s.proj?' · '+s.proj:'')+'</div></div><button class="del" data-id="'+s.id+'" title="أرشفة الموقع"><svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></div>';}).join(''):'<div class="muted" style="font-size:12px;padding:4px 0">لا توجد مواقع بعد.</div>';
-    Array.prototype.forEach.call(document.querySelectorAll('.siteitem .del'),function(b){b.onclick=function(){delSite(b.dataset.id);};});}
+    document.getElementById('siteList').innerHTML=sites.length?sites.map(function(s){return '<div class="siteitem"><span class="sq"></span><div style="flex:1"><div style="font-weight:700;font-size:12.5px">'+s.name+'</div><div class="muted" style="font-size:11.5px">نطاق '+s.radius+' م'+(s.proj?' · '+s.proj:'')+'</div></div><button class="edt" data-id="'+s.id+'" title="تعديل الموقع"><svg class="ic" viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button class="del" data-id="'+s.id+'" title="أرشفة الموقع"><svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></div>';}).join(''):'<div class="muted" style="font-size:12px;padding:4px 0">لا توجد مواقع بعد.</div>';
+    Array.prototype.forEach.call(document.querySelectorAll('.siteitem .del'),function(b){b.onclick=function(){delSite(b.dataset.id);};});
+    Array.prototype.forEach.call(document.querySelectorAll('.siteitem .edt'),function(b){b.onclick=function(){var s=sites.find(function(x){return x.id===b.dataset.id;});if(s)startEdit(s);};});}
   function reportRows(){return sups.map(function(u){var c=calc(u);return{name:u.name,status:c.status,statusTxt:c.status==='abs'?'غائب':(c.inside&&c.late?'داخل موقع · متأخر':c.inside?'داخل موقع':(c.late?'حضر متأخر':'خرج')),first:c.first!=null?hhmm(c.first):'—',last:c.last!=null?(c.lastOpen?'الآن':hhmm(c.last)):'—',total:c.status==='abs'?'—':dur(c.total),late:c.late?dur(c.late):'—',visits:c.visits,sites:c.sites};});}
   function renderReport(){var rows=reportRows();document.getElementById('repBody').innerHTML=rows.length?rows.map(function(r){var bcls=r.status==='abs'?'abs':(r.status==='in'?'in':(r.status==='late'?'late':'out'));
     return '<tr><td><div class="cellname"><div class="ava" style="width:30px;height:30px;font-size:11px;background:'+(r.status==='abs'?cv('--grey'):r.status==='in'?cv('--green'):r.status==='late'?cv('--amber'):cv('--muted'))+'">'+initials(r.name)+'</div>'+r.name+'</div></td><td><span class="badge '+bcls+'">'+r.statusTxt+'</span></td><td class="num">'+r.first+'</td><td class="num">'+r.last+'</td><td class="num">'+r.total+'</td><td class="num" style="color:'+(r.late!=='—'?cv('--amber'):cv('--muted'))+'">'+r.late+'</td><td class="num">'+r.visits+'</td><td><div class="sites-sm">'+(r.sites.length?r.sites.map(function(s){return'<span class="chip">'+s+'</span>';}).join(''):'<span class="muted">—</span>')+'</div></td></tr>';}).join(''):'<tr><td colspan="8" class="muted" style="text-align:center;padding:26px">لا سجلّات لهذا اليوم.</td></tr>';}
@@ -1029,13 +1067,20 @@ svg.leaflet-image-layer.leaflet-interactive path {
   function delSite(id){ if(!confirm('أرشفة هذا الموقع؟ لن يُحذف نهائيًا.'))return;
     api('work_sites?id=eq.'+id,{method:'PATCH',body:JSON.stringify({deleted_at:new Date().toISOString(),active:false})}).then(reload).catch(function(e){alert('تعذّرت الأرشفة: '+e.message);});
   }
+  function updateSite(id,name,lat,lng,radius){
+    return api('work_sites?id=eq.'+id,{method:'PATCH',body:JSON.stringify({name:name,lat:lat,lng:lng,radius_m:radius})});
+  }
 
-  document.getElementById('addSiteBtn').onclick=function(){adding=true;document.body.classList.add('adding');this.style.display='none';if(map){try{map.closePopup();}catch(e){}}};
+  document.getElementById('addSiteBtn').onclick=function(){if(editing)cancelEdit();adding=true;document.body.classList.add('adding');this.style.display='none';if(map){try{map.closePopup();}catch(e){}}};
   function resetAdd(){adding=false;pending=null;clearPending();document.body.classList.remove('adding');document.getElementById('siteForm').style.display='none';document.getElementById('addSiteBtn').style.display='';document.getElementById('siteName').value='';document.getElementById('siteRadius').value='150';document.getElementById('siteProj').value='';}
   document.getElementById('siteRadius').addEventListener('input',function(){if(pendingCircle)pendingCircle.setRadius(parseInt(this.value)||150);});
   document.getElementById('cancelSite').onclick=resetAdd;
   document.getElementById('saveSite').onclick=function(){if(!pending){alert('اضغط على الخريطة لتحديد مكان الموقع أولًا.');return;}var nm=document.getElementById('siteName').value.trim()||'موقع جديد';var rd=parseInt(document.getElementById('siteRadius').value)||150;var pj=document.getElementById('siteProj').value.trim();
     addSite(nm,+pending[0].toFixed(6),+pending[1].toFixed(6),rd,pj).then(function(){resetAdd();reload();}).catch(function(e){alert('تعذّر الحفظ: '+e.message+'\n(تأكد من تسجيل الدخول بحساب مشرف)');});};
+  document.getElementById('editRadius').addEventListener('input',function(){if(!editing||!editCircle)return;var r=Math.max(20,parseInt(this.value)||20);editing.radius=r;editCircle.setRadius(r);if(editHandle)editHandle.setLatLng(handlePoint([editing.lat,editing.lng],r));});
+  document.getElementById('cancelEdit').onclick=cancelEdit;
+  document.getElementById('saveEdit').onclick=function(){if(!editing)return;var nm=document.getElementById('editName').value.trim()||editing.name;var rd=Math.max(20,parseInt(document.getElementById('editRadius').value)||editing.radius);
+    updateSite(editing.id,nm,+editing.lat.toFixed(6),+editing.lng.toFixed(6),rd).then(function(){editing=null;clearEditLayers();document.getElementById('editForm').style.display='none';document.getElementById('addSiteBtn').style.display='';reload();}).catch(function(e){alert('تعذّر حفظ التعديل: '+e.message+'\n(تأكد من تسجيل الدخول بحساب مشرف)');});};
   document.getElementById('exportBtn').onclick=exportCSV;
   document.getElementById('repDate').addEventListener('change',reload);
   ['fromT','grace'].forEach(function(id){document.getElementById(id).addEventListener('input',function(){renderKpis();renderSups();renderReport();});});
