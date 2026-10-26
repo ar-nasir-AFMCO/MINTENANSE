@@ -138,6 +138,14 @@ fun AppRoot() {
         if (info != null) runUpdate(info)
     }
 
+    // إذن الإشعارات (أندرويد 13+)
+    val notifPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    LaunchedEffect(Unit) {
+        Notif.ensure(context)
+        if (android.os.Build.VERSION.SDK_INT >= 33 && !Notif.allowed(context))
+            notifPerm.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+    }
+
     Surface(Modifier.fillMaxSize(), color = Bg) {
         val s = session
         when {
@@ -270,9 +278,24 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onUpdates: () -
         else permLauncher.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION))
     }
 
+    // كشف الجديد لإطلاق الإشعارات الداخلية (null = أول تحميل، لا إشعار)
+    var notifSeen by remember { mutableStateOf<Map<String, Pair<String, Boolean>>?>(null) }
+    fun checkNotif(newList: List<Complaint>) {
+        val cur = newList.associate { it.id to (it.status to it.closePending) }
+        val prev = notifSeen
+        if (prev != null) {
+            for (c in newList) {
+                val p = prev[c.id]
+                if (p == null) Notif.show(context, "شكوى جديدة", "${c.title} · ${c.code}", c.id.hashCode())
+                else if (p.first != "done" && c.status == "done") Notif.show(context, "تم إغلاق شكوى", "${c.code} — ${c.title}", c.id.hashCode() xor 1)
+            }
+        }
+        notifSeen = cur
+    }
+
     LaunchedEffect(refreshKey) {
         loading = true; error = null
-        try { list = Api.complaints(session.token) }
+        try { val n = Api.complaints(session.token); list = n; checkNotif(n) }
         catch (e: Exception) { error = e.message }
         finally { loading = false }
     }
@@ -281,7 +304,7 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onUpdates: () -
     LaunchedEffect(Unit) {
         while (true) {
             delay(25_000L)
-            try { list = Api.complaints(session.token) } catch (_: Exception) {}
+            try { val n = Api.complaints(session.token); list = n; checkNotif(n) } catch (_: Exception) {}
         }
     }
 
@@ -658,8 +681,16 @@ fun DetailScreen(session: SupSession, c: Complaint, onChanged: () -> Unit, onBac
                                 Spacer(Modifier.height(4.dp))
                             }
                             if (!ei.area.isNullOrBlank()) InfoLine("📍 منطقة الموظف", ei.area)
-                            if (c.departmentCode == "veh" || ei.vehicles.isNotEmpty())
-                                InfoLine("🚗 مركبات الموظف (اللوحة · المركبة · مكتب الإيجار · المنطقة)", if (ei.vehicles.isNotEmpty()) ei.vehicles.joinToString("\n") else "لا توجد")
+                            if (c.departmentCode == "veh" || ei.vehicles.isNotEmpty()) {
+                                Spacer(Modifier.height(4.dp))
+                                Text("🚗 مركبات الموظف", color = Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text("اللوحة · المركبة · مكتب الإيجار · المنطقة", color = Gray, fontSize = 10.sp)
+                                if (ei.vehicles.isEmpty()) Text("لا توجد", color = Color(0xFF223229), fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+                                else ei.vehicles.forEach { v ->
+                                    Text("• $v", color = Color(0xFF223229), fontSize = 12.sp, modifier = Modifier.fillMaxWidth().padding(top = 3.dp))
+                                }
+                                Spacer(Modifier.height(2.dp))
+                            }
                             if (!ei.housing.isNullOrBlank()) InfoLine("🏠 سكن الموظف", ei.housing)
                         }
                         if (c.toMaintenance) { Spacer(Modifier.height(6.dp)); Chip("🔧 محوّلة لتطبيق الصيانة", GreenD) }
@@ -795,7 +826,7 @@ fun DetailScreen(session: SupSession, c: Complaint, onChanged: () -> Unit, onBac
 fun InfoLine(label: String, value: String) {
     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
         Text("$label: ", color = Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        Text(value, color = Color(0xFF223229), fontSize = 12.sp)
+        Text(value, color = Color(0xFF223229), fontSize = 12.sp, modifier = Modifier.weight(1f))
     }
 }
 
