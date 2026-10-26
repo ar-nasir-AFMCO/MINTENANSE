@@ -100,7 +100,9 @@ body.adding .leaflet-container{cursor:crosshair}
 .siteitem .del:hover{color:var(--red);background:var(--red-bg)}
 .field{display:flex;flex-direction:column;gap:4px;margin-bottom:9px}
 .field label{font-size:11.5px;font-weight:700;color:var(--muted)}
-.field input{border:1.5px solid var(--line);border-radius:10px;padding:9px 11px;font-size:13px;font-family:inherit;background:var(--soft)}
+.field input,.field select{border:1.5px solid var(--line);border-radius:10px;padding:9px 11px;font-size:13px;font-family:inherit;background:var(--soft);width:100%}
+.area-chip{background:var(--green-bg);color:var(--green);border-radius:8px;padding:3px 8px;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:default}
+.area-chip b{cursor:pointer;opacity:.6}.area-chip b:hover{opacity:1}
 .field input:focus{outline:none;border-color:var(--primary);background:#fff}
 .row{display:flex;gap:10px;flex-wrap:wrap}
 .divider{height:1px;background:var(--line);margin:4px 0}
@@ -896,7 +898,10 @@ svg.leaflet-image-layer.leaflet-interactive path {
         <div class="field" style="flex:1"><label>نهاية الدوام</label><input id="ssEnd" type="time"></div>
       </div>
       <div class="field"><label>سماح التأخير (دقيقة)</label><input id="ssGrace" type="number" min="0"></div>
-      <div class="field"><label>مناطق التغطية (افصل بفاصلة)</label><input id="ssAreas" placeholder="مثال: الرياض, الدرعية"></div>
+      <div class="field"><label>مناطق التغطية</label>
+        <select id="ssAreaPick"><option value="">— اختر منطقة لإضافتها —</option></select>
+        <div class="sites-sm" id="ssAreaChips" style="margin-top:6px"></div>
+      </div>
       <div class="row" style="margin-top:6px">
         <button class="btn p sm" id="ssSave" style="flex:1;justify-content:center">حفظ</button>
         <button class="btn sm" id="ssCancel" style="flex:1;justify-content:center">إلغاء</button>
@@ -989,10 +994,10 @@ svg.leaflet-image-layer.leaflet-interactive path {
   var NOW=nowMin();
 
   // ===== بيانات حيّة =====
-  var sites=[], sups=[];
+  var sites=[], sups=[], AREAS=[];
 
   function headers(){return{apikey:KEY,Authorization:'Bearer '+(TOKEN||KEY),'Content-Type':'application/json'};}
-  function api(path,opt){opt=opt||{};opt.headers=Object.assign(headers(),opt.headers||{});return fetch(SB+'/rest/v1/'+path,opt).then(function(r){if(!r.ok)return r.text().then(function(t){throw new Error(t||r.status);});return r.status===204?null:r.json();});}
+  function api(path,opt){opt=opt||{};opt.headers=Object.assign(headers(),opt.headers||{});return fetch(SB+'/rest/v1/'+path,opt).then(function(r){return r.text().then(function(t){if(!r.ok)throw new Error(t||('خطأ '+r.status));return t?JSON.parse(t):null;});});}
 
   function loadData(){
     var d=document.getElementById('repDate').value||todayRiyadh();
@@ -1110,23 +1115,33 @@ svg.leaflet-image-layer.leaflet-interactive path {
   document.getElementById('repDate').addEventListener('change',reload);
 
   // ===== إعدادات المشرف (أوقات الدوام + المناطق) =====
-  var ssEditing=null;
+  var ssEditing=null, ssAreasList=[];
+  function fillAreaSelect(){
+    var sel=document.getElementById('ssAreaPick'); if(!sel)return;
+    sel.innerHTML='<option value="">— اختر منطقة لإضافتها —</option>'+AREAS.filter(function(a){return ssAreasList.indexOf(a)<0;}).map(function(a){return '<option value="'+a.replace(/"/g,'&quot;')+'">'+a+'</option>';}).join('');
+  }
+  function renderAreaChips(){
+    document.getElementById('ssAreaChips').innerHTML=ssAreasList.length?ssAreasList.map(function(a){return '<span class="area-chip">📍'+a+' <b data-a="'+a.replace(/"/g,'&quot;')+'">✕</b></span>';}).join(''):'<span class="muted" style="font-size:11.5px">لا مناطق محددة</span>';
+    Array.prototype.forEach.call(document.querySelectorAll('#ssAreaChips b'),function(x){x.onclick=function(){ssAreasList=ssAreasList.filter(function(a){return a!==x.dataset.a;});renderAreaChips();fillAreaSelect();};});
+  }
   function openSupSettings(u){
     ssEditing=u;
     document.getElementById('supSetName').textContent='إعدادات: '+u.name;
     document.getElementById('ssStart').value=u.workStartRaw||'08:00';
     document.getElementById('ssEnd').value=u.workEndRaw||'21:00';
     document.getElementById('ssGrace').value=(u.grace!=null?u.grace:10);
-    document.getElementById('ssAreas').value=u.areas||'';
+    ssAreasList=(u.areas||'').split(',').map(function(a){return a.trim();}).filter(Boolean);
+    fillAreaSelect(); renderAreaChips();
     document.getElementById('supMask').style.display='flex';
   }
   function closeSupSettings(){ssEditing=null;document.getElementById('supMask').style.display='none';}
   document.getElementById('supClose').onclick=closeSupSettings;
   document.getElementById('ssCancel').onclick=closeSupSettings;
   document.getElementById('supMask').addEventListener('click',function(e){if(e.target===this)closeSupSettings();});
+  document.getElementById('ssAreaPick').addEventListener('change',function(){var v=this.value;if(v&&ssAreasList.indexOf(v)<0){ssAreasList.push(v);renderAreaChips();fillAreaSelect();}this.value='';});
   document.getElementById('ssSave').onclick=function(){
     if(!ssEditing)return;
-    var body={supervisor_id:ssEditing.id,work_start:document.getElementById('ssStart').value||'08:00',work_end:document.getElementById('ssEnd').value||'21:00',grace_min:Math.max(0,parseInt(document.getElementById('ssGrace').value)||0),areas:document.getElementById('ssAreas').value.trim()||null,updated_at:new Date().toISOString()};
+    var body={supervisor_id:ssEditing.id,work_start:document.getElementById('ssStart').value||'08:00',work_end:document.getElementById('ssEnd').value||'21:00',grace_min:Math.max(0,parseInt(document.getElementById('ssGrace').value)||0),areas:(ssAreasList.join(', ')||null),updated_at:new Date().toISOString()};
     api('supervisor_settings',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(body)})
       .then(function(){closeSupSettings();reload();})
       .catch(function(e){alert('تعذّر الحفظ: '+e.message+'\n(تأكد من تسجيل الدخول بحساب مشرف)');});
@@ -1135,8 +1150,15 @@ svg.leaflet-image-layer.leaflet-interactive path {
   document.getElementById('logoutBtn').onclick=function(){sessionStorage.removeItem('soot_tk');location.reload();};
 
   // ===== الدخول =====
-  function showApp(){document.getElementById('login').style.display='none';document.getElementById('refreshBtn').style.display='';document.getElementById('logoutBtn').style.display='';document.getElementById('repDate').value=todayRiyadh();NOW=nowMin();
-    loadData().then(function(){document.getElementById('loader').style.display='none';document.getElementById('app').style.display='block';initMap();renderAll();}).catch(function(e){document.getElementById('loader').style.display='none';document.getElementById('login').style.display='flex';document.getElementById('lErr').textContent='انتهت الجلسة، أعد الدخول.';sessionStorage.removeItem('soot_tk');TOKEN='';});}
+  function denyAccess(msg){document.getElementById('loader').style.display='none';document.getElementById('app').style.display='none';document.getElementById('login').style.display='flex';document.getElementById('lErr').textContent=msg;sessionStorage.removeItem('soot_tk');TOKEN='';}
+  function showApp(){document.getElementById('login').style.display='none';
+    // عزل الوصول: مديرو النظام فقط (admin/manager)
+    api('rpc/soot_my_role',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}).then(function(role){
+      if(['admin','manager'].indexOf(String(role||''))<0){ denyAccess('هذه الصفحة لمديري النظام فقط.'); return; }
+      document.getElementById('refreshBtn').style.display='';document.getElementById('logoutBtn').style.display='';document.getElementById('repDate').value=todayRiyadh();NOW=nowMin();
+      api('v_areas?select=area').then(function(rows){AREAS=(rows||[]).map(function(r){return r.area;}).filter(Boolean);}).catch(function(){});
+      return loadData().then(function(){document.getElementById('loader').style.display='none';document.getElementById('app').style.display='block';initMap();renderAll();});
+    }).catch(function(e){denyAccess('انتهت الجلسة، أعد الدخول.');});}
   function doLogin(){var em=document.getElementById('lEmail').value.trim(),ps=document.getElementById('lPass').value;if(!em||!ps){document.getElementById('lErr').textContent='أدخل البريد وكلمة المرور.';return;}document.getElementById('lErr').textContent='';document.getElementById('lBtn').textContent='جارٍ الدخول…';
     fetch(SB+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({email:em,password:ps})}).then(function(r){return r.json();}).then(function(j){document.getElementById('lBtn').textContent='دخول';if(j.access_token){TOKEN=j.access_token;sessionStorage.setItem('soot_tk',TOKEN);try{document.getElementById('meName').textContent=em;}catch(e){}document.getElementById('loader').style.display='block';showApp();}else{document.getElementById('lErr').textContent='بيانات الدخول غير صحيحة.';}}).catch(function(){document.getElementById('lBtn').textContent='دخول';document.getElementById('lErr').textContent='تعذّر الاتصال.';});}
   document.getElementById('lBtn').onclick=doLogin;
