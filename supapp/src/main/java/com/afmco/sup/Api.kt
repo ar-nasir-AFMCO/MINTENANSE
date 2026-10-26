@@ -95,6 +95,14 @@ data class DataUpdate(val id: String, val iqama: String?, val fieldLabel: String
             o.optStringOrNull("old_value"), o.optString("new_value"), o.optStringOrNull("created_at"))
     }
 }
+
+data class Advance(val id: String, val iqama: String?, val name: String?, val project: String?, val amount: Double, val reason: String?, val createdAt: String?) {
+    companion object {
+        fun from(o: JSONObject) = Advance(
+            o.optString("id"), o.optStringOrNull("iqama"), o.optStringOrNull("name"),
+            o.optStringOrNull("project"), o.optDouble("amount", 0.0), o.optStringOrNull("reason"), o.optStringOrNull("created_at"))
+    }
+}
 data class Event(val kind: String, val actorName: String?, val note: String?, val createdAt: String?) {
     companion object {
         fun from(o: JSONObject) = Event(
@@ -259,6 +267,17 @@ object Api {
     suspend fun pendingUpdates(token: String): List<DataUpdate> {
         val arr = JSONArray(get(token, "data_update_requests?status=eq.pending&order=created_at.desc&select=*"))
         return (0 until arr.length()).map { DataUpdate.from(arr.getJSONObject(it)) }
+    }
+
+    /** السلف المعلّقة */
+    suspend fun pendingAdvances(token: String): List<Advance> {
+        val arr = JSONArray(get(token, "v_pending_advances?select=*"))
+        return (0 until arr.length()).map { Advance.from(arr.getJSONObject(it)) }
+    }
+
+    /** اعتماد/رفض سلفة */
+    suspend fun reviewAdvance(token: String, request: String, approve: Boolean, note: String?) {
+        rpc(token, "sup_review_advance", JSONObject().put("p_request", request).put("p_approve", approve).put("p_note", note ?: JSONObject.NULL))
     }
 
     /** اعتماد/رفض طلب تحديث (يحدّث وثيق عند الاعتماد) */

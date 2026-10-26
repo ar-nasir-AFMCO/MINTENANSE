@@ -107,6 +107,7 @@ fun AppRoot() {
     var session by remember { mutableStateOf<SupSession?>(null) }
     var detail by remember { mutableStateOf<Complaint?>(null) }
     var showUpdates by remember { mutableStateOf(false) }
+    var showAdvances by remember { mutableStateOf(false) }
     var booting by remember { mutableStateOf(true) }
     val context = LocalContext.current
 
@@ -152,8 +153,9 @@ fun AppRoot() {
             booting -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Green) }
             s == null -> LoginScreen(onLogin = { sess, em, ps -> Prefs.save(context, em, ps); session = sess })
             showUpdates -> UpdatesScreen(s) { showUpdates = false }
+            showAdvances -> AdvancesScreen(s) { showAdvances = false }
             detail != null -> DetailScreen(s, detail!!, onChanged = { /* refreshed on back */ }) { detail = null }
-            else -> HomeScreen(s, onOpen = { detail = it }, onUpdates = { showUpdates = true }, onLogout = { Prefs.clear(context); session = null; detail = null })
+            else -> HomeScreen(s, onOpen = { detail = it }, onUpdates = { showUpdates = true }, onAdvances = { showAdvances = true }, onLogout = { Prefs.clear(context); session = null; detail = null })
         }
     }
 
@@ -234,7 +236,7 @@ fun LoginScreen(onLogin: (SupSession, String, String) -> Unit) {
 }
 
 @Composable
-fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onUpdates: () -> Unit, onLogout: () -> Unit) {
+fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onUpdates: () -> Unit, onAdvances: () -> Unit, onLogout: () -> Unit) {
     var list by remember { mutableStateOf<List<Complaint>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -243,7 +245,9 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onUpdates: () -
     var kpiFilter by remember { mutableStateOf<String?>(null) }
     var refreshKey by remember { mutableStateOf(0) }
     var pendingUpdates by remember { mutableStateOf(0) }
+    var pendingAdvances by remember { mutableStateOf(0) }
     LaunchedEffect(refreshKey) { try { pendingUpdates = Api.pendingUpdates(session.token).size } catch (_: Exception) {} }
+    LaunchedEffect(refreshKey) { try { pendingAdvances = Api.pendingAdvances(session.token).size } catch (_: Exception) {} }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var att by remember { mutableStateOf<org.json.JSONObject?>(null) }
@@ -333,6 +337,7 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onUpdates: () -
             TopBar("لوحة المشرف", session.name) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TextButton(onClick = onUpdates) { Text("✎ طلبات" + (if (pendingUpdates > 0) " ($pendingUpdates)" else ""), color = if (pendingUpdates > 0) Gold else Color.White, fontSize = 13.sp, fontWeight = if (pendingUpdates > 0) FontWeight.Bold else FontWeight.Normal) }
+                    TextButton(onClick = onAdvances) { Text("💵 سلف" + (if (pendingAdvances > 0) " ($pendingAdvances)" else ""), color = if (pendingAdvances > 0) Gold else Color.White, fontSize = 13.sp, fontWeight = if (pendingAdvances > 0) FontWeight.Bold else FontWeight.Normal) }
                     TextButton(onClick = { refreshKey++ }) { Text("تحديث", color = Color.White, fontSize = 13.sp) }
                     TextButton(onClick = onLogout) { Text("خروج", color = Color.White, fontSize = 13.sp) }
                 }
@@ -520,6 +525,55 @@ fun UpdatesScreen(session: SupSession, onBack: () -> Unit) {
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     Button(onClick = { act(u.id, true) }, colors = ButtonDefaults.buttonColors(containerColor = Green), shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f).height(46.dp)) { Text("✓ اعتماد", fontWeight = FontWeight.Bold) }
                                     OutlinedButton(onClick = { act(u.id, false) }, shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f).height(46.dp)) { Text("✕ رفض", color = Red, fontWeight = FontWeight.Bold) }
+                                }
+                            }
+                        }
+                    }
+                    item { Spacer(Modifier.height(20.dp)) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AdvancesScreen(session: SupSession, onBack: () -> Unit) {
+    var list by remember { mutableStateOf<List<Advance>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+    var refreshKey by remember { mutableStateOf(0) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    BackHandler { onBack() }
+    LaunchedEffect(refreshKey) { loading = true; try { list = Api.pendingAdvances(session.token) } catch (_: Exception) {} finally { loading = false } }
+    fun act(id: String, approve: Boolean) {
+        scope.launch {
+            try { Api.reviewAdvance(session.token, id, approve, null)
+                android.widget.Toast.makeText(context, if (approve) "تم اعتماد السلفة" else "تم رفض السلفة", android.widget.Toast.LENGTH_SHORT).show()
+                refreshKey++ }
+            catch (e: Exception) { android.widget.Toast.makeText(context, e.message ?: "تعذّر", android.widget.Toast.LENGTH_SHORT).show() }
+        }
+    }
+    Scaffold(containerColor = Bg, topBar = { TopBar("طلبات السلف", "${list.size} معلّقة · الحد 300 ريال", onBack = onBack) }) { pad ->
+        Box(Modifier.padding(pad).fillMaxSize()) {
+            when {
+                loading -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = Green)
+                list.isEmpty() -> Text("لا توجد سلف معلّقة", Modifier.align(Alignment.Center).padding(24.dp), color = Gray)
+                else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(list) { a ->
+                        Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp)) {
+                            Column(Modifier.padding(14.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("💵 ${a.amount.toInt()} ريال", fontWeight = FontWeight.Black, fontSize = 18.sp, color = GreenD)
+                                    Spacer(Modifier.weight(1f))
+                                    a.createdAt?.let { Text(it.take(10), fontSize = 11.sp, color = Gray) }
+                                }
+                                Spacer(Modifier.height(6.dp))
+                                Text("${a.name ?: "—"}" + (a.iqama?.let { "  ·  🆔 $it" } ?: "") + (a.project?.let { "  ·  📁 $it" } ?: ""), fontSize = 12.sp, color = Gray)
+                                if (!a.reason.isNullOrBlank()) { Spacer(Modifier.height(6.dp)); Text("السبب: ${a.reason}", fontSize = 12.5.sp) }
+                                Spacer(Modifier.height(12.dp))
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Button(onClick = { act(a.id, true) }, colors = ButtonDefaults.buttonColors(containerColor = Green), shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f).height(46.dp)) { Text("✓ اعتماد", fontWeight = FontWeight.Bold) }
+                                    OutlinedButton(onClick = { act(a.id, false) }, shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f).height(46.dp)) { Text("✕ رفض", color = Red, fontWeight = FontWeight.Bold) }
                                 }
                             }
                         }
