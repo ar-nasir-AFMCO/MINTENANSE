@@ -105,6 +105,7 @@ class MainActivity : ComponentActivity() {
 fun AppRoot() {
     var session by remember { mutableStateOf<SupSession?>(null) }
     var detail by remember { mutableStateOf<Complaint?>(null) }
+    var showUpdates by remember { mutableStateOf(false) }
     var booting by remember { mutableStateOf(true) }
     val context = LocalContext.current
 
@@ -141,8 +142,9 @@ fun AppRoot() {
         when {
             booting -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Green) }
             s == null -> LoginScreen(onLogin = { sess, em, ps -> Prefs.save(context, em, ps); session = sess })
+            showUpdates -> UpdatesScreen(s) { showUpdates = false }
             detail != null -> DetailScreen(s, detail!!, onChanged = { /* refreshed on back */ }) { detail = null }
-            else -> HomeScreen(s, onOpen = { detail = it }, onLogout = { Prefs.clear(context); session = null; detail = null })
+            else -> HomeScreen(s, onOpen = { detail = it }, onUpdates = { showUpdates = true }, onLogout = { Prefs.clear(context); session = null; detail = null })
         }
     }
 
@@ -223,7 +225,7 @@ fun LoginScreen(onLogin: (SupSession, String, String) -> Unit) {
 }
 
 @Composable
-fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onLogout: () -> Unit) {
+fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onUpdates: () -> Unit, onLogout: () -> Unit) {
     var list by remember { mutableStateOf<List<Complaint>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -231,6 +233,8 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onLogout: () ->
     var deptFilter by remember { mutableStateOf<String?>(null) }
     var kpiFilter by remember { mutableStateOf<String?>(null) }
     var refreshKey by remember { mutableStateOf(0) }
+    var pendingUpdates by remember { mutableStateOf(0) }
+    LaunchedEffect(refreshKey) { try { pendingUpdates = Api.pendingUpdates(session.token).size } catch (_: Exception) {} }
 
     LaunchedEffect(refreshKey) {
         loading = true; error = null
@@ -271,6 +275,7 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onLogout: () ->
         topBar = {
             TopBar("لوحة المشرف", session.name) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = onUpdates) { Text("✎ طلبات" + (if (pendingUpdates > 0) " ($pendingUpdates)" else ""), color = if (pendingUpdates > 0) Gold else Color.White, fontSize = 13.sp, fontWeight = if (pendingUpdates > 0) FontWeight.Bold else FontWeight.Normal) }
                     TextButton(onClick = { refreshKey++ }) { Text("تحديث", color = Color.White, fontSize = 13.sp) }
                     TextButton(onClick = onLogout) { Text("خروج", color = Color.White, fontSize = 13.sp) }
                 }
@@ -396,6 +401,52 @@ fun FilterChipItem(text: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
+fun UpdatesScreen(session: SupSession, onBack: () -> Unit) {
+    var list by remember { mutableStateOf<List<DataUpdate>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+    var refreshKey by remember { mutableStateOf(0) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    BackHandler { onBack() }
+    LaunchedEffect(refreshKey) { loading = true; try { list = Api.pendingUpdates(session.token) } catch (_: Exception) {} finally { loading = false } }
+    fun act(id: String, approve: Boolean) {
+        scope.launch {
+            try { Api.reviewUpdate(session.token, id, approve, null)
+                android.widget.Toast.makeText(context, if (approve) "تم الاعتماد وتحديث وثيق" else "تم رفض الطلب", android.widget.Toast.LENGTH_SHORT).show()
+                refreshKey++ }
+            catch (e: Exception) { android.widget.Toast.makeText(context, e.message ?: "تعذّر", android.widget.Toast.LENGTH_SHORT).show() }
+        }
+    }
+    Scaffold(containerColor = Bg, topBar = { TopBar("طلبات تحديث البيانات", "${list.size} معلّقة", onBack = onBack) }) { pad ->
+        Box(Modifier.padding(pad).fillMaxSize()) {
+            when {
+                loading -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = Green)
+                list.isEmpty() -> Text("لا توجد طلبات معلّقة", Modifier.align(Alignment.Center).padding(24.dp), color = Gray)
+                else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(list) { u ->
+                        Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp)) {
+                            Column(Modifier.padding(14.dp)) {
+                                Text("✎ ${u.fieldLabel ?: "تحديث بيانات"}", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = GreenD)
+                                Text("إقامة الموظف: ${u.iqama ?: "—"}", fontSize = 12.sp, color = Gray)
+                                Spacer(Modifier.height(10.dp))
+                                InfoLine("القيمة الحالية", if (u.oldValue.isNullOrBlank()) "— (غير مُسجّلة)" else u.oldValue)
+                                InfoLine("القيمة الجديدة المطلوبة", u.newValue)
+                                Spacer(Modifier.height(12.dp))
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Button(onClick = { act(u.id, true) }, colors = ButtonDefaults.buttonColors(containerColor = Green), shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f).height(46.dp)) { Text("✓ اعتماد", fontWeight = FontWeight.Bold) }
+                                    OutlinedButton(onClick = { act(u.id, false) }, shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f).height(46.dp)) { Text("✕ رفض", color = Red, fontWeight = FontWeight.Bold) }
+                                }
+                            }
+                        }
+                    }
+                    item { Spacer(Modifier.height(20.dp)) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun DetailScreen(session: SupSession, c: Complaint, onChanged: () -> Unit, onBack: () -> Unit) {
     var msgs by remember { mutableStateOf<List<Msg>>(emptyList()) }
     var events by remember { mutableStateOf<List<Event>>(emptyList()) }
@@ -409,6 +460,11 @@ fun DetailScreen(session: SupSession, c: Complaint, onChanged: () -> Unit, onBac
     var addedPhotos by remember { mutableStateOf<List<String>>(emptyList()) }
     var uploading by remember { mutableStateOf(false) }
     var empInfo by remember { mutableStateOf<EmpInfo?>(null) }
+    var priority by remember { mutableStateOf(c.priority) }
+    var people by remember { mutableStateOf<List<Person>>(emptyList()) }
+    var parties by remember { mutableStateOf<List<ExtraParty>>(emptyList()) }
+    var mentionQuery by remember { mutableStateOf("") }
+    var mentionOpen by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val canAttach = c.departmentCode == "veh" || c.departmentCode == "house"
@@ -417,6 +473,8 @@ fun DetailScreen(session: SupSession, c: Complaint, onChanged: () -> Unit, onBac
 
     LaunchedEffect(c.id) {
         if (!c.empIqama.isNullOrBlank()) { try { empInfo = Api.empInfo(session.token, c.empIqama) } catch (_: Exception) {} }
+        try { people = Api.people(session.token) } catch (_: Exception) {}
+        try { parties = Api.extraParties(session.token, c.id) } catch (_: Exception) {}
     }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -520,10 +578,63 @@ fun DetailScreen(session: SupSession, c: Complaint, onChanged: () -> Unit, onBac
                                 Spacer(Modifier.height(4.dp))
                             }
                             if (!ei.area.isNullOrBlank()) InfoLine("📍 منطقة الموظف", ei.area)
-                            InfoLine("🚗 مركبات الموظف المُسندة", if (ei.vehicles.isNotEmpty()) ei.vehicles.joinToString("، ") else "لا توجد")
+                            if (c.departmentCode == "veh" || ei.vehicles.isNotEmpty())
+                                InfoLine("🚗 مركبات الموظف (اللوحة · المركبة · مكتب الإيجار · المنطقة)", if (ei.vehicles.isNotEmpty()) ei.vehicles.joinToString("\n") else "لا توجد")
+                            if (!ei.housing.isNullOrBlank()) InfoLine("🏠 سكن الموظف", ei.housing)
                         }
                         if (c.toMaintenance) { Spacer(Modifier.height(6.dp)); Chip("🔧 محوّلة لتطبيق الصيانة", GreenD) }
                         if (c.toWatheeq) { Spacer(Modifier.height(6.dp)); Chip("📑 مُسجّلة في وثيق", Blue) }
+                    }
+                }
+            }
+            if (status != "done") item {
+                Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp)) {
+                    Column(Modifier.padding(14.dp)) {
+                        Text("⚑ الأولوية (يحددها المشرف)", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = GreenD)
+                        Spacer(Modifier.height(8.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            PRIORITIES.forEach { pr ->
+                                val k = pr.first; val lbl = pr.second; val sel = priority == k
+                                Surface(color = if (sel) prioColor(k) else Color(0xFFEFF2F0), shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f)) {
+                                    Text(lbl, color = if (sel) Color.White else Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
+                                        modifier = Modifier.padding(vertical = 9.dp).fillMaxWidth().clickable {
+                                            scope.launch { try { Api.setPriority(session.token, c.id, k); priority = k; toast = "تم تحديد الأولوية"; onChanged() } catch (e: Exception) { toast = e.message } }
+                                        })
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        Text("🤝 الأطراف المُشارَكة", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = GreenD)
+                        Spacer(Modifier.height(6.dp))
+                        if (parties.isNotEmpty()) {
+                            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                parties.forEach { p -> Chip((if (p.kind == "dept") "🏢 " else "👤 ") + (p.label ?: p.deptCode ?: ""), Violet) }
+                            }
+                            Spacer(Modifier.height(8.dp))
+                        } else { Text("لم تُشارَك أطراف بعد.", fontSize = 11.5.sp, color = Gray); Spacer(Modifier.height(8.dp)) }
+                        val DEPTS = listOf("veh" to "🚗 المركبات", "house" to "🏠 السكن", "finance" to "💵 المالية", "hr" to "👷 التوظيف")
+                        val q = mentionQuery.trim()
+                        val deptMatches = DEPTS.filter { q.isBlank() || it.second.contains(q) }
+                        val peopleMatches = people.filter { q.isBlank() || it.name.contains(q, true) }.take(8)
+                        ExposedDropdownMenuBox(expanded = mentionOpen, onExpandedChange = { mentionOpen = !mentionOpen }) {
+                            OutlinedTextField(mentionQuery, { mentionQuery = it; mentionOpen = true },
+                                placeholder = { Text("@ إشراك قسم أو شخص من الإدارة") }, singleLine = true,
+                                modifier = Modifier.fillMaxWidth().menuAnchor())
+                            ExposedDropdownMenu(expanded = mentionOpen, onDismissRequest = { mentionOpen = false }) {
+                                deptMatches.forEach { d ->
+                                    DropdownMenuItem(text = { Text(d.second) }, onClick = {
+                                        mentionOpen = false; mentionQuery = ""
+                                        scope.launch { try { Api.addParty(session.token, c.id, "dept", d.first, d.second); parties = Api.extraParties(session.token, c.id); toast = "تم الإشراك" } catch (e: Exception) { toast = e.message } }
+                                    })
+                                }
+                                peopleMatches.forEach { pers ->
+                                    DropdownMenuItem(text = { Text("👤 ${pers.name}" + (pers.role?.let { " · $it" } ?: "")) }, onClick = {
+                                        mentionOpen = false; mentionQuery = ""
+                                        scope.launch { try { Api.addParty(session.token, c.id, "person", pers.id, pers.name); parties = Api.extraParties(session.token, c.id); toast = "تم الإشراك" } catch (e: Exception) { toast = e.message } }
+                                    })
+                                }
+                            }
+                        }
                     }
                 }
             }

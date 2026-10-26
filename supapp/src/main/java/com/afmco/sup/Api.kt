@@ -85,7 +85,16 @@ data class Msg(val authorKind: String, val authorName: String?, val body: String
     }
 }
 
-data class EmpInfo(val phone: String?, val area: String?, val vehicles: List<String>)
+data class EmpInfo(val phone: String?, val area: String?, val vehicles: List<String>, val housing: String?)
+data class Person(val id: String, val name: String, val role: String?)
+data class ExtraParty(val kind: String, val deptCode: String?, val label: String?)
+data class DataUpdate(val id: String, val iqama: String?, val fieldLabel: String?, val oldValue: String?, val newValue: String, val createdAt: String?) {
+    companion object {
+        fun from(o: JSONObject) = DataUpdate(
+            o.optString("id"), o.optStringOrNull("iqama"), o.optStringOrNull("field_label"),
+            o.optStringOrNull("old_value"), o.optString("new_value"), o.optStringOrNull("created_at"))
+    }
+}
 data class Event(val kind: String, val actorName: String?, val note: String?, val createdAt: String?) {
     companion object {
         fun from(o: JSONObject) = Event(
@@ -197,7 +206,7 @@ object Api {
         rpc(token, "sup_add_photo", JSONObject().put("p_complaint", id).put("p_url", url))
     }
 
-    /** بيانات الموظف الكاملة: الجوال + المنطقة + مركباته المُسندة */
+    /** بيانات الموظف الكاملة: الجوال + المنطقة + المركبات (مع مكتب الإيجار والمنطقة) + السكن */
     suspend fun empInfo(token: String, iqama: String): EmpInfo {
         var phone: String? = null; var area: String? = null
         try {
@@ -209,11 +218,52 @@ object Api {
             val arr = JSONArray(rpc(token, "vehicles_by_iqama", JSONObject().put("p_iqama", iqama)))
             for (i in 0 until arr.length()) {
                 val o = arr.getJSONObject(i)
-                val extra = listOfNotNull(o.optStringOrNull("make"), o.optStringOrNull("model")).joinToString(" ")
-                veh.add(o.optString("plate") + (if (extra.isNotBlank()) " · $extra" else ""))
+                val parts = mutableListOf(o.optString("plate"))
+                listOfNotNull(o.optStringOrNull("make"), o.optStringOrNull("model")).joinToString(" ").let { if (it.isNotBlank()) parts.add(it) }
+                o.optStringOrNull("rental_office")?.let { parts.add("🏢 $it") }
+                o.optStringOrNull("area")?.let { parts.add("📍 $it") }
+                veh.add(parts.joinToString(" · "))
             }
         } catch (_: Exception) {}
-        return EmpInfo(phone, area, veh)
+        var housing: String? = null
+        try {
+            val arr = JSONArray(rpc(token, "housing_by_iqama", JSONObject().put("p_iqama", iqama)))
+            if (arr.length() > 0) housing = arr.getJSONObject(0).optStringOrNull("label")
+        } catch (_: Exception) {}
+        return EmpInfo(phone, area, veh, housing)
+    }
+
+    /** الأطراف المُشارَكة في البلاغ */
+    suspend fun extraParties(token: String, id: String): List<ExtraParty> {
+        val arr = JSONArray(get(token, "complaint_extra_parties?complaint_id=eq.$id&order=created_at.asc&select=*"))
+        return (0 until arr.length()).map { val o = arr.getJSONObject(it); ExtraParty(o.optString("kind"), o.optStringOrNull("dept_code"), o.optStringOrNull("label")) }
+    }
+
+    /** إشراك قسم أو شخص (الـ@) */
+    suspend fun addParty(token: String, id: String, type: String, key: String, label: String) {
+        rpc(token, "soot_add_party", JSONObject().put("p_complaint", id).put("p_type", type).put("p_key", key).put("p_label", label))
+    }
+
+    /** الأشخاص المتاحون للإشراك (الإداريون) */
+    suspend fun people(token: String): List<Person> {
+        val arr = JSONArray(get(token, "profiles?select=id,full_name,role&order=full_name.asc"))
+        return (0 until arr.length()).mapNotNull { val o = arr.getJSONObject(it); val n = o.optStringOrNull("full_name"); if (n == null) null else Person(o.optString("id"), n, o.optStringOrNull("role")) }
+    }
+
+    /** الأولوية يحددها المشرف */
+    suspend fun setPriority(token: String, id: String, priority: String) {
+        rpc(token, "sup_set_priority", JSONObject().put("p_complaint", id).put("p_priority", priority))
+    }
+
+    /** طلبات تحديث بيانات الموظفين المعلّقة */
+    suspend fun pendingUpdates(token: String): List<DataUpdate> {
+        val arr = JSONArray(get(token, "data_update_requests?status=eq.pending&order=created_at.desc&select=*"))
+        return (0 until arr.length()).map { DataUpdate.from(arr.getJSONObject(it)) }
+    }
+
+    /** اعتماد/رفض طلب تحديث (يحدّث وثيق عند الاعتماد) */
+    suspend fun reviewUpdate(token: String, request: String, approve: Boolean, note: String?) {
+        rpc(token, "sup_review_update", JSONObject().put("p_request", request).put("p_approve", approve).put("p_note", note ?: JSONObject.NULL))
     }
 
     /** رفع صورة إلى تخزين Supabase وإرجاع الرابط العام */
