@@ -10285,6 +10285,92 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     window.wfAfmcStop = { poll: poll, list: function(){ return CACHE; } };
   })();
 
+  /* ───── طلبات تحديث بيانات الموظف من تطبيق «صوت» (soot_data_update) ───── */
+  (function(){
+    var CACHE = [];
+    function css(){
+      if (document.getElementById('wf-du-style')) return;
+      var st = document.createElement('style'); st.id = 'wf-du-style';
+      st.textContent =
+        '#wfDuPill{position:fixed;bottom:60px;right:12px;z-index:99998;cursor:pointer;border:none;'
+        + 'background:#2d72c6;color:#fff;border-radius:999px;padding:9px 14px;font:700 13px system-ui,Tahoma;'
+        + 'box-shadow:0 4px 14px rgba(0,0,0,.25);direction:rtl;display:none;align-items:center;gap:6px}'
+        + '#wfDuPanel{position:fixed;bottom:104px;right:12px;z-index:99998;width:min(410px,92vw);max-height:62vh;'
+        + 'overflow:auto;background:#fff;border:1px solid #e4ece8;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.25);'
+        + 'direction:rtl;display:none;padding:10px 12px}'
+        + '#wfDuPanel h4{margin:2px 0 8px;font-size:14px;color:#16211f}'
+        + '.wfdu-row{border:1px solid #e4ece8;border-radius:10px;padding:8px 10px;margin-bottom:8px;background:#fff}'
+        + '.wfdu-row .nm{font-weight:700;font-size:13px;color:#16211f}'
+        + '.wfdu-row .sub{color:#6b7674;font-size:12px;margin:2px 0}'
+        + '.wfdu-row .chg{font-size:12.5px;color:#1e3a5f;background:#eef4fb;border-radius:8px;padding:5px 8px;margin:5px 0;direction:rtl}'
+        + '.wfdu-row .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}'
+        + '.wfdu-row button{cursor:pointer;border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700}'
+        + '.wfdu-ok{background:#0b7a4b;color:#fff}.wfdu-no{background:#efebe3;color:#34403e}'
+        + '.wfdu-row button[disabled]{opacity:.55;cursor:default}';
+      document.head.appendChild(st);
+    }
+    function mayDecide(){ return !!(me && (me.role === 'admin' || me.role === 'manager' || (me.perms && (me.perms.edit || me.perms.manage)))); }
+    function decide(q, approve, btn){
+      var r = q.ref || {}; var who = r.iqama || '';
+      if (!r.request_id){ note('طلب قديم بلا معرّف — يُعالَج من تطبيق المشرف', 'amber'); return; }
+      var msg = approve ? ('اعتماد تحديث البيانات؟\n\n' + (r.label || '') + ': ' + (r.old || '—') + ' ← ' + (r.new || ''))
+                        : ('رفض طلب التحديث؟');
+      if (!confirm(msg)) return;
+      var nt = approve ? null : (prompt('سبب الرفض (اختياري):') || null);
+      if (btn) btn.disabled = true;
+      rpc('sup_review_update', { p_request: r.request_id, p_approve: !!approve, p_note: nt })
+        .then(function(){ note(approve ? ('✅ اعتُمد تحديث بيانات ' + who) : ('↩︎ رُفض طلب ' + who), approve ? 'green' : 'amber'); poll(); })
+        .catch(function(err){ if (btn) btn.disabled = false; note('تعذّر: ' + (err && err.message || err), 'red'); poll(); });
+    }
+    function render(list){
+      var panel = document.getElementById('wfDuPanel'); if (!panel) return;
+      var html = '<h4>✎ طلبات تحديث بيانات — تطبيق «صوت»</h4>';
+      if (!list.length){ panel.innerHTML = html + '<div style="color:#6b7674;font-size:13px">لا توجد طلبات معلّقة.</div>'; return; }
+      if (!mayDecide()) html += '<div style="color:#95570f;font-size:12px;margin-bottom:8px">الاعتماد للمدير/المشرف فقط.</div>';
+      list.forEach(function(q, i){
+        var r = q.ref || {};
+        html += '<div class="wfdu-row"><div class="nm">' + esc(r.name || q.created_by_name || r.iqama || '') + '</div>'
+          + '<div class="sub" style="direction:ltr;text-align:right">' + esc(r.iqama || '') + (r.project ? ' · ' + esc(r.project) : '') + '</div>'
+          + '<div class="chg"><b>' + esc(r.label || r.field || '') + ':</b> ' + esc(r.old || '—') + '  ←  <b>' + esc(r.new || '') + '</b></div>'
+          + '<div class="sub">' + esc(String(q.created_at || '').slice(0, 10)) + '</div>'
+          + (mayDecide() ? '<div class="acts"><button class="wfdu-ok" data-ok="' + i + '">✅ اعتماد</button>'
+                           + '<button class="wfdu-no" data-no="' + i + '">✕ رفض</button></div>' : '')
+          + '</div>';
+      });
+      panel.innerHTML = html;
+      Array.prototype.forEach.call(panel.querySelectorAll('[data-ok]'), function(b){ b.onclick = function(){ decide(list[+b.getAttribute('data-ok')], true, b); }; });
+      Array.prototype.forEach.call(panel.querySelectorAll('[data-no]'), function(b){ b.onclick = function(){ decide(list[+b.getAttribute('data-no')], false, b); }; });
+    }
+    function poll(){
+      if (!ready) return;
+      api('GET', 'inbox_items?select=id,title,body,ref,created_at,created_by_name,status&kind=eq.soot_data_update&status=eq.new&order=created_at.desc&limit=200')
+        .then(function(list){
+          CACHE = list || [];
+          var pill = document.getElementById('wfDuPill'), panel = document.getElementById('wfDuPanel');
+          if (pill){
+            if (CACHE.length){ pill.style.display = 'inline-flex'; pill.innerHTML = '✎ طلبات تحديث بيانات (' + CACHE.length + ')'; }
+            else { pill.style.display = 'none'; if (panel) panel.style.display = 'none'; }
+          }
+          if (panel && panel.style.display !== 'none') render(CACHE);
+        }).catch(function(){});
+    }
+    function build(){
+      if (document.getElementById('wfDuPill') || !document.body) return;
+      css();
+      var pill = document.createElement('button'); pill.id = 'wfDuPill'; pill.innerHTML = '✎ طلبات تحديث بيانات';
+      document.body.appendChild(pill);
+      var panel = document.createElement('div'); panel.id = 'wfDuPanel'; panel.style.display = 'none';
+      document.body.appendChild(panel);
+      pill.onclick = function(){
+        if (panel.style.display !== 'none'){ panel.style.display = 'none'; return; }
+        panel.style.display = 'block'; render(CACHE);
+      };
+    }
+    setTimeout(function(){ try { build(); poll(); } catch(_){} }, 2000);
+    setInterval(function(){ try { build(); poll(); } catch(_){} }, 20000);
+    window.wfSootDataUpd = { poll: poll, list: function(){ return CACHE; } };
+  })();
+
   /* تحديث مباشر: المنصّة تُبلغ عند أي تغيير في القاعدة → سحب الفروقات فوراً (لا يقاطع رفعاً جارياً) */
   var pokeT = null;
   function poke(){ if (!ready) return; clearTimeout(pokeT); pokeT = setTimeout(function(){ if (pushing) return poke(); pullAll().catch(function(){}); }, 400); }
