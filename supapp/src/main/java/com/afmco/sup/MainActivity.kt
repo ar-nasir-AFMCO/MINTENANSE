@@ -56,15 +56,15 @@ private fun waNumber(raw: String): String {
     return d
 }
 
-private val Green = Color(0xFF0B7A4B)
-private val GreenD = Color(0xFF064E30)
-private val Gold = Color(0xFFC99A2E)
-private val Red = Color(0xFFD84646)
-private val Amber = Color(0xFFD9961F)
-private val Blue = Color(0xFF2D72C6)
-private val Violet = Color(0xFF7A4FC0)
-private val Gray = Color(0xFF8A9A92)
-private val Bg = Color(0xFFF1F6F3)
+private val Green = Color(0xFF0EA47A)
+private val GreenD = Color(0xFF0B8263)
+private val Gold = Color(0xFFD97706)
+private val Red = Color(0xFFE11D48)
+private val Amber = Color(0xFFD97706)
+private val Blue = Color(0xFF2563EB)
+private val Violet = Color(0xFF7C3AED)
+private val Gray = Color(0xFF667588)
+private val Bg = Color(0xFFF7F9FB)
 
 private val PRIORITIES = listOf("urgent" to "عاجل", "high" to "عالي", "med" to "متوسط", "low" to "منخفض")
 fun prioLabel(p: String) = PRIORITIES.firstOrNull { it.first == p }?.second ?: p
