@@ -350,8 +350,8 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onUpdates: () -
                 error != null -> Text("تعذّر التحميل: $error", Modifier.align(Alignment.Center).padding(24.dp), color = Red)
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(14.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    // كرت الحضور — لمديري النظام فقط
-                    if (session.role == "admin" || session.role == "manager") item {
+                    // كرت الحضور — يسجّل كل المشرفين حضورهم (المتابعة في صفحة الإدارة فقط)
+                    item {
                         val checkedIn = att?.optBoolean("checked_in") == true
                         val site = att?.optString("site").takeUnless { it.isNullOrBlank() || it == "null" }
                         Card(
