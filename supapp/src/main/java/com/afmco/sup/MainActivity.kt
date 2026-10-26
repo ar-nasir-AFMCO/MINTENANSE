@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.window.Dialog
@@ -235,6 +236,39 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onUpdates: () -
     var refreshKey by remember { mutableStateOf(0) }
     var pendingUpdates by remember { mutableStateOf(0) }
     LaunchedEffect(refreshKey) { try { pendingUpdates = Api.pendingUpdates(session.token).size } catch (_: Exception) {} }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var att by remember { mutableStateOf<org.json.JSONObject?>(null) }
+    var attBusy by remember { mutableStateOf(false) }
+    var attMsg by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(refreshKey) { try { att = Api.myStatus(session.token) } catch (_: Exception) {} }
+    fun doCheck(checkIn: Boolean) {
+        attBusy = true; attMsg = null
+        scope.launch {
+            val loc = Loc.current(context)
+            if (loc == null) { attMsg = "تعذّر تحديد الموقع — فعّل GPS وتأكد من الإذن"; attBusy = false; return@launch }
+            try {
+                if (checkIn) {
+                    val r = Api.checkIn(session.token, loc.latitude, loc.longitude)
+                    TrackingService.start(context)
+                    attMsg = if (r.optBoolean("inside")) "تم الحضور · داخل ${r.optString("site")}"
+                             else "تم الحضور · خارج المواقع (${r.optInt("dist")} م من ${r.optString("site", "أقرب موقع")})"
+                } else {
+                    Api.checkOut(session.token, loc.latitude, loc.longitude)
+                    TrackingService.stop(context)
+                    attMsg = "تم الانصراف"
+                }
+                att = Api.myStatus(session.token)
+            } catch (e: Exception) { attMsg = e.message } finally { attBusy = false }
+        }
+    }
+    val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { res ->
+        if (res.values.any { it }) doCheck(true) else attMsg = "يلزم إذن الموقع لتسجيل الحضور"
+    }
+    fun startCheckIn() {
+        if (Loc.hasPermission(context)) doCheck(true)
+        else permLauncher.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION))
+    }
 
     LaunchedEffect(refreshKey) {
         loading = true; error = null
@@ -288,6 +322,34 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onUpdates: () -
                 error != null -> Text("تعذّر التحميل: $error", Modifier.align(Alignment.Center).padding(24.dp), color = Red)
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(14.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    item {
+                        val checkedIn = att?.optBoolean("checked_in") == true
+                        val site = att?.optString("site").takeUnless { it.isNullOrBlank() || it == "null" }
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = if (checkedIn) Green.copy(alpha = .08f) else Color.White),
+                            shape = RoundedCornerShape(14.dp),
+                            border = if (checkedIn) androidx.compose.foundation.BorderStroke(1.5.dp, Green) else androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
+                        ) {
+                            Column(Modifier.padding(14.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(Modifier.size(10.dp).clip(CircleShape).background(if (checkedIn) Green else Gray))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(if (checkedIn) "في الدوام" else "خارج الدوام", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = if (checkedIn) Green else Gray)
+                                    Spacer(Modifier.weight(1f))
+                                    if (attBusy) CircularProgressIndicator(Modifier.size(20.dp), color = Green, strokeWidth = 2.dp)
+                                    else Button(
+                                        onClick = { if (checkedIn) doCheck(false) else startCheckIn() },
+                                        colors = ButtonDefaults.buttonColors(containerColor = if (checkedIn) Red else Green),
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) { Text(if (checkedIn) "انصراف" else "حضور", color = Color.White, fontWeight = FontWeight.Bold) }
+                                }
+                                if (checkedIn && site != null) { Spacer(Modifier.height(4.dp)); Text("الموقع: $site", fontSize = 12.sp, color = Gray) }
+                                if (attMsg != null) { Spacer(Modifier.height(6.dp)); Text(attMsg!!, fontSize = 12.sp, color = Green) }
+                                Spacer(Modifier.height(6.dp))
+                                Text("يُسجَّل موقعك كل ٥ دقائق أثناء الدوام فقط", fontSize = 10.sp, color = Gray)
+                            }
+                        }
+                    }
                     item {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Kpi("تجاوز المهلة", list.count { it.overdue }, Red, kpiFilter == "overdue", Modifier.weight(1f)) { kpiFilter = if (kpiFilter == "overdue") null else "overdue" }
@@ -465,6 +527,8 @@ fun DetailScreen(session: SupSession, c: Complaint, onChanged: () -> Unit, onBac
     var parties by remember { mutableStateOf<List<ExtraParty>>(emptyList()) }
     var mentionQuery by remember { mutableStateOf("") }
     var mentionOpen by remember { mutableStateOf(false) }
+    var descTr by remember { mutableStateOf<String?>(null) }
+    var descBusy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val canAttach = c.departmentCode == "veh" || c.departmentCode == "house"
@@ -542,7 +606,23 @@ fun DetailScreen(session: SupSession, c: Complaint, onChanged: () -> Unit, onBac
                         }
                         Spacer(Modifier.height(8.dp))
                         Text("👤 ${c.empName ?: "—"}" + (c.empIqama?.let { "  ·  🆔 $it" } ?: "") + "  ·  📁 ${c.projectName ?: c.projectCode ?: "—"}", fontSize = 12.sp, color = Gray)
-                        if (!c.description.isNullOrBlank()) { Spacer(Modifier.height(8.dp)); Text(c.description, fontSize = 13.sp) }
+                        if (!c.description.isNullOrBlank()) {
+                            Spacer(Modifier.height(8.dp)); Text(c.description, fontSize = 13.sp)
+                            if (descTr == null) {
+                                TextButton(onClick = {
+                                    descBusy = true
+                                    scope.launch { try { descTr = Api.translate(c.description, "ar") } catch (e: Exception) { toast = "تعذّرت الترجمة" } finally { descBusy = false } }
+                                }, contentPadding = PaddingValues(0.dp)) {
+                                    if (descBusy) CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp, color = Blue)
+                                    else Text("🌐 ترجمة للعربية", fontSize = 12.sp, color = Blue)
+                                }
+                            } else {
+                                Spacer(Modifier.height(4.dp))
+                                Surface(color = Color(0xFFEFF6FF), shape = RoundedCornerShape(8.dp)) {
+                                    Text(descTr!!, fontSize = 13.sp, color = Color(0xFF1E3A5F), modifier = Modifier.padding(8.dp))
+                                }
+                            }
+                        }
                         Spacer(Modifier.height(6.dp))
                         if (!c.plate.isNullOrBlank()) InfoLine("🚗 لوحة المركبة", c.plate)
                         if (c.amount != null) InfoLine("💰 المبلغ", "${fmtAmount(c.amount)} ر.س")
@@ -734,12 +814,30 @@ fun TimelineRow(e: Event) {
 @Composable
 fun MessageRow(m: Msg) {
     val emp = m.authorKind == "employee"
+    val scope = rememberCoroutineScope()
+    var tr by remember(m.body) { mutableStateOf<String?>(null) }
+    var busy by remember(m.body) { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = if (emp) Arrangement.Start else Arrangement.End) {
         Surface(color = if (emp) Color.White else Color(0xFFE9F5EE), shape = RoundedCornerShape(14.dp),
             shadowElevation = 1.dp, modifier = Modifier.widthIn(max = 280.dp)) {
             Column(Modifier.padding(10.dp)) {
                 Text(m.authorName ?: (if (emp) "الموظف" else "أنا"), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (emp) Blue else Green)
                 Text(m.body, fontSize = 13.sp)
+                // زر ترجمة لرسائل الموظف فقط (قد تكون بلغة أخرى)
+                if (emp) {
+                    if (tr == null) {
+                        TextButton(onClick = {
+                            busy = true
+                            scope.launch { try { tr = Api.translate(m.body, "ar") } catch (_: Exception) { tr = "تعذّرت الترجمة" } finally { busy = false } }
+                        }, contentPadding = PaddingValues(0.dp)) {
+                            if (busy) CircularProgressIndicator(Modifier.size(13.dp), strokeWidth = 2.dp, color = Blue)
+                            else Text("🌐 ترجمة", fontSize = 11.sp, color = Blue)
+                        }
+                    } else {
+                        Spacer(Modifier.height(4.dp))
+                        Text(tr!!, fontSize = 12.5.sp, color = Color(0xFF1E3A5F))
+                    }
+                }
             }
         }
     }

@@ -266,6 +266,55 @@ object Api {
         rpc(token, "sup_review_update", JSONObject().put("p_request", request).put("p_approve", approve).put("p_note", note ?: JSONObject.NULL))
     }
 
+    /** حالة حضور المشرف الحالية */
+    suspend fun myStatus(token: String): JSONObject = JSONObject(rpc(token, "sup_my_status", JSONObject()))
+
+    /** تسجيل حضور (مع الموقع) */
+    suspend fun checkIn(token: String, lat: Double, lng: Double): JSONObject =
+        JSONObject(rpc(token, "sup_checkin", JSONObject().put("p_lat", lat).put("p_lng", lng)))
+
+    /** تسجيل انصراف */
+    suspend fun checkOut(token: String, lat: Double, lng: Double): JSONObject =
+        JSONObject(rpc(token, "sup_checkout", JSONObject().put("p_lat", lat).put("p_lng", lng)))
+
+    /** نبضة موقع دورية */
+    suspend fun ping(token: String, lat: Double, lng: Double, acc: Double?) {
+        rpc(token, "sup_ping", JSONObject().put("p_lat", lat).put("p_lng", lng).put("p_acc", acc ?: JSONObject.NULL))
+    }
+
+    /** ترجمة نص حر إلى اللغة الهدف مع كشف تلقائي للمصدر (Google gtx المجاني) */
+    suspend fun translate(text: String, target: String): String = withContext(Dispatchers.IO) {
+        if (text.isBlank()) return@withContext text
+        try {
+            val q = java.net.URLEncoder.encode(text, "UTF-8")
+            val req = Request.Builder()
+                .url("https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=$target&dt=t&q=$q")
+                .header("User-Agent", "Mozilla/5.0")
+                .build()
+            client.newCall(req).execute().use { r ->
+                val t = r.body?.string() ?: return@withContext text
+                // الصيغة: [[["ترجمة","أصل",...],["جزء2",...]], ...]
+                val segs = JSONArray(t).optJSONArray(0) ?: return@withContext text
+                val sb = StringBuilder()
+                for (i in 0 until segs.length()) {
+                    segs.optJSONArray(i)?.optString(0)?.let { sb.append(it) }
+                }
+                val out = sb.toString()
+                if (out.isBlank()) text else out
+            }
+        } catch (e: Exception) {
+            // احتياطي: MyMemory مع افتراض الإنجليزية كمصدر
+            try {
+                val q = java.net.URLEncoder.encode(text, "UTF-8")
+                val req = Request.Builder().url("https://api.mymemory.translated.net/get?q=$q&langpair=en|$target").build()
+                client.newCall(req).execute().use { r ->
+                    val t = r.body?.string() ?: return@withContext text
+                    JSONObject(t).optJSONObject("responseData")?.optString("translatedText") ?: text
+                }
+            } catch (e2: Exception) { text }
+        }
+    }
+
     /** رفع صورة إلى تخزين Supabase وإرجاع الرابط العام */
     suspend fun uploadPhoto(bytes: ByteArray, ext: String): String = withContext(Dispatchers.IO) {
         val name = "s_" + System.currentTimeMillis() + "_" + (0..9999).random() + "." + ext
