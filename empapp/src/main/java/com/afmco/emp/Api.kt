@@ -79,6 +79,8 @@ data class MyVehicle(val plate: String, val project: String?, val make: String?,
     val label: String get() = plate + listOfNotNull(make, model).joinToString(" ").let { if (it.isNotBlank()) " · $it" else "" }
 }
 
+data class Advance(val id: String, val amount: Double, val reason: String?, val status: String, val note: String?, val createdAt: String?)
+
 data class Housing(val building: String?, val room: String?, val city: String?, val label: String) {
     companion object {
         fun from(o: JSONObject) = Housing(
@@ -177,6 +179,21 @@ object Api {
     /** طلب تحديث بيانات الموظف (يعتمده المشرف) — الحقل: phone | project_code | bank_account */
     suspend fun requestUpdate(token: String, field: String, newValue: String) {
         rpc("emp_request_update", JSONObject().put("p_token", token).put("p_field", field).put("p_new_value", newValue))
+    }
+
+    /** طلب سلفة (حد أعلى 300 ريال) */
+    suspend fun requestAdvance(token: String, amount: Double, reason: String?) {
+        rpc("emp_request_advance", JSONObject().put("p_token", token).put("p_amount", amount).put("p_reason", reason ?: JSONObject.NULL))
+    }
+
+    /** سلف الموظف وحالتها */
+    suspend fun myAdvances(token: String): List<Advance> {
+        val arr = JSONArray(rpc("emp_my_advances", JSONObject().put("p_token", token)))
+        return (0 until arr.length()).map {
+            val o = arr.getJSONObject(it)
+            Advance(o.optString("id"), o.optDouble("amount", 0.0), o.optStringOrNull("reason"),
+                o.optString("status"), o.optStringOrNull("note"), o.optStringOrNull("created_at"))
+        }
     }
 
     /** رفع صورة إلى تخزين Supabase (bucket عام) وإرجاع الرابط العام */

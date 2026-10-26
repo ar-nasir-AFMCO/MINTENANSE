@@ -230,6 +230,7 @@ fun AppRoot() {
     var detail by remember { mutableStateOf<Complaint?>(null) }
     var newFlow by remember { mutableStateOf(false) }
     var updateFlow by remember { mutableStateOf(false) }
+    var advanceFlow by remember { mutableStateOf(false) }
     var reload by remember { mutableStateOf(0) }
     var booting by remember { mutableStateOf(true) }
     val context = LocalContext.current
@@ -287,8 +288,10 @@ fun AppRoot() {
             s == null -> LoginScreen(onLogin = { sess, iq, pn -> Prefs.save(context, iq, pn); session = sess })
             newFlow -> NewComplaintFlow(s, onDone = { newFlow = false; reload++ }, onCancel = { newFlow = false })
             updateFlow -> DataUpdateScreen(s) { updateFlow = false }
+            advanceFlow -> AdvanceScreen(s) { advanceFlow = false }
             detail != null -> DetailScreen(s, detail!!, onChanged = { reload++ }) { detail = null }
             else -> HomeScreen(s, reload, onOpen = { detail = it }, onNew = { newFlow = true }, onUpdateData = { updateFlow = true },
+                onAdvance = { advanceFlow = true },
                 onLogout = { Prefs.clearCreds(context); session = null; detail = null })
         }
     }
@@ -363,7 +366,7 @@ fun LoginScreen(onLogin: (Session, String, String) -> Unit) {
 }
 
 @Composable
-fun HomeScreen(session: Session, reload: Int, onOpen: (Complaint) -> Unit, onNew: () -> Unit, onUpdateData: () -> Unit, onLogout: () -> Unit) {
+fun HomeScreen(session: Session, reload: Int, onOpen: (Complaint) -> Unit, onNew: () -> Unit, onUpdateData: () -> Unit, onAdvance: () -> Unit, onLogout: () -> Unit) {
     val L = LocalL.current
     val lang = LocalLang.current
     var list by remember { mutableStateOf<List<Complaint>>(emptyList()) }
@@ -412,10 +415,15 @@ fun HomeScreen(session: Session, reload: Int, onOpen: (Complaint) -> Unit, onNew
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     item { ProfileCard(session, vehicles) }
                     item {
-                        OutlinedButton(onClick = onUpdateData, modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)) {
-                            Text("✎  " + when (lang) { Lang.EN -> "Update my data"; Lang.UR -> "میرا ڈیٹا اپ ڈیٹ کریں"; else -> "تحديث بياناتي" },
-                                fontSize = 13.sp, fontWeight = FontWeight.Bold, color = GreenD)
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            OutlinedButton(onClick = onUpdateData, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) {
+                                Text("✎  " + when (lang) { Lang.EN -> "Update my data"; Lang.UR -> "ڈیٹا اپ ڈیٹ"; else -> "تحديث بياناتي" },
+                                    fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = GreenD)
+                            }
+                            OutlinedButton(onClick = onAdvance, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) {
+                                Text("💵  " + when (lang) { Lang.EN -> "Advance"; Lang.UR -> "ایڈوانس"; else -> "طلب سلفة" },
+                                    fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = GreenD)
+                            }
                         }
                     }
                     val pending = list.count { it.closePending }
@@ -760,6 +768,85 @@ fun DataUpdateScreen(session: Session, onBack: () -> Unit) {
                 }, enabled = value.isNotBlank() && !submitting, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp)) {
                     if (submitting) CircularProgressIndicator(Modifier.size(22.dp), color = Color.White, strokeWidth = 2.dp)
                     else Text(tSubmit, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AdvanceScreen(session: Session, onBack: () -> Unit) {
+    val lang = LocalLang.current
+    val scope = rememberCoroutineScope()
+    var amount by remember { mutableStateOf("") }
+    var reason by remember { mutableStateOf("") }
+    var submitting by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var advances by remember { mutableStateOf<List<Advance>>(emptyList()) }
+    var reload by remember { mutableStateOf(0) }
+    BackHandler { onBack() }
+    LaunchedEffect(reload) { try { advances = Api.myAdvances(session.token) } catch (_: Exception) {} }
+
+    val title = when (lang) { Lang.EN -> "Salary advance"; Lang.UR -> "ایڈوانس"; else -> "طلب سلفة" }
+    val tAmount = when (lang) { Lang.EN -> "Amount (max 300 SAR)"; Lang.UR -> "رقم (زیادہ سے زیادہ 300 ریال)"; else -> "المبلغ (الحد الأعلى 300 ريال)" }
+    val tReason = when (lang) { Lang.EN -> "Reason (optional)"; Lang.UR -> "وجہ (اختیاری)"; else -> "السبب (اختياري)" }
+    val tSubmit = when (lang) { Lang.EN -> "Request advance"; Lang.UR -> "ایڈوانس کی درخواست"; else -> "إرسال طلب السلفة" }
+    val tHint = when (lang) { Lang.EN -> "Your supervisor reviews and approves the advance."; Lang.UR -> "آپ کا سپروائزر ایڈوانس کی منظوری دیتا ہے۔"; else -> "يراجع المشرف الطلب ويعتمده." }
+    val tMine = when (lang) { Lang.EN -> "My advances"; Lang.UR -> "میرے ایڈوانس"; else -> "سلفي" }
+    fun stLabel(s: String) = when (s) {
+        "approved" -> when (lang) { Lang.EN -> "Approved"; Lang.UR -> "منظور"; else -> "معتمدة" }
+        "rejected" -> when (lang) { Lang.EN -> "Rejected"; Lang.UR -> "مسترد"; else -> "مرفوضة" }
+        else -> when (lang) { Lang.EN -> "Pending"; Lang.UR -> "زیر التواء"; else -> "قيد المراجعة" }
+    }
+    fun stColor(s: String) = when (s) { "approved" -> Green; "rejected" -> Red; else -> Amber }
+
+    Scaffold(containerColor = Bg, topBar = { TopBar(title, onBack = onBack) }) { pad ->
+        LazyColumn(Modifier.padding(pad).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item {
+                Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp)) {
+                    Column(Modifier.padding(16.dp)) {
+                        OutlinedTextField(amount, { new -> amount = new.filter { it.isDigit() || it == '.' } }, label = { Text(tAmount) }, singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                        Spacer(Modifier.height(12.dp))
+                        OutlinedTextField(reason, { reason = it }, label = { Text(tReason) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        Spacer(Modifier.height(10.dp))
+                        Surface(color = Color(0xFFF1F5F9), shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+                            Text("ℹ  $tHint", fontSize = 11.5.sp, color = Gray, modifier = Modifier.padding(11.dp))
+                        }
+                        if (error != null) { Spacer(Modifier.height(10.dp)); Text(error!!, color = Red, fontSize = 12.sp) }
+                        Spacer(Modifier.height(16.dp))
+                        Button(onClick = {
+                            error = null
+                            val amt = amount.toDoubleOrNull()
+                            if (amt == null || amt <= 0) { error = when (lang) { Lang.EN -> "Enter a valid amount"; Lang.UR -> "درست رقم درج کریں"; else -> "أدخل مبلغًا صحيحًا" }; return@Button }
+                            if (amt > 300) { error = when (lang) { Lang.EN -> "Maximum advance is 300 SAR"; Lang.UR -> "زیادہ سے زیادہ 300 ریال"; else -> "الحد الأعلى للسلفة 300 ريال" }; return@Button }
+                            submitting = true
+                            scope.launch {
+                                try { Api.requestAdvance(session.token, amt, reason.trim().ifBlank { null }); amount = ""; reason = ""; reload++ }
+                                catch (e: Exception) { error = e.message ?: "تعذّر الإرسال" }
+                                finally { submitting = false }
+                            }
+                        }, enabled = amount.isNotBlank() && !submitting, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp)) {
+                            if (submitting) CircularProgressIndicator(Modifier.size(22.dp), color = Color.White, strokeWidth = 2.dp)
+                            else Text(tSubmit, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+            if (advances.isNotEmpty()) {
+                item { Text(tMine, fontWeight = FontWeight.Bold, color = GreenD, fontSize = 14.sp) }
+                items(advances) { a ->
+                    Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(12.dp)) {
+                        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("${a.amount.toInt()} ريال", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = GreenD)
+                                if (!a.reason.isNullOrBlank()) Text(a.reason, fontSize = 12.sp, color = Gray)
+                                if (!a.note.isNullOrBlank()) Text(a.note, fontSize = 11.5.sp, color = Gray)
+                                a.createdAt?.let { Text(it.take(10), fontSize = 11.sp, color = Gray) }
+                            }
+                            StatusBadge(stLabel(a.status), stColor(a.status))
+                        }
+                    }
                 }
             }
         }
