@@ -79,6 +79,14 @@ data class MyVehicle(val plate: String, val project: String?, val make: String?,
     val label: String get() = plate + listOfNotNull(make, model).joinToString(" ").let { if (it.isNotBlank()) " · $it" else "" }
 }
 
+data class Housing(val building: String?, val room: String?, val city: String?, val label: String) {
+    companion object {
+        fun from(o: JSONObject) = Housing(
+            o.optStringOrNull("building"), o.optStringOrNull("room"),
+            o.optStringOrNull("city"), o.optString("label"))
+    }
+}
+
 data class Msg(val authorKind: String, val authorName: String?, val body: String, val createdAt: String?) {
     companion object { fun from(o: JSONObject) = Msg(o.optString("author_kind"), o.optStringOrNull("author_name"), o.optString("body"), o.optStringOrNull("created_at")) }
 }
@@ -158,6 +166,17 @@ object Api {
     suspend fun myVehicles(token: String): List<MyVehicle> {
         val arr = JSONArray(rpc("emp_my_vehicles", JSONObject().put("p_token", token)))
         return (0 until arr.length()).map { MyVehicle.from(arr.getJSONObject(it)) }
+    }
+
+    /** سكن الموظف (المبنى/الغرفة) من وثيق */
+    suspend fun myHousing(token: String): List<Housing> {
+        val arr = JSONArray(rpc("emp_housing", JSONObject().put("p_token", token)))
+        return (0 until arr.length()).map { Housing.from(arr.getJSONObject(it)) }
+    }
+
+    /** طلب تحديث بيانات الموظف (يعتمده المشرف) — الحقل: phone | project_code | bank_account */
+    suspend fun requestUpdate(token: String, field: String, newValue: String) {
+        rpc("emp_request_update", JSONObject().put("p_token", token).put("p_field", field).put("p_new_value", newValue))
     }
 
     /** رفع صورة إلى تخزين Supabase (bucket عام) وإرجاع الرابط العام */

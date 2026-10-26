@@ -228,6 +228,7 @@ fun AppRoot() {
     var session by remember { mutableStateOf<Session?>(null) }
     var detail by remember { mutableStateOf<Complaint?>(null) }
     var newFlow by remember { mutableStateOf(false) }
+    var updateFlow by remember { mutableStateOf(false) }
     var reload by remember { mutableStateOf(0) }
     var booting by remember { mutableStateOf(true) }
     val context = LocalContext.current
@@ -276,8 +277,9 @@ fun AppRoot() {
             booting -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Green) }
             s == null -> LoginScreen(onLogin = { sess, iq, pn -> Prefs.save(context, iq, pn); session = sess })
             newFlow -> NewComplaintFlow(s, onDone = { newFlow = false; reload++ }, onCancel = { newFlow = false })
+            updateFlow -> DataUpdateScreen(s) { updateFlow = false }
             detail != null -> DetailScreen(s, detail!!, onChanged = { reload++ }) { detail = null }
-            else -> HomeScreen(s, reload, onOpen = { detail = it }, onNew = { newFlow = true },
+            else -> HomeScreen(s, reload, onOpen = { detail = it }, onNew = { newFlow = true }, onUpdateData = { updateFlow = true },
                 onLogout = { Prefs.clearCreds(context); session = null; detail = null })
         }
     }
@@ -352,8 +354,9 @@ fun LoginScreen(onLogin: (Session, String, String) -> Unit) {
 }
 
 @Composable
-fun HomeScreen(session: Session, reload: Int, onOpen: (Complaint) -> Unit, onNew: () -> Unit, onLogout: () -> Unit) {
+fun HomeScreen(session: Session, reload: Int, onOpen: (Complaint) -> Unit, onNew: () -> Unit, onUpdateData: () -> Unit, onLogout: () -> Unit) {
     val L = LocalL.current
+    val lang = LocalLang.current
     var list by remember { mutableStateOf<List<Complaint>>(emptyList()) }
     var vehicles by remember { mutableStateOf<List<MyVehicle>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
@@ -378,6 +381,13 @@ fun HomeScreen(session: Session, reload: Int, onOpen: (Complaint) -> Unit, onNew
                 error != null -> Text("${L.loadFail}: $error", Modifier.align(Alignment.Center).padding(24.dp), color = Red)
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     item { ProfileCard(session, vehicles) }
+                    item {
+                        OutlinedButton(onClick = onUpdateData, modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)) {
+                            Text("✎  " + when (lang) { Lang.EN -> "Update my data"; Lang.UR -> "میرا ڈیٹا اپ ڈیٹ کریں"; else -> "تحديث بياناتي" },
+                                fontSize = 13.sp, fontWeight = FontWeight.Bold, color = GreenD)
+                        }
+                    }
                     val pending = list.count { it.closePending }
                     if (pending > 0) item {
                         Surface(color = Amber.copy(alpha = .14f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -543,12 +553,19 @@ fun ComplaintForm(session: Session, dept: Department, cat: Category, onDone: () 
     var vehicles by remember { mutableStateOf<List<MyVehicle>>(emptyList()) }
     var vehExpanded by remember { mutableStateOf(false) }
     var manualPlate by remember { mutableStateOf(false) }
+    var housing by remember { mutableStateOf<Housing?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val lang = LocalLang.current
 
     LaunchedEffect(cat.needsPlate) {
         if (cat.needsPlate) {
             try { val vs = Api.myVehicles(session.token); vehicles = vs; if (plate.isBlank() && vs.isNotEmpty()) plate = vs[0].plate } catch (_: Exception) {}
+        }
+    }
+    LaunchedEffect(dept.code) {
+        if (dept.code == "house") {
+            try { housing = Api.myHousing(session.token).firstOrNull() } catch (_: Exception) {}
         }
     }
 
@@ -580,6 +597,20 @@ fun ComplaintForm(session: Session, dept: Department, cat: Category, onDone: () 
         Spacer(Modifier.height(10.dp))
         OutlinedTextField(loc, { loc = it }, label = { Text(L.locationField) }, singleLine = true, modifier = Modifier.fillMaxWidth())
 
+        if (dept.code == "house" && housing != null) {
+            Spacer(Modifier.height(10.dp))
+            Surface(color = Color(0xFFE6F6F1), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("🏠", fontSize = 18.sp); Spacer(Modifier.width(9.dp))
+                    Column {
+                        Text(when (lang) { Lang.EN -> "Your housing"; Lang.UR -> "آپ کی رہائش"; else -> "سكنك" },
+                            fontSize = 11.sp, color = Gray, fontWeight = FontWeight.Bold)
+                        Text(housing!!.label, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = GreenD)
+                    }
+                }
+            }
+        }
+
         if (cat.needsPlate) {
             Spacer(Modifier.height(10.dp))
             if (vehicles.isNotEmpty() && !manualPlate) {
@@ -605,17 +636,7 @@ fun ComplaintForm(session: Session, dept: Department, cat: Category, onDone: () 
             if (amountBad) Text("${L.amountExceeds} ${cat.maxAmount?.toInt()} ${L.sar}", color = Red, fontSize = 12.sp)
         }
 
-        Spacer(Modifier.height(12.dp))
-        Text(L.priority, fontSize = 12.sp, color = Gray)
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            PRIOS.forEach { k ->
-                val sel = priority == k
-                Surface(color = if (sel) prioColor(k) else Color(0xFFF0F3F1), shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f)) {
-                    Text(prioLabel(k, L), color = if (sel) Color.White else Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(vertical = 8.dp).fillMaxWidth().clickable { priority = k })
-                }
-            }
-        }
+        // الأولوية صار يحددها المشرف — تُرسَل افتراضيًا "med"
 
         if (cat.needsPhoto) {
             Spacer(Modifier.height(14.dp))
@@ -640,6 +661,78 @@ fun ComplaintForm(session: Session, dept: Department, cat: Category, onDone: () 
             else Text(L.submit, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(30.dp))
+    }
+}
+
+@Composable
+fun DataUpdateScreen(session: Session, onBack: () -> Unit) {
+    val lang = LocalLang.current
+    val scope = rememberCoroutineScope()
+    var fieldKey by remember { mutableStateOf("phone") }
+    var expanded by remember { mutableStateOf(false) }
+    var value by remember { mutableStateOf("") }
+    var submitting by remember { mutableStateOf(false) }
+    var done by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    BackHandler { onBack() }
+
+    val fields = listOf(
+        "phone" to (when (lang) { Lang.EN -> "Phone number"; Lang.UR -> "فون نمبر"; else -> "رقم الاتصال" }),
+        "project_code" to (when (lang) { Lang.EN -> "Project"; Lang.UR -> "پروجیکٹ"; else -> "المشروع" }),
+        "bank_account" to (when (lang) { Lang.EN -> "Bank account"; Lang.UR -> "بینک اکاؤنٹ"; else -> "الحساب البنكي" })
+    )
+    val fieldLabel = fields.first { it.first == fieldKey }.second
+    val title = when (lang) { Lang.EN -> "Update my data"; Lang.UR -> "میرا ڈیٹا اپ ڈیٹ"; else -> "تحديث بياناتي" }
+    val tField = when (lang) { Lang.EN -> "Field to update"; Lang.UR -> "اپ ڈیٹ فیلڈ"; else -> "الحقل المراد تحديثه" }
+    val tNew = when (lang) { Lang.EN -> "New value"; Lang.UR -> "نئی قدر"; else -> "القيمة الجديدة" }
+    val tSubmit = when (lang) { Lang.EN -> "Send request"; Lang.UR -> "درخواست بھیجیں"; else -> "إرسال الطلب" }
+    val tHint = when (lang) { Lang.EN -> "Your supervisor reviews and approves the change in Watheeq."; Lang.UR -> "آپ کا سپروائزر وثیق میں تبدیلی کی منظوری دیتا ہے۔"; else -> "يراجع المشرف الطلب ويعتمده في وثيق." }
+    val tDone = when (lang) { Lang.EN -> "Request sent to your supervisor"; Lang.UR -> "درخواست سپروائزر کو بھیج دی گئی"; else -> "تم إرسال الطلب للمشرف" }
+
+    Scaffold(containerColor = Bg, topBar = { TopBar(title, onBack = onBack) }) { pad ->
+        Column(Modifier.padding(pad).fillMaxSize().padding(16.dp)) {
+            if (done) {
+                Spacer(Modifier.height(40.dp))
+                Text("✅", fontSize = 40.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
+                Spacer(Modifier.height(12.dp))
+                Text(tDone, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = GreenD, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(24.dp))
+                Button(onClick = onBack, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(14.dp)) {
+                    Text(when (lang) { Lang.EN -> "Done"; Lang.UR -> "ہو گیا"; else -> "تم" }, fontWeight = FontWeight.Bold)
+                }
+            } else {
+                Text(tField, fontSize = 12.sp, color = Gray)
+                Spacer(Modifier.height(6.dp))
+                ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
+                    OutlinedTextField(value = fieldLabel, onValueChange = {}, readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor())
+                    ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                        fields.forEach { f -> DropdownMenuItem(text = { Text(f.second) }, onClick = { fieldKey = f.first; expanded = false }) }
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+                OutlinedTextField(value, { value = it }, label = { Text(tNew) }, singleLine = true,
+                    keyboardOptions = if (fieldKey == "phone" || fieldKey == "bank_account") KeyboardOptions(keyboardType = KeyboardType.Number) else KeyboardOptions.Default,
+                    modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(10.dp))
+                Surface(color = Color(0xFFF1F5F9), shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+                    Text("ℹ  $tHint", fontSize = 11.5.sp, color = Gray, modifier = Modifier.padding(11.dp))
+                }
+                if (error != null) { Spacer(Modifier.height(10.dp)); Text(error!!, color = Red, fontSize = 12.sp) }
+                Spacer(Modifier.height(20.dp))
+                Button(onClick = {
+                    error = null; submitting = true
+                    scope.launch {
+                        try { Api.requestUpdate(session.token, fieldKey, value.trim()); done = true }
+                        catch (e: Exception) { error = e.message ?: "تعذّر الإرسال"; submitting = false }
+                    }
+                }, enabled = value.isNotBlank() && !submitting, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp)) {
+                    if (submitting) CircularProgressIndicator(Modifier.size(22.dp), color = Color.White, strokeWidth = 2.dp)
+                    else Text(tSubmit, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
     }
 }
 
