@@ -78,7 +78,7 @@ create or replace view public.v_sup_settings as
     coalesce(s.work_start,'08:00') as work_start,
     coalesce(s.work_end,'21:00')   as work_end,
     coalesce(s.grace_min,10)       as grace_min,
-    s.areas, s.site_ids, s.updated_at
+    s.areas, s.updated_at, s.site_ids
   from public.profiles p
   left join public.supervisor_settings s on s.supervisor_id = p.id
   where p.role in ('supervisor','manager','admin');
