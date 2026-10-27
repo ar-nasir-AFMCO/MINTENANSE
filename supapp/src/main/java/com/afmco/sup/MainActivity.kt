@@ -262,9 +262,12 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onUpdates: () -
             try {
                 if (checkIn) {
                     val r = Api.checkIn(session.token, loc.latitude, loc.longitude)
-                    TrackingService.start(context)
-                    attMsg = if (r.optBoolean("inside")) "تم الحضور · داخل ${r.optString("site")}"
-                             else "تم الحضور · خارج المواقع (${r.optInt("dist")} م من ${r.optString("site", "أقرب موقع")})"
+                    if (r.optBoolean("inside")) {
+                        TrackingService.start(context)
+                        attMsg = "تم الحضور · داخل ${r.optString("site")}"
+                    } else {
+                        attMsg = "تعذّر تسجيل الحضور — أنت خارج موقع الدوام (${r.optInt("dist")} م من ${r.optStringOrNull("site") ?: "أقرب موقع"}). حُفظت المحاولة."
+                    }
                 } else {
                     Api.checkOut(session.token, loc.latitude, loc.longitude)
                     TrackingService.stop(context)
@@ -375,7 +378,7 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onUpdates: () -
                                 if (checkedIn && site != null) { Spacer(Modifier.height(4.dp)); Text("الموقع: $site", fontSize = 12.sp, color = Gray) }
                                 if (attMsg != null) { Spacer(Modifier.height(6.dp)); Text(attMsg!!, fontSize = 12.sp, color = Green) }
                                 Spacer(Modifier.height(6.dp))
-                                Text("يُسجَّل موقعك كل ٥ دقائق أثناء الدوام فقط", fontSize = 10.sp, color = Gray)
+                                Text("التحقق من موقعك يتم تلقائيًا كل ساعة أثناء الدوام فقط", fontSize = 10.sp, color = Gray)
                             }
                         }
                     }

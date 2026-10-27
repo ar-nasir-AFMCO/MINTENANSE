@@ -54,7 +54,7 @@ class TrackingService : Service() {
                 val t = token
                 if (loc != null && t != null) Api.ping(t, loc.latitude, loc.longitude, loc.accuracy.toDouble())
             } catch (_: Exception) {}
-            delay(5 * 60 * 1000L)
+            delay(60 * 60 * 1000L)   // تحقق صامت كل ساعة
         }
     }
 
