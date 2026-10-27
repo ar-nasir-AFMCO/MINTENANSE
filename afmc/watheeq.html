@@ -570,6 +570,7 @@ section.view.on{display:block}
       <button data-view="dash" class="on">لوحة المعلومات</button>
       <button data-view="emp">الموظفون</button>
       <button data-view="proj">المشاريع</button>
+      <button data-view="field">الحضور الميداني</button>
     </nav>
     <div class="pop-wrap">
       <button class="iconbtn" id="dataBtn" title="بيانات وتصدير"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button>
@@ -631,6 +632,9 @@ section.view.on{display:block}
   <section class="view" id="view-proj">
     <div class="h-row"><div><h1>المشاريع</h1><p>ملخّص كل مشروع — مبني من البيانات المستوردة</p></div></div>
     <div class="pcards" id="projCards"></div>
+  </section>
+  <section class="view" id="view-field" style="padding:0">
+    <iframe id="fieldFrame" title="الحضور الميداني والمواقع" style="width:100%;height:calc(100vh - 150px);min-height:620px;border:0;border-radius:14px;background:#f5f6f8"></iframe>
   </section>
 </main>
 
@@ -967,7 +971,7 @@ function exportAdvances(){closeMenus();const wb=XLSX.utils.book_new();const all=
 /* ---------- nav / menus / theme ---------- */
 function go(v){state.view=v;document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.view===v));
   document.querySelectorAll('.view').forEach(s=>s.classList.remove('on'));$('#view-'+v).classList.add('on');
-  if(v==='dash')renderDash();if(v==='emp')renderEmp();if(v==='proj')renderProj();}
+  if(v==='dash')renderDash();if(v==='emp')renderEmp();if(v==='proj')renderProj();if(v==='field'){var _ff=document.getElementById('fieldFrame');if(_ff&&!_ff.src)_ff.src='soot-field.html';}}
 document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>go(b.dataset.view));
 function closeMenus(){$('#dataMenu').classList.remove('on');$('#themeMenu').classList.remove('on');}
 $('#dataBtn').onclick=e=>{e.stopPropagation();$('#themeMenu').classList.remove('on');$('#dataMenu').classList.toggle('on');};
