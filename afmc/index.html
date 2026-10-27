@@ -761,6 +761,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         <button data-v="vRev" data-need="review"><span class="ic"><svg class="i"><use href="#i-search"/></svg></span><span class="tx"><b>مراجعة البيانات</b></span><span class="cnt hide" id="revCnt"></span></button>
         <button data-v="vFin" data-need="finance"><span class="ic"><svg class="i"><use href="#i-grid"/></svg></span><span class="tx"><b>العقود والمالية</b></span></button>
         <button data-v="vLab" data-need="admin"><span class="ic"><svg class="i"><use href="#i-bolt"/></svg></span><span class="tx"><b>التجريبي</b></span></button>
+        <button data-v="vField" data-need="review"><span class="ic"><svg class="i"><use href="#i-users"/></svg></span><span class="tx"><b>الحضور الميداني</b></span></button>
       </nav></div>
       <div class="grp"><div class="lb">الأنظمة</div><nav class="nav" id="sysbar"></nav></div>
     </div>
@@ -1129,6 +1130,11 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         </div>
       </main>
 
+      <!-- ════════ الحضور الميداني ════════ -->
+      <main id="vField" class="view hide" style="padding:0;overflow:hidden">
+        <iframe id="fieldFrame" title="الحضور الميداني والمواقع" style="display:block;width:100%;height:calc(100vh - 86px);min-height:640px;border:0;background:#f5f6f8"></iframe>
+      </main>
+
       <!-- ════════ الصلاحيات والتكامل ════════ -->
       <main id="vAdm" class="view hide">
         <div class="head"><div><h2>الصلاحيات والتكامل</h2><p>اعتماد الحسابات، الأدوار والمشاريع، وحالة ربط الأنظمة.</p></div>
@@ -1491,9 +1497,9 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     }).catch(function(e){ if (!sess) { $('gate').classList.remove('hide'); return; } if (/no session/.test(e.message)) signOut(); else { $('gate').classList.remove('hide'); gateMsg('bad', 'تعذّر الاتصال بالقاعدة: ' + esc(e.message)); } });
   }
   var TITLES = { vSys:'الرئيسية', vRep:'التقارير', vAdm:'الصلاحيات والتكامل', vRev:'مراجعة البيانات',
-                 vFin:'العقود والمالية', vLab:'التجريبي' };   /* v53 */
+                 vFin:'العقود والمالية', vLab:'التجريبي', vField:'الحضور الميداني' };   /* v53 */
   function show(v, keepSys){
-    ['vSys','vRep','vAdm','vRev','vFin','vLab'].forEach(function(x){ $(x).classList.toggle('hide', x !== v); });   /* v53 */
+    ['vSys','vRep','vAdm','vRev','vFin','vLab','vField'].forEach(function(x){ $(x).classList.toggle('hide', x !== v); });   /* v53 */
     document.querySelectorAll('#tabs button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-v') === v && !(v === 'vSys' && current)); });
     if (v !== 'vSys' || !keepSys) { current = null; sysUi(); }
     $('ttl').textContent = TITLES[v]; $('crumb').textContent = 'منصة AFMCO'; $('fbar').innerHTML = '';
@@ -1501,7 +1507,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       : v === 'vFin' ? '#finance' : v === 'vLab' ? '#lab' : '#');   /* v53 */
     document.body.classList.remove('menu');
     if (v === 'vAdm') loadAdmin(); if (v === 'vRev') loadReview(); if (v === 'vRep') repInit();
-    if (v === 'vFin') finInit(); if (v === 'vLab') labInit();   /* v53 */
+    if (v === 'vFin') finInit(); if (v === 'vLab') labInit(); if (v === 'vField'){var _ff=document.getElementById('fieldFrame'); if(_ff && !_ff.getAttribute('src')) _ff.src='soot-field.html';}   /* v53 */
     if (v === 'vSys' && !keepSys && me) homeMeta();
   }
   document.querySelectorAll('#tabs button').forEach(function(b){ b.onclick = function(){ var v = b.getAttribute('data-v'); if (v === 'vSys') { try { localStorage.removeItem('afmc_portal_sys'); } catch(e){} } show(v); }; });
