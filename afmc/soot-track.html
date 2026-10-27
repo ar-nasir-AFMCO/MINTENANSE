@@ -808,13 +808,11 @@ svg.leaflet-image-layer.leaflet-interactive path {
 </div>
 
 <div class="login" id="login" style="display:none">
-  <div class="box">
-    <h2>تتبّع المشرفين</h2>
-    <p>سجّل الدخول بحساب المشرف/الإدارة لعرض الحضور والمواقع.</p>
-    <input id="lEmail" type="email" placeholder="البريد الإلكتروني" autocomplete="username">
-    <input id="lPass" type="password" placeholder="كلمة المرور" autocomplete="current-password">
-    <div class="err" id="lErr"></div>
-    <button class="btn p" id="lBtn" style="width:100%;justify-content:center">دخول</button>
+  <div class="box" style="text-align:center">
+    <div style="width:52px;height:52px;border-radius:14px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><svg class="ic" viewBox="0 0 24 24" style="width:26px;height:26px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+    <h2>حضور المشرفين</h2>
+    <div class="err" id="lErr" style="min-height:0;margin:10px 0">هذه الصفحة تستخدم جلسة منصة AFMCO. افتحها بعد تسجيل الدخول في المنصة.</div>
+    <a class="btn p" href="watheeq.html" style="width:100%;justify-content:center">فتح المنصة لتسجيل الدخول</a>
   </div>
 </div>
 
@@ -898,8 +896,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
         <div class="field" style="flex:1"><label>نهاية الدوام</label><input id="ssEnd" type="time"></div>
       </div>
       <div class="field"><label>سماح التأخير (دقيقة)</label><input id="ssGrace" type="number" min="0"></div>
-      <div class="field"><label>مناطق التغطية</label>
-        <select id="ssAreaPick"><option value="">— اختر منطقة لإضافتها —</option></select>
+      <div class="field"><label>مواقع الدوام المسندة للمشرف</label>
+        <select id="ssAreaPick"><option value="">— اختر موقعًا لإضافته —</option></select>
         <div class="sites-sm" id="ssAreaChips" style="margin-top:6px"></div>
       </div>
       <div class="row" style="margin-top:6px">
@@ -995,6 +993,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
   // ===== بيانات حيّة =====
   var sites=[], sups=[], AREAS=[];
+  function siteName(id){var s=sites.find(function(x){return x.id===id;});return s?s.name:'موقع محذوف';}
 
   function headers(){return{apikey:KEY,Authorization:'Bearer '+(TOKEN||KEY),'Content-Type':'application/json'};}
   function api(path,opt){opt=opt||{};opt.headers=Object.assign(headers(),opt.headers||{});return fetch(SB+'/rest/v1/'+path,opt).then(function(r){return r.text().then(function(t){if(!r.ok)throw new Error(t||('خطأ '+r.status));return t?JSON.parse(t):null;});});}
@@ -1007,7 +1006,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
       api('work_sites?deleted_at=is.null&order=created_at.asc&select=id,name,lat,lng,radius_m,project_code,active'),
       api('v_sup_tracking?select=supervisor_id,full_name,role,lat,lng,last_ping,inside_site,current_site,on_shift'),
       api('attendance_sessions?check_in=gte.'+encodeURIComponent(d+'T00:00:00+03:00')+'&check_in=lt.'+encodeURIComponent(nd+'T00:00:00+03:00')+'&order=check_in.asc&select=supervisor_id,site_name,check_in,check_out'),
-      api('v_sup_settings?select=supervisor_id,work_start,work_end,grace_min,areas')
+      api('v_sup_settings?select=supervisor_id,work_start,work_end,grace_min,areas,site_ids')
     ]).then(function(res){
       var ws=res[0]||[], vt=res[1]||[], asx=res[2]||[], stg=res[3]||[];
       sites=ws.map(function(s){return{id:s.id,name:s.name,lat:+s.lat,lng:+s.lng,radius:s.radius_m||150,proj:s.project_code||''};});
@@ -1021,7 +1020,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
         onShift:!!v.on_shift,
         workStartRaw:st.work_start||'08:00', workEndRaw:st.work_end||'21:00',
         startMin:toMin(st.work_start||'08:00'), grace:(st.grace_min!=null?st.grace_min:10),
-        areas:st.areas||'',
+        siteIds:(st.site_ids||'').split(',').map(function(x){return x.trim();}).filter(Boolean),
         sessions:(byId[v.supervisor_id]||[]).map(function(x){return{site:x.site,in:x.in,out:x.out};})
       };});
     });
@@ -1072,7 +1071,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
   function renderSups(){document.getElementById('supCount').textContent=sups.length;document.getElementById('mapNow').textContent=sups.map(calc).filter(function(c){return c.inside;}).length+' داخل المواقع';
     document.getElementById('supList').innerHTML=sups.length?sups.map(function(u){var c=calc(u);var sub=c.status==='abs'?'لم يسجّل حضور':(c.inside?('منذ '+hhmm(c.first)):('آخر تواجد '+hhmm(c.last)));
-      var areaChips=(u.areas||'').split(',').map(function(a){return a.trim();}).filter(Boolean).map(function(a){return '<span class="chip">📍'+a+'</span>';}).join('');
+      var areaChips=(u.siteIds||[]).map(function(id){return '<span class="chip">📍'+siteName(id)+'</span>';}).join('');
       var hrs='<span class="chip">🕐 '+u.workStartRaw+'–'+u.workEndRaw+'</span>';
       return '<div class="srow"><div class="ava clk" data-id="'+u.id+'" style="background:'+avaColor(c)+'">'+initials(u.name)+'</div><div style="flex:1"><div class="nm clk" data-id="'+u.id+'">'+u.name+'</div><div class="mt">'+sub+'</div><div class="sites-sm" style="margin-top:4px">'+hrs+areaChips+'</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">'+badge(c)+'<button class="sgear" data-id="'+u.id+'" title="إعدادات الدوام والمناطق"><svg class="ic" viewBox="0 0 24 24" style="width:15px;height:15px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div></div>';}).join(''):'<div class="pad muted" style="font-size:12.5px">لا مشرفون.</div>';
     Array.prototype.forEach.call(document.querySelectorAll('.srow .clk'),function(e){e.onclick=function(){var u=sups.find(function(x){return x.id===e.dataset.id;});if(u)flash(u);};});
@@ -1115,14 +1114,14 @@ svg.leaflet-image-layer.leaflet-interactive path {
   document.getElementById('repDate').addEventListener('change',reload);
 
   // ===== إعدادات المشرف (أوقات الدوام + المناطق) =====
-  var ssEditing=null, ssAreasList=[];
+  var ssEditing=null, ssAreasList=[];  // ssAreasList يحمل معرّفات مواقع الدوام المسندة
   function fillAreaSelect(){
     var sel=document.getElementById('ssAreaPick'); if(!sel)return;
-    sel.innerHTML='<option value="">— اختر منطقة لإضافتها —</option>'+AREAS.filter(function(a){return ssAreasList.indexOf(a)<0;}).map(function(a){return '<option value="'+a.replace(/"/g,'&quot;')+'">'+a+'</option>';}).join('');
+    sel.innerHTML='<option value="">— اختر موقعًا لإضافته —</option>'+sites.filter(function(s){return ssAreasList.indexOf(s.id)<0;}).map(function(s){return '<option value="'+s.id+'">'+s.name+'</option>';}).join('');
   }
   function renderAreaChips(){
-    document.getElementById('ssAreaChips').innerHTML=ssAreasList.length?ssAreasList.map(function(a){return '<span class="area-chip">📍'+a+' <b data-a="'+a.replace(/"/g,'&quot;')+'">✕</b></span>';}).join(''):'<span class="muted" style="font-size:11.5px">لا مناطق محددة</span>';
-    Array.prototype.forEach.call(document.querySelectorAll('#ssAreaChips b'),function(x){x.onclick=function(){ssAreasList=ssAreasList.filter(function(a){return a!==x.dataset.a;});renderAreaChips();fillAreaSelect();};});
+    document.getElementById('ssAreaChips').innerHTML=ssAreasList.length?ssAreasList.map(function(id){return '<span class="area-chip">📍'+siteName(id)+' <b data-a="'+id+'">✕</b></span>';}).join(''):'<span class="muted" style="font-size:11.5px">كل المواقع (لم تُسند مواقع محددة)</span>';
+    Array.prototype.forEach.call(document.querySelectorAll('#ssAreaChips b'),function(x){x.onclick=function(){ssAreasList=ssAreasList.filter(function(id){return id!==x.dataset.a;});renderAreaChips();fillAreaSelect();};});
   }
   function openSupSettings(u){
     ssEditing=u;
@@ -1130,7 +1129,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     document.getElementById('ssStart').value=u.workStartRaw||'08:00';
     document.getElementById('ssEnd').value=u.workEndRaw||'21:00';
     document.getElementById('ssGrace').value=(u.grace!=null?u.grace:10);
-    ssAreasList=(u.areas||'').split(',').map(function(a){return a.trim();}).filter(Boolean);
+    ssAreasList=(u.siteIds||[]).slice();
     fillAreaSelect(); renderAreaChips();
     document.getElementById('supMask').style.display='flex';
   }
@@ -1141,7 +1140,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   document.getElementById('ssAreaPick').addEventListener('change',function(){var v=this.value;if(v&&ssAreasList.indexOf(v)<0){ssAreasList.push(v);renderAreaChips();fillAreaSelect();}this.value='';});
   document.getElementById('ssSave').onclick=function(){
     if(!ssEditing)return;
-    var body={supervisor_id:ssEditing.id,work_start:document.getElementById('ssStart').value||'08:00',work_end:document.getElementById('ssEnd').value||'21:00',grace_min:Math.max(0,parseInt(document.getElementById('ssGrace').value)||0),areas:(ssAreasList.join(', ')||null),updated_at:new Date().toISOString()};
+    var body={supervisor_id:ssEditing.id,work_start:document.getElementById('ssStart').value||'08:00',work_end:document.getElementById('ssEnd').value||'21:00',grace_min:Math.max(0,parseInt(document.getElementById('ssGrace').value)||0),site_ids:(ssAreasList.join(',')||null),updated_at:new Date().toISOString()};
     api('supervisor_settings',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(body)})
       .then(function(){closeSupSettings();reload();})
       .catch(function(e){alert('تعذّر الحفظ: '+e.message+'\n(تأكد من تسجيل الدخول بحساب مشرف)');});
@@ -1149,24 +1148,22 @@ svg.leaflet-image-layer.leaflet-interactive path {
   document.getElementById('refreshBtn').onclick=reload;
   document.getElementById('logoutBtn').onclick=function(){sessionStorage.removeItem('soot_tk');location.reload();};
 
-  // ===== الدخول =====
-  function denyAccess(msg){document.getElementById('loader').style.display='none';document.getElementById('app').style.display='none';document.getElementById('login').style.display='flex';document.getElementById('lErr').textContent=msg;sessionStorage.removeItem('soot_tk');TOKEN='';}
+  // ===== الوصول عبر جلسة المنصة (نفس النطاق) — بلا تسجيل دخول منفصل =====
+  function needPlatform(msg){document.getElementById('loader').style.display='none';document.getElementById('app').style.display='none';document.getElementById('login').style.display='flex';document.getElementById('lErr').textContent=msg;TOKEN='';}
+  function denyAccess(msg){ needPlatform(msg); }
+  function platformToken(){ try{ var s=JSON.parse(localStorage.getItem('wfsb_session')||'null'); if(s&&s.access_token&&(!s.expires_at||s.expires_at>Date.now()+30000)){ if(s.email)try{document.getElementById('meName').textContent=s.email;}catch(e){} return s.access_token; } }catch(e){} return ''; }
   function showApp(){document.getElementById('login').style.display='none';
-    // عزل الوصول: مديرو النظام فقط (admin/manager)
+    // عزل الوصول: مديرو النظام فقط (admin/manager) — بنفس دور المنصة
     api('rpc/soot_my_role',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}).then(function(role){
       if(['admin','manager'].indexOf(String(role||''))<0){ denyAccess('هذه الصفحة لمديري النظام فقط.'); return; }
       document.getElementById('refreshBtn').style.display='';document.getElementById('logoutBtn').style.display='';document.getElementById('repDate').value=todayRiyadh();NOW=nowMin();
-      api('v_areas?select=area').then(function(rows){AREAS=(rows||[]).map(function(r){return r.area;}).filter(Boolean);}).catch(function(){});
       return loadData().then(function(){document.getElementById('loader').style.display='none';document.getElementById('app').style.display='block';initMap();renderAll();});
-    }).catch(function(e){denyAccess('انتهت الجلسة، أعد الدخول.');});}
-  function doLogin(){var em=document.getElementById('lEmail').value.trim(),ps=document.getElementById('lPass').value;if(!em||!ps){document.getElementById('lErr').textContent='أدخل البريد وكلمة المرور.';return;}document.getElementById('lErr').textContent='';document.getElementById('lBtn').textContent='جارٍ الدخول…';
-    fetch(SB+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({email:em,password:ps})}).then(function(r){return r.json();}).then(function(j){document.getElementById('lBtn').textContent='دخول';if(j.access_token){TOKEN=j.access_token;sessionStorage.setItem('soot_tk',TOKEN);try{document.getElementById('meName').textContent=em;}catch(e){}document.getElementById('loader').style.display='block';showApp();}else{document.getElementById('lErr').textContent='بيانات الدخول غير صحيحة.';}}).catch(function(){document.getElementById('lBtn').textContent='دخول';document.getElementById('lErr').textContent='تعذّر الاتصال.';});}
-  document.getElementById('lBtn').onclick=doLogin;
-  document.getElementById('lPass').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+    }).catch(function(e){needPlatform('انتهت جلسة المنصة. افتح المنصة وسجّل الدخول ثم عُد.');});}
 
-  // بدء
+  // بدء — جلسة المنصة المشتركة
+  TOKEN = platformToken();
   if(TOKEN){document.getElementById('loader').style.display='block';showApp();}
-  else{document.getElementById('loader').style.display='none';document.getElementById('login').style.display='flex';}
+  else{ needPlatform('هذه الصفحة تستخدم جلسة منصة AFMCO. افتحها بعد تسجيل الدخول في المنصة.'); }
 })();
 </script>
 </body>
