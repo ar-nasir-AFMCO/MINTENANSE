@@ -902,6 +902,14 @@ tbody tr.clickable:hover{background:var(--raise)}
   :root:not([data-theme="light"]) .detail .note{color:#e9b98d;border-color:#4a3420}
 }
 </style>
+<style id="zfix">
+/* إصلاح طبقات الخريطة: احتواء خرائط Leaflet ومنع طفوّها فوق الكروت/الـdrawer */
+.leaflet-container{position:relative;z-index:0}
+.scrim{z-index:1200 !important}
+.drawer{z-index:1201 !important}
+.toast{z-index:1300 !important}
+#loadScreen{z-index:2000 !important}
+</style>
 </head>
 <body>
 <div id="loadScreen">جارٍ التحميل…</div>
