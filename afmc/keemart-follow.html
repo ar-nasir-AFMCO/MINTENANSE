@@ -629,15 +629,32 @@ function vMetrics(){
 
   var ords, days;
   if(window.KM_LIVE){
-    var byDay={}; var ids={};
-    (window.DAILY||[]).forEach(function(d){
-      if(F.city&&city(d.store)!==F.city) return;
-      if(F.branch&&d.store!==F.branch) return;
+    /* طلبات اللوحة تراكمية من التاريخ المختار → نحوّلها لطلبات يومية حقيقية
+       بالفرق بين كل يوم واليوم التالي لنفس الكابتن (على كامل السلسلة لضبط الحواف). */
+    var show={}; (window.DAILY||[]).forEach(function(d){ show[d.date]=1; });
+    function passOrd(d){
+      if(F.city&&city(d.store)!==F.city) return false;
+      if(F.branch&&d.store!==F.branch) return false;
       if(F.q){ var cc=CAPS.filter(function(x){return String(x.cid)===String(d.cid);})[0];
-        var q=F.q.toLowerCase(); if(!(cc&&(cc.name.toLowerCase().indexOf(q)>=0||String(cc.cid).indexOf(q)>=0))) return; }
-      byDay[d.date]=(byDay[d.date]||0)+(+d.ord||0);
+        var q=F.q.toLowerCase(); if(!(cc&&(cc.name.toLowerCase().indexOf(q)>=0||String(cc.cid).indexOf(q)>=0))) return false; }
+      return true;
+    }
+    var ser={}, shiftDay={}, byDay={};
+    (window.DAILY_ALL||window.DAILY||[]).forEach(function(d){
+      if(!passOrd(d)) return;
+      if(d.b_del!=null){ (ser[d.cid]=ser[d.cid]||[]).push({date:d.date,del:+d.b_del}); }
+      shiftDay[d.date]=(shiftDay[d.date]||0)+(+d.ord||0);
     });
-    var dk=Object.keys(byDay).sort();
+    Object.keys(ser).forEach(function(cid){
+      var s=ser[cid].sort(function(a,b){ return a.date<b.date?-1:1; });
+      for(var i=0;i<s.length;i++){
+        var v=(i<s.length-1)?(s[i].del-s[i+1].del):s[i].del;  /* تراكمي متناقص → الفرق = طلبات اليوم */
+        if(v<0) v=0;  /* حارس ضد القراءات الجزئية */
+        byDay[s[i].date]=(byDay[s[i].date]||0)+v;
+      }
+    });
+    Object.keys(shiftDay).forEach(function(dt){ if(byDay[dt]==null) byDay[dt]=shiftDay[dt]; }); /* أيام دوام بلا لوحة */
+    var dk=Object.keys(byDay).filter(function(dt){ return show[dt]; }).sort();
     days=dk.map(function(x){ return String(x).slice(5); });
     ords=dk.map(function(x){ return Math.round(byDay[x]); });
   } else {
@@ -1234,7 +1251,9 @@ function kmPaintBridge(){
 }
 
 function kmBuildLive(){
-  var A = window.DAILY_ALL || window.DAILY || [];
+  /* v103: يُبنى الجدول من المدى المفلتر (DAILY) لا من كل البيانات (DAILY_ALL)،
+     حتى تحترم الجداول والتصدير والفرز تحديد الفترة. */
+  var A = window.DAILY || window.DAILY_ALL || [];
   if (!A.length) { window.KM_LIVE=false; return; }
   window.KM_LIVE = true;
   var NM = window.KM_RIDERS || {};
