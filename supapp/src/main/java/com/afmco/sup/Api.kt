@@ -112,6 +112,13 @@ data class Event(val kind: String, val actorName: String?, val note: String?, va
     }
 }
 
+/** صف في روستر «المناديب على رأس العمل» (صوت) */
+data class RosterItem(
+    val captainId: String, val iqama: String, val name: String,
+    val present: Boolean, val hours: Double?, val orders: Int,
+    val short: Boolean, val absent: Boolean, val logged: Boolean, val warns: Int
+)
+
 object Api {
     private const val SB_URL = "https://coueubvyaokyycqpmirs.supabase.co"
     private const val SB_KEY = "sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF"
@@ -332,6 +339,84 @@ object Api {
                 }
             } catch (e2: Exception) { text }
         }
+    }
+
+    // ════════ صوت: المناديب على رأس العمل · إنذارات · رسائل موجّهة ════════
+
+    /** معرّف المستخدم (sub) من توكن الجلسة لتسجيله كمُصدِر الإنذار/الرسالة */
+    private fun jwtSub(token: String): String? = try {
+        val part = token.split(".")[1]
+        val pad = part.replace('-', '+').replace('_', '/').let { it + "=".repeat((4 - it.length % 4) % 4) }
+        val json = String(android.util.Base64.decode(pad, android.util.Base64.DEFAULT))
+        JSONObject(json).optStringOrNull("sub")
+    } catch (_: Exception) { null }
+
+    /** روستر المناديب المربوطين في وثيق (نينجا) + نقص الشفت + تسجيل صوت + الإنذارات */
+    suspend fun roster(token: String): List<RosterItem> {
+        // المربوطون فعليًا (ربط نينجا المفتوح)
+        val links = JSONArray(get(token, "ninja_links?select=captain_id,iqama,from_date&to_date=is.null"))
+        // تسجيل الدخول لتطبيق صوت (الموظف)
+        val loginSet = HashSet<String>()
+        try {
+            val lg = JSONArray(get(token, "soot_app_logins?select=iqama&app=eq.employee"))
+            for (i in 0 until lg.length()) loginSet.add(lg.getJSONObject(i).optString("iqama"))
+        } catch (_: Exception) {}
+        // عدد الإنذارات الفعّالة لكل إقامة
+        val warnMap = HashMap<String, Int>()
+        try {
+            val wr = JSONArray(get(token, "soot_warnings?select=iqama,level&active=is.true"))
+            for (i in 0 until wr.length()) { val k = wr.getJSONObject(i).optString("iqama"); warnMap[k] = (warnMap[k] ?: 0) + 1 }
+        } catch (_: Exception) {}
+        // آخر يوم شفت متوفّر من نينجا
+        var latest: String? = null
+        try {
+            val lt = JSONArray(get(token, "v_samurai_captain_days?select=work_date&order=work_date.desc&limit=1"))
+            if (lt.length() > 0) latest = lt.getJSONObject(0).optStringOrNull("work_date")
+        } catch (_: Exception) {}
+        // بيانات الشفت لذلك اليوم
+        val shift = HashMap<String, JSONObject>()
+        if (latest != null) {
+            try {
+                val rows = JSONArray(get(token, "v_samurai_captain_days?select=captain_id,captain_name,hours_total,orders_total&work_date=eq.$latest&limit=2000"))
+                for (i in 0 until rows.length()) { val o = rows.getJSONObject(i); shift[o.optString("captain_id")] = o }
+            } catch (_: Exception) {}
+        }
+        val out = ArrayList<RosterItem>()
+        for (i in 0 until links.length()) {
+            val l = links.getJSONObject(i)
+            val cid = l.optString("captain_id"); val iqama = l.optString("iqama")
+            val s = shift[cid]
+            val hrs = if (s != null) s.optDouble("hours_total", 0.0) else null
+            val present = s != null && (hrs ?: 0.0) > 0.0
+            out.add(RosterItem(
+                captainId = cid, iqama = iqama,
+                name = s?.optStringOrNull("captain_name") ?: "كابتن $cid",
+                present = present, hours = hrs, orders = s?.optInt("orders_total", 0) ?: 0,
+                short = present && (hrs ?: 0.0) < 10.0, absent = !present,
+                logged = loginSet.contains(iqama), warns = warnMap[iqama] ?: 0))
+        }
+        // الغائبون أولًا ثم الأقل ساعات
+        return out.sortedWith(compareBy({ if (it.absent) 0 else 1 }, { it.hours ?: 0.0 }))
+    }
+
+    /** إصدار إنذار للمندوب (حتى ٣) — يُسجَّل في وثيق ويظهر للموظف */
+    suspend fun issueWarning(token: String, iqama: String, reason: String, captainId: String?, supName: String?): Pair<Boolean, String> {
+        val a = JSONObject().put("p_iqama", iqama).put("p_reason", reason).put("p_project", "ninja")
+            .put("p_captain", captainId?.toLongOrNull() ?: JSONObject.NULL)
+            .put("p_sup_id", jwtSub(token) ?: JSONObject.NULL)
+            .put("p_sup_name", supName ?: JSONObject.NULL)
+        val res = rpc(token, "soot_warn_issue", a).trim()
+        val o = if (res.startsWith("[")) JSONArray(res).optJSONObject(0) ?: JSONObject() else JSONObject(res)
+        return if (o.optBoolean("ok", false)) true to o.optInt("level", 0).toString()
+        else false to o.optString("msg", "تعذّر إصدار الإنذار")
+    }
+
+    /** إرسال رسالة موجّهة للمناديب (حسب مشروع/مدينة/مركبة/فرع) */
+    suspend fun sendBroadcast(token: String, title: String?, body: String, target: JSONObject, supName: String?) {
+        rpc(token, "soot_broadcast_send", JSONObject()
+            .put("p_title", title ?: JSONObject.NULL).put("p_body", body)
+            .put("p_target", target).put("p_by", jwtSub(token) ?: JSONObject.NULL)
+            .put("p_by_name", supName ?: JSONObject.NULL).put("p_expires", JSONObject.NULL))
     }
 
     /** رفع صورة إلى تخزين Supabase وإرجاع الرابط العام */

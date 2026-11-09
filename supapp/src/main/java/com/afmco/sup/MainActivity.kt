@@ -108,6 +108,7 @@ fun AppRoot() {
     var detail by remember { mutableStateOf<Complaint?>(null) }
     var showUpdates by remember { mutableStateOf(false) }
     var showAdvances by remember { mutableStateOf(false) }
+    var showRoster by remember { mutableStateOf(false) }
     var booting by remember { mutableStateOf(true) }
     val context = LocalContext.current
 
@@ -154,8 +155,9 @@ fun AppRoot() {
             s == null -> LoginScreen(onLogin = { sess, em, ps -> Prefs.save(context, em, ps); session = sess })
             showUpdates -> UpdatesScreen(s) { showUpdates = false }
             showAdvances -> AdvancesScreen(s) { showAdvances = false }
+            showRoster -> RosterScreen(s) { showRoster = false }
             detail != null -> DetailScreen(s, detail!!, onChanged = { /* refreshed on back */ }) { detail = null }
-            else -> HomeScreen(s, onOpen = { detail = it }, onUpdates = { showUpdates = true }, onAdvances = { showAdvances = true }, onLogout = { Prefs.clear(context); session = null; detail = null })
+            else -> HomeScreen(s, onOpen = { detail = it }, onUpdates = { showUpdates = true }, onAdvances = { showAdvances = true }, onRoster = { showRoster = true }, onLogout = { Prefs.clear(context); session = null; detail = null })
         }
     }
 
@@ -236,7 +238,7 @@ fun LoginScreen(onLogin: (SupSession, String, String) -> Unit) {
 }
 
 @Composable
-fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onUpdates: () -> Unit, onAdvances: () -> Unit, onLogout: () -> Unit) {
+fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onUpdates: () -> Unit, onAdvances: () -> Unit, onRoster: () -> Unit, onLogout: () -> Unit) {
     var list by remember { mutableStateOf<List<Complaint>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -339,6 +341,7 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onUpdates: () -
         topBar = {
             TopBar("لوحة المشرف", session.name) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = onRoster) { Text("🛵 المناديب", color = Color.White, fontSize = 13.sp) }
                     TextButton(onClick = onUpdates) { Text("✎ طلبات" + (if (pendingUpdates > 0) " ($pendingUpdates)" else ""), color = if (pendingUpdates > 0) Gold else Color.White, fontSize = 13.sp, fontWeight = if (pendingUpdates > 0) FontWeight.Bold else FontWeight.Normal) }
                     TextButton(onClick = onAdvances) { Text("💵 سلف" + (if (pendingAdvances > 0) " ($pendingAdvances)" else ""), color = if (pendingAdvances > 0) Gold else Color.White, fontSize = 13.sp, fontWeight = if (pendingAdvances > 0) FontWeight.Bold else FontWeight.Normal) }
                     TextButton(onClick = { refreshKey++ }) { Text("تحديث", color = Color.White, fontSize = 13.sp) }
@@ -414,6 +417,222 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onUpdates: () -
                     if (filtered.isEmpty()) item { Text("لا شكاوى", color = Gray, modifier = Modifier.padding(20.dp)) }
                     items(filtered) { c -> ComplaintCard(c) { onOpen(c) } }
                     item { Spacer(Modifier.height(20.dp)) }
+                }
+            }
+        }
+    }
+}
+
+private fun sootAr(n: Any): String = n.toString().map { "٠١٢٣٤٥٦٧٨٩".getOrNull(it - '0') ?: it }.joinToString("")
+
+/** صوت — المناديب على رأس العمل: روستر + نقص نينجا + إنذارات + رسالة موجّهة */
+@Composable
+fun RosterScreen(session: SupSession, onBack: () -> Unit) {
+    var roster by remember { mutableStateOf<List<RosterItem>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var refresh by remember { mutableStateOf(0) }
+    var warnTarget by remember { mutableStateOf<RosterItem?>(null) }
+    var showBroadcast by remember { mutableStateOf(false) }
+
+    LaunchedEffect(refresh) {
+        loading = true; error = null
+        try { roster = Api.roster(session.token) } catch (e: Exception) { error = e.message } finally { loading = false }
+    }
+
+    val present = roster.count { it.present }
+    val absent = roster.count { it.absent }
+    val short = roster.count { it.short }
+    val logged = roster.count { it.logged }
+    val notLogged = roster.count { !it.logged }
+
+    Scaffold(containerColor = Bg, topBar = {
+        TopBar("المناديب على رأس العمل", "${roster.size} مربوط في وثيق", onBack = onBack) {
+            TextButton(onClick = { showBroadcast = true }) { Text("✉️ رسالة", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+            TextButton(onClick = { refresh++ }) { Text("تحديث", color = Color.White, fontSize = 13.sp) }
+        }
+    }) { pad ->
+        Box(Modifier.padding(pad).fillMaxSize()) {
+            when {
+                loading -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = Green)
+                error != null -> Text("تعذّر التحميل: $error", Modifier.align(Alignment.Center).padding(24.dp), color = Red)
+                else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    item {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Kpi("مربوط (وثيق)", roster.size, GreenD, false, Modifier.weight(1f))
+                            Kpi("مسجّل دخول", logged, Green, false, Modifier.weight(1f))
+                            Kpi("بلا تسجيل", notLogged, Amber, false, Modifier.weight(1f))
+                        }
+                    }
+                    item {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Kpi("غياب (آخر شفت)", absent, Red, false, Modifier.weight(1f))
+                            Kpi("أقل من ١٠ س", short, Amber, false, Modifier.weight(1f))
+                            Kpi("حاضر", present, Green, false, Modifier.weight(1f))
+                        }
+                    }
+                    item {
+                        Text("آخر شفت والساعات من بيانات نينجا · «صوت» = تسجيل الدخول للتطبيق",
+                            fontSize = 11.sp, color = Gray, modifier = Modifier.padding(vertical = 2.dp))
+                    }
+                    if (roster.isEmpty()) item { Text("لا مناديب مربوطون في وثيق.", color = Gray, modifier = Modifier.padding(20.dp)) }
+                    items(roster) { r -> RosterCard(r) { warnTarget = r } }
+                    item { Spacer(Modifier.height(20.dp)) }
+                }
+            }
+        }
+    }
+
+    warnTarget?.let { r -> WarnDialog(session, r, onClose = { warnTarget = null }, onDone = { warnTarget = null; refresh++ }) }
+    if (showBroadcast) BroadcastDialog(session, onClose = { showBroadcast = false })
+}
+
+@Composable
+fun RosterCard(r: RosterItem, onWarn: () -> Unit) {
+    Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(13.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(r.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF223229))
+                    Text("إقامة ${r.iqama} · كابتن ${r.captainId}", fontSize = 11.sp, color = Gray)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                    (1..3).forEach { i ->
+                        Box(Modifier.size(9.dp).clip(CircleShape)
+                            .background(if (i <= r.warns) Color(0xFFDC2626) else Color(0xFFE2E8F0)))
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (r.absent) RosterPill("غائب", Color(0xFFFEE2E2), Color(0xFFB91C1C))
+                else RosterPill("حاضر", Color(0xFFDCFCE7), Color(0xFF15803D))
+                Spacer(Modifier.width(6.dp))
+                if (r.hours != null) RosterPill(sootAr(String.format("%.1f", r.hours)) + " س" + (if (r.short) " ⚠" else ""),
+                    if (r.short) Color(0xFFFEF3C7) else Color(0xFFEEF2F0), if (r.short) Color(0xFFB45309) else Color(0xFF64748B))
+                Spacer(Modifier.width(6.dp))
+                RosterPill("🛵 " + sootAr(r.orders), Color(0xFFEEF2F0), Color(0xFF64748B))
+                Spacer(Modifier.width(6.dp))
+                if (r.logged) RosterPill("صوت ✓", Color(0xFFDCFCE7), Color(0xFF15803D))
+                else RosterPill("صوت ✗", Color(0xFFEEF2F0), Color(0xFF94A3B8))
+                Spacer(Modifier.weight(1f))
+                OutlinedButton(onClick = onWarn, shape = RoundedCornerShape(9.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)) {
+                    Text("⚠ إنذار", color = Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RosterPill(text: String, bg: Color, fg: Color) {
+    Surface(color = bg, shape = RoundedCornerShape(999.dp)) {
+        Text(text, color = fg, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
+    }
+}
+
+@Composable
+fun WarnDialog(session: SupSession, r: RosterItem, onClose: () -> Unit, onDone: () -> Unit) {
+    var reason by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var msg by remember { mutableStateOf<String?>(null) }
+    var ok by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    AlertDialog(
+        onDismissRequest = { if (!busy) onClose() },
+        title = { Text("⚠ إصدار إنذار", fontWeight = FontWeight.Bold, color = Red) },
+        text = {
+            Column {
+                Text("${r.name} · إقامة ${r.iqama} · كابتن ${r.captainId}", fontSize = 12.sp, color = Gray)
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(reason, { reason = it }, label = { Text("سبب الإنذار") },
+                    placeholder = { Text("غياب متكرر / تأخّر / مخالفة سلوك") },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 90.dp))
+                if (msg != null) { Spacer(Modifier.height(8.dp)); Text(msg!!, color = if (ok) Green else Red, fontSize = 12.5.sp) }
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = !busy && reason.isNotBlank() && !ok, onClick = {
+                busy = true; msg = null
+                scope.launch {
+                    try {
+                        val (good, info) = Api.issueWarning(session.token, r.iqama, reason.trim(), r.captainId, session.name)
+                        if (good) { ok = true; msg = "✅ صدر الإنذار (${sootAr(info)} من ٣)"; kotlinx.coroutines.delay(800); onDone() }
+                        else { msg = info; busy = false }
+                    } catch (e: Exception) { msg = e.message ?: "تعذّر الإصدار"; busy = false }
+                }
+            }) { Text(if (busy) "جارٍ…" else "إصدار", color = Red, fontWeight = FontWeight.Bold) }
+        },
+        dismissButton = { TextButton(enabled = !busy, onClick = onClose) { Text("إلغاء", color = Gray) } }
+    )
+}
+
+@Composable
+fun BroadcastDialog(session: SupSession, onClose: () -> Unit) {
+    val projects = listOf("" to "الكل", "ninja" to "نينجا", "keemart" to "كيمارت", "keeta" to "كيتا", "noon" to "نون")
+    val cities = listOf("", "الرياض", "جدة", "مكة", "المدينة", "الدمام", "الخبر", "الطائف", "الخرج")
+    val vehicles = listOf("" to "الكل", "bike" to "دبّاب", "car" to "سيارة", "van" to "فان")
+    var title by remember { mutableStateOf("") }
+    var body by remember { mutableStateOf("") }
+    var proj by remember { mutableStateOf("") }
+    var city by remember { mutableStateOf("") }
+    var veh by remember { mutableStateOf("") }
+    var branch by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var msg by remember { mutableStateOf<String?>(null) }
+    var ok by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    AlertDialog(
+        onDismissRequest = { if (!busy) onClose() },
+        title = { Text("✉️ رسالة موجّهة للمناديب", fontWeight = FontWeight.Bold, color = GreenD) },
+        text = {
+            LazyColumn(Modifier.heightIn(max = 420.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                item { Text("تظهر للمناديب المطابقين في تطبيق صوت. اترك أي فلتر = الكل.", fontSize = 11.5.sp, color = Gray) }
+                item { OutlinedTextField(title, { title = it }, label = { Text("العنوان (اختياري)") }, singleLine = true, modifier = Modifier.fillMaxWidth()) }
+                item { OutlinedTextField(body, { body = it }, label = { Text("نص الرسالة") }, modifier = Modifier.fillMaxWidth().heightIn(min = 90.dp)) }
+                item { SootDropdown("المشروع", projects, proj) { proj = it } }
+                item { SootDropdown("المدينة", cities.map { it to (it.ifBlank { "الكل" }) }, city) { city = it } }
+                item { SootDropdown("المركبة", vehicles, veh) { veh = it } }
+                item { OutlinedTextField(branch, { branch = it }, label = { Text("الفرع (اختياري)") }, singleLine = true, modifier = Modifier.fillMaxWidth()) }
+                if (msg != null) item { Text(msg!!, color = if (ok) Green else Red, fontSize = 12.5.sp) }
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = !busy && body.isNotBlank() && !ok, onClick = {
+                busy = true; msg = null
+                val target = org.json.JSONObject()
+                if (proj.isNotBlank()) target.put("project", proj)
+                if (city.isNotBlank()) target.put("city", city)
+                if (veh.isNotBlank()) target.put("vehicle", veh)
+                if (branch.isNotBlank()) target.put("branch", branch.trim())
+                scope.launch {
+                    try {
+                        Api.sendBroadcast(session.token, title.trim().ifBlank { null }, body.trim(), target, session.name)
+                        ok = true; msg = "✅ أُرسلت للمناديب المطابقين"; kotlinx.coroutines.delay(900); onClose()
+                    } catch (e: Exception) { msg = e.message ?: "تعذّر الإرسال"; busy = false }
+                }
+            }) { Text(if (busy) "جارٍ…" else "إرسال", color = GreenD, fontWeight = FontWeight.Bold) }
+        },
+        dismissButton = { TextButton(enabled = !busy, onClick = onClose) { Text("إلغاء", color = Gray) } }
+    )
+}
+
+@Composable
+fun SootDropdown(label: String, options: List<Pair<String, String>>, selected: String, onSelect: (String) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val curLabel = options.firstOrNull { it.first == selected }?.second ?: options.firstOrNull()?.second ?: ""
+    Column(Modifier.fillMaxWidth()) {
+        Text(label, fontSize = 12.sp, color = Gray, fontWeight = FontWeight.Bold)
+        Box {
+            OutlinedButton(onClick = { open = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp)) {
+                Text(curLabel, color = Color(0xFF223229)); Spacer(Modifier.weight(1f)); Text("▾", color = Gray)
+            }
+            DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                options.forEach { (value, lbl) ->
+                    DropdownMenuItem(text = { Text(lbl) }, onClick = { onSelect(value); open = false })
                 }
             }
         }
