@@ -909,6 +909,8 @@ tbody tr.clickable:hover{background:var(--raise)}
 .drawer{z-index:1201 !important}
 .toast{z-index:1300 !important}
 #loadScreen{z-index:2000 !important}
+.tzb{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#0e5e5c;background:#e4efed;border:1px solid #cfe0de;padding:3px 9px;border-radius:999px;margin-inline-end:8px;white-space:nowrap;vertical-align:middle}
+@media(max-width:560px){.tzb{font-size:10px;padding:2px 7px}}
 </style>
 </head>
 <body>
@@ -918,7 +920,7 @@ tbody tr.clickable:hover{background:var(--raise)}
 <div class="topbar"><div class="in">
   <div class="brand"><div class="logo">AF</div>
     <div class="crumb"><b>منصة AFMCO</b><span class="sep hide-sm">/</span><span class="hide-sm">العمليات الميدانية</span><span class="sep">/</span><b>حضور المشرفين</b></div></div>
-  <div class="right"><span class="live"><span class="pulse"></span> مباشر · آخر تحديث ١١:٤٢</span><button class="iconbtn go" id="refreshBtn">↻ تحديث</button></div>
+  <div class="right"><span class="live"><span class="pulse"></span> مباشر · آخر تحديث ١١:٤٢</span><span class="tzb" title="كل الأوقات بتوقيت المملكة العربية السعودية (Asia/Riyadh، UTC+3)">⏱ بتوقيت السعودية +3</span><button class="iconbtn go" id="refreshBtn">↻ تحديث</button></div>
 </div></div>
 
 <div class="wrap">
