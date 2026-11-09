@@ -9,8 +9,11 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -371,6 +374,8 @@ fun HomeScreen(session: Session, reload: Int, onOpen: (Complaint) -> Unit, onNew
     val lang = LocalLang.current
     var list by remember { mutableStateOf<List<Complaint>>(emptyList()) }
     var vehicles by remember { mutableStateOf<List<MyVehicle>>(emptyList()) }
+    var warnings by remember { mutableStateOf<List<Warning>>(emptyList()) }
+    var broadcasts by remember { mutableStateOf<List<Broadcast>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
@@ -399,6 +404,15 @@ fun HomeScreen(session: Session, reload: Int, onOpen: (Complaint) -> Unit, onNew
         }
     }
     LaunchedEffect(Unit) { try { vehicles = Api.myVehicles(session.token) } catch (_: Exception) {} }
+    // صوت: تسجيل الدخول + جلب الإنذارات والرسائل الموجّهة، وتحديثها دوريًا
+    LaunchedEffect(Unit) {
+        Api.touchLogin(session.iqama, session.projectCode, session.name)
+        while (true) {
+            try { warnings = Api.myWarnings(session.iqama) } catch (_: Exception) {}
+            try { broadcasts = Api.myBroadcasts(session.iqama, session.projectCode) } catch (_: Exception) {}
+            delay(60_000L)
+        }
+    }
     Scaffold(containerColor = Bg,
         topBar = { TopBar("${L.hi} ${session.name}", session.projectCode?.let { "${L.project} $it" }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -426,6 +440,8 @@ fun HomeScreen(session: Session, reload: Int, onOpen: (Complaint) -> Unit, onNew
                             }
                         }
                     }
+                    if (warnings.isNotEmpty()) item { WarningsCard(warnings, lang) }
+                    if (broadcasts.isNotEmpty()) item { BroadcastsInbox(broadcasts, lang) }
                     val pending = list.count { it.closePending }
                     if (pending > 0) item {
                         Surface(color = Amber.copy(alpha = .14f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -442,6 +458,80 @@ fun HomeScreen(session: Session, reload: Int, onOpen: (Complaint) -> Unit, onNew
                     items(list) { c -> ComplaintCard(c) { onOpen(c) } }
                     item { Spacer(Modifier.height(70.dp)) }
                 }
+            }
+        }
+    }
+}
+
+/** تحويل الأرقام لعربية + تاريخ مختصر لعناصر صوت */
+private fun sootAr(n: Any): String = n.toString().map { "٠١٢٣٤٥٦٧٨٩".getOrNull(it - '0') ?: it }.joinToString("")
+private fun sootDate(ts: String?): String {
+    if (ts.isNullOrBlank()) return ""
+    val d = ts.take(10) // yyyy-MM-dd
+    val p = d.split("-")
+    return if (p.size == 3) sootAr(p[2].trimStart('0').ifBlank { "0" }) + "/" + sootAr(p[1].trimStart('0').ifBlank { "0" }) else ""
+}
+
+/** بطاقة إنذارات المشرف (حتى ٣) — تظهر للموظف في صوت */
+@Composable
+fun WarningsCard(warnings: List<Warning>, lang: Lang) {
+    val title = when (lang) { Lang.EN -> "Supervisor warnings"; Lang.UR -> "سپروائزر وارننگ"; else -> "إنذارات المشرف" }
+    val fromSup = when (lang) { Lang.EN -> "From supervisor"; Lang.UR -> "سپروائزر کی طرف سے"; else -> "من المشرف" }
+    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF5F5)), shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Color(0xFFFECACA)), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("⚠", fontSize = 16.sp)
+                Spacer(Modifier.width(6.dp))
+                Text(title, fontWeight = FontWeight.Bold, color = Color(0xFFB91C1C), fontSize = 14.sp)
+                Spacer(Modifier.weight(1f))
+                Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                    (1..3).forEach { i ->
+                        Box(Modifier.size(9.dp).clip(CircleShape)
+                            .background(if (i <= warnings.size) Color(0xFFDC2626) else Color(0xFFFECACA)))
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            warnings.take(3).forEach { w ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                    Box(Modifier.size(26.dp).clip(RoundedCornerShape(9.dp)).background(Color(0xFFDC2626)),
+                        contentAlignment = Alignment.Center) {
+                        Text(sootAr(w.level), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                    Spacer(Modifier.width(9.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(w.reason, color = Color(0xFF7F1D1D), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Text(fromSup + (w.supervisorName?.let { " · $it" } ?: "") +
+                            (w.createdAt?.let { " · " + sootDate(it) } ?: ""),
+                            color = Color(0xFF9A6A6A), fontSize = 11.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** صندوق الرسائل الموجّهة من المشرف/الإدارة — يظهر للموظف في صوت */
+@Composable
+fun BroadcastsInbox(broadcasts: List<Broadcast>, lang: Lang) {
+    val title = when (lang) { Lang.EN -> "Messages for you"; Lang.UR -> "آپ کے لیے پیغامات"; else -> "رسائل موجّهة لك" }
+    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF0FDFA)), shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Color(0xFF99F6E4)), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("✉️", fontSize = 15.sp)
+                Spacer(Modifier.width(6.dp))
+                Text(title, fontWeight = FontWeight.Bold, color = Color(0xFF0E5E5C), fontSize = 14.sp)
+            }
+            broadcasts.take(8).forEach { m ->
+                Spacer(Modifier.height(8.dp))
+                HorizontalDivider(color = Color(0xFFCCF0EB))
+                Spacer(Modifier.height(8.dp))
+                if (!m.title.isNullOrBlank()) Text(m.title, fontWeight = FontWeight.Bold, color = Color(0xFF0F766E), fontSize = 13.sp)
+                Text(m.body, color = Color(0xFF334155), fontSize = 12.5.sp)
+                Text((m.byName?.let { "$it · " } ?: "") + sootDate(m.createdAt), color = Color(0xFF8A97A0), fontSize = 10.5.sp,
+                    modifier = Modifier.padding(top = 3.dp))
             }
         }
     }

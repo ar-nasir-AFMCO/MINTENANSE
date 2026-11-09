@@ -92,6 +92,19 @@ data class Housing(val building: String?, val room: String?, val city: String?, 
 data class Msg(val authorKind: String, val authorName: String?, val body: String, val createdAt: String?) {
     companion object { fun from(o: JSONObject) = Msg(o.optString("author_kind"), o.optStringOrNull("author_name"), o.optString("body"), o.optStringOrNull("created_at")) }
 }
+
+/** إنذار من المشرف (صوت) */
+data class Warning(val level: Int, val reason: String, val supervisorName: String?, val createdAt: String?) {
+    companion object { fun from(o: JSONObject) = Warning(
+        o.optInt("level", 1), o.optString("reason"), o.optStringOrNull("supervisor_name"), o.optStringOrNull("created_at")) }
+}
+
+/** رسالة موجّهة من المشرف/الإدارة (صوت) */
+data class Broadcast(val id: Long, val title: String?, val body: String, val byName: String?, val createdAt: String?) {
+    companion object { fun from(o: JSONObject) = Broadcast(
+        o.optLong("id"), o.optStringOrNull("title"), o.optString("body"),
+        o.optStringOrNull("created_by_name"), o.optStringOrNull("created_at")) }
+}
 data class Event(val kind: String, val actorName: String?, val note: String?, val createdAt: String?) {
     companion object { fun from(o: JSONObject) = Event(o.optString("kind"), o.optStringOrNull("actor_name"), o.optStringOrNull("note"), o.optStringOrNull("created_at")) }
 }
@@ -194,6 +207,28 @@ object Api {
             Advance(o.optString("id"), o.optDouble("amount", 0.0), o.optStringOrNull("reason"),
                 o.optString("status"), o.optStringOrNull("note"), o.optStringOrNull("created_at"))
         }
+    }
+
+    /** إنذارات المندوب الفعّالة (صوت) — حتى ٣ */
+    suspend fun myWarnings(iqama: String): List<Warning> {
+        val arr = JSONArray(rpc("soot_warn_for", JSONObject().put("p_iqama", iqama)))
+        return (0 until arr.length()).map { Warning.from(arr.getJSONObject(it)) }
+    }
+
+    /** الرسائل الموجّهة لهذا المندوب (صوت) حسب مشروعه/إقامته */
+    suspend fun myBroadcasts(iqama: String, project: String?): List<Broadcast> {
+        val a = JSONObject().put("p_iqama", iqama).put("p_project", project ?: JSONObject.NULL)
+        val arr = JSONArray(rpc("soot_broadcasts_for", a))
+        return (0 until arr.length()).map { Broadcast.from(arr.getJSONObject(it)) }
+    }
+
+    /** تسجيل فتح/دخول التطبيق (صوت) — لمقارنة المسجّلين بالمربوطين */
+    suspend fun touchLogin(iqama: String, project: String?, name: String?) {
+        try {
+            rpc("soot_app_login_touch", JSONObject()
+                .put("p_iqama", iqama).put("p_project", project ?: JSONObject.NULL)
+                .put("p_name", name ?: JSONObject.NULL).put("p_app", "employee").put("p_device", "android"))
+        } catch (_: Exception) {}
     }
 
     /** رفع صورة إلى تخزين Supabase (bucket عام) وإرجاع الرابط العام */
