@@ -10385,5 +10385,44 @@ body.wx-card-open #wx4Pill{ display:none !important; }
 })();
 
 </script>
+
+<style id="sxwStyle">
+.sxwBadge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;border-radius:999px;padding:2px 9px;margin-inline-start:7px;vertical-align:middle}
+</style>
+<script>
+/* ════════ صوت — إظهار إنذارات المندوب داخل وثيق ════════
+   تبدّج كروت الموظفين وبطاقة التفاصيل حسب الإقامة (من soot_warnings). */
+(function(){
+  'use strict';
+  var SB='https://coueubvyaokyycqpmirs.supabase.co', KEY='sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
+  function tok(){ try{var w=JSON.parse(localStorage.getItem('wfsb_session')||'null');if(w&&w.access_token)return w.access_token;}catch(e){} return null; }
+  var WARN={}, loaded=false;
+  function load(){
+    var t=tok(); if(!t) return;
+    var h={apikey:KEY,Authorization:'Bearer '+t};
+    fetch(SB+'/rest/v1/soot_warnings?select=iqama,level&active=is.true',{headers:h})
+      .then(function(r){ return r.ok?r.json():[]; })
+      .then(function(rows){ WARN={}; (rows||[]).forEach(function(x){ var k=String(x.iqama); WARN[k]=(WARN[k]||0)+1; }); loaded=true; paint(); })
+      .catch(function(){});
+  }
+  function badge(n){ var s=document.createElement('span'); s.className='sxwBadge'; s.textContent='⚠ '+('٠١٢٣٤٥٦٧٨٩'[n]||n)+' إنذار'; return s; }
+  function digits(t){ var m=String(t||'').match(/\b(1|2)\d{9}\b/); return m?m[0]:null; } /* رقم إقامة سعودي */
+  function paint(){
+    if(!loaded) return;
+    // كروت القائمة + بطاقة التفاصيل: أي عنصر .sub فيه رقم إقامة له إنذارات
+    document.querySelectorAll('.sub').forEach(function(el){
+      if(el.__sxw) return;
+      var iq=digits(el.textContent);
+      if(iq && WARN[iq]){ el.__sxw=1; el.appendChild(badge(WARN[iq])); }
+    });
+  }
+  // أعِد الطلاء عند تغيّر الـDOM (إعادة عرض القوائم/التفاصيل)
+  var mo=new MutationObserver(function(){ clearTimeout(paint.__t); paint.__t=setTimeout(paint,150); });
+  function start(){ try{ mo.observe(document.body,{childList:true,subtree:true}); }catch(e){} load(); setInterval(load, 60000); }
+  if(document.readyState==='complete'||document.readyState==='interactive') setTimeout(start,800);
+  else window.addEventListener('load',function(){ setTimeout(start,800); });
+})();
+</script>
+
 </body>
 </html>

@@ -651,5 +651,90 @@ setInterval(()=>{const n=new Date();document.getElementById('clock').textContent
   n.getHours()+':'+String(n.getMinutes()).padStart(2,'0');},1000);
 render();
 </script>
+
+<style id="sxeStyle">
+#sxeWrap{padding:0 14px;margin-top:10px;display:flex;flex-direction:column;gap:10px}
+.sxeCard{border-radius:16px;padding:13px 14px;font-size:13px;border:1px solid}
+.sxeWarn{background:#fff5f5;border-color:#fecaca}
+.sxeWarn .hd{display:flex;align-items:center;gap:7px;font-weight:800;color:#b91c1c;margin-bottom:8px}
+.sxeWarn .dots{display:inline-flex;gap:3px;margin-inline-start:auto}
+.sxeWarn .dots i{width:9px;height:9px;border-radius:50%;background:#fecaca}
+.sxeWarn .dots i.on{background:#dc2626}
+.sxeW{display:flex;gap:9px;padding:8px 0;border-top:1px dashed #fecaca}
+.sxeW:first-of-type{border-top:0}
+.sxeW .lvl{flex:0 0 auto;width:26px;height:26px;border-radius:9px;background:#dc2626;color:#fff;font-weight:800;display:grid;place-items:center;font-size:12px}
+.sxeW .tx{flex:1}
+.sxeW .tx .r{font-weight:600;color:#7f1d1d}
+.sxeW .tx .m{font-size:11px;color:#9a6a6a;margin-top:2px}
+.sxeMsg{background:#f0fdfa;border-color:#99f6e4}
+.sxeMsg .hd{display:flex;align-items:center;gap:7px;font-weight:800;color:#0e5e5c;margin-bottom:8px}
+.sxeM{padding:8px 0;border-top:1px dashed #99f6e4}
+.sxeM:first-of-type{border-top:0}
+.sxeM .t{font-weight:700;color:#0f766e}
+.sxeM .b{font-size:12.5px;color:#334;margin-top:3px;line-height:1.6}
+.sxeM .meta{font-size:10.5px;color:#8a97a0;margin-top:4px}
+</style>
+<script>
+/* ════════ صوت — تطبيق الموظف: الإنذارات + الرسائل الموجّهة + تسجيل الدخول ════════
+   يقرأ عبر دوال القاعدة (anon). المندوب يُحدَّد بـ ?iqama= (افتراضي: مربوط للعرض). */
+(function(){
+  'use strict';
+  var SB='https://coueubvyaokyycqpmirs.supabase.co', KEY='sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
+  var qp=new URLSearchParams(location.search);
+  var ME={ iqama: qp.get('iqama')||'2582769077', captain: qp.get('cap')||'272529',
+           project: qp.get('project')||'ninja', city: qp.get('city')||'الرياض',
+           vehicle: qp.get('vehicle')||'bike', branch: qp.get('branch')||'', name: qp.get('name')||'أحمد' };
+  function H(){ return {apikey:KEY,'Content-Type':'application/json'}; }
+  function rpc(fn,a){ return fetch(SB+'/rest/v1/rpc/'+fn,{method:'POST',headers:H(),body:JSON.stringify(a||{})})
+    .then(function(r){ if(!r.ok) return null; return r.json().catch(function(){return null;}); }).catch(function(){return null;}); }
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function AR(n){return String(n).replace(/[0-9]/g,function(d){return '٠١٢٣٤٥٦٧٨٩'[+d];});}
+  function timeAr(ts){ try{ return new Date(ts).toLocaleDateString('ar-EG',{month:'short',day:'numeric'}); }catch(e){ return ''; } }
+
+  function ensureWrap(){
+    var w=document.getElementById('sxeWrap'); if(w) return w;
+    var body=document.getElementById('appBody'); if(!body) return null;
+    w=document.createElement('div'); w.id='sxeWrap';
+    body.parentNode.insertBefore(w, body); // فوق محتوى الشاشة، يظهر في كل الشاشات (بما فيها رفع الشكوى)
+    return w;
+  }
+  function render(warns, msgs){
+    var w=ensureWrap(); if(!w) return;
+    var h='';
+    if(warns && warns.length){
+      h+='<div class="sxeCard sxeWarn"><div class="hd">⚠ إنذارات المشرف <span class="dots">'+
+        [1,2,3].map(function(i){return '<i class="'+(i<=warns.length?'on':'')+'"></i>';}).join('')+
+        '</span></div>'+
+        warns.slice(0,3).map(function(x){ return '<div class="sxeW"><div class="lvl">'+AR(x.level||'')+'</div>'+
+          '<div class="tx"><div class="r">'+esc(x.reason||'')+'</div><div class="m">من المشرف'+(x.supervisor_name?' · '+esc(x.supervisor_name):'')+' · '+timeAr(x.created_at)+'</div></div></div>'; }).join('')+
+        '</div>';
+    }
+    if(msgs && msgs.length){
+      h+='<div class="sxeCard sxeMsg"><div class="hd">✉️ رسائل موجّهة لك</div>'+
+        msgs.slice(0,8).map(function(m){ return '<div class="sxeM">'+(m.title?'<div class="t">'+esc(m.title)+'</div>':'')+
+          '<div class="b">'+esc(m.body||'')+'</div><div class="meta">'+(m.created_by_name?esc(m.created_by_name)+' · ':'')+timeAr(m.created_at)+'</div></div>'; }).join('')+
+        '</div>';
+    }
+    w.innerHTML=h;
+  }
+
+  function load(){
+    rpc('soot_app_login_touch',{p_iqama:ME.iqama,p_project:ME.project,p_captain:+ME.captain||null,p_name:ME.name,p_app:'employee',p_device:'web'});
+    Promise.all([
+      rpc('soot_warn_for',{p_iqama:ME.iqama}),
+      rpc('soot_broadcasts_for',{p_iqama:ME.iqama,p_project:ME.project,p_city:ME.city,p_vehicle:ME.vehicle,p_branch:ME.branch||null})
+    ]).then(function(a){ render(a[0]||[], a[1]||[]); });
+  }
+  // أعِد الإدراج لو التطبيق يعيد بناء الجسم
+  var last=0;
+  setInterval(function(){ if(document.getElementById('appBody') && !document.getElementById('sxeWrap')){ var w=ensureWrap(); if(w && window.__sxeCache){ render(window.__sxeCache.w, window.__sxeCache.m); } } }, 700);
+  var _render=render;
+  render=function(w,m){ window.__sxeCache={w:w,m:m}; _render(w,m); };
+
+  if(document.readyState==='complete'||document.readyState==='interactive') setTimeout(load,400);
+  else window.addEventListener('load',function(){ setTimeout(load,400); });
+})();
+</script>
+
 </body>
 </html>
