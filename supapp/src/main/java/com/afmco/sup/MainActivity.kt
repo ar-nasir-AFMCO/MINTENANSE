@@ -350,12 +350,23 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onUpdates: () -
             }
         }
     ) { pad ->
-        Box(Modifier.padding(pad).fillMaxSize()) {
-            when {
-                loading -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = Green)
-                error != null -> Text("تعذّر التحميل: $error", Modifier.align(Alignment.Center).padding(24.dp), color = Red)
-                else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyColumn(Modifier.padding(pad).fillMaxSize(), contentPadding = PaddingValues(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    // شريط حالة — يضمن ظهور الصفحة دائمًا ويوضّح أي مشكلة في تحميل الشكاوى
+                    item {
+                        val status = when {
+                            loading -> "جارٍ تحميل الشكاوى…"
+                            error != null -> "تعذّر تحميل الشكاوى: $error"
+                            else -> "الشكاوى: ${list.size}"
+                        }
+                        Surface(color = if (error != null) Red.copy(alpha = .10f) else Color.White,
+                            shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+                            Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                if (loading) { CircularProgressIndicator(Modifier.size(16.dp), color = Green, strokeWidth = 2.dp); Spacer(Modifier.width(8.dp)) }
+                                Text(status, fontSize = 11.5.sp, color = if (error != null) Red else Gray)
+                            }
+                        }
+                    }
                     // كرت الحضور — يسجّل كل المشرفين حضورهم (المتابعة في صفحة الإدارة فقط)
                     item {
                         val checkedIn = att?.optBoolean("checked_in") == true
@@ -414,12 +425,12 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onUpdates: () -
                             }
                         }
                     }
-                    if (filtered.isEmpty()) item { Text("لا شكاوى", color = Gray, modifier = Modifier.padding(20.dp)) }
-                    items(filtered) { c -> ComplaintCard(c) { onOpen(c) } }
+                    if (!loading && error == null) {
+                        if (filtered.isEmpty()) item { Text("لا شكاوى مطابقة", color = Gray, modifier = Modifier.padding(20.dp)) }
+                        items(filtered) { c -> ComplaintCard(c) { onOpen(c) } }
+                    }
                     item { Spacer(Modifier.height(20.dp)) }
                 }
-            }
-        }
     }
 }
 
