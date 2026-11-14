@@ -4014,7 +4014,7 @@ function hhmm(d){return String(d.getHours()).padStart(2,'0')+':'+String(d.getMin
 
 var D=null, DAYS=[], CITY={}, ASOF=new Date(), CC={}, DC={}, LIVE={},
     CAPS=[], DAILY=[], BR=[], ALERTS=[], TARGET=12, CBMAP={},
-    SHAVAIL={total:0,slots:0,cities:[],branches:[],asof:null};
+    SHAVAIL={branches:[],asof:null};
   var STOP={ days:5, ids:{}, lastWork:{}, today:null }, SHOWSTOP=false, RELINK=[];
   function isStop(id){ return !!STOP.ids[String(id)]; }
   function stopDays(id){ var d=STOP.lastWork[String(id)];
@@ -4526,50 +4526,66 @@ function seedFeed(){
     return {at:new Date(a[7]),c:c,e:a[3]};});
 }
 function evC(e){return /انقطع|خرج|تأخّر|غادر/.test(e)?'var(--bad)':/عاد|انضمّ/.test(e)?'var(--ok)':'var(--warn)';}
-var OPSF='all', DEFF=false;
-/* العجز = شفت غير محجوز (ليس عليه مندوب) من مناوبات ساموراي platform_area_shifts — عبر SHAVAIL */
-function defPanel(){
-  var byCity={};
-  (SHAVAIL.branches||[]).forEach(function(b){ var code=b[0],city=b[1]||code.split('-')[0],av=b[2]||0,sl=b[3]||0;
+var OPSF='all', DEFF=false, OPSTAT='all';
+/* الأماكن غير المحجوزة (شفت بلا مندوب) من platform_area_shifts — مقسّمة حسب الحالة PENDING/جاري */
+function shAgg(stat){
+  var wp=stat!=='active', wa=stat!=='pending';
+  var byCity={}, byBr=[], totAv=0, totSl=0;
+  (SHAVAIL.branches||[]).forEach(function(b){
+    var code=b[0], city=b[1]||code.split('-')[0];
+    var av=(wp?(b[2]||0):0)+(wa?(b[4]||0):0);
+    var sl=(wp?(b[3]||0):0)+(wa?(b[5]||0):0);
+    if(av===0&&sl===0) return;
+    totAv+=av; totSl+=sl; byBr.push({code:code,city:city,av:av,sl:sl});
     if(!byCity[city]) byCity[city]={av:0,sl:0,br:[]};
     var o=byCity[city]; o.av+=av; o.sl+=sl; o.br.push({code:code,av:av,sl:sl});
   });
-  var cs=Object.keys(byCity).sort(function(a,b){return byCity[b].av-byCity[a].av;});
-  var rows=cs.map(function(cy){ var o=byCity[cy];
+  return {byCity:byCity, byBr:byBr, totAv:totAv, totSl:totSl};
+}
+function statLbl(){return OPSTAT==='pending'?'قيد الانتظار':OPSTAT==='active'?'الجاري الآن':'الكل';}
+function statToggle(){
+  return '<span class="chips" style="gap:6px">'+[['all','الكل'],['pending','قيد الانتظار'],['active','جاري']]
+    .map(function(x){return '<button class="chip'+(OPSTAT===x[0]?' on':'')+'" data-stat="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</span>';
+}
+function defPanel(){
+  var A=shAgg(OPSTAT);
+  var cs=Object.keys(A.byCity).sort(function(a,b){return A.byCity[b].sl-A.byCity[a].sl;});
+  var rows=cs.map(function(cy){ var o=A.byCity[cy];
     var head='<tr style="background:rgba(255,255,255,.05)"><td style="font-weight:700;color:#fff">'+esc(CITY[cy]||cy)+'</td>'
-      +'<td class="num" style="font-weight:800;color:#ff9a7a">'+o.av+'</td><td class="num">'+o.sl+'</td></tr>';
-    var sub=o.br.filter(function(x){return x.av>0;}).sort(function(a,b){return b.av-a.av;})
+      +'<td class="num" style="font-weight:800;color:#ff9a7a">'+o.sl+'</td><td class="num sub">'+o.av+'</td></tr>';
+    var sub=o.br.filter(function(x){return x.sl>0;}).sort(function(a,b){return b.sl-a.sl;})
       .map(function(x){return '<tr><td class="sub" style="direction:ltr;padding-inline-start:20px;color:#b7c4c2">'+esc(x.code)+'</td>'
-        +'<td class="num" style="color:#ff9a7a">'+x.av+'</td><td class="num sub">'+x.sl+'</td></tr>';}).join('');
+        +'<td class="num" style="color:#ff9a7a">'+x.sl+'</td><td class="num sub">'+x.av+'</td></tr>';}).join('');
     return head+sub;
   }).join('');
   return '<div class="card" style="margin-top:14px;background:#1b1512;border-color:#2a1e18;color:#e8efee">'
-   +'<div class="hd"><div><h2 style="color:#fff">الشفتات المتاحة حسب المدينة والفرع</h2>'
-   +'<p style="color:#b89f95">شفتات غير محجوزة (ليس عليها مندوب) — حيّة من مناوبات ساموراي'
+   +'<div class="hd"><div><h2 style="color:#fff">الأماكن المتاحة حسب المدينة والفرع</h2>'
+   +'<p style="color:#b89f95">أماكن غير محجوزة ('+statLbl()+') — حيّة من مناوبات ساموراي'
    +(SHAVAIL.asof?' · '+hhmm(new Date(new Date(SHAVAIL.asof).getTime()+3*36e5))+' بتوقيت الرياض':'')+'</p></div>'
-   +'<span class="num" style="font-size:22px;font-weight:800;color:#ff9a7a">'+(SHAVAIL.total||0)+'</span></div>'
-   +'<div class="tblwrap"><table><thead><tr><th>المدينة / الفرع</th><th>شفتات متاحة</th><th>أماكن مفتوحة</th></tr></thead>'
-   +'<tbody>'+(rows||'<tr><td colspan="3" class="sub">لا شفتات متاحة — الكل محجوز</td></tr>')+'</tbody></table></div></div>';
+   +'<span class="num" style="font-size:22px;font-weight:800;color:#ff9a7a">'+A.totSl+'</span></div>'
+   +'<div class="tblwrap"><table><thead><tr><th>المدينة / الفرع</th><th>أماكن متاحة</th><th>شفتات</th></tr></thead>'
+   +'<tbody>'+(rows||'<tr><td colspan="3" class="sub">لا أماكن متاحة — الكل محجوز</td></tr>')+'</tbody></table></div></div>';
 }
-/* كروت سفلية: عدد الشفتات المتاحة لكل مدينة */
+/* كروت سفلية: عدد الأماكن المتاحة لكل مدينة + فلتر الحالة */
 function defCards(){
-  var cities=SHAVAIL.cities||[];
-  if(!cities.length) return '';
-  var cards=cities.map(function(c){ var city=c[0],av=c[1]||0,sl=c[2]||0;
+  var A=shAgg(OPSTAT);
+  var cs=Object.keys(A.byCity).sort(function(a,b){return A.byCity[b].sl-A.byCity[a].sl;});
+  var cards=cs.map(function(cy){ var o=A.byCity[cy];
     return '<div class="sbox" style="background:rgba(255,120,80,.07);border-color:rgba(255,120,80,.22)">'
-      +'<div class="v num" style="color:#ff9a7a">'+av+'</div>'
-      +'<div class="l" style="color:#9fb0ae">'+esc(CITY[city]||city)+(sl>av?' · '+sl+' مكان':'')+'</div></div>';
+      +'<div class="v num" style="color:#ff9a7a">'+o.sl+'</div>'
+      +'<div class="l" style="color:#9fb0ae">'+esc(CITY[cy]||cy)+' · '+o.av+' شفت</div></div>';
   }).join('');
-  return '<div class="card" style="margin-top:14px"><div class="hd"><div>'
-   +'<h2>الشفتات المتاحة حسب المدن</h2>'
-   +'<p>شفتات غير محجوزة — محدّثة من مناوبات ساموراي'
+  return '<div class="card" style="margin-top:14px"><div class="hd" style="flex-wrap:wrap;gap:10px"><div>'
+   +'<h2>الأماكن المتاحة حسب المدن</h2>'
+   +'<p>أماكن غير محجوزة ('+statLbl()+') — محدّثة من مناوبات ساموراي'
    +(SHAVAIL.asof?' · '+hhmm(new Date(new Date(SHAVAIL.asof).getTime()+3*36e5))+' بتوقيت الرياض':'')+'</p></div>'
-   +'<span class="num" style="font-size:20px;font-weight:800;color:#ff9a7a">'+(SHAVAIL.total||0)+'</span></div>'
-   +'<div class="stats4">'+cards+'</div></div>';
+   +'<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+statToggle()
+   +'<span class="num" style="font-size:20px;font-weight:800;color:#ff9a7a">'+A.totSl+'</span></div></div>'
+   +'<div class="stats4">'+(cards||'<div class="sub" style="padding:8px">لا أماكن متاحة</div>')+'</div></div>';
 }
 function vOps(){
   var CP=caps(), ALL=capsAll();
-  var totDef=SHAVAIL.total||0;
+  var totDef=shAgg(OPSTAT).totSl;
   var busy=ALL.filter(function(c){return c.live&&c.live.busy;}).length;
   var inA=ALL.filter(function(c){return c.live&&c.live.inArea&&!c.live.busy;}).length;
   var out=ALL.filter(function(c){return c.live&&!c.live.busy&&!c.live.inArea&&c.live.ready;}).length;
@@ -4593,14 +4609,14 @@ function vOps(){
    +'<div class="sbox" data-def="1" title="اضغط لعرض التفاصيل بالمدن تحت" style="cursor:pointer;'
    +'background:rgba(255,120,80,'+(DEFF?'.22':'.08')+');border-color:rgba(255,120,80,'+(DEFF?'.55':'.28')+')">'
    +'<div class="v num" style="color:#ff9a7a">'+totDef+'</div>'
-   +'<div class="l" style="color:#c9a99f">شفتات متاحة (غير محجوزة) ▾</div></div>'
+   +'<div class="l" style="color:#c9a99f">أماكن متاحة ('+statLbl()+') ▾</div></div>'
    +'</div>'
    +(SHOWSTOP?'<div class="warn-strip" style="margin-top:12px"><b>تعرض الآن المتوقّفين عن العمل</b> — '
        +'ما داوموا أكثر من '+STOP.days+' أيام. يرجعون للتشغيل تلقائياً أول ما يداومون، '
        +'ومعرّفاتهم تنتظر إعادة ربط في تبويب «الربط بالموظفين».</div>':'')
    +'<div style="margin-top:12px;font-size:12.5px;color:#9fb0ae">القراءة '
    +hhmm(new Date(new Date(D.live.at).getTime()+3*36e5))+' بتوقيت الرياض · '
-   +'اضغط أي بطاقة لتصفية الجدول تحت · بطاقة <b style="color:#ff9a7a">الشفتات المتاحة</b> تفتح التفصيل بالمدن والفروع'
+   +'اضغط أي بطاقة لتصفية الجدول تحت · بطاقة <b style="color:#ff9a7a">الأماكن المتاحة</b> تفتح التفصيل بالمدن والفروع'
    +(OPSF!=='all'?' · <b style="color:#ffd79a">مصفّى الآن</b>':'')+'</div></div>'
    +(DEFF?defPanel():'');
 
@@ -4634,6 +4650,8 @@ function vOps(){
     b.onclick=function(){OPSF=(OPSF===b.dataset.of)?'all':b.dataset.of;vOps();};});
   var _db=$('view').querySelector('[data-def]');
   if(_db)_db.onclick=function(){DEFF=!DEFF;vOps();};
+  $('view').querySelectorAll('[data-stat]').forEach(function(b){
+    b.onclick=function(){OPSTAT=b.dataset.stat;vOps();};});
   if($('clrf'))$('clrf').onclick=function(){OPSF='all';vOps();};
   $('qq').oninput=function(){paintOps();};
   $('ap').onclick=function(){Object.keys(TH).forEach(function(k){var e=$('t_'+k);
@@ -5202,9 +5220,8 @@ function go(t){TAB=t; NJROOT.querySelector('.filters').style.display=(t==='lnk'?
   /* الشفتات المتاحة (غير المحجوزة) حسب الفرع/المدينة — حيّة من platform_area_shifts */
   function fetchShiftAvail(){
     return RPC('ninja_shift_avail').then(function(r){
-      SHAVAIL={total:(r&&r.total)||0,slots:(r&&r.slots)||0,
-               cities:(r&&r.cities)||[],branches:(r&&r.branches)||[],asof:(r&&r.asof)||null};
-    }).catch(function(){ SHAVAIL={total:0,slots:0,cities:[],branches:[],asof:null}; });
+      SHAVAIL={branches:(r&&r.branches)||[],asof:(r&&r.asof)||null};
+    }).catch(function(){ SHAVAIL={branches:[],asof:null}; });
   }
 
   var started=false;
