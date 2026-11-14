@@ -4620,6 +4620,8 @@ function vOps(){
    +(OPSF!=='all'?' · <b style="color:#ffd79a">مصفّى الآن</b>':'')+'</div></div>'
    +(DEFF?defPanel():'');
 
+  h+=defCards();
+
   h+='<div class="card" style="margin-top:14px"><div class="hd"><div><h2>حالة الكباتن الآن</h2>'
    +'<p>الحالة اللحظية ومعها تراكم الفترة — اضغط أي صف</p></div>'
    +'<div style="display:flex;gap:8px;align-items:center">'
@@ -4643,7 +4645,6 @@ function vOps(){
    +'<button class="btn pri" id="ap" style="margin-top:12px">طبّق</button>'
    +'<div class="find"><b>ملاحظة على المصدر:</b> حقل «متّصل» يرجع صفراً للجميع حتى والكباتن في طلبات، '
    +'فما نعتمد عليه. نعتمد <b>حالة العمل</b> و<b>حالة الموقع</b> و<b>آخر طلب مُسلَّم</b>.</div></div></div>';
-  h+=defCards();
   $('view').innerHTML=h;
   paintOps(); paintFeed();
   $('view').querySelectorAll('[data-of]').forEach(function(b){
