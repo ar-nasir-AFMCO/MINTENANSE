@@ -4013,7 +4013,7 @@ function ini(s){var p=String(s||'').trim().split(/\s+/);return ((p[0]||'')[0]||'
 function hhmm(d){return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 
 var D=null, DAYS=[], CITY={}, ASOF=new Date(), CC={}, DC={}, LIVE={},
-    CAPS=[], DAILY=[], BR=[], ALERTS=[], TARGET=12;
+    CAPS=[], DAILY=[], BR=[], ALERTS=[], TARGET=12, CBMAP={};
   var STOP={ days:5, ids:{}, lastWork:{}, today:null }, SHOWSTOP=false, RELINK=[];
   function isStop(id){ return !!STOP.ids[String(id)]; }
   function stopDays(id){ var d=STOP.lastWork[String(id)];
@@ -4029,6 +4029,7 @@ LIVE={}; (function(){var L=D.live; if(!L)return;
   L.rows.forEach(function(r){LIVE[r[ix.id]]={conn:r[ix.conn],busy:r[ix.busy],inArea:r[ix.inArea],
     susp:r[ix.susp],ready:r[ix.ready],lastH:r[ix.lastH]};});})();
 CAPS=D.caps.map(function(a){var o={};D.capCols.forEach(function(k,i){o[k]=a[i];});
+  if((!o.branch||o.branch==='')&&CBMAP[o.id])o.branch=CBMAP[o.id];   /* الفرع من الخريطة الحيّة عند غيابه في المدى */
   o.city=o.branch?o.branch.split('-')[0]:'';
   o.roamH=o.roam*o.days/60;              /* الرومينق بالساعات */
   o.offH =o.off *o.days/60;              /* الأوفلاين بالساعات */
@@ -4070,9 +4071,11 @@ function days(){return DAYS.filter(function(d){return d>=F.from&&d<=F.to;});}
 function daily(){var ix=dIdx();return DAILY.filter(function(_,i){return ix.indexOf(i)>=0;});}
 function capsAll(){return CAPS.filter(function(c){
   return (!F.city||c.city===F.city)&&(!F.branch||c.branch===F.branch);});}
-/* الترتيب والمتوسطات تستبعد من داوم أقل من الحدّ — يوم واحد ما يصلح يتصدّر الترتيب */
-function caps(){return capsAll().filter(function(c){return c.days>=F.min;});}
-function capsFew(){return capsAll().filter(function(c){return c.days<F.min;});}
+/* الترتيب والمتوسطات تستبعد من داوم أقل من الحدّ — يوم واحد ما يصلح يتصدّر الترتيب.
+   لكن الحدّ لا يتجاوز عدد الأيام المحدّدة، وإلا اختيار يوم واحد يستبعد الجميع. */
+function effMin(){return Math.max(1,Math.min(F.min,days().length));}
+function caps(){return capsAll().filter(function(c){return c.days>=effMin();});}
+function capsFew(){return capsAll().filter(function(c){return c.days<effMin();});}
 function ser(c){var ix=dIdx();return c.ser.filter(function(_,i){return ix.indexOf(i)>=0;});}
 function avg(a,k){var v=a.map(function(x){return +x[k];}).filter(function(x){return !isNaN(x);});
   return v.length?v.reduce(function(s,x){return s+x;},0)/v.length:null;}
@@ -4522,9 +4525,44 @@ function seedFeed(){
     return {at:new Date(a[7]),c:c,e:a[3]};});
 }
 function evC(e){return /انقطع|خرج|تأخّر|غادر/.test(e)?'var(--bad)':/عاد|انضمّ/.test(e)?'var(--ok)':'var(--warn)';}
-var OPSF='all';
+var OPSF='all', DEFF=false;
+/* الحاضر فعلاً الآن = في طلب أو جاهز أو داخل المنطقة (غير جاهز/موقوف لا يُحسبون حضوراً) */
+function isCover(c){var L=c.live;return !!(L&&(L.busy||L.inArea||L.ready));}
+/* العجز مقابل الخطة: سعة الفرع المخطّطة (عدد المناوبات) ناقص الحاضرين فعلاً — مجموعاً بالمدن */
+function deficit(){
+  var pres={};
+  CAPS.forEach(function(c){ if(c.branch&&isCover(c)) pres[c.branch]=(pres[c.branch]||0)+1; });
+  var byCity={}, tot=0;
+  BR.forEach(function(b){
+    var pl=+b.shifts||0, pr=pres[b.code]||0, df=Math.max(0,pl-pr); tot+=df;
+    if(!byCity[b.city]) byCity[b.city]={plan:0,pres:0,def:0,br:[]};
+    var o=byCity[b.city]; o.plan+=pl; o.pres+=pr; o.def+=df;
+    o.br.push({code:b.code,plan:pl,pres:pr,def:df});
+  });
+  return {byCity:byCity, tot:tot};
+}
+function defPanel(){
+  var DF=deficit(), cs=Object.keys(DF.byCity).sort(function(a,b){return DF.byCity[b].def-DF.byCity[a].def;});
+  var rows=cs.map(function(cy){ var o=DF.byCity[cy];
+    var head='<tr style="background:rgba(255,255,255,.05)"><td style="font-weight:700;color:#fff">'+esc(CITY[cy]||cy)+'</td>'
+      +'<td class="num">'+o.plan+'</td><td class="num">'+o.pres+'</td>'
+      +'<td class="num" style="font-weight:800;color:'+(o.def>0?'#ff9a7a':'#7fd1a0')+'">'+o.def+'</td></tr>';
+    var brs=o.br.filter(function(x){return x.plan>0||x.def>0;}).sort(function(a,b){return b.def-a.def;})
+      .map(function(x){return '<tr><td class="sub" style="direction:ltr;padding-inline-start:20px;color:#b7c4c2">'+esc(x.code)+'</td>'
+        +'<td class="num sub">'+x.plan+'</td><td class="num sub">'+x.pres+'</td>'
+        +'<td class="num" style="color:'+(x.def>0?'#ff9a7a':'#9fb0ae')+'">'+x.def+'</td></tr>';}).join('');
+    return head+brs;
+  }).join('');
+  return '<div class="card" style="margin-top:14px;background:#1b1512;border-color:#2a1e18;color:#e8efee">'
+   +'<div class="hd"><div><h2 style="color:#fff">العجز حسب المدينة والفرع</h2>'
+   +'<p style="color:#b89f95">السعة المخطّطة (مناوبات الفرع) ناقص الحاضرين فعلاً الآن</p></div>'
+   +'<span class="num" style="font-size:22px;font-weight:800;color:#ff9a7a">'+DF.tot+'</span></div>'
+   +'<div class="tblwrap"><table><thead><tr><th>المدينة / الفرع</th><th>المخطّط</th><th>حاضر</th><th>العجز</th></tr></thead>'
+   +'<tbody>'+(rows||'<tr><td colspan="4" class="sub">لا يوجد عجز — التغطية مكتملة</td></tr>')+'</tbody></table></div></div>';
+}
 function vOps(){
   var CP=caps(), ALL=capsAll();
+  var totDef=deficit().tot;
   var busy=ALL.filter(function(c){return c.live&&c.live.busy;}).length;
   var inA=ALL.filter(function(c){return c.live&&c.live.inArea&&!c.live.busy;}).length;
   var out=ALL.filter(function(c){return c.live&&!c.live.busy&&!c.live.inArea&&c.live.ready;}).length;
@@ -4544,13 +4582,20 @@ function vOps(){
     .map(function(x){return '<div class="sbox" data-of="'+x[3]+'" style="cursor:pointer;'
       +'background:rgba(255,255,255,'+(OPSF===x[3]?'.14':'.05')+');border-color:rgba(255,255,255,'
       +(OPSF===x[3]?'.3':'.1')+')"><div class="v num" style="color:'+(x[2]||'#fff')+'">'+x[1]+'</div>'
-      +'<div class="l" style="color:#9fb0ae">'+esc(x[0])+'</div></div>';}).join('')+'</div>'
+      +'<div class="l" style="color:#9fb0ae">'+esc(x[0])+'</div></div>';}).join('')
+   +'<div class="sbox" data-def="1" title="اضغط لعرض التفاصيل بالمدن تحت" style="cursor:pointer;'
+   +'background:rgba(255,120,80,'+(DEFF?'.22':'.08')+');border-color:rgba(255,120,80,'+(DEFF?'.55':'.28')+')">'
+   +'<div class="v num" style="color:#ff9a7a">'+totDef+'</div>'
+   +'<div class="l" style="color:#c9a99f">العجز (الغياب) ▾</div></div>'
+   +'</div>'
    +(SHOWSTOP?'<div class="warn-strip" style="margin-top:12px"><b>تعرض الآن المتوقّفين عن العمل</b> — '
        +'ما داوموا أكثر من '+STOP.days+' أيام. يرجعون للتشغيل تلقائياً أول ما يداومون، '
        +'ومعرّفاتهم تنتظر إعادة ربط في تبويب «الربط بالموظفين».</div>':'')
    +'<div style="margin-top:12px;font-size:12.5px;color:#9fb0ae">القراءة '
    +hhmm(new Date(new Date(D.live.at).getTime()+3*36e5))+' بتوقيت الرياض · '
-   +'اضغط أي بطاقة لتصفية الجدول تحت'+(OPSF!=='all'?' · <b style="color:#ffd79a">مصفّى الآن</b>':'')+'</div></div>';
+   +'اضغط أي بطاقة لتصفية الجدول تحت · بطاقة <b style="color:#ff9a7a">العجز</b> تفتح التفصيل بالمدن'
+   +(OPSF!=='all'?' · <b style="color:#ffd79a">مصفّى الآن</b>':'')+'</div></div>'
+   +(DEFF?defPanel():'');
 
   h+='<div class="card" style="margin-top:14px"><div class="hd"><div><h2>حالة الكباتن الآن</h2>'
    +'<p>الحالة اللحظية ومعها تراكم الفترة — اضغط أي صف</p></div>'
@@ -4579,6 +4624,8 @@ function vOps(){
   paintOps(); paintFeed();
   $('view').querySelectorAll('[data-of]').forEach(function(b){
     b.onclick=function(){OPSF=(OPSF===b.dataset.of)?'all':b.dataset.of;vOps();};});
+  var _db=$('view').querySelector('[data-def]');
+  if(_db)_db.onclick=function(){DEFF=!DEFF;vOps();};
   if($('clrf'))$('clrf').onclick=function(){OPSF='all';vOps();};
   $('qq').oninput=function(){paintOps();};
   $('ap').onclick=function(){Object.keys(TH).forEach(function(k){var e=$('t_'+k);
@@ -5138,6 +5185,11 @@ function go(t){TAB=t; NJROOT.querySelector('.filters').style.display=(t==='lnk'?
         EMPS =(r[1]||[]).map(function(e){return {iq:e.iq,nm:e.nm||e.iq,st:e.st||''};});
       }).catch(function(){ LINKS=[]; EMPS=[]; });
   }
+  /* خريطة كابتن→فرع الحيّة (من مناوبات ساموراي) لسدّ الفرع الغائب */
+  function fetchBranchMap(){
+    return RPC('ninja_branch_map').then(function(m){ CBMAP=m||{}; })
+                                 .catch(function(){ CBMAP={}; });
+  }
 
   var started=false;
   function load(){
@@ -5151,7 +5203,8 @@ function go(t){TAB=t; NJROOT.querySelector('.filters').style.display=(t==='lnk'?
       var to=r.to, d=new Date(to+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()-6);
       var from=d.toISOString().slice(0,10); if(from<r.from) from=r.from;
       F.from=from; F.to=to;
-      return fetchRange(from,to)
+      return fetchBranchMap()
+        .then(function(){ return fetchRange(from,to); })
         .then(fetchStopped).then(fetchAlerts).then(fetchLinks)
         .then(function(){ renderFilters(); go('gen'); });
     });
