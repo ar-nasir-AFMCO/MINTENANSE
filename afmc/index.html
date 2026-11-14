@@ -4527,17 +4527,21 @@ function seedFeed(){
 function evC(e){return /انقطع|خرج|تأخّر|غادر/.test(e)?'var(--bad)':/عاد|انضمّ/.test(e)?'var(--ok)':'var(--warn)';}
 var OPSF='all', DEFF=false;
 /* الحاضر فعلاً الآن = في طلب أو جاهز أو داخل المنطقة (غير جاهز/موقوف لا يُحسبون حضوراً) */
-function isCover(c){var L=c.live;return !!(L&&(L.busy||L.inArea||L.ready));}
-/* العجز مقابل الخطة: سعة الفرع المخطّطة (عدد المناوبات) ناقص الحاضرين فعلاً — مجموعاً بالمدن */
+function isCoverLive(L){return !!(L&&(L.busy||L.inArea||L.ready));}
+/* الغياب: المُسنَدون للفرع (من مناوبات ساموراي platform_area_shifts عبر CBMAP) ناقص الحاضرين منهم الآن — مجموعاً بالمدن */
 function deficit(){
-  var pres={};
-  CAPS.forEach(function(c){ if(c.branch&&isCover(c)) pres[c.branch]=(pres[c.branch]||0)+1; });
+  var asg={}, cov={};
+  Object.keys(CBMAP).forEach(function(id){
+    var br=CBMAP[id]; if(!br) return;
+    asg[br]=(asg[br]||0)+1;
+    if(isCoverLive(LIVE[id])) cov[br]=(cov[br]||0)+1;
+  });
   var byCity={}, tot=0;
-  BR.forEach(function(b){
-    var pl=+b.shifts||0, pr=pres[b.code]||0, df=Math.max(0,pl-pr); tot+=df;
-    if(!byCity[b.city]) byCity[b.city]={plan:0,pres:0,def:0,br:[]};
-    var o=byCity[b.city]; o.plan+=pl; o.pres+=pr; o.def+=df;
-    o.br.push({code:b.code,plan:pl,pres:pr,def:df});
+  Object.keys(asg).forEach(function(code){
+    var city=code.split('-')[0], pl=asg[code], pr=cov[code]||0, df=Math.max(0,pl-pr); tot+=df;
+    if(!byCity[city]) byCity[city]={plan:0,pres:0,def:0,br:[]};
+    var o=byCity[city]; o.plan+=pl; o.pres+=pr; o.def+=df;
+    o.br.push({code:code,plan:pl,pres:pr,def:df});
   });
   return {byCity:byCity, tot:tot};
 }
@@ -4555,9 +4559,9 @@ function defPanel(){
   }).join('');
   return '<div class="card" style="margin-top:14px;background:#1b1512;border-color:#2a1e18;color:#e8efee">'
    +'<div class="hd"><div><h2 style="color:#fff">العجز حسب المدينة والفرع</h2>'
-   +'<p style="color:#b89f95">السعة المخطّطة (مناوبات الفرع) ناقص الحاضرين فعلاً الآن</p></div>'
+   +'<p style="color:#b89f95">المُسنَدون للفرع (من مناوبات ساموراي) ناقص الحاضرين منهم فعلاً الآن</p></div>'
    +'<span class="num" style="font-size:22px;font-weight:800;color:#ff9a7a">'+DF.tot+'</span></div>'
-   +'<div class="tblwrap"><table><thead><tr><th>المدينة / الفرع</th><th>المخطّط</th><th>حاضر</th><th>العجز</th></tr></thead>'
+   +'<div class="tblwrap"><table><thead><tr><th>المدينة / الفرع</th><th>مُسنَد</th><th>حاضر</th><th>الغياب</th></tr></thead>'
    +'<tbody>'+(rows||'<tr><td colspan="4" class="sub">لا يوجد عجز — التغطية مكتملة</td></tr>')+'</tbody></table></div></div>';
 }
 function vOps(){
