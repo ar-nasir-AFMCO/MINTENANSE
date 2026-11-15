@@ -976,6 +976,29 @@ function kmFreshness(){
   }
 }
 
+/* ═══ مستقبِل الجسر: تُفتح الصفحة من بوابة كيمارت (#bridge) فتستقبل الأيام وتحفظها بجلستك ═══
+   يقبل فقط من نطاق البوابة، وفقط أنواع keemart_upsert المعروفة — الصلاحية تتحقق منها القاعدة. */
+(function kmReceiver(){
+  if (!/bridge/.test(location.hash) || !window.opener) return;
+  var ORIGIN='https://courier-keemart.mykeeta.com', KINDS=['attendance','board','branch','riders'], got=0, days=0;
+  function say(t){ var bn=document.getElementById('kmBanner'); if(bn){ bn.className='banner'; bn.textContent=t; } }
+  say('⚙️ وضع الجسر: بانتظار البيانات من بوابة كيمارت… لا تقفل هذه النافذة.');
+  window.addEventListener('message', function(e){
+    if (e.origin!==ORIGIN) return;
+    var m=e.data||{};
+    if (m.type==='km-done'){ say('✅ اكتمل السحب: '+days.toLocaleString('ar-EG')+' دفعة · '+got.toLocaleString('ar-EG')+' صف. جارٍ التحديث…'); setTimeout(function(){ try{ kmLoadDB(); }catch(_){} }, 800); return; }
+    if (m.type!=='km-push' || !Array.isArray(m.rows) || KINDS.indexOf(m.kind)<0) return;
+    sbRpc('keemart_upsert', { p_kind:m.kind, p_rows:m.rows }).then(function(r){
+      got += (r && r.rows) || 0; days++;
+      say('⚙️ وضع الجسر: حُفظ '+(m.tag||'')+' — المجموع '+got.toLocaleString('ar-EG')+' صف');
+      e.source.postMessage({type:'km-ack', tag:m.tag, ok:true, rows:(r&&r.rows)||0}, ORIGIN);
+    }).catch(function(err){
+      e.source.postMessage({type:'km-ack', tag:m.tag, ok:false, err:String(err&&err.message||err)}, ORIGIN);
+    });
+  });
+  try { window.opener.postMessage({type:'km-ready'}, ORIGIN); } catch(e){}
+})();
+
 /* ═══ تحديث تلقائي من القاعدة: كل ٥ دقائق، وعند الرجوع للصفحة ═══ */
 (function kmAuto(){
   var EVERY=5*60*1000;
