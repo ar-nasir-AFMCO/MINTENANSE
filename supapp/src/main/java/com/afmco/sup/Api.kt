@@ -91,14 +91,19 @@ data class ExtraParty(val kind: String, val deptCode: String?, val label: String
 data class DataUpdate(val id: String, val iqama: String?, val fieldLabel: String?, val oldValue: String?, val newValue: String, val createdAt: String?,
                       val name: String? = null, val project: String? = null,
                       val recStatus: String? = null, val recByName: String? = null, val recNote: String? = null,
-                      val canApprove: Boolean? = null) {
+                      val canApprove: Boolean? = null,
+                      val field: String? = null, val holder: String? = null, val stage: String? = null,
+                      val canConfirm: Boolean = false, val canReject: Boolean? = null) {
     companion object {
         fun from(o: JSONObject) = DataUpdate(
             o.optString("id"), o.optStringOrNull("iqama"), o.optStringOrNull("field_label"),
             o.optStringOrNull("old_value"), o.optString("new_value"), o.optStringOrNull("created_at"),
             o.optStringOrNull("name"), o.optStringOrNull("project"),
             o.optStringOrNull("rec_status"), o.optStringOrNull("rec_by_name"), o.optStringOrNull("rec_note"),
-            if (o.has("can_approve") && !o.isNull("can_approve")) o.optBoolean("can_approve") else null)
+            if (o.has("can_approve") && !o.isNull("can_approve")) o.optBoolean("can_approve") else null,
+            o.optStringOrNull("field"), o.optStringOrNull("holder"), o.optStringOrNull("stage"),
+            o.optBoolean("can_confirm", false),
+            if (o.has("can_reject") && !o.isNull("can_reject")) o.optBoolean("can_reject") else null)
     }
 }
 

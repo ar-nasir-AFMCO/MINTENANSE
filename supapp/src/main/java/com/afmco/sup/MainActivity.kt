@@ -805,11 +805,15 @@ fun UpdatesScreen(session: SupSession, onBack: () -> Unit) {
     LaunchedEffect(Unit) { try { caps = Api.caps(session.token) } catch (_: Exception) {} }
     LaunchedEffect(refreshKey) { loading = true; try { list = Api.pendingUpdates(session.token) } catch (_: Exception) {} finally { loading = false } }
     val canApprove = caps?.approveUpdates == true
-    fun act(id: String, yes: Boolean, can: Boolean) {
+    fun act(id: String, yes: Boolean, can: Boolean, confirm: Boolean = false) {
         scope.launch {
             try {
                 if (can) Api.reviewUpdate(session.token, id, yes, null) else Api.recommendUpdate(session.token, id, yes, null)
-                val m = if (can) (if (yes) "تم الاعتماد وتحديث وثيق" else "تم رفض الطلب") else "تم تسجيل توصيتك — القرار عند التوظيف"
+                val m = when {
+                    confirm -> if (yes) "تم تأكيد التغيير — أُرسل للمدير للاعتماد" else "تم رفض الطلب"
+                    can -> if (yes) "تم الاعتماد وتحديث وثيق" else "تم رفض الطلب"
+                    else -> "تم تسجيل توصيتك — القرار عند التوظيف"
+                }
                 android.widget.Toast.makeText(context, m, android.widget.Toast.LENGTH_SHORT).show()
                 refreshKey++ }
             catch (e: Exception) { android.widget.Toast.makeText(context, e.message ?: "تعذّر", android.widget.Toast.LENGTH_LONG).show() }
@@ -821,8 +825,8 @@ fun UpdatesScreen(session: SupSession, onBack: () -> Unit) {
                 loading -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = Green)
                 list.isEmpty() -> Text("لا توجد طلبات معلّقة", Modifier.align(Alignment.Center).padding(24.dp), color = Gray)
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (!canApprove) item {
-                        Text("تعتمد طلبات «رقم الآيدي» لمناديب مشروعك — وبقية الطلبات توصي فيها والاعتماد للتوظيف والإدارة.", fontSize = 11.5.sp, color = Gray)
+                    item {
+                        Text("رقم الآيدي: المشرف يؤكد التغيير ثم المدير يعتمده ويتطبّق في وثيق · بقية الطلبات: المشرف يوصي والتوظيف يعتمد.", fontSize = 11.5.sp, color = Gray)
                     }
                     items(list) { u ->
                         val can = u.canApprove ?: canApprove
@@ -833,9 +837,40 @@ fun UpdatesScreen(session: SupSession, onBack: () -> Unit) {
                                 Spacer(Modifier.height(10.dp))
                                 InfoLine("القيمة الحالية", if (u.oldValue.isNullOrBlank()) "— (غير مُسجّلة)" else u.oldValue)
                                 InfoLine("القيمة الجديدة المطلوبة", u.newValue)
-                                if (u.recStatus != null) { Spacer(Modifier.height(8.dp)); RecLine(u.recStatus, u.recByName, u.recNote) }
-                                Spacer(Modifier.height(12.dp))
-                                DecisionButtons(can) { act(u.id, it, can) }
+                                if (u.field == "platform_id") {
+                                    if (!u.holder.isNullOrBlank()) {
+                                        Spacer(Modifier.height(8.dp))
+                                        Surface(color = Amber.copy(alpha = .12f), shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+                                            Text("⚠️ الرقم حالياً مع: ${u.holder} — بالاعتماد ينتقل لهذا الموظف، ودوامه السابق يبقى لصاحبه",
+                                                color = Color(0xFF92400E), fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(8.dp))
+                                        }
+                                    }
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(if (u.stage == "manager") "✓ أكّده ${u.recByName ?: "المشرف"} — بانتظار اعتماد المدير" else "المرحلة ١: بانتظار تأكيد مشرف المشروع",
+                                        fontSize = 12.sp, color = if (u.stage == "manager") GreenD else Gray, fontWeight = FontWeight.Bold)
+                                    Spacer(Modifier.height(12.dp))
+                                    when {
+                                        u.canConfirm -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                            Button(onClick = { act(u.id, true, false, confirm = true) }, colors = ButtonDefaults.buttonColors(containerColor = Green), shape = RoundedCornerShape(12.dp),
+                                                modifier = Modifier.weight(1f).height(46.dp)) { Text("✓ أؤكد التغيير", fontWeight = FontWeight.Bold, maxLines = 1) }
+                                            OutlinedButton(onClick = { act(u.id, false, false, confirm = true) }, shape = RoundedCornerShape(12.dp),
+                                                modifier = Modifier.weight(1f).height(46.dp)) { Text("✕ رفض", color = Red, fontWeight = FontWeight.Bold, maxLines = 1) }
+                                        }
+                                        u.canApprove == true -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                            Button(onClick = { act(u.id, true, true) }, colors = ButtonDefaults.buttonColors(containerColor = Green), shape = RoundedCornerShape(12.dp),
+                                                modifier = Modifier.weight(1f).height(46.dp)) { Text("✓ اعتماد وتطبيق", fontWeight = FontWeight.Bold, maxLines = 1) }
+                                            OutlinedButton(onClick = { act(u.id, false, true) }, shape = RoundedCornerShape(12.dp),
+                                                modifier = Modifier.weight(1f).height(46.dp)) { Text("✕ رفض", color = Red, fontWeight = FontWeight.Bold, maxLines = 1) }
+                                        }
+                                        u.canReject == true -> OutlinedButton(onClick = { act(u.id, false, true) }, shape = RoundedCornerShape(12.dp),
+                                            modifier = Modifier.fillMaxWidth().height(46.dp)) { Text("✕ رفض الطلب", color = Red, fontWeight = FontWeight.Bold) }
+                                        else -> Text("بانتظار اعتماد المدير", fontSize = 12.sp, color = Gray)
+                                    }
+                                } else {
+                                    if (u.recStatus != null) { Spacer(Modifier.height(8.dp)); RecLine(u.recStatus, u.recByName, u.recNote) }
+                                    Spacer(Modifier.height(12.dp))
+                                    DecisionButtons(can) { act(u.id, it, can) }
+                                }
                             }
                         }
                     }
