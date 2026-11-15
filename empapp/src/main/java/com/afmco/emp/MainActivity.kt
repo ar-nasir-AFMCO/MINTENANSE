@@ -882,15 +882,18 @@ fun DataUpdateScreen(session: Session, onBack: () -> Unit) {
     val fields = listOf(
         "phone" to (when (lang) { Lang.EN -> "Phone number"; Lang.UR -> "فون نمبر"; else -> "رقم الاتصال" }),
         "project_code" to (when (lang) { Lang.EN -> "Project"; Lang.UR -> "پروجیکٹ"; else -> "المشروع" }),
-        "bank_account" to (when (lang) { Lang.EN -> "Bank account"; Lang.UR -> "بینک اکاؤنٹ"; else -> "الحساب البنكي" })
+        "bank_account" to (when (lang) { Lang.EN -> "Bank account"; Lang.UR -> "بینک اکاؤنٹ"; else -> "الحساب البنكي" }),
+        "platform_id" to (when (lang) { Lang.EN -> "Platform ID (rider ID)"; Lang.UR -> "پلیٹ فارم آئی ڈی"; else -> "رقم الآيدي (المنصة)" })
     )
     val fieldLabel = fields.first { it.first == fieldKey }.second
     val title = when (lang) { Lang.EN -> "Update my data"; Lang.UR -> "میرا ڈیٹا اپ ڈیٹ"; else -> "تحديث بياناتي" }
     val tField = when (lang) { Lang.EN -> "Field to update"; Lang.UR -> "اپ ڈیٹ فیلڈ"; else -> "الحقل المراد تحديثه" }
     val tNew = when (lang) { Lang.EN -> "New value"; Lang.UR -> "نئی قدر"; else -> "القيمة الجديدة" }
     val tSubmit = when (lang) { Lang.EN -> "Send request"; Lang.UR -> "درخواست بھیجیں"; else -> "إرسال الطلب" }
-    val tHint = when (lang) { Lang.EN -> "Your supervisor reviews and approves the change in Watheeq."; Lang.UR -> "آپ کا سپروائزر وثیق میں تبدیلی کی منظوری دیتا ہے۔"; else -> "يراجع المشرف الطلب ويعتمده في وثيق." }
-    val tDone = when (lang) { Lang.EN -> "Request sent to your supervisor"; Lang.UR -> "درخواست سپروائزر کو بھیج دی گئی"; else -> "تم إرسال الطلب للمشرف" }
+    val tHint = if (fieldKey == "platform_id")
+        when (lang) { Lang.EN -> "Your project supervisor or the manager approves it, and it is recorded in Watheeq."; Lang.UR -> "آپ کے پروجیکٹ کا سپروائزر یا مینیجر منظوری دیتا ہے اور یہ وثیق میں درج ہوتا ہے۔"; else -> "يعتمده مشرف مشروعك أو المدير، ويُسجَّل في وثيق." }
+    else when (lang) { Lang.EN -> "Your supervisor reviews it and HR approves the change in Watheeq."; Lang.UR -> "سپروائزر جائزہ لیتا ہے اور ایچ آر وثیق میں منظوری دیتا ہے۔"; else -> "يراجعه المشرف ويعتمده التوظيف في وثيق." }
+    val tDone = when (lang) { Lang.EN -> "Request sent for approval"; Lang.UR -> "درخواست منظوری کے لیے بھیج دی گئی"; else -> "تم إرسال الطلب للاعتماد" }
 
     Scaffold(containerColor = Bg, topBar = { TopBar(title, onBack = onBack) }) { pad ->
         Column(Modifier.padding(pad).fillMaxSize().padding(16.dp)) {
@@ -916,7 +919,7 @@ fun DataUpdateScreen(session: Session, onBack: () -> Unit) {
                 }
                 Spacer(Modifier.height(14.dp))
                 OutlinedTextField(value, { value = it }, label = { Text(tNew) }, singleLine = true,
-                    keyboardOptions = if (fieldKey == "phone" || fieldKey == "bank_account") KeyboardOptions(keyboardType = KeyboardType.Number) else KeyboardOptions.Default,
+                    keyboardOptions = if (fieldKey == "phone" || fieldKey == "bank_account" || fieldKey == "platform_id") KeyboardOptions(keyboardType = KeyboardType.Number) else KeyboardOptions.Default,
                     modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(10.dp))
                 Surface(color = Color(0xFFF1F5F9), shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
