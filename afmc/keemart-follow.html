@@ -101,6 +101,8 @@
   .rule input{width:70px;font:inherit;font-size:13px;padding:4px 7px;border:1px solid var(--border);
               border-radius:7px;background:var(--surface2);text-align:center}
 
+  .banner.stale{background:var(--bad-soft);color:var(--bad);border-color:var(--bad);font-weight:700}
+  .chip.bad{background:var(--bad-soft);color:var(--bad)} .chip.bad .dot{background:var(--bad)}
   .note{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;
         font-size:13px;color:var(--ink2)}
   .note b{color:var(--ink)}
@@ -160,12 +162,12 @@
       <div class="sub">واجهة الدم للخدمات اللوجستية · المورّد ٥٩ · ٨٧ مندوباً · ٢٤ فرعاً · ٧ مدن</div>
     </div>
     <div style="display:flex;gap:7px;flex-wrap:wrap">
-      <span class="chip"><span class="dot"></span> الجسر متصل — آخر سحب قبل ٣ دقائق</span>
-      <span class="chip mute">٢ – ١٦ أكتوبر ٢٠٢٦ · ١٥ يوماً</span>
+      <span class="chip" id="kmFresh"><span class="dot"></span> جارٍ التحقق من آخر سحب…</span>
+      <span class="chip mute" id="kmRangeChip">—</span>
     </div>
   </header>
 
-  <div class="banner">كل الأرقام حقيقية — أداء التوصيل وتقرير الدوام مدموجان على المعرّف. ٨٧ من ٨٧ طابقوا.</div>
+  <div class="banner" id="kmBanner">جارٍ قراءة البيانات من القاعدة…</div>
 
   <div class="bar">
     <label>من <input type="date" id="dFrom" value="2026-08-01"></label>
@@ -930,18 +932,57 @@ function vFlags(){
 
 /* ═══ سجل السحب (الجسر) ═══ */
 function vBridge(){
-  var rows=[
-    ['١٨:٥٨','أداء التوصيل','٨٧','p-ok','تمّ'],
-    ['١٨:٥٦','تقرير الدوام','٩٣','p-ok','تمّ'],
-    ['١٨:٤٣','الفروع','٢٤','p-ok','تمّ'],
-    ['١٨:٢٨','أداء التوصيل','٨٧','p-ok','تمّ'],
-    ['١٨:١٣','أداء التوصيل','—','p-warn','الجلسة منتهية — سجّل دخولك'],
-    ['١٧:٥٨','أداء التوصيل','٨٧','p-ok','تمّ']
-  ];
-  document.getElementById('tPull').innerHTML=T(['الوقت','النوع','الصفوف','النتيجة'],
-    rows.map(function(r){ return '<tr><td>'+r[0]+'</td><td>'+r[1]+'</td><td class="num">'+r[2]+'</td>'+
-      '<td><span class="pill '+r[3]+'">'+r[4]+'</span></td></tr>'; }));
+  var el=document.getElementById('tPull'); if(!el) return;
+  el.innerHTML='<tr><td class="flag" style="padding:12px">جارٍ قراءة سجل السحب…</td></tr>';
+  var KIND={board:'أداء التوصيل',attendance:'تقرير الدوام',branch:'الفروع',riders:'المناديب'};
+  sbGet('keemart_pull_log?select=at,kind,rows_in,ok,err,from_date,to_date&order=at.desc&limit=40').then(function(rows){
+    if(!rows.length){ el.innerHTML='<tr><td class="flag" style="padding:12px">لا يوجد سحب مسجّل.</td></tr>'; return; }
+    el.innerHTML=T(['الوقت','النوع','الأيام','الصفوف','النتيجة'], rows.map(function(r){
+      var at=new Date(r.at), when=at.toLocaleString('ar-EG',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      var days=r.from_date?(r.from_date+(r.to_date&&r.to_date!==r.from_date?' → '+r.to_date:'')):'—';
+      return '<tr><td>'+when+'</td><td>'+(KIND[r.kind]||r.kind)+'</td><td class="flag">'+days+'</td><td class="num">'+n(r.rows_in||0)+'</td>'+
+        '<td><span class="pill '+(r.ok?'p-ok':'p-bad')+'">'+(r.ok?'تمّ':('فشل'+(r.err?(' — '+String(r.err).slice(0,60)):'')))+'</span></td></tr>';
+    }));
+  }).catch(function(e){ el.innerHTML='<tr><td class="flag" style="padding:12px">تعذّرت قراءة السجل: '+e.message+'</td></tr>'; });
 }
+
+/* ═══ حداثة البيانات: آخر يوم أداء وآخر يوم دوام مقابل اليوم — تنبيه أحمر لو متأخرة ═══ */
+function kmFreshness(){
+  var D=window.DAILY_ALL||[], lastBoard=null, lastAtt=null;
+  D.forEach(function(d){
+    if(d.src==='board'||d.src==='both'){ if(!lastBoard||d.date>lastBoard) lastBoard=d.date; }
+    if(d.src==='attendance'||d.src==='both'){ if(!lastAtt||d.date>lastAtt) lastAtt=d.date; }
+  });
+  var today=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Riyadh'}));
+  function lag(ds){ if(!ds) return 999; var d=new Date(ds+'T00:00:00'); return Math.round((new Date(today.getFullYear(),today.getMonth(),today.getDate())-d)/86400000); }
+  var lb=lag(lastBoard), la=lag(lastAtt), worst=Math.max(lb,la);
+  var R=window.KM_RANGE, chip=document.getElementById('kmFresh'), rc=document.getElementById('kmRangeChip'), bn=document.getElementById('kmBanner');
+  if(rc) rc.textContent = R ? (R.from+' → '+R.to+' · '+R.n.toLocaleString('ar-EG')+' يوماً') : 'لا بيانات';
+  function ago(x){ return x>=999?'لا يوجد':(x<=0?'اليوم':x===1?'أمس':('قبل '+x.toLocaleString('ar-EG')+' يوم')); }
+  if(chip){
+    chip.className='chip'+(worst>1?' bad':'');
+    chip.innerHTML='<span class="dot"></span> آخر أداء: '+(lastBoard||'—')+' ('+ago(lb)+') · آخر دوام: '+(lastAtt||'—')+' ('+ago(la)+')';
+  }
+  if(bn){
+    if(worst>1){
+      bn.className='banner stale';
+      bn.innerHTML='⚠️ البيانات متأخرة — '+(lb>1?('لوحة الأداء آخر يوم '+(lastBoard||'—')+' ('+ago(lb)+')'):'')+(lb>1&&la>1?' · ':'')+
+        (la>1?('تقرير الدوام (الساعات والدخول والخروج) آخر يوم '+(lastAtt||'—')+' ('+ago(la)+')'):'')+
+        '. السحب ما يصير تلقائياً من القاعدة: افتح بوابة كيمارت وشغّل الجسر لسحب الأيام الناقصة.';
+    } else {
+      bn.className='banner';
+      bn.textContent='البيانات محدّثة — آخر أداء '+lastBoard+' · آخر دوام '+lastAtt+'. الصفحة تتحدّث من القاعدة تلقائياً كل ٥ دقائق.';
+    }
+  }
+}
+
+/* ═══ تحديث تلقائي من القاعدة: كل ٥ دقائق، وعند الرجوع للصفحة ═══ */
+(function kmAuto(){
+  var EVERY=5*60*1000;
+  function due(){ return sbSession() && !document.hidden && (!window.__kmLoadedAt || Date.now()-window.__kmLoadedAt>=EVERY-2000); }
+  setInterval(function(){ if(due()){ kmLoadDB(); if(VIEW==='bridge'){ try{ vBridge(); }catch(_){} } } }, 60*1000);
+  document.addEventListener('visibilitychange', function(){ if(due()) kmLoadDB(); });
+})();
 
 /* ═══ التصدير — CSV من الجدول المعروض ═══ */
 function toCSV(tbl){
@@ -1191,7 +1232,7 @@ function kmLoadDB(){
   return page(0).then(function(){
     return Promise.all([
       sbGet('keemart_riders?select=captain_id,name,branch,city,status,joined_on,left_on').catch(function(){ return []; }),
-      sbGet('keemart_links?select=captain_id,iqama&to_date=is.null').catch(function(){ return []; })   /* v102: الروابط المفتوحة لعرض حالة الربط */
+      sbGet('v_keemart_links?select=captain_id,iqama').catch(function(){ return []; })   /* v130: الربط الفعلي — نفس المصدر اللي يسجّل منه الدوام في وثيق */
     ]);
   }).then(function(res){
     var rid = res[0] || [], lnk = res[1] || [];
@@ -1226,8 +1267,14 @@ function kmLoadDB(){
              (window.KM_RANGE ? ' · ' + window.KM_RANGE.from + ' → ' + window.KM_RANGE.to : '') +
              ' · أسماء ' + Object.keys(NM).length.toLocaleString('ar-EG'));
     var f=document.getElementById('dFrom'), t=document.getElementById('dTo');
-    if (f && window.KM_RANGE) f.value = window.KM_RANGE.from;
-    if (t && window.KM_RANGE) t.value = window.KM_RANGE.to;
+    // أول تحميل: كامل المدى. التحديث التلقائي: لا يلمس فلتر المستخدم، ويمدّ «إلى» فقط إذا كان على آخر يوم
+    if (window.KM_RANGE){
+      if (!window.__kmRangeInit){ if (f) f.value = window.KM_RANGE.from; if (t) t.value = window.KM_RANGE.to; window.__kmRangeInit = true; }
+      else if (t && t.value === window.__kmPrevTo) t.value = window.KM_RANGE.to;
+      window.__kmPrevTo = window.KM_RANGE.to;
+    }
+    window.__kmLoadedAt = Date.now();
+    try { kmFreshness(); } catch(e){}
     kmApplyRange();
     kmPaintBridge();
     try { if (typeof render === 'function') render(); } catch(e){}
