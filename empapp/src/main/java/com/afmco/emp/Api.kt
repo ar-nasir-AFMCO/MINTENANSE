@@ -222,6 +222,20 @@ object Api {
         return (0 until arr.length()).map { Broadcast.from(arr.getJSONObject(it)) }
     }
 
+    /** الرسائل الموجّهة اللي ما أكّد المندوب قراءتها (تنبيه عاجل بصوت عالي) */
+    suspend fun unreadBroadcasts(token: String): List<Broadcast> {
+        val arr = JSONArray(rpc("soot_broadcasts_unread", JSONObject().put("p_token", token)).ifBlank { "[]" })
+        return (0 until arr.length()).map {
+            val o = arr.getJSONObject(it)
+            Broadcast(o.optLong("id"), o.optStringOrNull("title"), o.optString("body"), o.optStringOrNull("by_name"), o.optStringOrNull("created_at"))
+        }
+    }
+
+    /** تأكيد قراءة رسالة موجّهة */
+    suspend fun ackBroadcast(token: String, id: Long) {
+        rpc("soot_broadcast_ack", JSONObject().put("p_token", token).put("p_id", id))
+    }
+
     /** تسجيل فتح/دخول التطبيق (صوت) — لمقارنة المسجّلين بالمربوطين */
     suspend fun touchLogin(iqama: String, project: String?, name: String?) {
         try {

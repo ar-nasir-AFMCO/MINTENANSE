@@ -189,7 +189,9 @@ object Prefs {
     fun save(ctx: Context, iqama: String, pin: String) = sp(ctx).edit().putString("iqama", iqama).putString("pin", pin).apply()
     fun iqama(ctx: Context) = sp(ctx).getString("iqama", null)
     fun pin(ctx: Context) = sp(ctx).getString("pin", null)
-    fun clearCreds(ctx: Context) = sp(ctx).edit().remove("iqama").remove("pin").apply()
+    fun clearCreds(ctx: Context) = sp(ctx).edit().remove("iqama").remove("pin").remove("token").apply()
+    fun saveToken(ctx: Context, token: String) = sp(ctx).edit().putString("token", token).apply()
+    fun token(ctx: Context) = sp(ctx).getString("token", null)
     fun lang(ctx: Context): Lang = runCatching { Lang.valueOf(sp(ctx).getString("lang", "AR") ?: "AR") }.getOrDefault(Lang.AR)
     fun setLang(ctx: Context, l: Lang) = sp(ctx).edit().putString("lang", l.name).apply()
 }
@@ -262,6 +264,12 @@ fun AppRoot() {
         }
     }
 
+    // الرسائل العاجلة: حفظ الجلسة للفحص في الخلفية كل 15 دقيقة
+    LaunchedEffect(session) {
+        val s = session
+        if (s != null) { Prefs.saveToken(context, s.token); Urgent.ensureChannel(context); Urgent.schedule(context) }
+    }
+
     LaunchedEffect(Unit) {
         val iq = Prefs.iqama(context); val pn = Prefs.pin(context)
         if (!iq.isNullOrBlank() && !pn.isNullOrBlank()) {
@@ -295,7 +303,7 @@ fun AppRoot() {
             detail != null -> DetailScreen(s, detail!!, onChanged = { reload++ }) { detail = null }
             else -> HomeScreen(s, reload, onOpen = { detail = it }, onNew = { newFlow = true }, onUpdateData = { updateFlow = true },
                 onAdvance = { advanceFlow = true },
-                onLogout = { Prefs.clearCreds(context); session = null; detail = null })
+                onLogout = { Urgent.cancel(context); Prefs.clearCreds(context); session = null; detail = null })
         }
     }
 
@@ -404,6 +412,14 @@ fun HomeScreen(session: Session, reload: Int, onOpen: (Complaint) -> Unit, onNew
         }
     }
     LaunchedEffect(Unit) { try { vehicles = Api.myVehicles(session.token) } catch (_: Exception) {} }
+    // الرسائل الموجّهة العاجلة: فحص كل 20 ثانية وشاشة كاملة بصوت عالي لين يأكد القراءة
+    var urgent by remember { mutableStateOf<List<Broadcast>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            try { urgent = Api.unreadBroadcasts(session.token) } catch (_: Exception) {}
+            delay(20_000L)
+        }
+    }
     // صوت: تسجيل الدخول + جلب الإنذارات والرسائل الموجّهة، وتحديثها دوريًا
     LaunchedEffect(Unit) {
         Api.touchLogin(session.iqama, session.projectCode, session.name)
@@ -457,6 +473,65 @@ fun HomeScreen(session: Session, reload: Int, onOpen: (Complaint) -> Unit, onNew
                     }
                     items(list) { c -> ComplaintCard(c) { onOpen(c) } }
                     item { Spacer(Modifier.height(70.dp)) }
+                }
+            }
+        }
+    }
+
+    urgent.firstOrNull()?.let { m ->
+        UrgentMessageDialog(m, lang) {
+            try {
+                Api.ackBroadcast(session.token, m.id)
+                Urgent.clear(context, m.id)
+                urgent = urgent.filter { it.id != m.id }
+                try { broadcasts = Api.myBroadcasts(session.iqama, session.projectCode) } catch (_: Exception) {}
+                true
+            } catch (_: Exception) { false }
+        }
+    }
+}
+
+/** رسالة عاجلة: شاشة كاملة + صوت منبّه عالي + اهتزاز — ما تنقفل إلا بتأكيد القراءة */
+@Composable
+fun UrgentMessageDialog(m: Broadcast, lang: Lang, onAck: suspend () -> Boolean) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var busy by remember(m.id) { mutableStateOf(false) }
+    var failed by remember(m.id) { mutableStateOf(false) }
+    DisposableEffect(m.id) {
+        AlarmPlayer.start(context)
+        onDispose { AlarmPlayer.stop(context) }
+    }
+    BackHandler { /* لا إغلاق بزر الرجوع */ }
+    val head = when (lang) { Lang.EN -> "Urgent message"; Lang.UR -> "فوری پیغام"; else -> "رسالة عاجلة" }
+    val ack = when (lang) { Lang.EN -> "I have read it — confirm"; Lang.UR -> "میں نے پڑھ لیا — تصدیق"; else -> "قرأت الرسالة — أؤكد" }
+    val err = when (lang) { Lang.EN -> "No connection — try again"; Lang.UR -> "کنکشن نہیں — دوبارہ کوشش کریں"; else -> "تعذّر الإرسال — تأكد من الإنترنت وحاول مرة ثانية" }
+    androidx.compose.ui.window.Dialog(onDismissRequest = { },
+        properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false, usePlatformDefaultWidth = false)) {
+        Surface(Modifier.fillMaxSize(), color = Color(0xFFB91C1C)) {
+            Column(Modifier.fillMaxSize().statusBarsPadding().padding(22.dp).verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                Text("🔔", fontSize = 64.sp)
+                Spacer(Modifier.height(8.dp))
+                Text(head, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Black)
+                Spacer(Modifier.height(18.dp))
+                Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(18.dp)) {
+                        if (!m.title.isNullOrBlank()) { Text(m.title, fontWeight = FontWeight.Black, fontSize = 18.sp, color = Color(0xFF7F1D1D)); Spacer(Modifier.height(8.dp)) }
+                        Text(m.body, fontSize = 17.sp, color = Color(0xFF1F2937), lineHeight = 26.sp)
+                        Spacer(Modifier.height(10.dp))
+                        Text((m.byName?.let { "$it · " } ?: "") + sootDate(m.createdAt), fontSize = 12.sp, color = Gray)
+                    }
+                }
+                if (failed) { Spacer(Modifier.height(10.dp)); Text(err, color = Color.White, fontSize = 13.sp, textAlign = TextAlign.Center) }
+                Spacer(Modifier.height(22.dp))
+                Button(onClick = {
+                    busy = true; failed = false
+                    scope.launch { val ok = onAck(); if (!ok) { failed = true; busy = false } }
+                }, enabled = !busy, colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFFB91C1C)),
+                    shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().height(58.dp)) {
+                    if (busy) CircularProgressIndicator(Modifier.size(22.dp), color = Color(0xFFB91C1C), strokeWidth = 2.dp)
+                    else Text("✓  $ack", fontSize = 17.sp, fontWeight = FontWeight.Black)
                 }
             }
         }
