@@ -442,29 +442,43 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onUpdates: () -
 
 private fun sootAr(n: Any): String = n.toString().map { "٠١٢٣٤٥٦٧٨٩".getOrNull(it - '0') ?: it }.joinToString("")
 
-/** صوت — المناديب على رأس العمل: روستر + نقص نينجا + إنذارات + رسالة موجّهة */
+/** صوت — المناديب على رأس العمل: حسب مشروع المشرف فقط · الحضور × المركبة المسلّمة · إنذارات · رسالة موجّهة */
 @Composable
 fun RosterScreen(session: SupSession, onBack: () -> Unit) {
-    var roster by remember { mutableStateOf<List<RosterItem>>(emptyList()) }
+    var res by remember { mutableStateOf<RosterResult?>(null) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var refresh by remember { mutableStateOf(0) }
     var warnTarget by remember { mutableStateOf<RosterItem?>(null) }
     var showBroadcast by remember { mutableStateOf(false) }
+    var proj by remember { mutableStateOf<String?>(null) }
+    var levelFilter by remember { mutableStateOf<String?>(null) }
+    var q by remember { mutableStateOf("") }
+    BackHandler { onBack() }
 
     LaunchedEffect(refresh) {
         loading = true; error = null
-        try { roster = Api.roster(session.token) } catch (e: Exception) { error = e.message } finally { loading = false }
+        try { res = Api.roster(session.token) } catch (e: Exception) { error = e.message } finally { loading = false }
     }
 
-    val present = roster.count { it.present }
-    val absent = roster.count { it.absent }
-    val short = roster.count { it.short }
-    val logged = roster.count { it.logged }
-    val notLogged = roster.count { !it.logged }
+    val all = res?.rows ?: emptyList()
+    // المشاريع اللي فيها مناديب فعلًا (مشاريع المشرف فقط — من الخادم)
+    val projs = all.map { it.project }.distinct().sorted()
+    val curProj = proj?.takeIf { it in projs } ?: projs.firstOrNull()
+    val inProj = all.filter { it.project == curProj }
+    val shown = inProj.filter { r ->
+        (levelFilter == null || r.level == levelFilter) &&
+        (q.isBlank() || listOf(r.name, r.iqama, r.plates ?: "", r.captainId ?: "").joinToString(" ").contains(q.trim(), ignoreCase = true))
+    }
+    val nPresent = inProj.count { it.level == "present" }
+    val nAbsVeh = inProj.count { it.level == "absent_vehicle" }
+    val nAbs = inProj.count { it.level == "absent" }
+    val nNoData = inProj.count { it.level == "nodata" }
+    val date = curProj?.let { res?.dates?.get(it) }
 
     Scaffold(containerColor = Bg, topBar = {
-        TopBar("المناديب على رأس العمل", "${roster.size} مربوط في وثيق", onBack = onBack) {
+        TopBar("المناديب على رأس العمل",
+            (curProj ?: "—") + " · ${inProj.size} مندوب" + (date?.let { " · دوام $it" } ?: ""), onBack = onBack) {
             TextButton(onClick = { showBroadcast = true }) { Text("✉️ رسالة", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
             TextButton(onClick = { refresh++ }) { Text("تحديث", color = Color.White, fontSize = 13.sp) }
         }
@@ -473,27 +487,39 @@ fun RosterScreen(session: SupSession, onBack: () -> Unit) {
             when {
                 loading -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = Green)
                 error != null -> Text("تعذّر التحميل: $error", Modifier.align(Alignment.Center).padding(24.dp), color = Red)
+                all.isEmpty() -> Text("لا يوجد مناديب في مشاريعك. تأكد من إسناد المشروع لحسابك في المنصة.",
+                    Modifier.align(Alignment.Center).padding(24.dp), color = Gray, textAlign = TextAlign.Center)
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    item {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Kpi("مربوط (وثيق)", roster.size, GreenD, false, Modifier.weight(1f))
-                            Kpi("مسجّل دخول", logged, Green, false, Modifier.weight(1f))
-                            Kpi("بلا تسجيل", notLogged, Amber, false, Modifier.weight(1f))
+                    if (projs.size > 1) item {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(projs) { p ->
+                                FilterChipItem("📁 $p (${all.count { it.project == p }})", p == curProj) { proj = p; levelFilter = null }
+                            }
                         }
                     }
                     item {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Kpi("غياب (آخر شفت)", absent, Red, false, Modifier.weight(1f))
-                            Kpi("أقل من ١٠ س", short, Amber, false, Modifier.weight(1f))
-                            Kpi("حاضر", present, Green, false, Modifier.weight(1f))
+                            Kpi("مداوم", nPresent, Green, levelFilter == "present", Modifier.weight(1f)) { levelFilter = if (levelFilter == "present") null else "present" }
+                            Kpi("غائب ومعه مركبة", nAbsVeh, Red, levelFilter == "absent_vehicle", Modifier.weight(1f)) { levelFilter = if (levelFilter == "absent_vehicle") null else "absent_vehicle" }
+                            Kpi("غائب بدون مركبة", nAbs, Amber, levelFilter == "absent", Modifier.weight(1f)) { levelFilter = if (levelFilter == "absent") null else "absent" }
+                        }
+                    }
+                    if (nNoData > 0) item {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Kpi("لا يوجد دوام مسجّل", nNoData, Gray, levelFilter == "nodata", Modifier.weight(1f)) { levelFilter = if (levelFilter == "nodata") null else "nodata" }
                         }
                     }
                     item {
-                        Text("آخر شفت والساعات من بيانات نينجا · «صوت» = تسجيل الدخول للتطبيق",
+                        Text(if (date != null) "الحضور من دوام $date (آخر يوم مرفوع) · المركبة من التسليمات المفتوحة في الأسطول"
+                             else "لا يوجد ملف دوام مرفوع لهذا المشروع — تظهر المركبات فقط",
                             fontSize = 11.sp, color = Gray, modifier = Modifier.padding(vertical = 2.dp))
                     }
-                    if (roster.isEmpty()) item { Text("لا مناديب مربوطون في وثيق.", color = Gray, modifier = Modifier.padding(20.dp)) }
-                    items(roster) { r -> RosterCard(r) { warnTarget = r } }
+                    item {
+                        OutlinedTextField(q, { q = it }, placeholder = { Text("ابحث بالاسم / الإقامة / اللوحة") },
+                            singleLine = true, modifier = Modifier.fillMaxWidth())
+                    }
+                    if (shown.isEmpty()) item { Text("لا نتائج.", color = Gray, modifier = Modifier.padding(20.dp)) }
+                    items(shown) { r -> RosterCard(r) { warnTarget = r } }
                     item { Spacer(Modifier.height(20.dp)) }
                 }
             }
@@ -506,13 +532,19 @@ fun RosterScreen(session: SupSession, onBack: () -> Unit) {
 
 @Composable
 fun RosterCard(r: RosterItem, onWarn: () -> Unit) {
+    val (bg, fg) = when (r.level) {
+        "present" -> Color(0xFFDCFCE7) to Color(0xFF15803D)
+        "absent_vehicle" -> Color(0xFFFEE2E2) to Color(0xFFB91C1C)
+        "absent" -> Color(0xFFFEF3C7) to Color(0xFFB45309)
+        else -> Color(0xFFEEF2F0) to Color(0xFF64748B)
+    }
     Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(13.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(r.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF223229))
-                    Text("إقامة ${r.iqama} · كابتن ${r.captainId}", fontSize = 11.sp, color = Gray)
+                    Text("إقامة ${r.iqama}" + (r.captainId?.let { " · كابتن $it" } ?: ""), fontSize = 11.sp, color = Gray)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                     (1..3).forEach { i ->
@@ -522,18 +554,25 @@ fun RosterCard(r: RosterItem, onWarn: () -> Unit) {
                 }
             }
             Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (r.absent) RosterPill("غائب", Color(0xFFFEE2E2), Color(0xFFB91C1C))
-                else RosterPill("حاضر", Color(0xFFDCFCE7), Color(0xFF15803D))
+            // النتيجة الواضحة: مداوم / غائب ومعه مركبة / غائب بدون مركبة
+            Surface(color = bg, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+                Text(r.result, color = fg, fontSize = 13.sp, fontWeight = FontWeight.Black,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
+                RosterPill("🚗 " + (r.plates ?: "بدون مركبة"), Color(0xFFEEF2F0), if (r.plates != null) GreenD else Color(0xFF94A3B8))
                 Spacer(Modifier.width(6.dp))
-                if (r.hours != null) RosterPill(sootAr(String.format("%.1f", r.hours)) + " س" + (if (r.short) " ⚠" else ""),
-                    if (r.short) Color(0xFFFEF3C7) else Color(0xFFEEF2F0), if (r.short) Color(0xFFB45309) else Color(0xFF64748B))
-                Spacer(Modifier.width(6.dp))
-                RosterPill("🛵 " + sootAr(r.orders), Color(0xFFEEF2F0), Color(0xFF64748B))
-                Spacer(Modifier.width(6.dp))
+                if (r.hours != null) {
+                    RosterPill(sootAr(String.format("%.1f", r.hours)) + " س" + (if (r.short) " ⚠" else ""),
+                        if (r.short) Color(0xFFFEF3C7) else Color(0xFFEEF2F0), if (r.short) Color(0xFFB45309) else Color(0xFF64748B))
+                    Spacer(Modifier.width(6.dp))
+                    RosterPill("📦 " + sootAr(r.orders), Color(0xFFEEF2F0), Color(0xFF64748B))
+                    Spacer(Modifier.width(6.dp))
+                }
                 if (r.logged) RosterPill("صوت ✓", Color(0xFFDCFCE7), Color(0xFF15803D))
                 else RosterPill("صوت ✗", Color(0xFFEEF2F0), Color(0xFF94A3B8))
-                Spacer(Modifier.weight(1f))
+                Spacer(Modifier.width(10.dp))
                 OutlinedButton(onClick = onWarn, shape = RoundedCornerShape(9.dp),
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)) {
                     Text("⚠ إنذار", color = Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -563,7 +602,7 @@ fun WarnDialog(session: SupSession, r: RosterItem, onClose: () -> Unit, onDone: 
         title = { Text("⚠ إصدار إنذار", fontWeight = FontWeight.Bold, color = Red) },
         text = {
             Column {
-                Text("${r.name} · إقامة ${r.iqama} · كابتن ${r.captainId}", fontSize = 12.sp, color = Gray)
+                Text("${r.name} · إقامة ${r.iqama}" + (r.captainId?.let { " · كابتن $it" } ?: ""), fontSize = 12.sp, color = Gray)
                 Spacer(Modifier.height(10.dp))
                 OutlinedTextField(reason, { reason = it }, label = { Text("سبب الإنذار") },
                     placeholder = { Text("غياب متكرر / تأخّر / مخالفة سلوك") },
@@ -576,7 +615,7 @@ fun WarnDialog(session: SupSession, r: RosterItem, onClose: () -> Unit, onDone: 
                 busy = true; msg = null
                 scope.launch {
                     try {
-                        val (good, info) = Api.issueWarning(session.token, r.iqama, reason.trim(), r.captainId, session.name)
+                        val (good, info) = Api.issueWarning(session.token, r.iqama, reason.trim(), r.captainId, session.name, r.project)
                         if (good) { ok = true; msg = "✅ صدر الإنذار (${sootAr(info)} من ٣)"; kotlinx.coroutines.delay(800); onDone() }
                         else { msg = info; busy = false }
                     } catch (e: Exception) { msg = e.message ?: "تعذّر الإصدار"; busy = false }
@@ -730,42 +769,70 @@ fun FilterChipItem(text: String, selected: Boolean, onClick: () -> Unit) {
     }
 }
 
+/** سطر توصية المشرف (إن وُجدت) */
+@Composable
+fun RecLine(status: String?, by: String?, note: String?) {
+    if (status == null) return
+    val ok = status == "ok"
+    Surface(color = (if (ok) Green else Red).copy(alpha = .08f), shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+        Text("توصية المشرف: " + (if (ok) "موافق ✓" else "غير موافق ✕") + (by?.let { " — $it" } ?: "") + (note?.let { " · $it" } ?: ""),
+            color = if (ok) GreenD else Red, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(8.dp))
+    }
+}
+
+/** أزرار القرار: المعتمِد (توظيف/مالية/إدارة) يعتمد ويرفض — المشرف يوصي فقط */
+@Composable
+fun DecisionButtons(canApprove: Boolean, onDecide: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Button(onClick = { onDecide(true) }, colors = ButtonDefaults.buttonColors(containerColor = Green), shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.weight(1f).height(46.dp)) { Text(if (canApprove) "✓ اعتماد" else "👍 أوصي بالموافقة", fontWeight = FontWeight.Bold, maxLines = 1) }
+        OutlinedButton(onClick = { onDecide(false) }, shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.weight(1f).height(46.dp)) { Text(if (canApprove) "✕ رفض" else "👎 لا أوصي", color = Red, fontWeight = FontWeight.Bold, maxLines = 1) }
+    }
+}
+
 @Composable
 fun UpdatesScreen(session: SupSession, onBack: () -> Unit) {
     var list by remember { mutableStateOf<List<DataUpdate>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var refreshKey by remember { mutableStateOf(0) }
+    var caps by remember { mutableStateOf<Caps?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     BackHandler { onBack() }
+    LaunchedEffect(Unit) { try { caps = Api.caps(session.token) } catch (_: Exception) {} }
     LaunchedEffect(refreshKey) { loading = true; try { list = Api.pendingUpdates(session.token) } catch (_: Exception) {} finally { loading = false } }
-    fun act(id: String, approve: Boolean) {
+    val canApprove = caps?.approveUpdates == true
+    fun act(id: String, yes: Boolean) {
         scope.launch {
-            try { Api.reviewUpdate(session.token, id, approve, null)
-                android.widget.Toast.makeText(context, if (approve) "تم الاعتماد وتحديث وثيق" else "تم رفض الطلب", android.widget.Toast.LENGTH_SHORT).show()
+            try {
+                if (canApprove) Api.reviewUpdate(session.token, id, yes, null) else Api.recommendUpdate(session.token, id, yes, null)
+                val m = if (canApprove) (if (yes) "تم الاعتماد وتحديث وثيق" else "تم رفض الطلب") else "تم تسجيل توصيتك — القرار عند التوظيف"
+                android.widget.Toast.makeText(context, m, android.widget.Toast.LENGTH_SHORT).show()
                 refreshKey++ }
-            catch (e: Exception) { android.widget.Toast.makeText(context, e.message ?: "تعذّر", android.widget.Toast.LENGTH_SHORT).show() }
+            catch (e: Exception) { android.widget.Toast.makeText(context, e.message ?: "تعذّر", android.widget.Toast.LENGTH_LONG).show() }
         }
     }
-    Scaffold(containerColor = Bg, topBar = { TopBar("طلبات تحديث البيانات", "${list.size} معلّقة", onBack = onBack) }) { pad ->
+    Scaffold(containerColor = Bg, topBar = { TopBar("طلبات تحديث البيانات", "${list.size} معلّقة · الاعتماد عند التوظيف", onBack = onBack) }) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
             when {
                 loading -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = Green)
                 list.isEmpty() -> Text("لا توجد طلبات معلّقة", Modifier.align(Alignment.Center).padding(24.dp), color = Gray)
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (!canApprove) item {
+                        Text("أنت توصي فقط — الاعتماد النهائي لقسم التوظيف والإدارة.", fontSize = 11.5.sp, color = Gray)
+                    }
                     items(list) { u ->
                         Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp)) {
                             Column(Modifier.padding(14.dp)) {
                                 Text("✎ ${u.fieldLabel ?: "تحديث بيانات"}", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = GreenD)
-                                Text("إقامة الموظف: ${u.iqama ?: "—"}", fontSize = 12.sp, color = Gray)
+                                Text((u.name ?: "—") + "  ·  🆔 ${u.iqama ?: "—"}" + (u.project?.let { "  ·  📁 $it" } ?: ""), fontSize = 12.sp, color = Gray)
                                 Spacer(Modifier.height(10.dp))
                                 InfoLine("القيمة الحالية", if (u.oldValue.isNullOrBlank()) "— (غير مُسجّلة)" else u.oldValue)
                                 InfoLine("القيمة الجديدة المطلوبة", u.newValue)
+                                if (u.recStatus != null) { Spacer(Modifier.height(8.dp)); RecLine(u.recStatus, u.recByName, u.recNote) }
                                 Spacer(Modifier.height(12.dp))
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    Button(onClick = { act(u.id, true) }, colors = ButtonDefaults.buttonColors(containerColor = Green), shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f).height(46.dp)) { Text("✓ اعتماد", fontWeight = FontWeight.Bold) }
-                                    OutlinedButton(onClick = { act(u.id, false) }, shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f).height(46.dp)) { Text("✕ رفض", color = Red, fontWeight = FontWeight.Bold) }
-                                }
+                                DecisionButtons(canApprove) { act(u.id, it) }
                             }
                         }
                     }
@@ -781,16 +848,21 @@ fun AdvancesScreen(session: SupSession, onBack: () -> Unit) {
     var list by remember { mutableStateOf<List<Advance>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var refreshKey by remember { mutableStateOf(0) }
+    var caps by remember { mutableStateOf<Caps?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     BackHandler { onBack() }
+    LaunchedEffect(Unit) { try { caps = Api.caps(session.token) } catch (_: Exception) {} }
     LaunchedEffect(refreshKey) { loading = true; try { list = Api.pendingAdvances(session.token) } catch (_: Exception) {} finally { loading = false } }
-    fun act(id: String, approve: Boolean) {
+    val canApprove = caps?.approveAdvances == true
+    fun act(id: String, yes: Boolean) {
         scope.launch {
-            try { Api.reviewAdvance(session.token, id, approve, null)
-                android.widget.Toast.makeText(context, if (approve) "تم اعتماد السلفة" else "تم رفض السلفة", android.widget.Toast.LENGTH_SHORT).show()
+            try {
+                if (canApprove) Api.reviewAdvance(session.token, id, yes, null) else Api.recommendAdvance(session.token, id, yes, null)
+                val m = if (canApprove) (if (yes) "تم اعتماد السلفة وتسجيلها في وثيق" else "تم رفض السلفة") else "تم تسجيل توصيتك — القرار عند التوظيف والمالية"
+                android.widget.Toast.makeText(context, m, android.widget.Toast.LENGTH_SHORT).show()
                 refreshKey++ }
-            catch (e: Exception) { android.widget.Toast.makeText(context, e.message ?: "تعذّر", android.widget.Toast.LENGTH_SHORT).show() }
+            catch (e: Exception) { android.widget.Toast.makeText(context, e.message ?: "تعذّر", android.widget.Toast.LENGTH_LONG).show() }
         }
     }
     Scaffold(containerColor = Bg, topBar = { TopBar("طلبات السلف", "${list.size} معلّقة · الحد 300 ريال", onBack = onBack) }) { pad ->
@@ -799,22 +871,23 @@ fun AdvancesScreen(session: SupSession, onBack: () -> Unit) {
                 loading -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = Green)
                 list.isEmpty() -> Text("لا توجد سلف معلّقة", Modifier.align(Alignment.Center).padding(24.dp), color = Gray)
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (!canApprove) item {
+                        Text("أنت توصي فقط — الاعتماد النهائي للتوظيف والمالية والإدارة.", fontSize = 11.5.sp, color = Gray)
+                    }
                     items(list) { a ->
                         Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp)) {
                             Column(Modifier.padding(14.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("💵 ${a.amount.toInt()} ريال", fontWeight = FontWeight.Black, fontSize = 18.sp, color = GreenD)
+                                    Text("💵 ${fmtAmount(a.amount)} ريال", fontWeight = FontWeight.Black, fontSize = 18.sp, color = GreenD)
                                     Spacer(Modifier.weight(1f))
                                     a.createdAt?.let { Text(it.take(10), fontSize = 11.sp, color = Gray) }
                                 }
                                 Spacer(Modifier.height(6.dp))
                                 Text("${a.name ?: "—"}" + (a.iqama?.let { "  ·  🆔 $it" } ?: "") + (a.project?.let { "  ·  📁 $it" } ?: ""), fontSize = 12.sp, color = Gray)
                                 if (!a.reason.isNullOrBlank()) { Spacer(Modifier.height(6.dp)); Text("السبب: ${a.reason}", fontSize = 12.5.sp) }
+                                if (a.recStatus != null) { Spacer(Modifier.height(8.dp)); RecLine(a.recStatus, a.recByName, a.recNote) }
                                 Spacer(Modifier.height(12.dp))
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    Button(onClick = { act(a.id, true) }, colors = ButtonDefaults.buttonColors(containerColor = Green), shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f).height(46.dp)) { Text("✓ اعتماد", fontWeight = FontWeight.Bold) }
-                                    OutlinedButton(onClick = { act(a.id, false) }, shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f).height(46.dp)) { Text("✕ رفض", color = Red, fontWeight = FontWeight.Bold) }
-                                }
+                                DecisionButtons(canApprove) { act(a.id, it) }
                             }
                         }
                     }

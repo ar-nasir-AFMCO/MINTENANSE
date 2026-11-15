@@ -88,21 +88,30 @@ data class Msg(val authorKind: String, val authorName: String?, val body: String
 data class EmpInfo(val phone: String?, val area: String?, val vehicles: List<String>, val housing: String?)
 data class Person(val id: String, val name: String, val role: String?)
 data class ExtraParty(val kind: String, val deptCode: String?, val label: String?)
-data class DataUpdate(val id: String, val iqama: String?, val fieldLabel: String?, val oldValue: String?, val newValue: String, val createdAt: String?) {
+data class DataUpdate(val id: String, val iqama: String?, val fieldLabel: String?, val oldValue: String?, val newValue: String, val createdAt: String?,
+                      val name: String? = null, val project: String? = null,
+                      val recStatus: String? = null, val recByName: String? = null, val recNote: String? = null) {
     companion object {
         fun from(o: JSONObject) = DataUpdate(
             o.optString("id"), o.optStringOrNull("iqama"), o.optStringOrNull("field_label"),
-            o.optStringOrNull("old_value"), o.optString("new_value"), o.optStringOrNull("created_at"))
+            o.optStringOrNull("old_value"), o.optString("new_value"), o.optStringOrNull("created_at"),
+            o.optStringOrNull("name"), o.optStringOrNull("project"),
+            o.optStringOrNull("rec_status"), o.optStringOrNull("rec_by_name"), o.optStringOrNull("rec_note"))
     }
 }
 
-data class Advance(val id: String, val iqama: String?, val name: String?, val project: String?, val amount: Double, val reason: String?, val createdAt: String?) {
+data class Advance(val id: String, val iqama: String?, val name: String?, val project: String?, val amount: Double, val reason: String?, val createdAt: String?,
+                   val recStatus: String? = null, val recByName: String? = null, val recNote: String? = null) {
     companion object {
         fun from(o: JSONObject) = Advance(
             o.optString("id"), o.optStringOrNull("iqama"), o.optStringOrNull("name"),
-            o.optStringOrNull("project"), o.optDouble("amount", 0.0), o.optStringOrNull("reason"), o.optStringOrNull("created_at"))
+            o.optStringOrNull("project"), o.optDouble("amount", 0.0), o.optStringOrNull("reason"), o.optStringOrNull("created_at"),
+            o.optStringOrNull("rec_status"), o.optStringOrNull("rec_by_name"), o.optStringOrNull("rec_note"))
     }
 }
+
+/** صلاحيات المستخدم: من يعتمد ومن يوصي */
+data class Caps(val role: String?, val approveUpdates: Boolean, val approveAdvances: Boolean, val depts: List<String>)
 data class Event(val kind: String, val actorName: String?, val note: String?, val createdAt: String?) {
     companion object {
         fun from(o: JSONObject) = Event(
@@ -112,12 +121,16 @@ data class Event(val kind: String, val actorName: String?, val note: String?, va
     }
 }
 
-/** صف في روستر «المناديب على رأس العمل» (صوت) */
+/** صف في روستر «المناديب على رأس العمل» (صوت): الحضور × المركبة المسلّمة */
 data class RosterItem(
-    val captainId: String, val iqama: String, val name: String,
+    val captainId: String?, val iqama: String, val name: String,
     val present: Boolean, val hours: Double?, val orders: Int,
-    val short: Boolean, val absent: Boolean, val logged: Boolean, val warns: Int
+    val short: Boolean, val absent: Boolean, val logged: Boolean, val warns: Int,
+    val project: String = "", val plates: String? = null, val workDate: String? = null,
+    val result: String = "", val level: String = ""   // present | absent_vehicle | absent | nodata
 )
+
+data class RosterResult(val rows: List<RosterItem>, val projects: List<String>, val dates: Map<String, String>)
 
 object Api {
     private const val SB_URL = "https://coueubvyaokyycqpmirs.supabase.co"
@@ -272,19 +285,37 @@ object Api {
 
     /** طلبات تحديث بيانات الموظفين المعلّقة */
     suspend fun pendingUpdates(token: String): List<DataUpdate> {
-        val arr = JSONArray(get(token, "data_update_requests?status=eq.pending&order=created_at.desc&select=*"))
+        val arr = JSONArray(rpc(token, "soot_pending_updates", JSONObject()).ifBlank { "[]" })
         return (0 until arr.length()).map { DataUpdate.from(arr.getJSONObject(it)) }
     }
 
     /** السلف المعلّقة */
     suspend fun pendingAdvances(token: String): List<Advance> {
-        val arr = JSONArray(get(token, "v_pending_advances?select=*"))
+        val arr = JSONArray(rpc(token, "soot_pending_advances", JSONObject()).ifBlank { "[]" })
         return (0 until arr.length()).map { Advance.from(arr.getJSONObject(it)) }
     }
 
     /** اعتماد/رفض سلفة */
     suspend fun reviewAdvance(token: String, request: String, approve: Boolean, note: String?) {
         rpc(token, "sup_review_advance", JSONObject().put("p_request", request).put("p_approve", approve).put("p_note", note ?: JSONObject.NULL))
+    }
+
+    /** صلاحيات المستخدم الحالي (التوظيف/المالية/الإدارة تعتمد — المشرف يوصي) */
+    suspend fun caps(token: String): Caps {
+        val o = JSONObject(rpc(token, "soot_my_caps", JSONObject()))
+        val d = o.optJSONArray("depts")
+        return Caps(o.optStringOrNull("role"), o.optBoolean("approve_updates", false), o.optBoolean("approve_advances", false),
+            if (d == null) emptyList() else (0 until d.length()).map { d.optString(it) })
+    }
+
+    /** توصية المشرف على سلفة */
+    suspend fun recommendAdvance(token: String, request: String, ok: Boolean, note: String?) {
+        rpc(token, "sup_recommend_advance", JSONObject().put("p_request", request).put("p_ok", ok).put("p_note", note ?: JSONObject.NULL))
+    }
+
+    /** توصية المشرف على طلب تحديث بيانات */
+    suspend fun recommendUpdate(token: String, request: String, ok: Boolean, note: String?) {
+        rpc(token, "sup_recommend_update", JSONObject().put("p_request", request).put("p_ok", ok).put("p_note", note ?: JSONObject.NULL))
     }
 
     /** اعتماد/رفض طلب تحديث (يحدّث وثيق عند الاعتماد) */
@@ -351,57 +382,34 @@ object Api {
         JSONObject(json).optStringOrNull("sub")
     } catch (_: Exception) { null }
 
-    /** روستر المناديب المربوطين في وثيق (نينجا) + نقص الشفت + تسجيل صوت + الإنذارات */
-    suspend fun roster(token: String): List<RosterItem> {
-        // المربوطون فعليًا (ربط نينجا المفتوح)
-        val links = JSONArray(get(token, "ninja_links?select=captain_id,iqama,from_date&to_date=is.null"))
-        // تسجيل الدخول لتطبيق صوت (الموظف)
-        val loginSet = HashSet<String>()
-        try {
-            val lg = JSONArray(get(token, "soot_app_logins?select=iqama&app=eq.employee"))
-            for (i in 0 until lg.length()) loginSet.add(lg.getJSONObject(i).optString("iqama"))
-        } catch (_: Exception) {}
-        // عدد الإنذارات الفعّالة لكل إقامة
-        val warnMap = HashMap<String, Int>()
-        try {
-            val wr = JSONArray(get(token, "soot_warnings?select=iqama,level&active=is.true"))
-            for (i in 0 until wr.length()) { val k = wr.getJSONObject(i).optString("iqama"); warnMap[k] = (warnMap[k] ?: 0) + 1 }
-        } catch (_: Exception) {}
-        // آخر يوم شفت متوفّر من نينجا
-        var latest: String? = null
-        try {
-            val lt = JSONArray(get(token, "v_samurai_captain_days?select=work_date&order=work_date.desc&limit=1"))
-            if (lt.length() > 0) latest = lt.getJSONObject(0).optStringOrNull("work_date")
-        } catch (_: Exception) {}
-        // بيانات الشفت لذلك اليوم
-        val shift = HashMap<String, JSONObject>()
-        if (latest != null) {
-            try {
-                val rows = JSONArray(get(token, "v_samurai_captain_days?select=captain_id,captain_name,hours_total,orders_total&work_date=eq.$latest&limit=2000"))
-                for (i in 0 until rows.length()) { val o = rows.getJSONObject(i); shift[o.optString("captain_id")] = o }
-            } catch (_: Exception) {}
+    /** روستر المناديب حسب مشاريع المستخدم: حضور آخر يوم (attendance_daily) × المركبة المسلّمة */
+    suspend fun roster(token: String, project: String? = null): RosterResult {
+        val o = JSONObject(rpc(token, "soot_roster", JSONObject().put("p_project", project ?: JSONObject.NULL)))
+        val pa = o.optJSONArray("projects") ?: JSONArray()
+        val projects = (0 until pa.length()).map { pa.optString(it) }
+        val dj = o.optJSONObject("dates") ?: JSONObject()
+        val dates = HashMap<String, String>(); dj.keys().forEach { k -> dates[k] = dj.optString(k) }
+        val ra = o.optJSONArray("rows") ?: JSONArray()
+        val rows = (0 until ra.length()).map { i ->
+            val r = ra.getJSONObject(i)
+            val level = r.optString("level")
+            RosterItem(
+                captainId = r.optStringOrNull("captain_id"), iqama = r.optString("iqama"),
+                name = r.optStringOrNull("name") ?: r.optString("iqama"),
+                present = r.optBoolean("present", false),
+                hours = if (r.isNull("hours")) null else r.optDouble("hours"),
+                orders = r.optInt("orders", 0), short = r.optBoolean("short", false),
+                absent = level == "absent" || level == "absent_vehicle",
+                logged = r.optBoolean("logged", false), warns = r.optInt("warns", 0),
+                project = r.optString("project"), plates = r.optStringOrNull("plates"),
+                workDate = r.optStringOrNull("work_date"), result = r.optString("result"), level = level)
         }
-        val out = ArrayList<RosterItem>()
-        for (i in 0 until links.length()) {
-            val l = links.getJSONObject(i)
-            val cid = l.optString("captain_id"); val iqama = l.optString("iqama")
-            val s = shift[cid]
-            val hrs = if (s != null) s.optDouble("hours_total", 0.0) else null
-            val present = s != null && (hrs ?: 0.0) > 0.0
-            out.add(RosterItem(
-                captainId = cid, iqama = iqama,
-                name = s?.optStringOrNull("captain_name") ?: "كابتن $cid",
-                present = present, hours = hrs, orders = s?.optInt("orders_total", 0) ?: 0,
-                short = present && (hrs ?: 0.0) < 10.0, absent = !present,
-                logged = loginSet.contains(iqama), warns = warnMap[iqama] ?: 0))
-        }
-        // الغائبون أولًا ثم الأقل ساعات
-        return out.sortedWith(compareBy({ if (it.absent) 0 else 1 }, { it.hours ?: 0.0 }))
+        return RosterResult(rows, projects, dates)
     }
 
     /** إصدار إنذار للمندوب (حتى ٣) — يُسجَّل في وثيق ويظهر للموظف */
-    suspend fun issueWarning(token: String, iqama: String, reason: String, captainId: String?, supName: String?): Pair<Boolean, String> {
-        val a = JSONObject().put("p_iqama", iqama).put("p_reason", reason).put("p_project", "ninja")
+    suspend fun issueWarning(token: String, iqama: String, reason: String, captainId: String?, supName: String?, project: String? = null): Pair<Boolean, String> {
+        val a = JSONObject().put("p_iqama", iqama).put("p_reason", reason).put("p_project", (project ?: "ninja").lowercase())
             .put("p_captain", captainId?.toLongOrNull() ?: JSONObject.NULL)
             .put("p_sup_id", jwtSub(token) ?: JSONObject.NULL)
             .put("p_sup_name", supName ?: JSONObject.NULL)
