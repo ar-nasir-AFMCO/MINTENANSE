@@ -805,11 +805,11 @@ fun UpdatesScreen(session: SupSession, onBack: () -> Unit) {
     LaunchedEffect(Unit) { try { caps = Api.caps(session.token) } catch (_: Exception) {} }
     LaunchedEffect(refreshKey) { loading = true; try { list = Api.pendingUpdates(session.token) } catch (_: Exception) {} finally { loading = false } }
     val canApprove = caps?.approveUpdates == true
-    fun act(id: String, yes: Boolean) {
+    fun act(id: String, yes: Boolean, can: Boolean) {
         scope.launch {
             try {
-                if (canApprove) Api.reviewUpdate(session.token, id, yes, null) else Api.recommendUpdate(session.token, id, yes, null)
-                val m = if (canApprove) (if (yes) "تم الاعتماد وتحديث وثيق" else "تم رفض الطلب") else "تم تسجيل توصيتك — القرار عند التوظيف"
+                if (can) Api.reviewUpdate(session.token, id, yes, null) else Api.recommendUpdate(session.token, id, yes, null)
+                val m = if (can) (if (yes) "تم الاعتماد وتحديث وثيق" else "تم رفض الطلب") else "تم تسجيل توصيتك — القرار عند التوظيف"
                 android.widget.Toast.makeText(context, m, android.widget.Toast.LENGTH_SHORT).show()
                 refreshKey++ }
             catch (e: Exception) { android.widget.Toast.makeText(context, e.message ?: "تعذّر", android.widget.Toast.LENGTH_LONG).show() }
@@ -822,9 +822,10 @@ fun UpdatesScreen(session: SupSession, onBack: () -> Unit) {
                 list.isEmpty() -> Text("لا توجد طلبات معلّقة", Modifier.align(Alignment.Center).padding(24.dp), color = Gray)
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (!canApprove) item {
-                        Text("أنت توصي فقط — الاعتماد النهائي لقسم التوظيف والإدارة.", fontSize = 11.5.sp, color = Gray)
+                        Text("تعتمد طلبات «رقم الآيدي» لمناديب مشروعك — وبقية الطلبات توصي فيها والاعتماد للتوظيف والإدارة.", fontSize = 11.5.sp, color = Gray)
                     }
                     items(list) { u ->
+                        val can = u.canApprove ?: canApprove
                         Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp)) {
                             Column(Modifier.padding(14.dp)) {
                                 Text("✎ ${u.fieldLabel ?: "تحديث بيانات"}", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = GreenD)
@@ -834,7 +835,7 @@ fun UpdatesScreen(session: SupSession, onBack: () -> Unit) {
                                 InfoLine("القيمة الجديدة المطلوبة", u.newValue)
                                 if (u.recStatus != null) { Spacer(Modifier.height(8.dp)); RecLine(u.recStatus, u.recByName, u.recNote) }
                                 Spacer(Modifier.height(12.dp))
-                                DecisionButtons(canApprove) { act(u.id, it) }
+                                DecisionButtons(can) { act(u.id, it, can) }
                             }
                         }
                     }
