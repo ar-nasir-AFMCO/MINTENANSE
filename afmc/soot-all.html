@@ -668,7 +668,11 @@ body{font-family:-apple-system,"Segoe UI",system-ui,"Noto Kufi Arabic","Tajawal"
   var LV={present:['مداوم','sxp-ok'],absent_vehicle:['غائب ومعه مركبة','sxp-bad'],absent:['غائب بدون مركبة','sxp-warn'],nodata:['لا يوجد دوام مسجّل','sxp-mut']};
   function renderCouriers(){
     var projs=[]; ROSTER.forEach(function(r){ if(projs.indexOf(r.project)<0) projs.push(r.project); }); projs.sort();
-    if(!CUR_PROJ || projs.indexOf(CUR_PROJ)<0) CUR_PROJ=projs[0]||null;
+    if(!CUR_PROJ || projs.indexOf(CUR_PROJ)<0){
+      // الافتراضي: المشروع اللي عنده ملف دوام وأكثر مناديب
+      var cnt0=function(p){return ROSTER.filter(function(r){return r.project===p;}).length;}, dd=(RES&&RES.dates)||{};
+      CUR_PROJ=projs.slice().sort(function(a,b){return ((dd[b]?1:0)-(dd[a]?1:0)) || (cnt0(b)-cnt0(a));})[0]||null;
+    }
     $('sxProjs').innerHTML = projs.length>1 ? projs.map(function(p){ var n=ROSTER.filter(function(r){return r.project===p;}).length;
       return '<button class="sxchip'+(p===CUR_PROJ?' on':'')+'" data-p="'+esc(p)+'">📁 '+esc(p)+' ('+AR(n)+')</button>'; }).join('') : '';
     $('sxProjs').querySelectorAll('[data-p]').forEach(function(b){ b.onclick=function(){ CUR_PROJ=b.dataset.p; LEVEL=null; renderCouriers(); }; });
