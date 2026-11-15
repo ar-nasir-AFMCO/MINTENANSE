@@ -717,7 +717,7 @@ body{font-family:-apple-system,"Segoe UI",system-ui,"Noto Kufi Arabic","Tajawal"
       $('sxReqHead').innerHTML='صلاحيتك: السلف — <b>'+(CAPS.approve_advances?'اعتماد':'توصية فقط')+'</b> · تحديث البيانات — <b>'+(CAPS.approve_updates?'اعتماد':'توصية فقط')+'</b>'+(who?(' · قسمك: '+esc(who)):'')+
         '. السلف يعتمدها التوظيف والمالية والإدارة، وتحديث البيانات يعتمده التوظيف والإدارة. كل قرار يُسجَّل في سجل الموظف وصندوق وثيق.';
       var h='<h4 class="sxh">💵 السلف المعلّقة ('+AR(adv.length)+')</h4>'+(adv.length?adv.map(function(x){return card('adv',x,CAPS.approve_advances,'💵 '+AR(+x.amount)+' ريال',x.reason?('السبب: '+x.reason):'');}).join(''):'<div class="sxnote">لا توجد سلف معلّقة.</div>');
-      h+='<h4 class="sxh">✎ طلبات تحديث البيانات ('+AR(upd.length)+')</h4>'+(upd.length?upd.map(function(x){return card('upd',x,CAPS.approve_updates,'✎ '+(x.field_label||'تحديث بيانات'),'الحالية: '+(x.old_value||'—')+'  ←  الجديدة: '+x.new_value);}).join(''):'<div class="sxnote">لا توجد طلبات معلّقة.</div>');
+      h+='<h4 class="sxh">✎ طلبات تحديث البيانات ('+AR(upd.length)+')</h4>'+(upd.length?upd.map(function(x){return card('upd',x,(x.can_approve!=null?x.can_approve:CAPS.approve_updates),'✎ '+(x.field_label||'تحديث بيانات'),'الحالية: '+(x.old_value||'—')+'  ←  الجديدة: '+x.new_value);}).join(''):'<div class="sxnote">لا توجد طلبات معلّقة.</div>');
       if(CAPS.role==='admin'||CAPS.role==='manager') h+='<h4 class="sxh">👥 أقسام المستخدمين (التوظيف / المالية)</h4><div id="sxDepts" class="sxnote">جارٍ التحميل…</div>';
       $('sxReqBody').innerHTML=h;
       $('sxReqBody').querySelectorAll('[data-act]').forEach(function(b){ b.onclick=function(){ decide(b.dataset.kind,b.dataset.id,b.dataset.act==='yes',b.dataset.can==='1',b); }; });
