@@ -891,7 +891,7 @@ fun DataUpdateScreen(session: Session, onBack: () -> Unit) {
     val tNew = when (lang) { Lang.EN -> "New value"; Lang.UR -> "نئی قدر"; else -> "القيمة الجديدة" }
     val tSubmit = when (lang) { Lang.EN -> "Send request"; Lang.UR -> "درخواست بھیجیں"; else -> "إرسال الطلب" }
     val tHint = if (fieldKey == "platform_id")
-        when (lang) { Lang.EN -> "Your project supervisor or the manager approves it, and it is recorded in Watheeq."; Lang.UR -> "آپ کے پروجیکٹ کا سپروائزر یا مینیجر منظوری دیتا ہے اور یہ وثیق میں درج ہوتا ہے۔"; else -> "يعتمده مشرف مشروعك أو المدير، ويُسجَّل في وثيق." }
+        when (lang) { Lang.EN -> "Your project supervisor confirms it, then the manager approves and it is recorded in Watheeq."; Lang.UR -> "پہلے آپ کا سپروائزر تصدیق کرتا ہے، پھر مینیجر منظوری دیتا ہے اور یہ وثیق میں درج ہوتا ہے۔"; else -> "يؤكده مشرف مشروعك، ثم يعتمده المدير ويُسجَّل في وثيق." }
     else when (lang) { Lang.EN -> "Your supervisor reviews it and HR approves the change in Watheeq."; Lang.UR -> "سپروائزر جائزہ لیتا ہے اور ایچ آر وثیق میں منظوری دیتا ہے۔"; else -> "يراجعه المشرف ويعتمده التوظيف في وثيق." }
     val tDone = when (lang) { Lang.EN -> "Request sent for approval"; Lang.UR -> "درخواست منظوری کے لیے بھیج دی گئی"; else -> "تم إرسال الطلب للاعتماد" }
 
