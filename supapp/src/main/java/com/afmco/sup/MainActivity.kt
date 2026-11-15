@@ -464,7 +464,9 @@ fun RosterScreen(session: SupSession, onBack: () -> Unit) {
     val all = res?.rows ?: emptyList()
     // المشاريع اللي فيها مناديب فعلًا (مشاريع المشرف فقط — من الخادم)
     val projs = all.map { it.project }.distinct().sorted()
-    val curProj = proj?.takeIf { it in projs } ?: projs.firstOrNull()
+    // الافتراضي: المشروع اللي عنده ملف دوام وأكثر مناديب
+    val curProj = proj?.takeIf { it in projs }
+        ?: projs.sortedWith(compareByDescending<String> { res?.dates?.containsKey(it) == true }.thenByDescending { p -> all.count { it.project == p } }).firstOrNull()
     val inProj = all.filter { it.project == curProj }
     val shown = inProj.filter { r ->
         (levelFilter == null || r.level == levelFilter) &&
