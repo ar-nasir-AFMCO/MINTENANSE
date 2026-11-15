@@ -414,6 +414,12 @@ fun HomeScreen(session: Session, reload: Int, onOpen: (Complaint) -> Unit, onNew
     LaunchedEffect(Unit) { try { vehicles = Api.myVehicles(session.token) } catch (_: Exception) {} }
     // الرسائل الموجّهة العاجلة: فحص كل 20 ثانية وشاشة كاملة بصوت عالي لين يأكد القراءة
     var urgent by remember { mutableStateOf<List<Broadcast>>(emptyList()) }
+    // جرس واضح وعالي: يرن عند وصول رسالة جديدة، ويتكرر كل ٣٠ ثانية لين يأكد المندوب القراءة
+    LaunchedEffect(urgent.map { it.id }) {
+        if (urgent.isNotEmpty()) {
+            while (true) { BellPlayer.ring(context); delay(30_000L) }
+        } else BellPlayer.stop()
+    }
     LaunchedEffect(Unit) {
         while (true) {
             try { urgent = Api.unreadBroadcasts(session.token) } catch (_: Exception) {}
@@ -443,6 +449,18 @@ fun HomeScreen(session: Session, reload: Int, onOpen: (Complaint) -> Unit, onNew
                 loading -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = Green)
                 error != null -> Text("${L.loadFail}: $error", Modifier.align(Alignment.Center).padding(24.dp), color = Red)
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    // الرسائل الموجّهة غير المؤكَّدة: مربع مستقل لكل رسالة في أعلى الشاشة
+                    items(urgent, key = { "urgent-" + it.id }) { m ->
+                        UrgentMessageCard(m, lang) {
+                            try {
+                                Api.ackBroadcast(session.token, m.id)
+                                Urgent.clear(context, m.id)
+                                urgent = urgent.filter { it.id != m.id }
+                                try { broadcasts = Api.myBroadcasts(session.iqama, session.projectCode) } catch (_: Exception) {}
+                                true
+                            } catch (_: Exception) { false }
+                        }
+                    }
                     item { ProfileCard(session, vehicles) }
                     item {
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -457,7 +475,8 @@ fun HomeScreen(session: Session, reload: Int, onOpen: (Complaint) -> Unit, onNew
                         }
                     }
                     if (warnings.isNotEmpty()) item { WarningsCard(warnings, lang) }
-                    if (broadcasts.isNotEmpty()) item { BroadcastsInbox(broadcasts, lang) }
+                    val readMsgs = broadcasts.filter { b -> urgent.none { it.id == b.id } }
+                    if (readMsgs.isNotEmpty()) item { BroadcastsInbox(readMsgs, lang) }
                     val pending = list.count { it.closePending }
                     if (pending > 0) item {
                         Surface(color = Amber.copy(alpha = .14f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -478,61 +497,39 @@ fun HomeScreen(session: Session, reload: Int, onOpen: (Complaint) -> Unit, onNew
         }
     }
 
-    urgent.firstOrNull()?.let { m ->
-        UrgentMessageDialog(m, lang) {
-            try {
-                Api.ackBroadcast(session.token, m.id)
-                Urgent.clear(context, m.id)
-                urgent = urgent.filter { it.id != m.id }
-                try { broadcasts = Api.myBroadcasts(session.iqama, session.projectCode) } catch (_: Exception) {}
-                true
-            } catch (_: Exception) { false }
-        }
-    }
 }
 
-/** رسالة عاجلة: شاشة كاملة + صوت منبّه عالي + اهتزاز — ما تنقفل إلا بتأكيد القراءة */
+/** رسالة موجّهة عاجلة: مربع مستقل أعلى الشاشة + زر تأكيد القراءة — بعد التأكيد تنزل مع باقي الرسائل */
 @Composable
-fun UrgentMessageDialog(m: Broadcast, lang: Lang, onAck: suspend () -> Boolean) {
-    val context = LocalContext.current
+fun UrgentMessageCard(m: Broadcast, lang: Lang, onAck: suspend () -> Boolean) {
     val scope = rememberCoroutineScope()
     var busy by remember(m.id) { mutableStateOf(false) }
     var failed by remember(m.id) { mutableStateOf(false) }
-    DisposableEffect(m.id) {
-        AlarmPlayer.start(context)
-        onDispose { AlarmPlayer.stop(context) }
-    }
-    BackHandler { /* لا إغلاق بزر الرجوع */ }
-    val head = when (lang) { Lang.EN -> "Urgent message"; Lang.UR -> "فوری پیغام"; else -> "رسالة عاجلة" }
+    val head = when (lang) { Lang.EN -> "Urgent message — confirm you read it"; Lang.UR -> "فوری پیغام — پڑھنے کی تصدیق کریں"; else -> "رسالة عاجلة — أكّد قراءتها" }
     val ack = when (lang) { Lang.EN -> "I have read it — confirm"; Lang.UR -> "میں نے پڑھ لیا — تصدیق"; else -> "قرأت الرسالة — أؤكد" }
     val err = when (lang) { Lang.EN -> "No connection — try again"; Lang.UR -> "کنکشن نہیں — دوبارہ کوشش کریں"; else -> "تعذّر الإرسال — تأكد من الإنترنت وحاول مرة ثانية" }
-    androidx.compose.ui.window.Dialog(onDismissRequest = { },
-        properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false, usePlatformDefaultWidth = false)) {
-        Surface(Modifier.fillMaxSize(), color = Color(0xFFB91C1C)) {
-            Column(Modifier.fillMaxSize().statusBarsPadding().padding(22.dp).verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                Text("🔔", fontSize = 64.sp)
-                Spacer(Modifier.height(8.dp))
-                Text(head, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Black)
-                Spacer(Modifier.height(18.dp))
-                Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(18.dp)) {
-                        if (!m.title.isNullOrBlank()) { Text(m.title, fontWeight = FontWeight.Black, fontSize = 18.sp, color = Color(0xFF7F1D1D)); Spacer(Modifier.height(8.dp)) }
-                        Text(m.body, fontSize = 17.sp, color = Color(0xFF1F2937), lineHeight = 26.sp)
-                        Spacer(Modifier.height(10.dp))
-                        Text((m.byName?.let { "$it · " } ?: "") + sootDate(m.createdAt), fontSize = 12.sp, color = Gray)
-                    }
-                }
-                if (failed) { Spacer(Modifier.height(10.dp)); Text(err, color = Color.White, fontSize = 13.sp, textAlign = TextAlign.Center) }
-                Spacer(Modifier.height(22.dp))
-                Button(onClick = {
-                    busy = true; failed = false
-                    scope.launch { val ok = onAck(); if (!ok) { failed = true; busy = false } }
-                }, enabled = !busy, colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFFB91C1C)),
-                    shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().height(58.dp)) {
-                    if (busy) CircularProgressIndicator(Modifier.size(22.dp), color = Color(0xFFB91C1C), strokeWidth = 2.dp)
-                    else Text("✓  $ack", fontSize = 17.sp, fontWeight = FontWeight.Black)
-                }
+    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF7ED)), shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(2.dp, Color(0xFFDC2626)), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0xFFDC2626)), contentAlignment = Alignment.Center) { Text("🔔", fontSize = 20.sp) }
+                Spacer(Modifier.width(10.dp))
+                Text(head, fontWeight = FontWeight.Black, fontSize = 15.sp, color = Color(0xFFB91C1C))
+            }
+            Spacer(Modifier.height(12.dp))
+            if (!m.title.isNullOrBlank()) { Text(m.title, fontWeight = FontWeight.Black, fontSize = 17.sp, color = Color(0xFF7F1D1D)); Spacer(Modifier.height(6.dp)) }
+            Text(m.body, fontSize = 16.sp, color = Color(0xFF1F2937), lineHeight = 25.sp)
+            Spacer(Modifier.height(8.dp))
+            Text((m.byName?.let { "$it · " } ?: "") + sootDate(m.createdAt), fontSize = 11.5.sp, color = Gray)
+            if (failed) { Spacer(Modifier.height(8.dp)); Text(err, color = Red, fontSize = 12.5.sp) }
+            Spacer(Modifier.height(14.dp))
+            Button(onClick = {
+                busy = true; failed = false
+                scope.launch { val ok = onAck(); if (!ok) { failed = true; busy = false } }
+            }, enabled = !busy, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626), contentColor = Color.White),
+                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().height(52.dp)) {
+                if (busy) CircularProgressIndicator(Modifier.size(22.dp), color = Color.White, strokeWidth = 2.dp)
+                else Text("✓  $ack", fontSize = 16.sp, fontWeight = FontWeight.Black)
             }
         }
     }

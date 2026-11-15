@@ -29,13 +29,12 @@ import java.util.concurrent.TimeUnit
  *  • داخل التطبيق: شاشة كاملة بصوت عالي لا تُقفل إلا بتأكيد القراءة
  */
 object Urgent {
-    private const val CH = "soot_urgent_v1"
+    private const val CH = "soot_urgent_v2"   // v2: صوت الجرس (إعدادات القناة لا تتغيّر بعد إنشائها)
     private const val WORK = "soot_urgent_check"
     private const val SP = "soot_urgent"
 
-    private fun alarmUri() = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-        ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-        ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+    /** جرس صوت (res/raw/soot_bell.wav) — ثلاث دقّات واضحة */
+    fun bellUri(ctx: Context): android.net.Uri = android.net.Uri.parse("android.resource://" + ctx.packageName + "/" + R.raw.soot_bell)
 
     fun ensureChannel(ctx: Context) {
         if (Build.VERSION.SDK_INT >= 26) {
@@ -45,7 +44,7 @@ object Urgent {
                 ch.description = "رسائل موجّهة تحتاج تأكيد قراءة"
                 ch.enableVibration(true)
                 ch.vibrationPattern = longArrayOf(0, 800, 400, 800, 400, 800)
-                ch.setSound(alarmUri(), AudioAttributes.Builder()
+                ch.setSound(bellUri(ctx), AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_ALARM)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
                 ch.lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
@@ -68,7 +67,7 @@ object Urgent {
             .setStyle(NotificationCompat.BigTextStyle().bigText(b.body + "\n\nافتح التطبيق وأكّد قراءة الرسالة"))
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setSound(alarmUri(), AudioManager.STREAM_ALARM)
+            .setSound(bellUri(ctx), AudioManager.STREAM_ALARM)
             .setVibrate(longArrayOf(0, 800, 400, 800, 400, 800))
             .setOngoing(true).setAutoCancel(true)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -126,35 +125,33 @@ class UrgentWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
     }
 }
 
-/** صوت المنبّه العالي داخل التطبيق (يتكرر لين يأكد المندوب) */
-object AlarmPlayer {
+/** جرس عالي داخل التطبيق: ثلاث دقّات على صوت المنبّه (أعلى من صوت الإشعارات) + اهتزاز قصير */
+object BellPlayer {
     private var mp: MediaPlayer? = null
-    fun start(ctx: Context) {
+    fun ring(ctx: Context) {
         stop()
         try {
-            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE) ?: return
             mp = MediaPlayer().apply {
                 setAudioAttributes(AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_ALARM)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
-                setDataSource(ctx, uri)
-                isLooping = true
+                setDataSource(ctx, Urgent.bellUri(ctx))
+                isLooping = false
+                setOnCompletionListener { stop() }
                 prepare()
                 start()
             }
         } catch (_: Exception) { mp = null }
         try {
             val v = ctx.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-            val pattern = longArrayOf(0, 800, 500)
-            if (Build.VERSION.SDK_INT >= 26) v?.vibrate(VibrationEffect.createWaveform(pattern, 0))
-            else v?.vibrate(pattern, 0)
+            val pattern = longArrayOf(0, 300, 550, 300, 550, 300)
+            if (Build.VERSION.SDK_INT >= 26) v?.vibrate(VibrationEffect.createWaveform(pattern, -1))
+            else v?.vibrate(pattern, -1)
         } catch (_: Exception) {}
     }
-    fun stop(ctx: Context? = null) {
+    fun stop() {
         try { mp?.stop() } catch (_: Exception) {}
         try { mp?.release() } catch (_: Exception) {}
         mp = null
-        if (ctx != null) try { (ctx.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator)?.cancel() } catch (_: Exception) {}
     }
 }
