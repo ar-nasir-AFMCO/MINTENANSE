@@ -13,6 +13,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -185,14 +186,19 @@ fun AppRoot() {
 
 @Composable
 fun TopBar(title: String, subtitle: String? = null, onBack: (() -> Unit)? = null, action: (@Composable () -> Unit)? = null) {
+    // العنوان في سطر والأزرار في سطر مستقل قابل للتمرير — كانت الأزرار تضغط عمود العنوان لعرض صفر فيتمدد الشريط ويغطي الشاشة كلها
     Surface(color = Green, shadowElevation = 2.dp) {
-        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (onBack != null) { TextButton(onClick = onBack) { Text("→", color = Color.White, fontSize = 20.sp) }; Spacer(Modifier.width(4.dp)) }
-            Column(Modifier.weight(1f)) {
-                Text(title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                if (subtitle != null) Text(subtitle, color = Color.White.copy(alpha = .85f), fontSize = 12.sp)
+        Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                if (onBack != null) { TextButton(onClick = onBack) { Text("→", color = Color.White, fontSize = 20.sp) }; Spacer(Modifier.width(4.dp)) }
+                Column(Modifier.weight(1f)) {
+                    Text(title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    if (subtitle != null) Text(subtitle, color = Color.White.copy(alpha = .85f), fontSize = 12.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                }
             }
-            if (action != null) action()
+            if (action != null) {
+                Row(Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()), verticalAlignment = Alignment.CenterVertically) { action() }
+            }
         }
     }
 }
