@@ -10424,5 +10424,730 @@ body.wx-card-open #wx4Pill{ display:none !important; }
 })();
 </script>
 
+
+<!-- ═══ v134: العهد والمخزن ═══ -->
+<script id="afc-core">
+/* ════════════════════════════════════════════════════════════════════
+   AFC — نواة العهد والمخزن (مشتركة بين وثيق والأسطول — نسخة متطابقة في الملفين)
+   • الأصناف والفواتير والحركات في app_records (app=fleet · coll=cust_items/cust_inv/cust_mv)
+     عبر rpc/sync_records نفسها التي تستخدمها طلبات الصيانة — بلا جداول جديدة.
+   • الكميات لا تُكتب يدوياً: تُحسب من الحركات. الحركة لا تُعدَّل ولا تُحذف.
+   • كرت الموظف المالي يبقى كما هو: وثيق يكتب نتيجة الحركات في e.custody (انظر wx13).
+   ════════════════════════════════════════════════════════════════════ */
+(function(){
+  if (window.AFC) return;
+  var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co', SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
+  var APPK = 'fleet', COLL = { items: 'cust_items', inv: 'cust_inv', mv: 'cust_mv' };
+  var rf = window.fetch.bind(window);
+  function sess(){ try { return JSON.parse(localStorage.getItem('wfsb_session') || 'null'); } catch(e){ return null; } }
+  function tok(){
+    var s = sess(); if (!s) return Promise.reject(new Error('لا توجد جلسة دخول'));
+    if (Date.now() < s.expires_at - 60000) return Promise.resolve(s.access_token);
+    return new Promise(function(res){ setTimeout(function(){ var t = sess(); res(t && t.access_token); }, 2500); });
+  }
+  function api(method, path, body){
+    return tok().then(function(t){
+      return rf(SB_URL + '/rest/v1/' + path, { method: method,
+        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' },
+        body: body == null ? undefined : JSON.stringify(body) });
+    }).then(function(r){ return r.text().then(function(t){ var j = t ? JSON.parse(t) : null;
+      if (!r.ok) throw new Error((j && (j.message || j.hint)) || ('HTTP ' + r.status)); return j; }); });
+  }
+  function selectAll(path){
+    var out = [];
+    function pg(off){ return api('GET', path + '&offset=' + off + '&limit=1000').then(function(r){ out = out.concat(r || []); return (r && r.length === 1000) ? pg(off + 1000) : out; }); }
+    return pg(0);
+  }
+
+  /* ---------- المخازن = مدن العمل ---------- */
+  var WH_NAMES = { RIYADH: 'الرياض', JEDDAH: 'جدة', MAKKAH: 'مكة', MADINAH: 'المدينة', DAMMAM: 'الدمام', KHOBAR: 'الخبر',
+                   TAIF: 'الطائف', KHARJ: 'الخرج', MAJMAAH: 'المجمعة', QASSIM: 'القصيم', TABUK: 'تبوك', JAZAN: 'جازان', ABHA: 'أبها' };
+  function normCity(p){
+    var s = String(p == null ? '' : p).trim(); if (!s) return '';
+    var u = s.toUpperCase();
+    if (/^(RIYADH|RIYAD)$/.test(u) || /الرياض/.test(s)) return 'RIYADH';
+    if (/^(JADAH|JEDDAH|JIDDAH|JEDDA)$/.test(u) || /جد[ةه]/.test(s)) return 'JEDDAH';
+    if (/^(MAKKAH|MECCA|MAKKA)$/.test(u) || /مك[ةه]/.test(s)) return 'MAKKAH';
+    if (/^(MADINAH|MEDINA|MADINA)$/.test(u) || /المدينة/.test(s)) return 'MADINAH';
+    if (/^(DAMAM|DAMMAM)$/.test(u) || /الدمام/.test(s)) return 'DAMMAM';
+    if (/KHOBAR/.test(u) || /الخبر/.test(s)) return 'KHOBAR';
+    if (/TAIF/.test(u) || /الطائف/.test(s)) return 'TAIF';
+    if (/KHARJ/.test(u) || /الخرج/.test(s)) return 'KHARJ';
+    if (/MAJMA/.test(u) || /المجمعة/.test(s)) return 'MAJMAAH';
+    if (/TABUK/.test(u) || /تبوك/.test(s)) return 'TABUK';
+    if (/JAZAN|JIZAN/.test(u) || /جازان|جيزان/.test(s)) return 'JAZAN';
+    return u;
+  }
+  function whName(c){ return WH_NAMES[c] || c || '—'; }
+
+  /* ---------- الحالة في الذاكرة ---------- */
+  var D = { items: {}, inv: {}, mv: {}, seen: { items: {}, inv: {}, mv: {} }, loaded: false, at: 0, err: null };
+  var listeners = [];
+  function emit(){ listeners.forEach(function(f){ try { f(); } catch(e){} }); }
+  var loading = null;
+  function load(force){
+    if (!force && D.loaded && Date.now() - D.at < 30000) return Promise.resolve(D);
+    if (loading) return loading;
+    loading = Promise.all(['items', 'inv', 'mv'].map(function(k){
+      return selectAll('app_records?select=key,data,edited_at,updated_at,deleted_at&app=eq.' + APPK + '&coll=eq.' + COLL[k] + '&order=key.asc')
+        .then(function(rows){
+          var o = {}, s = {};
+          (rows || []).forEach(function(r){ if (r.deleted_at) return; o[r.key] = r.data || {}; s[r.key] = r.edited_at || r.updated_at || null; });
+          D[k] = o; D.seen[k] = s;
+        });
+    })).then(function(){ D.loaded = true; D.at = Date.now(); D.err = null; loading = null; emit(); return D; })
+      .catch(function(e){ loading = null; D.err = e.message; throw e; });
+    return loading;
+  }
+  function nowIso(){ return new Date().toISOString(); }
+  /* كتابة سجلات (إضافة/تحديث) — الحركات سجلات جديدة دائماً فلا تتعارض */
+  function put(kind, recs){
+    var ts = nowIso();
+    var rows = recs.map(function(r){ return { key: String(r.id), rec: r, edited_at: D.seen[kind][r.id] || ts }; });
+    return api('POST', 'rpc/sync_records', { p_app: APPK, p_coll: COLL[kind], p_rows: rows }).then(function(res){
+      var bad = (res && ((res.stale || []).length || (res.failed || []).length)) ? res : null;
+      if (bad) {
+        var msg = (bad.failed && bad.failed[0] && bad.failed[0].error) || 'عُدِّل من جهاز آخر — أعد المحاولة';
+        return load(true).then(function(){ throw new Error(msg); });
+      }
+      rows.forEach(function(row){ D[kind][row.key] = row.rec; D.seen[kind][row.key] = row.edited_at; });
+      D.at = Date.now(); emit(); return res;
+    });
+  }
+  function uid(p){ return (p || 'M') + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function today(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function me(){ var a = window.WF_ACCESS || {}; return a.email || a.name || ''; }
+
+  /* ---------- الحساب من الحركات ---------- */
+  var CONDS = [100, 75, 50, 25];
+  function mvList(){ return Object.keys(D.mv).map(function(k){ return D.mv[k]; }).sort(function(a, b){ return (a.at || '') < (b.at || '') ? -1 : (a.at || '') > (b.at || '') ? 1 : 0; }); }
+  function itemsList(all){ return Object.keys(D.items).map(function(k){ return D.items[k]; }).filter(function(i){ return all || !i.archived; })
+    .sort(function(a, b){ return String(a.name || '').localeCompare(String(b.name || ''), 'ar'); }); }
+  function item(id){ return D.items[id] || null; }
+  function stock(itemId, wh){
+    var r = { c: {}, dmg: 0 };
+    function add(c, q){ r.c[c] = (r.c[c] || 0) + q; }
+    mvList().forEach(function(m){
+      if (m.item !== itemId || (wh && m.wh !== wh)) return;
+      if (m.type === 'in') add(100, m.qty); else if (m.type === 'rev') add(100, -m.qty);
+      else if (m.type === 'out') add(m.cond, -m.qty);
+      else if (m.type === 'ret') { if (m.cond > 0) add(m.cond, m.qty); else r.dmg += m.qty; }
+      else if (m.type === 'cancel') add(m.cond, m.qty);
+    });
+    return r;
+  }
+  function avail(itemId, wh, c){ return stock(itemId, wh).c[c] || 0; }
+  function totalAvail(itemId, wh){ var s = stock(itemId, wh).c; return Object.keys(s).reduce(function(a, k){ return a + s[k]; }, 0); }
+  function avgCost(itemId){ var q = 0, v = 0; mvList().forEach(function(m){ if (m.item !== itemId) return; if (m.type === 'in'){ q += m.qty; v += m.qty * m.cost; } if (m.type === 'rev'){ q -= m.qty; v -= m.qty * m.cost; } }); return q > 0 ? v / q : 0; }
+  /* القطع الموجودة عند الموظفين الآن (العهد المستردّة فقط) */
+  function units(){
+    var U = {};
+    mvList().forEach(function(m){
+      if (m.type === 'out' && m.kind !== 'use') (m.units || []).forEach(function(u){ U[u] = { uid: u, item: m.item, name: m.item_name, cond: m.cond, price: m.price, date: m.date, wh: m.wh, iq: m.iq, acq: m.id, plate: m.plate || '' }; });
+      else if (m.type === 'ret' || m.type === 'lost' || m.type === 'cancel') (m.units || []).forEach(function(u){ delete U[u]; });
+      else if (m.type === 'adj') (m.units || []).forEach(function(u){ if (U[u]) U[u].cond = m.cond; });
+      else if (m.type === 'xfer') (m.units || []).forEach(function(u){ if (U[u]) { U[u].iq = m.to; U[u].acq = m.id; U[u].date = m.date; } });
+    });
+    return Object.keys(U).map(function(k){ return U[k]; });
+  }
+  function holdings(iq){ iq = String(iq || ''); return units().filter(function(u){ return String(u.iq) === iq; }); }
+  function deduct(price, from, to, lost){ return lost ? price * from / 100 : Math.max(0, price * (from - to) / 100); }
+  function condTxt(c){ return c === 100 ? 'جديد' : c === 0 ? 'تالف' : ('مستعمل ' + c + '%'); }
+
+  /* ---------- كتابة العمليات ---------- */
+  function mkMv(o){ var m = {}; for (var k in o) m[k] = o[k]; m.id = m.id || uid('M'); m.at = nowIso(); m.date = m.date || today(); m.by = me(); return m; }
+  /* lines: [{item, qty, cond, photos:[paths]}] ; ctx: {iq, name, wh, src, plate, ref} */
+  function handover(ctx, lines){
+    var mvs = lines.map(function(l){
+      var it = item(l.item) || {}; var us = []; for (var i = 0; i < l.qty; i++) us.push(uid('U'));
+      return mkMv({ type: 'out', item: l.item, item_name: it.name || '', kind: it.kind || 'ret', wh: ctx.wh, qty: l.qty, cond: l.cond,
+        price: Number(it.emp) || 0, iq: String(ctx.iq), emp_name: ctx.name || '', units: us, photos: l.photos || [],
+        ref: ctx.ref || 'تسليم', src: ctx.src, plate: ctx.plate || '' });
+    });
+    return mvs.length ? put('mv', mvs).then(function(){ return mvs; }) : Promise.resolve([]);
+  }
+  /* lines: [{uid, to, lost, photos}] */
+  function receive(ctx, lines){
+    var held = {}; holdings(ctx.iq).forEach(function(u){ held[u.uid] = u; });
+    var mvs = lines.map(function(l){
+      var u = held[l.uid]; if (!u) throw new Error('القطعة لم تعد عند الموظف — حدّث الصفحة');
+      return mkMv({ type: l.lost ? 'lost' : 'ret', item: u.item, item_name: u.name, wh: ctx.wh || u.wh, qty: 1, cond: l.lost ? 0 : l.to, from: u.cond,
+        price: u.price, deduct: deduct(u.price, u.cond, l.to, l.lost), iq: String(ctx.iq), emp_name: ctx.name || '', units: [l.uid],
+        photos: l.photos || [], ref: ctx.ref || (l.lost ? 'فقد' : 'استلام'), src: ctx.src, plate: ctx.plate || '' });
+    });
+    return mvs.length ? put('mv', mvs).then(function(){ return mvs; }) : Promise.resolve([]);
+  }
+  /* تعديلات وثيق: adj (تصحيح حالة) · xfer (نقل) · cancel (إلغاء تسليم) */
+  function edit(ctx, lines){
+    var held = {}; holdings(ctx.iq).forEach(function(u){ held[u.uid] = u; });
+    var mvs = lines.map(function(l){
+      var u = held[l.uid]; if (!u) throw new Error('القطعة لم تعد عند الموظف — حدّث الصفحة');
+      var m = { type: l.k, item: u.item, item_name: u.name, wh: u.wh, qty: 1, cond: l.k === 'adj' ? l.to : u.cond, from: u.cond, price: u.price,
+                iq: String(ctx.iq), emp_name: ctx.name || '', units: [l.uid], reason: l.reason, src: 'وثيق' };
+      if (l.k === 'xfer') { m.to = String(l.to); m.to_name = l.to_name || ''; m.ref = 'نقل عهدة'; }
+      if (l.k === 'adj') m.ref = condTxt(u.cond) + ' ← ' + condTxt(l.to);
+      if (l.k === 'cancel') m.ref = 'إلغاء تسليم';
+      return mkMv(m);
+    });
+    return mvs.length ? put('mv', mvs).then(function(){ return mvs; }) : Promise.resolve([]);
+  }
+  function saveInvoice(inv){
+    inv.id = inv.id || uid('INV'); inv.status = 'معتمدة'; inv.at = nowIso(); inv.by = me();
+    var mvs = inv.lines.map(function(l){ var it = item(l.item) || {};
+      return mkMv({ type: 'in', item: l.item, item_name: it.name || '', wh: inv.wh, qty: l.qty, cond: 100, cost: l.price, ref: inv.no, inv: inv.id, src: 'وثيق' }); });
+    return put('inv', [inv]).then(function(){ return put('mv', mvs); }).then(function(){ return inv; });
+  }
+  function reverseInvoice(id){
+    var inv = D.inv[id]; if (!inv || inv.status !== 'معتمدة') return Promise.reject(new Error('الفاتورة غير قابلة للعكس'));
+    for (var i = 0; i < inv.lines.length; i++) { var l = inv.lines[i]; if (avail(l.item, inv.wh, 100) < l.qty) return Promise.reject(new Error('لا يمكن العكس: جزء من الكمية سُلّم لموظفين')); }
+    var copy = JSON.parse(JSON.stringify(inv)); copy.status = 'معكوسة'; copy.reversed_at = nowIso(); copy.reversed_by = me();
+    var mvs = inv.lines.map(function(l){ return mkMv({ type: 'rev', item: l.item, item_name: (item(l.item) || {}).name || '', wh: inv.wh, qty: l.qty, cond: 100, cost: l.price, ref: inv.no, inv: inv.id, src: 'وثيق' }); });
+    return put('inv', [copy]).then(function(){ return put('mv', mvs); });
+  }
+  function saveItem(it){ it.id = it.id || uid('I'); it.updated_at = nowIso(); it.updated_by = me(); return put('items', [it]).then(function(){ return it; }); }
+
+  /* ---------- الصور: مضغوطة ثم إلى مخزن emp-docs ---------- */
+  function shrink(file){
+    return new Promise(function(res){
+      try {
+        var img = new Image(), url = URL.createObjectURL(file);
+        img.onload = function(){
+          var mx = 1280, w = img.width, h = img.height, k = Math.min(1, mx / Math.max(w, h));
+          var c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+          c.toBlob(function(b){ res(b || file); }, 'image/jpeg', 0.8);
+        };
+        img.onerror = function(){ res(file); }; img.src = url;
+      } catch(e){ res(file); }
+    });
+  }
+  function uploadPhotos(iq, files){
+    if (!window.WF_STORE) return Promise.reject(new Error('مخزن الصور غير متاح'));
+    var base = String(iq || 'x').trim().replace(/\.0+$/, '') + '/custody-' + Date.now().toString(36);   /* نفس نمط وثائق الموظف: <الإقامة>/… */
+    return Promise.all(files.map(function(f, i){
+      var p = base + '-' + i + '-' + Math.random().toString(36).slice(2, 6) + '.jpg';
+      return shrink(f).then(function(b){ return window.WF_STORE.upload(p, b); }).then(function(){ return p; });
+    }));
+  }
+
+  window.AFC = { load: load, D: D, on: function(f){ listeners.push(f); }, put: put, api: api, selectAll: selectAll,
+    normCity: normCity, whName: whName, WH_NAMES: WH_NAMES, CONDS: CONDS, condTxt: condTxt,
+    mvList: mvList, itemsList: itemsList, item: item, stock: stock, avail: avail, totalAvail: totalAvail, avgCost: avgCost,
+    units: units, holdings: holdings, deduct: deduct,
+    handover: handover, receive: receive, edit: edit, saveInvoice: saveInvoice, reverseInvoice: reverseInvoice, saveItem: saveItem,
+    uploadPhotos: uploadPhotos, today: today, uid: uid };
+})();
+
+</script>
+<style id="wx13-css">
+/* ===== وثيق — الطبقة (١٣): المخزن والفواتير وعمليات العهدة ===== */
+#afcW{margin-bottom:16px}
+.afc-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow,0 6px 20px rgba(16,33,31,.06));margin-bottom:14px;overflow:hidden}
+.afc-ch{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:13px 16px;border-bottom:1px solid var(--line)}
+.afc-ch h3{margin:0;font-size:15px;font-weight:700;display:flex;gap:8px;align-items:center}
+.afc-ch p{margin:2px 0 0;font-size:12px;color:var(--muted)}
+.afc-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.afc-seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:3px;gap:2px;flex-wrap:wrap}
+.afc-seg button{border:0;background:none;border-radius:9px;padding:6px 12px;cursor:pointer;color:var(--muted);font:inherit;font-weight:600;font-size:12.5px}
+.afc-seg button.on{background:var(--surface);color:var(--brand);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.afc-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px}
+.afc-kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.afc-kpi .v{font-size:19px;font-weight:700}.afc-kpi .k{font-size:12px;color:var(--muted)}
+.afc-tw{overflow:auto;max-height:520px}
+.afc-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.afc-tbl th{position:sticky;top:0;background:var(--surface-2);color:var(--muted);font-weight:600;text-align:start;padding:8px 10px;white-space:nowrap;border-bottom:1px solid var(--line);z-index:1}
+.afc-tbl td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+.afc-num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.afc-tag{display:inline-flex;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:600;white-space:nowrap}
+.afc-ok{background:#e7f3ec;color:#1d6b45}.afc-warn{background:#fbf0de;color:#95570f}.afc-bad{background:#fbe9e6;color:#a3372b}.afc-info{background:#e7eff7;color:#2a5b86}.afc-gold{background:#f5ecdc;color:#7a5a25}.afc-mute{background:var(--surface-2);color:var(--muted)}
+.afc-red{color:#a3372b}.afc-green{color:#1d6b45}.afc-muted{color:var(--muted)}.afc-sm{font-size:12px}
+.afc-barx{height:6px;border-radius:99px;background:var(--line);overflow:hidden;min-width:60px;margin-top:3px}.afc-barx i{display:block;height:100%;background:var(--brand)}.afc-barx.low i{background:#a3372b}
+.afc-ops{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(260px,1fr);gap:14px;padding:14px 16px}
+.afc-emp{display:flex;gap:10px;align-items:center}
+.afc-av{width:40px;height:40px;border-radius:50%;background:var(--surface-2);border:1px solid var(--line);display:grid;place-items:center;font-weight:700;color:var(--brand);flex-shrink:0}
+.afc-in{border:1px solid var(--line);border-radius:10px;padding:7px 10px;background:var(--surface);font:inherit;font-size:13px;color:var(--ink)}
+.afc-row{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:var(--surface)}
+.afc-row.on{border-color:var(--brand);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 16%,transparent)}
+.afc-rh{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.afc-rh label{display:flex;gap:8px;align-items:center;font-weight:600;cursor:pointer;flex:1;min-width:160px}
+.afc-rh input[type=checkbox]{width:18px;height:18px;accent-color:var(--brand)}
+.afc-rb{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:9px;padding-top:9px;border-top:1px dashed var(--line)}
+.afc-f{display:flex;flex-direction:column;gap:4px}.afc-f>span{font-size:11.5px;color:var(--muted)}
+.afc-chips{display:flex;gap:5px;flex-wrap:wrap}
+.afc-chip{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:4px 11px;cursor:pointer;font:inherit;font-size:12px;color:var(--ink)}
+.afc-chip.on{background:var(--brand);border-color:var(--brand);color:#fff}.afc-chip.bad.on{background:#a3372b;border-color:#a3372b}
+.afc-chip:disabled{opacity:.3;cursor:not-allowed}
+.afc-step{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.afc-step button{border:0;background:var(--surface-2);width:28px;cursor:pointer;font-size:15px}.afc-step span{min-width:32px;text-align:center;padding:4px 0;font-weight:600}
+.afc-ph{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.afc-ph img{width:36px;height:36px;border-radius:8px;object-fit:cover;border:1px solid var(--line)}
+.afc-upl{display:inline-flex;gap:5px;align-items:center;border:1px dashed var(--brand);color:var(--brand);border-radius:9px;padding:6px 10px;cursor:pointer;font-size:12px;font-weight:600}
+.afc-upl input{display:none}
+.afc-need{color:#a3372b;font-size:11.5px;font-weight:600}
+.afc-sum{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surface-2);border-top:1px solid var(--line);padding:11px 14px}
+.afc-kv{display:flex;justify-content:space-between;gap:10px;padding:6px 0;font-size:12.5px}.afc-kv+.afc-kv{border-top:1px dashed var(--line)}
+.afc-empty{padding:22px;text-align:center;color:var(--muted);font-size:13px}
+.afc-note{background:#e7eff7;color:#2a5b86;border-radius:10px;padding:8px 11px;font-size:12px;margin:0 0 10px}
+.afc-mini{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:3px 9px;font:inherit;font-size:11.5px;cursor:pointer}
+@media(max-width:980px){.afc-ops{grid-template-columns:1fr}}
+</style>
+
+<script id="wx13-js">
+/* ============================================================
+   وثيق — الطبقة (١٣): العهد والمخزن
+   • صفحة «العهد» نفسها: عمليات العهدة (تسليم/استلام/تعديل) + المخزن + الفواتير + سجل الحركات.
+   • نتيجة الحركات تُكتب في e.custody بنفس شكل العهد القديمة (cu:/cd:) — فالكرت المالي
+     والرواتب والتسوية تعمل كما هي، والعهد القديمة لا تُمَس.
+   ============================================================ */
+(function(){
+  if (window.__wx13) return; window.__wx13 = true;
+  var A = window.AFC; if (!A) return;
+  function E(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+  function F(n){ return (Math.round((Number(n) || 0) * 100) / 100).toLocaleString('en-US', { maximumFractionDigits: 2 }); }
+  function r2(n){ return Math.round((Number(n) || 0) * 100) / 100; }
+  function T(m){ try { toast(m); } catch(e){} }
+  function nid(x){ return String(x == null ? '' : x).trim().replace(/\.0+$/, ''); }
+  function isAdmin(){
+    try { var r = sessionStorage.getItem('wf_session_v3'); if (!r) return true; var u = JSON.parse(r);
+      return !!(u && (u.role === 'admin' || (u.perms && u.perms.finance))); } catch(e){ return true; }
+  }
+  function emps(){ try { return state.employees || []; } catch(e){ return []; } }
+  function empBy(iq){ iq = nid(iq); var L = emps(); for (var i = 0; i < L.length; i++) if (nid(L[i].iqama) === iq) return L[i]; return null; }
+  function empName(e){ return e ? (e.name_ar || e.name_en || e.iqama) : ''; }
+  function whOf(e){ return A.normCity(e && (e.area || e.city)) || 'RIYADH'; }
+  function isSupMnt(e){ var s = [e && e.project, e && e.profession, e && e.job_title].join(' '); return /المشرف|مشرف|صيانة|فني/.test(s); }
+  var BY = { f: ['الأسطول', 'afc-gold'], w: ['وثيق', 'afc-info'], b: ['الاثنان', 'afc-mute'] };
+  function inW(it){ return it && (it.by === 'w' || it.by === 'b'); }
+  function condTag(c){ return '<span class="afc-tag ' + (c === 100 ? 'afc-ok' : c === 0 ? 'afc-bad' : 'afc-warn') + '">' + A.condTxt(c) + '</span>'; }
+
+  /* ════════ (١) ربط الحركات بكرت الموظف — e.custody ════════ */
+  function desired(){
+    var out = {}, U = {};
+    function put(iq, rec){ iq = nid(iq); (out[iq] = out[iq] || {})[rec.id] = rec; }
+    function src(m){ return (m.src || '') + (m.plate ? (' · ' + m.plate) : ''); }
+    A.mvList().forEach(function(m){
+      if (m.type === 'out') {
+        if (m.kind === 'use') {
+          put(m.iq, { id: 'cd:' + m.id, item: m.item_name + (m.qty > 1 ? (' × ' + m.qty) : ''), value: r2(m.price * m.qty * m.cond / 100), date_out: m.date, date_in: '',
+            status: 'deducted', deducted_at: m.date, applied: true, note: 'يُخصم عند التسليم — ' + src(m), cust: { mv: m.id, item: m.item } });
+          return;
+        }
+        (m.units || []).forEach(function(u){
+          var rec = { id: 'cu:' + u + '@' + m.id, item: m.item_name, value: r2(m.price * m.cond / 100), date_out: m.date, date_in: '', status: 'held',
+            note: A.condTxt(m.cond) + ' — ' + src(m), cust: { uid: u, item: m.item, wh: m.wh, cond: m.cond } };
+          U[u] = { rec: rec, price: m.price }; put(m.iq, rec);
+        });
+      } else if (m.type === 'ret' || m.type === 'lost' || m.type === 'cancel') {
+        (m.units || []).forEach(function(u){
+          var x = U[u]; if (!x) return;
+          if (m.type === 'lost') { x.rec.status = 'deducted'; x.rec.deducted_at = m.date; x.rec.applied = true; x.rec.value = r2(x.price * m.from / 100); x.rec.note += ' · مفقودة'; }
+          else { x.rec.status = 'returned'; x.rec.date_in = m.date; x.rec.note += m.type === 'cancel' ? (' · أُلغي التسليم: ' + (m.reason || '')) : (' · رجعت ' + A.condTxt(m.cond)); }
+          delete U[u];
+        });
+        if (m.type === 'ret' && m.deduct > 0) put(m.iq, { id: 'cd:' + m.id, item: 'نقص حالة: ' + m.item_name, value: r2(m.deduct), date_out: m.date, date_in: '',
+          status: 'deducted', deducted_at: m.date, applied: true, note: A.condTxt(m.from) + ' ← ' + A.condTxt(m.cond) + ' — ' + src(m), cust: { mv: m.id, item: m.item } });
+      } else if (m.type === 'adj') {
+        (m.units || []).forEach(function(u){ var x = U[u]; if (!x) return; x.rec.value = r2(x.price * m.cond / 100); x.rec.cust.cond = m.cond; x.rec.note = A.condTxt(m.cond) + ' (صُحّحت: ' + (m.reason || '') + ')'; });
+      } else if (m.type === 'xfer') {
+        (m.units || []).forEach(function(u){
+          var x = U[u]; if (!x) return;
+          x.rec.status = 'returned'; x.rec.date_in = m.date; x.rec.note += ' · نُقلت إلى ' + (m.to_name || m.to);
+          var rec = { id: 'cu:' + u + '@' + m.id, item: x.rec.item, value: x.rec.value, date_out: m.date, date_in: '', status: 'held',
+            note: A.condTxt(x.rec.cust.cond) + ' — منقولة من ' + (m.emp_name || m.iq), cust: { uid: u, item: x.rec.cust.item, wh: x.rec.cust.wh, cond: x.rec.cust.cond } };
+          U[u] = { rec: rec, price: x.price }; put(m.to, rec);
+        });
+      }
+    });
+    return out;
+  }
+  var FIELDS = ['item', 'value', 'status', 'date_out', 'date_in', 'note', 'deducted_at', 'applied'];
+  var orphan = {};
+  function materialize(){
+    if (!A.D.loaded || !emps().length) return 0;
+    var want = desired(), changed = 0; orphan = {};
+    Object.keys(want).forEach(function(iq){
+      var e = empBy(iq); if (!e) { orphan[iq] = 1; return; }
+      var list = Array.isArray(e.custody) ? e.custody : (e.custody = []);
+      var hit = false;
+      Object.keys(want[iq]).forEach(function(id){
+        var w = want[iq][id], cur = null;
+        for (var i = 0; i < list.length; i++) if (list[i] && list[i].id === id) { cur = list[i]; break; }
+        if (!cur) { list.push(JSON.parse(JSON.stringify(w))); hit = true; return; }
+        if (cur.settled_period) return;                                  /* سُوّي على راتب — لا يُمس */
+        if (cur.status !== 'held' && w.status === 'held') return;         /* جهاز ببيانات أقدم لا يُرجع الحالة للخلف */
+        FIELDS.forEach(function(f){ var v = w[f] === undefined ? '' : w[f], o = cur[f] === undefined ? '' : cur[f]; if (v !== o) { cur[f] = w[f]; hit = true; } });
+        if (JSON.stringify(cur.cust || null) !== JSON.stringify(w.cust)) { cur.cust = w.cust; hit = true; }
+      });
+      if (hit) changed++;
+    });
+    if (changed) { try { recomputeStats(); } catch(e){} try { persist(); } catch(e){} kickOld(); }
+    return changed;
+  }
+  function kickOld(){ var q = document.getElementById('wx5Q'); if (q) try { q.dispatchEvent(new Event('input')); } catch(e){} }
+
+  /* ════════ (٢) الحالة والواجهة ════════ */
+  var S = { emp: '', mode: 'out', sel: {}, ret: {}, ed: {}, wh: '', mvf: 'all', q: '', busy: false };
+  function root(){ return document.getElementById('afcW'); }
+  function mount(){
+    var sec = document.getElementById('view-wx5_custody'); if (!sec || document.getElementById('afcW')) return;
+    var anchor = document.getElementById('wx5Alert') || sec.firstChild;
+    var d = document.createElement('div'); d.id = 'afcW'; sec.insertBefore(d, anchor);
+    var h = sec.querySelector('.h-row h1'); if (h) h.textContent = 'العهد والمخزن';
+    var hd = document.createElement('div'); hd.className = 'afc-ch'; hd.style.cssText = 'border:0;padding:6px 0 0';
+    hd.innerHTML = '<h3>📋 سجل عهد الموظفين</h3><p>كل العهد (القديمة والمرتبطة بالمخزن) كما تظهر في الكرت المالي.</p>';
+    sec.insertBefore(hd, document.getElementById('wx5Alert'));
+    render();
+  }
+  function render(){
+    var r = root(); if (!r) return;
+    if (!A.D.loaded) { r.innerHTML = '<div class="afc-card"><div class="afc-empty">' + (A.D.err ? ('⚠️ تعذّر تحميل المخزن: ' + E(A.D.err) + ' <button class="afc-mini" id="afcRetry">إعادة المحاولة</button>') : 'جارٍ تحميل المخزن…') + '</div></div>'; var b = document.getElementById('afcRetry'); if (b) b.onclick = function(){ A.load(true).then(render, render); }; return; }
+    var y = window.scrollY;
+    r.innerHTML = topBar() + kpis() + opsCard() + stockCard() + invCard() + movesCard();
+    wire(); window.scrollTo(0, y);
+  }
+  function whList(){ var s = {}; A.mvList().forEach(function(m){ if (m.wh) s[m.wh] = 1; }); emps().forEach(function(e){ var c = whOf(e); if (c) s[c] = 1; }); return Object.keys(s).sort(); }
+  function topBar(){
+    var adm = isAdmin();
+    return '<div class="afc-bar">'
+      + (adm ? '<button class="btn" id="afcInv">🧾 فاتورة شراء</button><button class="btn ghost" id="afcItem">➕ صنف</button>' : '')
+      + '<button class="btn ghost" id="afcXls">⬇️ تصدير Excel</button>'
+      + '<input class="afc-in" id="afcQ" placeholder="بحث: صنف، موظف، إقامة، فاتورة، مورد…" value="' + E(S.q) + '" style="flex:1;min-width:220px">'
+      + '<div class="afc-seg">' + [['', 'كل المخازن']].concat(whList().map(function(w){ return [w, 'مخزن ' + A.whName(w)]; })).map(function(x){
+          return '<button data-afcwh="' + E(x[0]) + '" class="' + (S.wh === x[0] ? 'on' : '') + '">' + E(x[1]) + '</button>'; }).join('') + '</div></div>';
+  }
+  function qm(){ var q = S.q.toLowerCase(); if (!q) return true; for (var i = 0; i < arguments.length; i++) if (String(arguments[i] || '').toLowerCase().indexOf(q) >= 0) return true; return false; }
+  function kpis(){
+    var W = S.wh || null, U = A.units().filter(function(u){ return !W || u.wh === W; });
+    var sv = A.itemsList().reduce(function(a, it){ var st = A.stock(it.id, W).c; return a + Object.keys(st).reduce(function(x, c){ return x + st[c] * A.avgCost(it.id) * c / 100; }, 0); }, 0);
+    var low = A.itemsList().filter(function(it){ return A.totalAvail(it.id, W) < (Number(it.min) || 0); }).length;
+    var mon = A.today().slice(0, 7), ded = A.mvList().filter(function(m){ return m.date && m.date.slice(0, 7) === mon && (!W || m.wh === W); })
+      .reduce(function(a, m){ return a + (m.type === 'ret' ? (m.deduct || 0) : m.type === 'lost' ? m.price * m.from / 100 : (m.type === 'out' && m.kind === 'use') ? m.price * m.qty * m.cond / 100 : 0); }, 0);
+    return '<div class="afc-kpis">'
+      + '<div class="afc-kpi"><div class="v afc-num">' + F(sv) + ' <small>ر.س</small></div><div class="k">قيمة المخزن بسعر الفاتورة</div></div>'
+      + '<div class="afc-kpi"><div class="v afc-num">' + U.length + ' <small>قطعة</small></div><div class="k">عند الموظفين (مخزّنة) · ' + F(U.reduce(function(a, u){ return a + u.price * u.cond / 100; }, 0)) + ' ر.س</div></div>'
+      + '<div class="afc-kpi"><div class="v afc-num ' + (low ? 'afc-red' : '') + '">' + low + '</div><div class="k">أصناف تحت حد التنبيه</div></div>'
+      + '<div class="afc-kpi"><div class="v afc-num afc-red">' + F(ded) + ' <small>ر.س</small></div><div class="k">خصومات عهد هذا الشهر</div></div></div>';
+  }
+
+  /* ---------- عمليات العهدة (شكل الصفحة القديمة) ---------- */
+  function opsCard(){
+    var adm = isAdmin(), e = S.emp ? empBy(S.emp) : null;
+    var picker = '<input class="afc-in" id="afcEmpQ" list="afcEmpL" placeholder="اختر موظفاً: اسم أو إقامة" style="min-width:240px">'
+      + '<datalist id="afcEmpL">' + emps().map(function(x){ return '<option value="' + E(nid(x.iqama)) + '">' + E(empName(x) + ' · ' + (x.project || '')) + '</option>'; }).join('') + '</datalist>';
+    var head = '<div class="afc-ch"><div class="afc-emp">' + (e ? '<div class="afc-av">' + E(empName(e).charAt(0)) + '</div><div><h3>' + E(empName(e))
+        + (isSupMnt(e) ? ' <span class="afc-tag afc-info">مشرف/صيانة</span>' : '') + '</h3><p class="afc-num">إقامة ' + E(nid(e.iqama)) + ' · ' + E(e.project || '—') + ' · مخزن ' + E(A.whName(whOf(e))) + '</p></div>'
+        : '<div><h3>📦 عمليات العهدة</h3><p>اختر موظفاً للتسليم أو الاستلام أو التعديل.</p></div>') + '</div>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' + picker
+      + (e ? '<div class="afc-seg">' + [['out', 'تسليم'], ['ret', 'استلام'], ['edit', 'تعديل']].map(function(x){ return '<button data-afcmode="' + x[0] + '" class="' + (S.mode === x[0] ? 'on' : '') + '">' + x[1] + '</button>'; }).join('') + '</div>' : '')
+      + '</div></div>';
+    if (!e) return '<div class="afc-card" id="afcOps">' + head + '</div>';
+    if (!adm) return '<div class="afc-card" id="afcOps">' + head + '<div class="afc-empty">التسليم والاستلام والتعديل للموظف الإداري فقط.</div></div>';
+    var iq = nid(e.iqama), wh = whOf(e), h = A.holdings(iq), all = isSupMnt(e), list = '', sum = '';
+    if (S.mode === 'out') {
+      var its = A.itemsList().filter(function(it){ return all || inW(it); });
+      list = its.map(function(it){
+        var st = A.stock(it.id, wh).c, tot = A.CONDS.reduce(function(a, c){ return a + (st[c] || 0); }, 0), s = S.sel[it.id];
+        return '<div class="afc-row ' + (s ? 'on' : '') + '"><div class="afc-rh"><label><input type="checkbox" data-afcpick="' + E(it.id) + '"' + (s ? ' checked' : '') + (tot ? '' : ' disabled') + '> ' + E(it.ic || '📦') + ' ' + E(it.name) + '</label>'
+          + '<span class="afc-tag ' + (it.kind === 'use' ? 'afc-gold' : 'afc-info') + '">' + (it.kind === 'use' ? 'يُخصم عند التسليم' : 'عهدة مستردّة') + '</span>'
+          + '<span class="afc-sm afc-muted afc-num">سعر الموظف ' + F(it.emp) + '</span><span class="afc-sm ' + (tot ? 'afc-muted' : 'afc-need') + '">متوفر في ' + E(A.whName(wh)) + ': ' + tot + '</span></div>'
+          + (s ? '<div class="afc-rb"><div class="afc-f"><span>الحالة عند التسليم</span><div class="afc-chips">' + A.CONDS.map(function(c){ return '<button class="afc-chip ' + (s.cond === c ? 'on' : '') + '" data-afccond="' + E(it.id) + ':' + c + '"' + ((st[c] || 0) ? '' : ' disabled') + '>' + A.condTxt(c) + '</button>'; }).join('') + '</div></div>'
+            + '<div class="afc-f"><span>الكمية (متاح ' + (st[s.cond] || 0) + ')</span><div class="afc-step"><button data-afcq="' + E(it.id) + ':-1">−</button><span>' + s.qty + '</span><button data-afcq="' + E(it.id) + ':1">+</button></div></div>'
+            + '<div class="afc-f"><span>صور التسليم</span>' + phHtml(s.files, 'out:' + it.id) + '</div>'
+            + '<div class="afc-f"><span>' + (it.kind === 'use' ? 'يُخصم الآن' : 'قيمة العهدة') + '</span><b class="afc-num">' + F(it.emp * s.qty * s.cond / 100) + '</b></div></div>' : '') + '</div>';
+      }).join('') || '<div class="afc-empty">لا أصناف تُسلَّم من وثيق. أضف صنفاً أو اجعل «التسليم من» وثيق/الاثنان.</div>';
+      var p = Object.keys(S.sel), ok = p.length && p.every(function(k){ return S.sel[k].files.length; });
+      sum = '<span class="afc-sm">' + (p.length ? p.reduce(function(a, k){ return a + S.sel[k].qty; }, 0) + ' قطعة محددة' : 'اختر الأصناف') + '</span><button class="btn" id="afcDoOut"' + (ok && !S.busy ? '' : ' disabled') + '>' + (S.busy ? '…' : 'اعتماد التسليم') + '</button>';
+    } else if (S.mode === 'ret') {
+      var hr = h.filter(function(u){ return all || inW(A.item(u.item)); });
+      list = hr.map(function(u){
+        var r = S.ret[u.uid], d = r ? A.deduct(u.price, u.cond, r.to, r.lost) : 0;
+        return '<div class="afc-row ' + (r ? 'on' : '') + '"><div class="afc-rh"><label><input type="checkbox" data-afcrp="' + E(u.uid) + '"' + (r ? ' checked' : '') + '> ' + E((A.item(u.item) || {}).ic || '📦') + ' ' + E(u.name) + '</label>' + condTag(u.cond)
+          + '<span class="afc-sm afc-muted afc-num">سُلّم ' + E(u.date) + (u.plate ? ' · ' + E(u.plate) : '') + ' · ' + F(u.price) + '</span></div>'
+          + (r ? '<div class="afc-rb"><div class="afc-f"><span>الحالة عند الاستلام</span><div class="afc-chips">' + [100, 75, 50, 25, 0].map(function(c){ return '<button class="afc-chip ' + (!r.lost && r.to === c ? 'on' : '') + '" data-afcto="' + E(u.uid) + ':' + c + '"' + (c > u.cond ? ' disabled' : '') + '>' + A.condTxt(c) + '</button>'; }).join('')
+            + '<button class="afc-chip bad ' + (r.lost ? 'on' : '') + '" data-afclost="' + E(u.uid) + '">مفقود</button></div></div>'
+            + (r.lost ? '' : '<div class="afc-f"><span>صور الاستلام</span>' + phHtml(r.files, 'ret:' + u.uid) + '</div>')
+            + '<div class="afc-f"><span>الخصم</span><b class="afc-num ' + (d ? 'afc-red' : 'afc-green') + '">' + (d ? '− ' + F(d) : 'لا خصم') + '</b></div></div>' : '') + '</div>';
+      }).join('') || '<div class="afc-empty">لا عهدة تُستلم من وثيق لهذا الموظف.' + (h.length ? ' عهدته أصناف أسطول — تُستلم عند استلام المركبة.' : '') + '</div>';
+      var rp = Object.keys(S.ret), rok = rp.length && rp.every(function(k){ return S.ret[k].lost || S.ret[k].files.length; });
+      var ded = rp.reduce(function(a, k){ var u = h.filter(function(x){ return x.uid === k; })[0]; return a + (u ? A.deduct(u.price, u.cond, S.ret[k].to, S.ret[k].lost) : 0); }, 0);
+      sum = '<span class="afc-sm">الخصم المرحّل للكرت المالي <b class="afc-red afc-num">' + F(ded) + '</b></span><button class="btn" id="afcDoRet"' + (rok && !S.busy ? '' : ' disabled') + '>' + (S.busy ? '…' : 'اعتماد الاستلام') + '</button>';
+    } else {
+      var others = emps().filter(function(x){ return nid(x.iqama) !== iq && whOf(x) === wh; });
+      list = h.map(function(u){
+        var a = S.ed[u.uid], b = '';
+        if (a) {
+          if (a.k === 'adj') b = '<div class="afc-f"><span>الحالة الصحيحة</span><div class="afc-chips">' + A.CONDS.map(function(c){ return '<button class="afc-chip ' + (a.to === c ? 'on' : '') + '" data-afceto="' + E(u.uid) + ':' + c + '">' + A.condTxt(c) + '</button>'; }).join('') + '</div></div>';
+          if (a.k === 'xfer') b = '<div class="afc-f"><span>نقل إلى (نفس المخزن)</span><select class="afc-in" data-afcxto="' + E(u.uid) + '"><option value="">اختر موظفاً</option>' + others.map(function(o){ return '<option value="' + E(nid(o.iqama)) + '"' + (a.to === nid(o.iqama) ? ' selected' : '') + '>' + E(empName(o)) + '</option>'; }).join('') + '</select></div>';
+          if (a.k === 'cancel') b = '<div class="afc-sm afc-muted" style="max-width:260px">تعود القطعة للمخزن بحالتها كأنها لم تُسلَّم، بلا خصم.</div>';
+          b += '<div class="afc-f" style="flex:1;min-width:200px"><span>سبب التعديل (إلزامي)</span><input class="afc-in" data-afcrs="' + E(u.uid) + '" value="' + E(a.reason) + '" placeholder="مثال: أُدخلت الحالة خطأ"></div>';
+        }
+        return '<div class="afc-row ' + (a ? 'on' : '') + '"><div class="afc-rh"><label style="cursor:default">' + E((A.item(u.item) || {}).ic || '📦') + ' ' + E(u.name) + '</label>' + condTag(u.cond) + '<span class="afc-sm afc-muted">سُلّم ' + E(u.date) + '</span>'
+          + '<div class="afc-chips">' + [['adj', 'تصحيح الحالة'], ['xfer', 'نقل لموظف'], ['cancel', 'إلغاء التسليم']].map(function(x){ return '<button class="afc-chip ' + (a && a.k === x[0] ? 'on' : '') + '" data-afcea="' + E(u.uid) + ':' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div></div>'
+          + (a ? '<div class="afc-rb">' + b + '</div>' : '') + '</div>';
+      }).join('') || '<div class="afc-empty">لا عهدة مخزّنة عند هذا الموظف.</div>';
+      var ep = Object.keys(S.ed), eok = ep.length && ep.every(function(k){ var a = S.ed[k]; return String(a.reason || '').trim() && (a.k !== 'xfer' || a.to); });
+      sum = '<span class="afc-sm">' + (ep.length ? ep.length + ' تعديل — يُسجَّل بسببه ولا يُحذف شيء' : 'اختر تعديلاً على قطعة') + '</span><button class="btn" id="afcDoEd"' + (eok && !S.busy ? '' : ' disabled') + '>' + (S.busy ? '…' : 'اعتماد التعديل') + '</button>';
+    }
+    var legacy = (e.custody || []).filter(function(c){ return c && !/^c[ud]:/.test(String(c.id || '')) && c.status === 'held'; });
+    var due = (e.custody || []).reduce(function(s, c){ return (!c || c.settled_period) ? s : (c.status === 'deducted' ? s + (Number(c.value) || 0) : s); }, 0);
+    var side = '<div><div class="afc-card" style="margin-bottom:10px"><div class="afc-ch"><div><h3>💳 الكرت المالي</h3><p>نفس ما يظهر في كرت الموظف</p></div></div><div style="padding:6px 14px 10px">'
+      + '<div class="afc-kv"><span class="afc-muted">قيمة العهدة الحالية</span><b class="afc-num">' + F(h.reduce(function(a, u){ return a + u.price * u.cond / 100; }, 0) + legacy.reduce(function(a, c){ return a + (Number(c.value) || 0); }, 0)) + '</b></div>'
+      + '<div class="afc-kv"><span class="afc-muted">خصومات عهد غير مسوّاة</span><b class="afc-num afc-red">' + F(due) + '</b></div>'
+      + '<div class="afc-kv"><span class="afc-muted"></span><button class="afc-mini" id="afcOpenFin">فتح الكرت المالي</button></div></div></div>'
+      + '<div class="afc-card"><div class="afc-ch"><div><h3>العهدة الحالية</h3><p>' + (h.length + legacy.length) + ' قطعة</p></div></div><div style="padding:6px 14px 10px">'
+      + h.map(function(u){ var it = A.item(u.item) || {}; return '<div class="afc-kv"><span>' + E(it.ic || '📦') + ' ' + E(u.name) + '<br><span class="afc-sm afc-muted">' + E(u.date) + ' · ' + E((BY[it.by] || BY.f)[0]) + '</span></span>' + condTag(u.cond) + '</div>'; }).join('')
+      + legacy.map(function(c){ return '<div class="afc-kv"><span>' + E(c.item) + '<br><span class="afc-sm afc-muted">' + E(c.date_out || '') + ' · عهدة قديمة</span></span><span class="afc-num">' + F(c.value) + '</span></div>'; }).join('')
+      + ((h.length + legacy.length) ? '' : '<span class="afc-sm afc-muted">لا عهدة.</span>') + '</div></div></div>';
+    return '<div class="afc-card" id="afcOps">' + head + (all ? '<div class="afc-note" style="margin:10px 16px 0">مشرف/صيانة: كل الأصناف تُسلَّم وتُستلم له من وثيق.</div>' : '')
+      + '<div class="afc-ops"><div><div class="afc-card" style="margin:0"><div style="padding:12px">' + list + '</div><div class="afc-sum">' + sum + '</div></div></div>' + side + '</div></div>';
+  }
+  var FILES = {}; /* key → [{file,url}] */
+  function phHtml(files, key){
+    return '<div class="afc-ph">' + files.map(function(f){ return '<img src="' + f.url + '">'; }).join('')
+      + '<label class="afc-upl">📷 ' + (files.length ? 'إضافة' : 'صورة') + '<input type="file" accept="image/*" capture="environment" multiple data-afcph="' + E(key) + '"></label>' + (files.length ? '' : '<span class="afc-need">مطلوبة</span>') + '</div>';
+  }
+
+  /* ---------- المخزن ---------- */
+  function stockCard(){
+    var W = S.wh || null, U = A.units(), adm = isAdmin();
+    var rows = A.itemsList(true).filter(function(it){ return qm(it.name, it.cat); }).map(function(it){
+      var st = A.stock(it.id, W), nw = st.c[100] || 0, used = Object.keys(st.c).filter(function(c){ return c !== '100'; }).reduce(function(a, c){ return a + st.c[c]; }, 0), tot = nw + used, mn = Number(it.min) || 0, low = tot < mn;
+      return '<tr' + (it.archived ? ' style="opacity:.55"' : '') + '><td><b>' + E(it.ic || '📦') + ' ' + E(it.name) + '</b><div class="afc-sm afc-muted">' + (it.kind === 'use' ? 'يُخصم عند التسليم' : 'عهدة مستردّة') + (it.cat ? ' · ' + E(it.cat) : '') + (it.archived ? ' · موقوف' : '') + '</div></td>'
+        + '<td><span class="afc-tag ' + (BY[it.by] || BY.f)[1] + '">' + (BY[it.by] || BY.f)[0] + '</span></td>'
+        + '<td class="afc-num">' + F(A.avgCost(it.id)) + '</td><td class="afc-num"><b>' + F(it.emp) + '</b></td>'
+        + '<td class="afc-num afc-green"><b>' + nw + '</b></td><td class="afc-num" style="color:#95570f"><b>' + used + '</b></td>'
+        + '<td class="afc-num"><b>' + tot + '</b><div class="afc-barx' + (low ? ' low' : '') + '"><i style="width:' + Math.min(100, mn ? tot / (mn * 2) * 100 : 100) + '%"></i></div></td>'
+        + '<td class="afc-num">' + (it.kind === 'use' ? '—' : U.filter(function(u){ return u.item === it.id && (!W || u.wh === W); }).length) + '</td><td class="afc-num">' + (st.dmg || '—') + '</td>'
+        + '<td>' + (low ? '<span class="afc-tag afc-bad">أقل من ' + mn + '</span>' : '<span class="afc-tag afc-ok">متوفر</span>') + '</td>'
+        + '<td>' + (adm ? '<button class="afc-mini" data-afcedit="' + E(it.id) + '">تعديل</button>' : '') + '</td></tr>';
+    }).join('');
+    return '<div class="afc-card"><div class="afc-ch"><div><h3>🏬 المخزن</h3><p>الكمية تُحسب من الفواتير والتسليم والاستلام، ولا تُكتب يدوياً.' + (S.wh ? ' — مخزن ' + E(A.whName(S.wh)) : '') + '</p></div></div>'
+      + '<div class="afc-tw"><table class="afc-tbl"><thead><tr><th>الصنف</th><th>التسليم من</th><th>سعر الفاتورة</th><th>سعر الموظف</th><th>جديد</th><th>مستعمل</th><th>الإجمالي</th><th>عند الموظفين</th><th>تالف</th><th>الحالة</th><th></th></tr></thead><tbody>'
+      + (rows || '<tr><td colspan="11" class="afc-empty">' + (A.itemsList(true).length ? 'لا نتائج' : 'لا أصناف بعد — ابدأ بـ «➕ صنف» ثم «🧾 فاتورة شراء».') + '</td></tr>') + '</tbody></table></div></div>';
+  }
+  function invCard(){
+    var W = S.wh || null, adm = isAdmin();
+    var L = Object.keys(A.D.inv).map(function(k){ return A.D.inv[k]; }).filter(function(i){ return (!W || i.wh === W) && qm(i.no, i.supplier, (i.lines || []).map(function(l){ return (A.item(l.item) || {}).name; }).join(' ')); })
+      .sort(function(a, b){ return (b.date || '') < (a.date || '') ? -1 : 1; });
+    return '<div class="afc-card"><div class="afc-ch"><div><h3>🧾 فواتير الشراء</h3><p>الاعتماد يضيف للمخزن، والتصحيح بالعكس لا بالحذف.</p></div></div><div class="afc-tw" style="max-height:340px"><table class="afc-tbl"><thead><tr><th>الفاتورة</th><th>التاريخ</th><th>المخزن</th><th>القطع</th><th>الإجمالي مع الضريبة</th><th>الحالة</th><th></th></tr></thead><tbody>'
+      + (L.map(function(i){ var sub = (i.lines || []).reduce(function(a, l){ return a + l.qty * l.price; }, 0);
+          return '<tr><td><b>' + E(i.no) + '</b><div class="afc-sm afc-muted">' + E(i.supplier) + '</div></td><td class="afc-num">' + E(i.date) + '</td><td>' + E(A.whName(i.wh)) + '</td><td class="afc-num">' + (i.lines || []).reduce(function(a, l){ return a + l.qty; }, 0) + '</td>'
+            + '<td class="afc-num">' + F(sub * (i.vat ? 1.15 : 1)) + '</td><td>' + (i.status === 'معتمدة' ? '<span class="afc-tag afc-ok">معتمدة</span>' : '<span class="afc-tag afc-mute">معكوسة</span>') + '</td>'
+            + '<td>' + (i.file ? '<button class="afc-mini" data-afcfile="' + E(i.file) + '">📎</button> ' : '') + (adm && i.status === 'معتمدة' ? '<button class="afc-mini" data-afcrev="' + E(i.id) + '">عكس</button>' : '') + '</td></tr>'; }).join('')
+         || '<tr><td colspan="7" class="afc-empty">لا فواتير</td></tr>') + '</tbody></table></div></div>';
+  }
+  var MVL = { 'in': ['وارد فاتورة', 'afc-ok'], rev: ['عكس فاتورة', 'afc-mute'], out: ['تسليم', 'afc-info'], ret: ['استلام', 'afc-gold'], lost: ['فقد', 'afc-bad'], cancel: ['إلغاء تسليم', 'afc-mute'], adj: ['تصحيح حالة', 'afc-warn'], xfer: ['نقل عهدة', 'afc-info'] };
+  function movesCard(){
+    var W = S.wh || null;
+    var F2 = { all: function(){ return true; }, stock: function(m){ return m.type === 'in' || m.type === 'rev'; }, cust: function(m){ return m.type === 'out' || m.type === 'ret' || m.type === 'lost'; }, edit: function(m){ return m.type === 'adj' || m.type === 'xfer' || m.type === 'cancel'; } };
+    var ms = A.mvList().slice().reverse().filter(function(m){ return (!W || m.wh === W) && F2[S.mvf](m) && qm(m.item_name, m.emp_name, m.iq, m.to_name, m.ref, m.reason, m.plate); }).slice(0, 200);
+    var orph = Object.keys(orphan).length;
+    return '<div class="afc-card"><div class="afc-ch"><div><h3>🔁 سجل الحركات</h3><p>كل تغيير له سطر ومصدره، ولا يُحذف شيء.' + (orph ? ' <span class="afc-tag afc-warn">' + orph + ' إقامة ليست في وثيق</span>' : '') + '</p></div>'
+      + '<div class="afc-seg">' + [['all', 'الكل'], ['stock', 'المخزن'], ['cust', 'تسليم واستلام'], ['edit', 'تعديلات']].map(function(x){ return '<button data-afcmvf="' + x[0] + '" class="' + (S.mvf === x[0] ? 'on' : '') + '">' + x[1] + '</button>'; }).join('') + '</div></div>'
+      + '<div class="afc-tw" style="max-height:420px"><table class="afc-tbl"><thead><tr><th>التاريخ</th><th>الحركة</th><th>الصنف</th><th>الكمية</th><th>الحالة</th><th>الموظف / المرجع</th><th>المخزن</th><th>صور</th><th>المصدر</th></tr></thead><tbody>'
+      + (ms.map(function(m){ var L = MVL[m.type] || [m.type, 'afc-mute'];
+          return '<tr><td class="afc-num">' + E(m.date) + '</td><td><span class="afc-tag ' + L[1] + '">' + L[0] + '</span></td><td>' + E(m.item_name) + '</td><td class="afc-num">' + (m.type === 'rev' ? '−' : '') + m.qty + '</td>'
+            + '<td>' + (m.type === 'lost' ? '<span class="afc-tag afc-bad">مفقود</span>' : m.type === 'xfer' ? '—' : condTag(m.cond)) + '</td>'
+            + '<td>' + (m.type === 'xfer' ? E(m.emp_name || m.iq) + ' ← ' + E(m.to_name || m.to) : m.iq ? E(m.emp_name || m.iq) + (orphan[nid(m.iq)] ? ' <span class="afc-tag afc-warn">ليس في وثيق</span>' : '') : '') + '<div class="afc-sm afc-muted">' + E(m.ref || '') + (m.reason ? ' · السبب: ' + E(m.reason) : '') + (m.deduct ? ' · خصم ' + F(m.deduct) : '') + '</div></td>'
+            + '<td>' + E(A.whName(m.wh)) + '</td><td>' + ((m.photos || []).length ? '<button class="afc-mini" data-afcpho="' + E(m.id) + '">📷 ' + m.photos.length + '</button>' : '—') + '</td>'
+            + '<td><span class="afc-tag ' + (m.src === 'الأسطول' ? 'afc-gold' : 'afc-info') + '">' + E(m.src || '') + '</span><div class="afc-sm afc-muted">' + E(m.by || '') + '</div></td></tr>'; }).join('')
+         || '<tr><td colspan="9" class="afc-empty">لا حركات</td></tr>') + '</tbody></table></div></div>';
+  }
+
+  /* ---------- الأحداث ---------- */
+  function $$(s){ return Array.prototype.slice.call(root().querySelectorAll(s)); }
+  function on(sel, ev, fn){ $$(sel).forEach(function(el){ el.addEventListener(ev, function(x){ fn(el, x); }); }); }
+  function setEmp(iq, mode){ S.emp = nid(iq); S.mode = mode || S.mode || 'out'; S.sel = {}; S.ret = {}; S.ed = {}; render(); }
+  function wire(){
+    on('[data-afcwh]', 'click', function(b){ S.wh = b.getAttribute('data-afcwh'); render(); });
+    on('[data-afcmvf]', 'click', function(b){ S.mvf = b.getAttribute('data-afcmvf'); render(); });
+    var q = document.getElementById('afcQ'); if (q) q.addEventListener('input', function(){ S.q = q.value.trim(); var p = q.selectionStart; render(); var n = document.getElementById('afcQ'); n.focus(); try { n.setSelectionRange(p, p); } catch(e){} });
+    var eq = document.getElementById('afcEmpQ'); if (eq) eq.addEventListener('change', function(){ var v = eq.value.trim(); if (!v) return;
+      var e = empBy(v) || emps().filter(function(x){ return empName(x).indexOf(v) >= 0 || nid(x.iqama).indexOf(v) >= 0; })[0];
+      if (e) setTimeout(function(){ setEmp(e.iqama); }, 0); else T('لا يوجد موظف مطابق'); });
+    on('[data-afcmode]', 'click', function(b){ S.mode = b.getAttribute('data-afcmode'); S.sel = {}; S.ret = {}; S.ed = {}; render(); });
+    var e = S.emp ? empBy(S.emp) : null, wh = e ? whOf(e) : '';
+    on('[data-afcpick]', 'change', function(c){ var id = c.getAttribute('data-afcpick'); if (c.checked) { var st = A.stock(id, wh).c; S.sel[id] = { cond: A.CONDS.filter(function(x){ return (st[x] || 0) > 0; })[0], qty: 1, files: [] }; } else delete S.sel[id]; render(); });
+    on('[data-afccond]', 'click', function(b){ var p = b.getAttribute('data-afccond').split(':'); S.sel[p[0]].cond = +p[1]; S.sel[p[0]].qty = 1; render(); });
+    on('[data-afcq]', 'click', function(b){ var p = b.getAttribute('data-afcq').split(':'), s = S.sel[p[0]]; s.qty = Math.max(1, Math.min(A.avail(p[0], wh, s.cond), s.qty + (+p[1]))); render(); });
+    on('[data-afcph]', 'change', function(i){ var k = i.getAttribute('data-afcph').split(':'), tgt = k[0] === 'out' ? S.sel[k[1]] : S.ret[k.slice(1).join(':')];
+      Array.prototype.forEach.call(i.files, function(f){ tgt.files.push({ file: f, url: URL.createObjectURL(f) }); }); render(); });
+    on('[data-afcrp]', 'change', function(c){ var u = c.getAttribute('data-afcrp'), h = A.holdings(S.emp).filter(function(x){ return x.uid === u; })[0]; if (c.checked && h) S.ret[u] = { to: h.cond, lost: false, files: [] }; else delete S.ret[u]; render(); });
+    on('[data-afcto]', 'click', function(b){ var p = b.getAttribute('data-afcto').split(':'); S.ret[p[0]].to = +p[1]; S.ret[p[0]].lost = false; render(); });
+    on('[data-afclost]', 'click', function(b){ S.ret[b.getAttribute('data-afclost')].lost = true; render(); });
+    on('[data-afcea]', 'click', function(b){ var p = b.getAttribute('data-afcea').split(':'), h = A.holdings(S.emp).filter(function(x){ return x.uid === p[0]; })[0]; if (S.ed[p[0]] && S.ed[p[0]].k === p[1]) delete S.ed[p[0]]; else S.ed[p[0]] = { k: p[1], to: p[1] === 'adj' ? h.cond : '', reason: '' }; render(); });
+    on('[data-afceto]', 'click', function(b){ var p = b.getAttribute('data-afceto').split(':'); S.ed[p[0]].to = +p[1]; render(); });
+    on('[data-afcxto]', 'change', function(s){ S.ed[s.getAttribute('data-afcxto')].to = s.value; render(); });
+    on('[data-afcrs]', 'input', function(i){ S.ed[i.getAttribute('data-afcrs')].reason = i.value; var ep = Object.keys(S.ed), b = document.getElementById('afcDoEd');
+      if (b) b.disabled = !(ep.length && ep.every(function(k){ var a = S.ed[k]; return String(a.reason || '').trim() && (a.k !== 'xfer' || a.to); })); });
+    on('[data-afcrev]', 'click', function(b){ var inv = A.D.inv[b.getAttribute('data-afcrev')]; if (!inv) return;
+      if (!confirm('عكس الفاتورة ' + inv.no + '؟ تُخصم كمياتها من المخزن وتبقى الفاتورة في السجل.')) return;
+      A.reverseInvoice(inv.id).then(function(){ T('↩️ عُكست الفاتورة ' + inv.no); render(); }).catch(function(x){ T('⚠️ ' + x.message); }); });
+    on('[data-afcedit]', 'click', function(b){ itemModal(b.getAttribute('data-afcedit')); });
+    on('[data-afcpho]', 'click', function(b){ photoModal(A.D.mv[b.getAttribute('data-afcpho')]); });
+    on('[data-afcfile]', 'click', function(b){ if (window.WF_STORE) WF_STORE.sign(b.getAttribute('data-afcfile')).then(function(u){ window.open(u, '_blank'); }).catch(function(){ T('تعذّر فتح المرفق'); }); });
+    var x;
+    if ((x = document.getElementById('afcInv'))) x.onclick = invModal;
+    if ((x = document.getElementById('afcItem'))) x.onclick = function(){ itemModal(); };
+    if ((x = document.getElementById('afcXls'))) x.onclick = exportXlsx;
+    if ((x = document.getElementById('afcOpenFin'))) x.onclick = function(){ var i = emps().indexOf(empBy(S.emp)); if (i >= 0) try { openModal(i, 'fin'); } catch(err){} };
+    if ((x = document.getElementById('afcDoOut'))) x.onclick = doOut;
+    if ((x = document.getElementById('afcDoRet'))) x.onclick = doRet;
+    if ((x = document.getElementById('afcDoEd'))) x.onclick = doEd;
+  }
+  function busy(on){ S.busy = on; render(); }
+  function done(msg){ S.sel = {}; S.ret = {}; S.ed = {}; S.busy = false; materialize(); render(); T(msg); }
+  function fail(x){ S.busy = false; render(); T('⚠️ ' + (x && x.message || 'تعذّر الحفظ')); }
+  function doOut(){
+    var e = empBy(S.emp); if (!e) return; var iq = nid(e.iqama), keys = Object.keys(S.sel); busy(true);
+    Promise.all(keys.map(function(k){ return A.uploadPhotos(iq, S.sel[k].files.map(function(f){ return f.file; })); }))
+      .then(function(ph){ return A.handover({ iq: iq, name: empName(e), wh: whOf(e), src: 'وثيق' }, keys.map(function(k, i){ return { item: k, qty: S.sel[k].qty, cond: S.sel[k].cond, photos: ph[i] }; })); })
+      .then(function(){ done('📦 تم التسليم من وثيق'); }).catch(fail);
+  }
+  function doRet(){
+    var e = empBy(S.emp); if (!e) return; var iq = nid(e.iqama), keys = Object.keys(S.ret); busy(true);
+    Promise.all(keys.map(function(k){ return S.ret[k].lost ? [] : A.uploadPhotos(iq, S.ret[k].files.map(function(f){ return f.file; })); }))
+      .then(function(ph){ return A.receive({ iq: iq, name: empName(e), wh: whOf(e), src: 'وثيق' }, keys.map(function(k, i){ return { uid: k, to: S.ret[k].to, lost: S.ret[k].lost, photos: ph[i] }; })); })
+      .then(function(){ done('✅ تم الاستلام — الخصم في الكرت المالي'); }).catch(fail);
+  }
+  function doEd(){
+    var e = empBy(S.emp); if (!e) return; var iq = nid(e.iqama); busy(true);
+    try {
+      A.edit({ iq: iq, name: empName(e) }, Object.keys(S.ed).map(function(k){ var a = S.ed[k]; return { uid: k, k: a.k, to: a.to, to_name: a.k === 'xfer' ? empName(empBy(a.to)) : '', reason: a.reason.trim() }; }))
+        .then(function(){ done('✏️ اعتُمد التعديل وسُجّل بسببه'); }).catch(fail);
+    } catch(x){ fail(x); }
+  }
+
+  /* ---------- نوافذ: صنف · فاتورة · صور ---------- */
+  function modal(title, body, foot){
+    var s = document.getElementById('afcScrim');
+    if (!s) { s = document.createElement('div'); s.className = 'wf-scrim'; s.id = 'afcScrim'; s.innerHTML = '<div class="wf-modal" style="max-width:680px"></div>'; document.body.appendChild(s);
+      s.addEventListener('click', function(ev){ if (ev.target === s) closeM(); }); }
+    s.firstChild.innerHTML = '<div class="wf-head"><div class="nm">' + title + '</div><div class="x" id="afcX">✕</div></div><div class="wf-body">' + body + '</div><div class="wf-foot">' + foot + '</div>';
+    document.getElementById('afcX').onclick = closeM; s.classList.add('on'); return s.firstChild;
+  }
+  function closeM(){ var s = document.getElementById('afcScrim'); if (s) s.classList.remove('on'); }
+  var EMO = { 'معدات': '📦', 'سلامة': '⛑️', 'أجهزة': '📱', 'أدوات': '🧰', 'زي': '👕' };
+  function itemModal(id){
+    var it = id ? JSON.parse(JSON.stringify(A.item(id))) : { name: '', cat: 'معدات', kind: 'ret', by: 'f', emp: '', min: 5 };
+    var m = modal(id ? '✏️ تعديل صنف' : '➕ صنف جديد',
+      '<div class="afc-note">' + (id ? 'تغيير سعر الموظف يُطبَّق على التسليم القادم فقط، ولا يغيّر عهداً أو خصومات سابقة.' : 'أصناف «الأسطول» تظهر في التأكيد الأخير لتسليم المركبة واستلامها، وأصناف «وثيق» في عمليات العهدة هنا.') + '</div>'
+      + '<div class="wf-grid"><div class="wf-field"><label>اسم الصنف</label><input id="afcIN" value="' + E(it.name) + '"></div>'
+      + '<div class="wf-field"><label>الفئة</label><select id="afcIC">' + Object.keys(EMO).map(function(c){ return '<option' + (c === it.cat ? ' selected' : '') + '>' + c + '</option>'; }).join('') + '</select></div>'
+      + '<div class="wf-field"><label>النوع</label><select id="afcIK"><option value="ret"' + (it.kind !== 'use' ? ' selected' : '') + '>عهدة مستردّة</option><option value="use"' + (it.kind === 'use' ? ' selected' : '') + '>يُخصم عند التسليم</option></select></div>'
+      + '<div class="wf-field"><label>التسليم والاستلام من</label><select id="afcIB"><option value="f"' + (it.by === 'f' ? ' selected' : '') + '>الأسطول (مع المركبة)</option><option value="w"' + (it.by === 'w' ? ' selected' : '') + '>وثيق</option><option value="b"' + (it.by === 'b' ? ' selected' : '') + '>الاثنان</option></select></div>'
+      + '<div class="wf-field"><label>سعر الموظف (ر.س)</label><input id="afcIP" type="number" min="0" value="' + E(it.emp) + '"></div>'
+      + '<div class="wf-field"><label>حد التنبيه</label><input id="afcIM" type="number" min="0" value="' + E(it.min) + '"></div>'
+      + '<div class="wf-field"><label>يُقترح تلقائياً مع تسليم</label><select id="afcIT">' + [['', '— لا —'], ['bike', 'الدباب'], ['car', 'السيارة'], ['both', 'الدباب والسيارة']].map(function(x){ return '<option value="' + x[0] + '"' + ((it.kit || '') === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select></div>'
+      + (id ? '<div class="wf-field full"><label><input type="checkbox" id="afcIA"' + (it.archived ? ' checked' : '') + '> إيقاف الصنف (لا يظهر في التسليم — يبقى في السجل)</label></div>' : '') + '</div>',
+      '<button class="btn ghost" id="afcIX">إلغاء</button><button class="btn" id="afcIS">💾 حفظ</button>');
+    m.querySelector('#afcIX').onclick = closeM;
+    m.querySelector('#afcIS').onclick = function(){
+      var n = m.querySelector('#afcIN').value.trim(), p = Number(m.querySelector('#afcIP').value);
+      if (!n || !(p > 0)) return T('أدخل الاسم وسعر الموظف');
+      it.name = n; it.cat = m.querySelector('#afcIC').value; it.ic = EMO[it.cat] || '📦'; it.kind = m.querySelector('#afcIK').value; it.by = m.querySelector('#afcIB').value; it.emp = p; it.min = Number(m.querySelector('#afcIM').value) || 0;
+      it.kit = m.querySelector('#afcIT').value;
+      var ar = m.querySelector('#afcIA'); if (ar) it.archived = ar.checked;
+      A.saveItem(it).then(function(){ closeM(); render(); T(id ? 'حُدّث الصنف' : 'أُضيف الصنف — أدخل له فاتورة ليتوفر'); }).catch(function(x){ T('⚠️ ' + x.message); });
+    };
+  }
+  function invModal(){
+    if (!A.itemsList().length) return T('أضف الأصناف أولاً');
+    var I = { sup: '', no: '', date: A.today(), wh: S.wh || 'RIYADH', vat: true, lines: [{ item: A.itemsList()[0].id, qty: 1, price: '' }], file: null };
+    var m = modal('🧾 فاتورة شراء', '', '<span class="afc-sm afc-muted">الاعتماد يضيف الكميات للمخزن مباشرة</span><button class="btn" id="afcVS">اعتماد الفاتورة</button>');
+    function draw(){
+      var sub = I.lines.reduce(function(a, l){ return a + (Number(l.qty) || 0) * (Number(l.price) || 0); }, 0);
+      m.querySelector('.wf-body').innerHTML = '<div class="afc-note">سعر الفاتورة = تكلفة الشراء (لقيمة المخزن). سعر الموظف ثابت في بطاقة الصنف ولا يتغيّر بالفاتورة.</div>'
+        + '<div class="wf-grid"><div class="wf-field"><label>المورد</label><input data-iv="sup" value="' + E(I.sup) + '"></div><div class="wf-field"><label>رقم الفاتورة</label><input data-iv="no" value="' + E(I.no) + '"></div>'
+        + '<div class="wf-field"><label>التاريخ</label><input type="date" data-iv="date" value="' + E(I.date) + '"></div>'
+        + '<div class="wf-field"><label>المخزن المستلِم</label><select data-iv="wh">' + Object.keys(A.WH_NAMES).concat(whList()).filter(function(v, i, a){ return a.indexOf(v) === i; }).map(function(w){ return '<option value="' + w + '"' + (I.wh === w ? ' selected' : '') + '>' + E(A.whName(w)) + '</option>'; }).join('') + '</select></div></div>'
+        + '<table class="afc-tbl" style="margin-top:10px"><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>سعر الموظف</th><th></th></tr></thead><tbody>'
+        + I.lines.map(function(l, i){ return '<tr><td><select class="afc-in" data-il="' + i + ':item">' + A.itemsList().map(function(it){ return '<option value="' + E(it.id) + '"' + (it.id === l.item ? ' selected' : '') + '>' + E(it.name) + '</option>'; }).join('') + '</select></td>'
+          + '<td><input class="afc-in" style="width:70px" type="number" min="1" value="' + E(l.qty) + '" data-il="' + i + ':qty"></td><td><input class="afc-in" style="width:95px" type="number" min="0" step="0.01" value="' + E(l.price) + '" data-il="' + i + ':price"></td>'
+          + '<td class="afc-num afc-muted">' + F((A.item(l.item) || {}).emp) + '</td><td><button class="afc-mini" data-ild="' + i + '">✕</button></td></tr>'; }).join('')
+        + '</tbody></table><button class="afc-mini" id="afcVA" style="margin-top:8px">➕ بند</button>'
+        + '<div class="afc-kv" style="margin-top:12px"><label><input type="checkbox" data-iv="vat"' + (I.vat ? ' checked' : '') + '> ضريبة القيمة المضافة 15%</label><span class="afc-num">قبل الضريبة ' + F(sub) + '</span></div>'
+        + '<div class="afc-kv"><span>المرفق</span><label class="afc-upl">📎 ' + (I.file ? E(I.file.name) : 'إرفاق الفاتورة') + '<input type="file" id="afcVF" accept=".pdf,image/*"></label></div>'
+        + '<div class="afc-kv"><b>الإجمالي</b><b class="afc-num">' + F(sub * (I.vat ? 1.15 : 1)) + '</b></div>';
+      Array.prototype.forEach.call(m.querySelectorAll('[data-iv]'), function(el){ el.onchange = function(){ I[el.getAttribute('data-iv')] = el.type === 'checkbox' ? el.checked : el.value; draw(); }; });
+      Array.prototype.forEach.call(m.querySelectorAll('[data-il]'), function(el){ el.onchange = function(){ var p = el.getAttribute('data-il').split(':'); I.lines[+p[0]][p[1]] = el.value; draw(); }; });
+      Array.prototype.forEach.call(m.querySelectorAll('[data-ild]'), function(b){ b.onclick = function(){ I.lines.splice(+b.getAttribute('data-ild'), 1); draw(); }; });
+      m.querySelector('#afcVA').onclick = function(){ I.lines.push({ item: A.itemsList()[0].id, qty: 1, price: '' }); draw(); };
+      m.querySelector('#afcVF').onchange = function(){ I.file = this.files[0] || null; draw(); };
+    }
+    draw();
+    m.querySelector('#afcVS').onclick = function(){
+      var lines = I.lines.filter(function(l){ return Number(l.qty) > 0 && Number(l.price) > 0; }).map(function(l){ return { item: l.item, qty: Number(l.qty), price: Number(l.price) }; });
+      if (!String(I.no).trim() || !String(I.sup).trim() || !lines.length) return T('أكمل المورد ورقم الفاتورة وبنوداً بأسعار');
+      var dup = Object.keys(A.D.inv).some(function(k){ var x = A.D.inv[k]; return String(x.no).trim() === String(I.no).trim() && String(x.supplier).trim() === String(I.sup).trim(); });
+      if (dup && !confirm('فاتورة بنفس الرقم والمورد موجودة. متابعة؟')) return;
+      var b = this; b.disabled = true; b.textContent = '…';
+      var up = (I.file && window.WF_STORE) ? (function(){ var p = 'custody/invoices/' + Date.now().toString(36) + '-' + String(I.file.name || 'f').replace(/[^\w.\-]/g, '_'); return WF_STORE.upload(p, I.file).then(function(){ return p; }).catch(function(){ T('⚠️ تعذّر رفع المرفق — ستُحفظ الفاتورة بدونه'); return null; }); })() : Promise.resolve(null);
+      up.then(function(path){ return A.saveInvoice({ no: String(I.no).trim(), supplier: String(I.sup).trim(), date: I.date, wh: I.wh, vat: !!I.vat, lines: lines, file: path }); })
+        .then(function(inv){ closeM(); render(); T('🧾 اعتُمدت الفاتورة ' + inv.no); })
+        .catch(function(x){ b.disabled = false; b.textContent = 'اعتماد الفاتورة'; T('⚠️ ' + x.message); });
+    };
+  }
+  function photoModal(mv){
+    if (!mv) return; var m = modal('📷 صور: ' + E(mv.item_name) + ' — ' + E(mv.emp_name || ''), '<div class="afc-ph" id="afcPH">جارٍ التحميل…</div>', '<button class="btn ghost" id="afcPX">إغلاق</button>');
+    m.querySelector('#afcPX').onclick = closeM;
+    Promise.all((mv.photos || []).map(function(p){ return WF_STORE.sign(p).catch(function(){ return ''; }); })).then(function(urls){
+      m.querySelector('#afcPH').innerHTML = urls.filter(Boolean).map(function(u){ return '<a href="' + u + '" target="_blank"><img src="' + u + '" style="width:150px;height:150px"></a>'; }).join('') || 'تعذّر تحميل الصور';
+    });
+  }
+
+  /* ---------- تصدير Excel ---------- */
+  function exportXlsx(){
+    var W = S.wh || null, MT = { 'in': 'وارد فاتورة', rev: 'عكس فاتورة', out: 'تسليم', ret: 'استلام', lost: 'فقد', cancel: 'إلغاء تسليم', adj: 'تصحيح حالة', xfer: 'نقل عهدة' };
+    var sh = {
+      'المخزن': A.itemsList(true).filter(function(it){ return qm(it.name, it.cat); }).map(function(it){ var st = A.stock(it.id, W);
+        return { 'الصنف': it.name, 'الفئة': it.cat || '', 'النوع': it.kind === 'use' ? 'يُخصم عند التسليم' : 'عهدة مستردّة', 'التسليم من': (BY[it.by] || BY.f)[0], 'سعر الفاتورة (متوسط)': r2(A.avgCost(it.id)), 'سعر الموظف': Number(it.emp) || 0,
+          'جديد': st.c[100] || 0, 'مستعمل': Object.keys(st.c).filter(function(c){ return c !== '100'; }).reduce(function(a, c){ return a + st.c[c]; }, 0),
+          'عند الموظفين': A.units().filter(function(u){ return u.item === it.id && (!W || u.wh === W); }).length, 'تالف': st.dmg, 'حد التنبيه': Number(it.min) || 0 }; }),
+      'العهد لدى الموظفين': A.units().filter(function(u){ return (!W || u.wh === W) && qm(u.name, u.iq, (empBy(u.iq) || {}).name_ar); }).map(function(u){ var e = empBy(u.iq) || {};
+        return { 'الإقامة': u.iq, 'الموظف': empName(e) || '', 'المشروع': e.project || '', 'المخزن': A.whName(u.wh), 'الصنف': u.name, 'الحالة %': u.cond, 'تاريخ التسليم': u.date, 'اللوحة': u.plate || '', 'القيمة بسعر الموظف': r2(u.price * u.cond / 100) }; }),
+      'الفواتير': Object.keys(A.D.inv).map(function(k){ return A.D.inv[k]; }).filter(function(i){ return !W || i.wh === W; }).reduce(function(a, i){ return a.concat((i.lines || []).map(function(l){
+        return { 'رقم الفاتورة': i.no, 'المورد': i.supplier, 'التاريخ': i.date, 'المخزن': A.whName(i.wh), 'الحالة': i.status, 'الصنف': (A.item(l.item) || {}).name || '', 'الكمية': l.qty, 'سعر الوحدة': l.price, 'الإجمالي قبل الضريبة': r2(l.qty * l.price), 'الضريبة': i.vat ? r2(l.qty * l.price * 0.15) : 0 }; })); }, []),
+      'الحركات': A.mvList().filter(function(m){ return !W || m.wh === W; }).map(function(m){
+        return { 'التاريخ': m.date, 'الحركة': MT[m.type] || m.type, 'الصنف': m.item_name, 'الكمية': m.type === 'rev' ? -m.qty : m.qty, 'الحالة %': m.cond, 'من حالة %': m.from == null ? '' : m.from, 'الموظف': m.emp_name || '', 'الإقامة': m.iq || '', 'إلى': m.to_name || '',
+          'الخصم': r2(m.deduct || (m.type === 'lost' ? m.price * m.from / 100 : (m.type === 'out' && m.kind === 'use') ? m.price * m.qty * m.cond / 100 : 0)), 'المرجع': m.ref || '', 'السبب': m.reason || '', 'اللوحة': m.plate || '', 'المخزن': A.whName(m.wh), 'عدد الصور': (m.photos || []).length, 'المصدر': m.src || '', 'بواسطة': m.by || '' }; })
+    };
+    var name = 'AFMCO_Custody_' + (W || 'ALL') + '_' + A.today();
+    if (!window.XLSX) return T('مكتبة Excel غير محمّلة');
+    var wb = XLSX.utils.book_new(); wb.Workbook = { Views: [{ RTL: true }] };
+    Object.keys(sh).forEach(function(n){ var rows = sh[n]; var ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ '': 'لا بيانات' }]);
+      ws['!cols'] = Object.keys(rows[0] || { a: 1 }).map(function(){ return { wch: 18 }; }); XLSX.utils.book_append_sheet(wb, ws, n); });
+    XLSX.writeFile(wb, name + '.xlsx'); T('⬇️ تم التصدير' + (S.q ? ' (حسب البحث)' : ''));
+  }
+
+  /* ════════ (٣) أزرار العهد القديمة ← المسار الجديد للسجلات المرتبطة بالمخزن ════════ */
+  function openFor(iq, mode){ try { go('wx5_custody'); } catch(e){} setEmp(iq, mode); setTimeout(function(){ var o = document.getElementById('afcOps'); if (o) o.scrollIntoView({ behavior: 'smooth' }); }, 60); try { closeModal(); } catch(e){} }
+  function linked(id){ return /^c[ud]:/.test(String(id || '')); }
+  function wrap(name, fn){ var o = window[name]; if (typeof o !== 'function' || o.__wx13) return; var w = function(){ return fn.apply(this, [o].concat([].slice.call(arguments))); }; w.__wx13 = true; window[name] = w; }
+  function hookOld(){
+    wrap('wx5Return', function(o, iq, id){ if (linked(id)) return openFor(iq, 'ret'); return o(iq, id); });
+    wrap('wx5Deduct', function(o, iq, id){ if (linked(id)) { T('هذه عهدة مرتبطة بالمخزن — استلمها واختر «مفقود» أو حالتها'); return openFor(iq, 'ret'); } return o(iq, id); });
+    wrap('wx5DelCustody', function(o, iq, id){ if (linked(id)) { T('سجل مرتبط بالمخزن لا يُحذف — استخدم «تعديل ← إلغاء التسليم»'); return openFor(iq, 'edit'); } return o(iq, id); });
+    wrap('wx5AddCustody', function(o, idx){
+      if (idx != null && emps()[idx]) return openFor(emps()[idx].iqama, 'out');
+      try { go('wx5_custody'); } catch(e){} setTimeout(function(){ var q = document.getElementById('afcEmpQ'); if (q) { q.scrollIntoView({ behavior: 'smooth' }); q.focus(); } }, 80);
+    });
+  }
+
+  /* ════════ الإقلاع ════════ */
+  A.on(function(){ materialize(); render(); });
+  function tick(){ try { mount(); hookOld(); } catch(e){} }
+  function boot(){
+    tick();
+    var tries = 0; (function first(){ if (emps().length || tries++ > 40) A.load(true).catch(function(){ render(); }); else setTimeout(first, 1500); })();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+  setInterval(tick, 2500);
+  setInterval(function(){ if (!S.busy && !document.hidden && emps().length) A.load(true).catch(function(){}); }, 90000);
+  (function(){ var o = window.go; if (typeof o === 'function' && !o.__wx13) { var w = function(v){ var r = o.apply(this, arguments); if (v === 'wx5_custody') { tick(); A.load().then(render, render); } return r; }; w.__wx13 = true; w.__wx5 = o.__wx5; window.go = w; } })();
+  window.wx13 = { materialize: materialize, render: render, openFor: openFor, S: S };
+})();
+</script>
+
 </body>
 </html>
