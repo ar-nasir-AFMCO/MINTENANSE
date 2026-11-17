@@ -10461,13 +10461,15 @@ body.wx-card-open #wx4Pill{ display:none !important; }
 
   /* ---------- المخازن = مدن العمل ---------- */
   var WH_NAMES = { RIYADH: 'الرياض', JEDDAH: 'جدة', MAKKAH: 'مكة', MADINAH: 'المدينة', DAMMAM: 'الدمام', KHOBAR: 'الخبر',
-                   TAIF: 'الطائف', KHARJ: 'الخرج', MAJMAAH: 'المجمعة', QASSIM: 'القصيم', TABUK: 'تبوك', JAZAN: 'جازان', ABHA: 'أبها' };
+                   TAIF: 'الطائف', KHARJ: 'الخرج', MAJMAAH: 'المجمعة', QASSIM: 'القصيم', YANBU: 'ينبع', TABUK: 'تبوك', JAZAN: 'جازان', ABHA: 'أبها' };
   function normCity(p){
     var s = String(p == null ? '' : p).trim(); if (!s) return '';
     var u = s.toUpperCase();
     if (/^(RIYADH|RIYAD)$/.test(u) || /الرياض/.test(s)) return 'RIYADH';
-    if (/^(JADAH|JEDDAH|JIDDAH|JEDDA)$/.test(u) || /جد[ةه]/.test(s)) return 'JEDDAH';
-    if (/^(MAKKAH|MECCA|MAKKA)$/.test(u) || /مك[ةه]/.test(s)) return 'MAKKAH';
+    if (/^(JADAH|JEDDAH|JIDDAH|JEDDA|JEEDAH|JEDAH|JADDAH)$/.test(u) || /جد[ةه]/.test(s)) return 'JEDDAH';
+    if (/^(MAKKAH|MECCA|MAKKA|MAKA|MAKAH|MECA)$/.test(u) || /مك[ةه]/.test(s)) return 'MAKKAH';
+    if (/^(QASEEM|QASSIM|QASIM|QASEM|BURAIDAH|BURAYDAH|BURAIDA)$/.test(u) || /القصيم|بريدة/.test(s)) return 'QASSIM';
+    if (/^YANB/.test(u) || /ينبع/.test(s)) return 'YANBU';
     if (/^(MADINAH|MEDINA|MADINA)$/.test(u) || /المدينة/.test(s)) return 'MADINAH';
     if (/^(DAMAM|DAMMAM)$/.test(u) || /الدمام/.test(s)) return 'DAMMAM';
     if (/KHOBAR/.test(u) || /الخبر/.test(s)) return 'KHOBAR';
@@ -10714,7 +10716,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
   function emps(){ try { return state.employees || []; } catch(e){ return []; } }
   function empBy(iq){ iq = nid(iq); var L = emps(); for (var i = 0; i < L.length; i++) if (nid(L[i].iqama) === iq) return L[i]; return null; }
   function empName(e){ return e ? (e.name_ar || e.name_en || e.iqama) : ''; }
-  function whOf(e){ return A.normCity(e && (e.area || e.city)) || 'RIYADH'; }
+  function whOf(e){ return A.normCity(e && (e.city || e.area)) || 'RIYADH'; }   /* مدينة العمل أولاً ثم المنطقة */
   function isSupMnt(e){ var s = [e && e.project, e && e.profession, e && e.job_title].join(' '); return /المشرف|مشرف|صيانة|فني/.test(s); }
   var BY = { f: ['الأسطول', 'afc-gold'], w: ['وثيق', 'afc-info'], b: ['الاثنان', 'afc-mute'] };
   function inW(it){ return it && (it.by === 'w' || it.by === 'b'); }
@@ -10805,7 +10807,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     r.innerHTML = topBar() + kpis() + opsCard() + stockCard() + invCard() + movesCard();
     wire(); window.scrollTo(0, y);
   }
-  function whList(){ var s = {}; A.mvList().forEach(function(m){ if (m.wh) s[m.wh] = 1; }); emps().forEach(function(e){ var c = whOf(e); if (c) s[c] = 1; }); return Object.keys(s).sort(); }
+  function whList(){ var s = {}; A.mvList().forEach(function(m){ if (m.wh) s[m.wh] = 1; }); emps().forEach(function(e){ if (e && (e.city || e.area)) s[whOf(e)] = 1; }); return Object.keys(s).sort(function(a, b){ return A.whName(a).localeCompare(A.whName(b), 'ar'); }); }
   function topBar(){
     var adm = isAdmin();
     return '<div class="afc-bar">'

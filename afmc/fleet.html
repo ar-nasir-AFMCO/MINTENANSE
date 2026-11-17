@@ -9295,13 +9295,15 @@ async function handleAccidentFile(input){
 
   /* ---------- المخازن = مدن العمل ---------- */
   var WH_NAMES = { RIYADH: 'الرياض', JEDDAH: 'جدة', MAKKAH: 'مكة', MADINAH: 'المدينة', DAMMAM: 'الدمام', KHOBAR: 'الخبر',
-                   TAIF: 'الطائف', KHARJ: 'الخرج', MAJMAAH: 'المجمعة', QASSIM: 'القصيم', TABUK: 'تبوك', JAZAN: 'جازان', ABHA: 'أبها' };
+                   TAIF: 'الطائف', KHARJ: 'الخرج', MAJMAAH: 'المجمعة', QASSIM: 'القصيم', YANBU: 'ينبع', TABUK: 'تبوك', JAZAN: 'جازان', ABHA: 'أبها' };
   function normCity(p){
     var s = String(p == null ? '' : p).trim(); if (!s) return '';
     var u = s.toUpperCase();
     if (/^(RIYADH|RIYAD)$/.test(u) || /الرياض/.test(s)) return 'RIYADH';
-    if (/^(JADAH|JEDDAH|JIDDAH|JEDDA)$/.test(u) || /جد[ةه]/.test(s)) return 'JEDDAH';
-    if (/^(MAKKAH|MECCA|MAKKA)$/.test(u) || /مك[ةه]/.test(s)) return 'MAKKAH';
+    if (/^(JADAH|JEDDAH|JIDDAH|JEDDA|JEEDAH|JEDAH|JADDAH)$/.test(u) || /جد[ةه]/.test(s)) return 'JEDDAH';
+    if (/^(MAKKAH|MECCA|MAKKA|MAKA|MAKAH|MECA)$/.test(u) || /مك[ةه]/.test(s)) return 'MAKKAH';
+    if (/^(QASEEM|QASSIM|QASIM|QASEM|BURAIDAH|BURAYDAH|BURAIDA)$/.test(u) || /القصيم|بريدة/.test(s)) return 'QASSIM';
+    if (/^YANB/.test(u) || /ينبع/.test(s)) return 'YANBU';
     if (/^(MADINAH|MEDINA|MADINA)$/.test(u) || /المدينة/.test(s)) return 'MADINAH';
     if (/^(DAMAM|DAMMAM)$/.test(u) || /الدمام/.test(s)) return 'DAMMAM';
     if (/KHOBAR/.test(u) || /الخبر/.test(s)) return 'KHOBAR';
