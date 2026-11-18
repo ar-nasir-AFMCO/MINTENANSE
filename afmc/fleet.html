@@ -9267,6 +9267,7 @@ async function handleAccidentFile(input){
      عبر rpc/sync_records نفسها التي تستخدمها طلبات الصيانة — بلا جداول جديدة.
    • الكميات لا تُكتب يدوياً: تُحسب من الحركات. الحركة لا تُعدَّل ولا تُحذف.
    • v135: العزل (مدير/مالية) · فاتورة متعددة المخازن تُطابَق مع المخزن · طلبات التعديل والحذف (type=req).
+   • v136: إلغاء/تصحيح الاستلام (unret) · النقل بين المخازن (wx) · مخزن الأسطول = مدينة عمل الموظف في وثيق.
    • كرت الموظف المالي يبقى كما هو: وثيق يكتب نتيجة الحركات في e.custody (انظر wx13).
    ════════════════════════════════════════════════════════════════════ */
 (function(){
@@ -9368,11 +9369,14 @@ async function handleAccidentFile(input){
     var r = { c: {}, dmg: 0 };
     function add(c, q){ r.c[c] = (r.c[c] || 0) + q; }
     mvList().forEach(function(m){
-      if (m.item !== itemId || (wh && m.wh !== wh)) return;
+      if (m.item !== itemId) return;
+      if (m.type === 'wx') { if (!wh) return; if (m.wh === wh) add(m.cond, -m.qty); if (m.to_wh === wh) add(m.cond, m.qty); return; }
+      if (wh && m.wh !== wh) return;
       if (m.type === 'in') add(100, m.qty); else if (m.type === 'rev') add(100, -m.qty);
       else if (m.type === 'out') add(m.cond, -m.qty);
       else if (m.type === 'ret') { if (m.cond > 0) add(m.cond, m.qty); else r.dmg += m.qty; }
       else if (m.type === 'cancel') add(m.cond, m.qty);
+      else if (m.type === 'unret' && !m.lost) { if (m.cond > 0) add(m.cond, -m.qty); else r.dmg -= m.qty; }
     });
     return r;
   }
@@ -9384,10 +9388,11 @@ async function handleAccidentFile(input){
   function avgCost(itemId){ var q = 0, v = 0; invList().forEach(function(i){ if (i.status !== 'معتمدة') return; (i.lines || []).forEach(function(l){ if (l.item === itemId){ q += l.qty; v += l.qty * l.price; } }); }); return q > 0 ? v / q : 0; }
   /* القطع الموجودة عند الموظفين الآن (العهد المستردّة فقط) */
   function units(){
-    var U = {};
+    var U = {}, G = {};   /* G: القطع المستلمة — ليُعاد فتحها إن أُلغي الاستلام */
     mvList().forEach(function(m){
       if (m.type === 'out' && m.kind !== 'use') (m.units || []).forEach(function(u){ U[u] = { uid: u, item: m.item, name: m.item_name, cond: m.cond, price: m.price, date: m.date, wh: m.wh, iq: m.iq, acq: m.id, plate: m.plate || '' }; });
-      else if (m.type === 'ret' || m.type === 'lost' || m.type === 'cancel') (m.units || []).forEach(function(u){ delete U[u]; });
+      else if (m.type === 'ret' || m.type === 'lost' || m.type === 'cancel') (m.units || []).forEach(function(u){ if (U[u]) G[u] = U[u]; delete U[u]; });
+      else if (m.type === 'unret') (m.units || []).forEach(function(u){ if (G[u]) { U[u] = G[u]; delete G[u]; } });
       else if (m.type === 'adj') (m.units || []).forEach(function(u){ if (U[u]) U[u].cond = m.cond; });
       else if (m.type === 'xfer') (m.units || []).forEach(function(u){ if (U[u]) { U[u].iq = m.to; U[u].acq = m.id; U[u].date = m.date; } });
     });
@@ -9404,8 +9409,8 @@ async function handleAccidentFile(input){
     var mvs = lines.map(function(l){
       var it = item(l.item) || {}; var us = []; for (var i = 0; i < l.qty; i++) us.push(uid('U'));
       return mkMv({ type: 'out', item: l.item, item_name: it.name || '', kind: it.kind || 'ret', wh: ctx.wh, qty: l.qty, cond: l.cond,
-        price: Number(it.emp) || 0, iq: String(ctx.iq), emp_name: ctx.name || '', units: us, photos: l.photos || [],
-        ref: ctx.ref || 'تسليم', src: ctx.src, plate: ctx.plate || '' });
+        price: l.price != null ? Number(l.price) : (Number(it.emp) || 0), iq: String(ctx.iq), emp_name: ctx.name || '', units: us, photos: l.photos || [],
+        ref: ctx.ref || 'تسليم', src: ctx.src, plate: ctx.plate || '', date: ctx.date });
     });
     return mvs.length ? put('mv', mvs).then(function(){ return mvs; }) : Promise.resolve([]);
   }
@@ -9416,7 +9421,7 @@ async function handleAccidentFile(input){
       var u = held[l.uid]; if (!u) throw new Error('القطعة لم تعد عند الموظف — حدّث الصفحة');
       return mkMv({ type: l.lost ? 'lost' : 'ret', item: u.item, item_name: u.name, wh: ctx.wh || u.wh, qty: 1, cond: l.lost ? 0 : l.to, from: u.cond,
         price: u.price, deduct: deduct(u.price, u.cond, l.to, l.lost), iq: String(ctx.iq), emp_name: ctx.name || '', units: [l.uid],
-        photos: l.photos || [], ref: ctx.ref || (l.lost ? 'فقد' : 'استلام'), src: ctx.src, plate: ctx.plate || '' });
+        photos: l.photos || [], ref: ctx.ref || (l.lost ? 'فقد' : 'استلام'), src: ctx.src, plate: ctx.plate || '', date: ctx.date });
     });
     return mvs.length ? put('mv', mvs).then(function(){ return mvs; }) : Promise.resolve([]);
   }
@@ -9494,6 +9499,23 @@ async function handleAccidentFile(input){
     return put('mv', [mkMv({ type: 'cancel', of: mvId, item: m.item, item_name: m.item_name, wh: m.wh, qty: m.qty, cond: m.cond, price: m.price, iq: m.iq, emp_name: m.emp_name || '',
       units: [], reason: reason || '', ref: 'إلغاء تسليم', src: 'وثيق', plate: m.plate || '' })]);
   }
+  /* إلغاء استلام: القطعة ترجع للموظف بحالتها قبل الاستلام، وتخرج من المخزن، ويُلغى خصمها */
+  function undone(mvId){ return mvList().some(function(x){ return x.type === 'unret' && x.of === mvId; }); }
+  function undoReceive(mvId, reason){
+    var m = D.mv[mvId]; if (!m || (m.type !== 'ret' && m.type !== 'lost')) return Promise.reject(new Error('الحركة ليست استلاماً'));
+    if (undone(mvId)) return Promise.reject(new Error('أُلغي هذا الاستلام من قبل'));
+    if (m.type === 'ret' && (m.cond > 0 ? avail(m.item, m.wh, m.cond) < m.qty : (stock(m.item, m.wh).dmg || 0) < m.qty))
+      return Promise.reject(new Error('القطعة لم تعد في مخزن ' + whName(m.wh) + ' بهذه الحالة — سُلّمت من جديد أو نُقلت'));
+    return put('mv', [mkMv({ type: 'unret', of: mvId, lost: m.type === 'lost', item: m.item, item_name: m.item_name, wh: m.wh, qty: m.qty, cond: m.cond, from: m.from, price: m.price,
+      iq: m.iq, emp_name: m.emp_name || '', units: m.units || [], reason: reason || '', ref: 'إلغاء استلام', src: 'وثيق', plate: m.plate || '' })]);
+  }
+  /* نقل بين المخازن: حركة واحدة تخصم من مخزن وتضيف لآخر بنفس الحالة */
+  function transfer(itemId, from, to, cond, qty, reason){
+    qty = Number(qty); cond = Number(cond);
+    if (!from || !to || from === to) return Promise.reject(new Error('اختر مخزنين مختلفين'));
+    if (!(qty > 0) || avail(itemId, from, cond) < qty) return Promise.reject(new Error('لا يكفي الرصيد في مخزن ' + whName(from)));
+    return put('mv', [mkMv({ type: 'wx', item: itemId, item_name: (item(itemId) || {}).name || '', wh: from, to_wh: to, cond: cond, qty: qty, reason: reason || '', ref: 'نقل بين المخازن', src: 'وثيق' })]);
+  }
   /* طلب تعديل/حذف من المالية — سجل في cust_mv بنوع req لا يدخل أي حساب */
   function request(act, target, data, reason, label){
     return put('mv', [mkMv({ type: 'req', act: act, target: target, data: data || null, reason: reason || '', label: label || '', status: 'pending', qty: 0 })]);
@@ -9530,6 +9552,7 @@ async function handleAccidentFile(input){
     units: units, holdings: holdings, deduct: deduct,
     handover: handover, receive: receive, edit: edit, saveInvoice: saveInvoice, reverseInvoice: reverseInvoice, saveItem: saveItem,
     role: role, me: me, reqList: reqList, invList: invList, lwh: lwh, invMismatch: invMismatch, invCheck: invCheck, syncInvoice: syncInvoice,
+    undone: undone, undoReceive: undoReceive, transfer: transfer,
     editInvoice: editInvoice, deleteInvoice: deleteInvoice, cancelUse: cancelUse, useCancelled: useCancelled, request: request, nowIso: nowIso,
     uploadPhotos: uploadPhotos, today: today, uid: uid };
 })();
@@ -9592,13 +9615,16 @@ async function handleAccidentFile(input){
   /* ctx = { plate, wh, give:{iq,name}|null, take:{iq,name}|null } */
   var C = null;
   function newCtx(plate, give, take, wh){
-    return { plate: plate, wh: wh, give: give, take: take, sel: {}, ret: {}, fin: {}, ready: false, err: '', busy: false, seeded: false };
+    return { plate: plate, wh: wh, whG: '', whT: '', give: give, take: take, sel: {}, ret: {}, fin: {}, ready: false, err: '', busy: false, seeded: false };
   }
+  /* v136: المخزن = مدينة عمل الموظف في وثيق (نفس قاعدة وثيق). مدينة المركبة احتياط فقط إن لم يكن الموظف في وثيق. */
+  function WG(){ return (C && C.whG) || C.wh; }
+  function WT(){ return (C && C.whT) || C.wh; }
   function seed(){
     var v = veh(C.plate);
     if (C.give && !C.seeded) {
       A.itemsList().filter(inF).forEach(function(it){
-        if (!kitFor(it, v)) return; var st = A.stock(it.id, C.wh).c, c = A.CONDS.filter(function(x){ return (st[x] || 0) > 0; })[0];
+        if (!kitFor(it, v)) return; var st = A.stock(it.id, WG()).c, c = A.CONDS.filter(function(x){ return (st[x] || 0) > 0; })[0];
         if (c) C.sel[it.id] = { cond: c, qty: 1, files: [] };
       });
     }
@@ -9613,15 +9639,13 @@ async function handleAccidentFile(input){
       + ((f.legacyNames || []).length ? '<span>عهدة قديمة معه: <b>' + E(f.legacyNames.join('، ')) + '</b> — لا تُسلَّم له مرة ثانية</span>' : '')
       + (f.missing ? '<span class="afcf-red">الموظف غير موجود في وثيق — الخصم لن يظهر في كرته</span>' : '') + '</div>';
   }
-  function loadFin(iq){
-    if (!iq || C.fin[iq]) return; C.fin[iq] = 'loading';
-    A.api('GET', 'employees?select=data&deleted_at=is.null&iqama=eq.' + encodeURIComponent(iq)).then(function(r){
+  function finOf(iq){
+    return A.api('GET', 'employees?select=data&deleted_at=is.null&iqama=eq.' + encodeURIComponent(iq)).then(function(r){
       var d = r && r[0] && r[0].data; var cs = (d && d.custody) || [];
       var lg = cs.filter(function(c){ return c && c.status === 'held' && !/^c[ud]:/.test(String(c.id || '')); });
-      C.fin[iq] = { missing: !d, legacy: lg.length, legacyNames: lg.map(function(c){ return String(c.item || '').trim(); }).filter(Boolean), legacyV: lg.reduce(function(s, c){ return s + (Number(c.value) || 0); }, 0),
+      return { missing: !d, wh: d ? (A.normCity(d.city || d.area) || 'RIYADH') : '', legacy: lg.length, legacyNames: lg.map(function(c){ return String(c.item || '').trim(); }).filter(Boolean), legacyV: lg.reduce(function(s, c){ return s + (Number(c.value) || 0); }, 0),
         due: cs.reduce(function(s, c){ return (!c || c.settled_period || c.status !== 'deducted') ? s : s + (Number(c.value) || 0); }, 0) };
-      draw();
-    }).catch(function(){ C.fin[iq] = { missing: false, legacy: 0, legacyV: 0, due: 0 }; draw(); });
+    }).catch(function(){ return { missing: false, wh: '', legacy: 0, legacyV: 0, due: 0 }; });
   }
   function ph(files, key){
     return '<div class="afcf-ph">' + files.map(function(f){ return '<img src="' + f.url + '">'; }).join('')
@@ -9634,7 +9658,7 @@ async function handleAccidentFile(input){
     if (C.take) {
       var hf = A.holdings(C.take.iq).filter(function(u){ return inF(A.item(u.item)); });
       var ded = 0;
-      h += '<div class="afcf-sec"><div class="afcf-h"><span>📥 استلام العهدة من ' + E(C.take.name || C.take.iq) + '</span><small>أزل الاختيار عمّا يبقى معه · مخزن ' + E(A.whName(C.wh)) + '</small></div>'
+      h += '<div class="afcf-sec"><div class="afcf-h"><span>📥 استلام العهدة من ' + E(C.take.name || C.take.iq) + '</span><small>أزل الاختيار عمّا يبقى معه · مخزن ' + E(A.whName(WT())) + '</small></div>'
         + (hf.map(function(u){ var it = A.item(u.item) || {}, r = C.ret[u.uid], d = r ? A.deduct(u.price, u.cond, r.to, r.lost) : 0; ded += d;
             return '<div class="afcf-row"><input type="checkbox" data-afr="' + E(u.uid) + '"' + (r ? ' checked' : '') + '><span>' + E(it.ic || '📦') + '</span><span class="nm">' + E(u.name) + '</span><span class="afcf-tag' + (u.cond < 100 ? ' w' : '') + '">' + A.condTxt(u.cond) + '</span>' + (r ? '' : '<span style="font-size:11.5px;color:#6b7674">تبقى معه</span>') + '</div>'
               + (r ? '<div class="afcf-x"><div class="afcf-chips">' + [100, 75, 50, 25, 0].map(function(c){ return '<button type="button" class="afcf-chip' + (!r.lost && r.to === c ? ' on' : '') + '" data-aft="' + E(u.uid) + ':' + c + '"' + (c > u.cond ? ' disabled' : '') + '>' + A.condTxt(c) + '</button>'; }).join('')
@@ -9644,8 +9668,8 @@ async function handleAccidentFile(input){
     }
     if (C.give) {
       var its = A.itemsList().filter(inF);
-      h += '<div class="afcf-sec"><div class="afcf-h"><span>📤 تسليم العهدة إلى ' + E(C.give.name || C.give.iq) + '</span><small>مخزن ' + E(A.whName(C.wh)) + ' · مقترحة حسب نوع المركبة</small></div>'
-        + (its.map(function(it){ var st = A.stock(it.id, C.wh).c, tot = A.CONDS.reduce(function(a, c){ return a + (st[c] || 0); }, 0), s = C.sel[it.id];
+      h += '<div class="afcf-sec"><div class="afcf-h"><span>📤 تسليم العهدة إلى ' + E(C.give.name || C.give.iq) + '</span><small>مخزن ' + E(A.whName(WG())) + (WG() !== C.wh ? ' (مدينة عمل السائق في وثيق · المركبة في ' + E(A.whName(C.wh)) + ')' : '') + ' · مقترحة حسب نوع المركبة</small></div>'
+        + (its.map(function(it){ var st = A.stock(it.id, WG()).c, tot = A.CONDS.reduce(function(a, c){ return a + (st[c] || 0); }, 0), s = C.sel[it.id];
             return '<div class="afcf-row' + (tot ? '' : ' dis') + '"><input type="checkbox" data-afs="' + E(it.id) + '"' + (s ? ' checked' : '') + (tot ? '' : ' disabled') + '><span>' + E(it.ic || '📦') + '</span><span class="nm">' + E(it.name) + '</span><span style="font-size:11.5px;color:#6b7674">سعر الموظف ' + F(it.emp) + '</span><span class="afcf-tag' + (tot ? '' : ' w') + '">' + (tot ? 'الباقي ' + tot : 'غير متوفر') + '</span></div>'
               + (s ? '<div class="afcf-x"><div class="afcf-chips">' + A.CONDS.map(function(c){ return '<button type="button" class="afcf-chip' + (s.cond === c ? ' on' : '') + '" data-afc="' + E(it.id) + ':' + c + '"' + ((st[c] || 0) ? '' : ' disabled') + '>' + A.condTxt(c) + '</button>'; }).join('') + '</div>'
                 + '<div class="afcf-step"><button type="button" data-afq="' + E(it.id) + ':-1">−</button><span>' + s.qty + '</span><button type="button" data-afq="' + E(it.id) + ':1">+</button></div>' + ph(s.files, 's:' + it.id) + '</div>' : ''); }).join('')
@@ -9653,8 +9677,8 @@ async function handleAccidentFile(input){
         + (function(){
             var v = veh(C.plate), sk = Object.keys(C.sel), val = 0, n = 0;
             sk.forEach(function(k){ var it = A.item(k) || {}; n += C.sel[k].qty; val += (Number(it.emp) || 0) * C.sel[k].qty * C.sel[k].cond / 100; });
-            var miss = its.filter(function(it){ return kitFor(it, v) && !A.totalAvail(it.id, C.wh); });
-            return (miss.length ? '<div class="afcf-row afcf-red" style="font-size:12.5px">⚠️ مقترحة لهذه المركبة وغير متوفرة في مخزن ' + E(A.whName(C.wh)) + ': ' + miss.map(function(it){ return E(it.name); }).join('، ') + '</div>' : '')
+            var miss = its.filter(function(it){ return kitFor(it, v) && !A.totalAvail(it.id, WG()); });
+            return (miss.length ? '<div class="afcf-row afcf-red" style="font-size:12.5px">⚠️ مقترحة لهذه المركبة وغير متوفرة في مخزن ' + E(A.whName(WG())) + ': ' + miss.map(function(it){ return E(it.name); }).join('، ') + '</div>' : '')
               + '<div class="afcf-row" style="background:#faf7f0"><span class="nm">' + (n ? 'سيُسلَّم ' + n + ' قطعة · قيمة العهدة على السائق' : '<span class="afcf-red">لم تُختر أي عهدة — ستُسلَّم المركبة بلا عهدة</span>') + '</span>' + (n ? '<b>' + F(val) + ' ر.س</b>' : '') + '</div>';
           })() + '</div>' + finLine(C.give.iq);
     }
@@ -9673,9 +9697,9 @@ async function handleAccidentFile(input){
   function draw(){ if (!host || !C) return; host.innerHTML = html(); wire(); }
   function wire(){
     function q(s){ return Array.prototype.slice.call(host.querySelectorAll(s)); }
-    q('[data-afs]').forEach(function(c){ c.onchange = function(){ var id = c.getAttribute('data-afs'); if (c.checked) { var st = A.stock(id, C.wh).c; C.sel[id] = { cond: A.CONDS.filter(function(x){ return (st[x] || 0) > 0; })[0], qty: 1, files: [] }; } else delete C.sel[id]; draw(); }; });
+    q('[data-afs]').forEach(function(c){ c.onchange = function(){ var id = c.getAttribute('data-afs'); if (c.checked) { var st = A.stock(id, WG()).c; C.sel[id] = { cond: A.CONDS.filter(function(x){ return (st[x] || 0) > 0; })[0], qty: 1, files: [] }; } else delete C.sel[id]; draw(); }; });
     q('[data-afc]').forEach(function(b){ b.onclick = function(){ var p = b.getAttribute('data-afc').split(':'); C.sel[p[0]].cond = +p[1]; C.sel[p[0]].qty = 1; draw(); }; });
-    q('[data-afq]').forEach(function(b){ b.onclick = function(){ var p = b.getAttribute('data-afq').split(':'), s = C.sel[p[0]]; s.qty = Math.max(1, Math.min(A.avail(p[0], C.wh, s.cond), s.qty + (+p[1]))); draw(); }; });
+    q('[data-afq]').forEach(function(b){ b.onclick = function(){ var p = b.getAttribute('data-afq').split(':'), s = C.sel[p[0]]; s.qty = Math.max(1, Math.min(A.avail(p[0], WG(), s.cond), s.qty + (+p[1]))); draw(); }; });
     q('[data-afr]').forEach(function(c){ c.onchange = function(){ var u = c.getAttribute('data-afr'), h = A.holdings(C.take.iq).filter(function(x){ return x.uid === u; })[0]; if (c.checked && h) C.ret[u] = { to: h.cond, lost: false, files: [] }; else delete C.ret[u]; draw(); }; });
     q('[data-aft]').forEach(function(b){ b.onclick = function(){ var p = b.getAttribute('data-aft').split(':'); C.ret[p[0]].to = +p[1]; C.ret[p[0]].lost = false; draw(); }; });
     q('[data-afl]').forEach(function(b){ b.onclick = function(){ C.ret[b.getAttribute('data-afl')].lost = true; draw(); }; });
@@ -9684,24 +9708,27 @@ async function handleAccidentFile(input){
   }
   function start(ctx, into){
     C = ctx; host = into; draw();
-    A.load(true).then(function(){ C.ready = true; seed(); draw(); if (C.take) loadFin(C.take.iq); if (C.give) loadFin(C.give.iq); })
-      .catch(function(e){ C.err = e.message; C.ready = false; draw(); });
+    A.load(true).then(function(){ return Promise.all([ctx.give ? finOf(ctx.give.iq) : null, ctx.take ? finOf(ctx.take.iq) : null]); })
+      .then(function(f){ if (C !== ctx) return;
+        if (f[0]) { C.fin[C.give.iq] = f[0]; C.whG = f[0].wh; } if (f[1]) { C.fin[C.take.iq] = f[1]; C.whT = f[1].wh; }
+        C.ready = true; seed(); draw(); })
+      .catch(function(e){ if (C !== ctx) return; C.err = e.message; C.ready = false; draw(); });
   }
   /* حفظ حركات العهدة — يُستدعى قبل تنفيذ إجراء المركبة */
   function commit(){
     var plate = C.plate, ref, jobs = [];
-    var take = C.take, give = C.give, ret = C.ret, sel = C.sel, wh = C.wh;
+    var take = C.take, give = C.give, ret = C.ret, sel = C.sel, whG = WG(), whT = WT();
     var rk = Object.keys(ret), sk = Object.keys(sel);
     var p = Promise.resolve();
     if (take && rk.length) p = p.then(function(){
       ref = 'استلام مركبة ' + plate;
       return Promise.all(rk.map(function(k){ return ret[k].lost ? [] : A.uploadPhotos(take.iq, ret[k].files.map(function(f){ return f.file; })); }))
-        .then(function(phs){ return A.receive({ iq: take.iq, name: take.name, wh: wh, src: 'الأسطول', plate: plate, ref: ref }, rk.map(function(k, i){ return { uid: k, to: ret[k].to, lost: ret[k].lost, photos: phs[i] }; })); });
+        .then(function(phs){ return A.receive({ iq: take.iq, name: take.name, wh: whT, src: 'الأسطول', plate: plate, ref: ref }, rk.map(function(k, i){ return { uid: k, to: ret[k].to, lost: ret[k].lost, photos: phs[i] }; })); });
     });
     if (give && sk.length) p = p.then(function(){
       ref = 'تسليم مركبة ' + plate;
       return Promise.all(sk.map(function(k){ return A.uploadPhotos(give.iq, sel[k].files.map(function(f){ return f.file; })); }))
-        .then(function(phs){ return A.handover({ iq: give.iq, name: give.name, wh: wh, src: 'الأسطول', plate: plate, ref: ref }, sk.map(function(k, i){ return { item: k, qty: sel[k].qty, cond: sel[k].cond, photos: phs[i] }; })); });
+        .then(function(phs){ return A.handover({ iq: give.iq, name: give.name, wh: whG, src: 'الأسطول', plate: plate, ref: ref }, sk.map(function(k, i){ return { item: k, qty: sel[k].qty, cond: sel[k].cond, photos: phs[i] }; })); });
     });
     return p;
   }
