@@ -9259,13 +9259,14 @@ async function handleAccidentFile(input){
 
 </script>
 
-<!-- ═══ v134: العهد والمخزن ═══ -->
+<!-- ═══ v135: العهد والمخزن — العزل · الفاتورة · التعميد · حصر القديمة ═══ -->
 <script id="afc-core">
 /* ════════════════════════════════════════════════════════════════════
    AFC — نواة العهد والمخزن (مشتركة بين وثيق والأسطول — نسخة متطابقة في الملفين)
    • الأصناف والفواتير والحركات في app_records (app=fleet · coll=cust_items/cust_inv/cust_mv)
      عبر rpc/sync_records نفسها التي تستخدمها طلبات الصيانة — بلا جداول جديدة.
    • الكميات لا تُكتب يدوياً: تُحسب من الحركات. الحركة لا تُعدَّل ولا تُحذف.
+   • v135: العزل (مدير/مالية) · فاتورة متعددة المخازن تُطابَق مع المخزن · طلبات التعديل والحذف (type=req).
    • كرت الموظف المالي يبقى كما هو: وثيق يكتب نتيجة الحركات في e.custody (انظر wx13).
    ════════════════════════════════════════════════════════════════════ */
 (function(){
@@ -9353,10 +9354,13 @@ async function handleAccidentFile(input){
   function uid(p){ return (p || 'M') + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
   function today(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
   function me(){ var a = window.WF_ACCESS || {}; return a.email || a.name || ''; }
+  /* العزل: mgr = مدير النظام والمدير (كل شيء + تنفيذ التعديل والحذف) · fin = المالية (عرض وإضافة، والتعديل/الحذف بطلب) · other = لا يرى المخزن */
+  function role(){ var a = window.WF_ACCESS; if (!a || !a.role) return ''; return (a.role === 'admin' || a.role === 'manager') ? 'mgr' : a.role === 'finance' ? 'fin' : 'other'; }
 
   /* ---------- الحساب من الحركات ---------- */
   var CONDS = [100, 75, 50, 25];
-  function mvList(){ return Object.keys(D.mv).map(function(k){ return D.mv[k]; }).sort(function(a, b){ return (a.at || '') < (b.at || '') ? -1 : (a.at || '') > (b.at || '') ? 1 : 0; }); }
+  function reqList(){ return Object.keys(D.mv).map(function(k){ return D.mv[k]; }).filter(function(m){ return m && m.type === 'req'; }).sort(function(a, b){ return (a.at || '') < (b.at || '') ? 1 : -1; }); }
+  function mvList(){ return Object.keys(D.mv).map(function(k){ return D.mv[k]; }).filter(function(m){ return m && m.type !== 'req'; }).sort(function(a, b){ return (a.at || '') < (b.at || '') ? -1 : (a.at || '') > (b.at || '') ? 1 : 0; }); }
   function itemsList(all){ return Object.keys(D.items).map(function(k){ return D.items[k]; }).filter(function(i){ return all || !i.archived; })
     .sort(function(a, b){ return String(a.name || '').localeCompare(String(b.name || ''), 'ar'); }); }
   function item(id){ return D.items[id] || null; }
@@ -9374,7 +9378,10 @@ async function handleAccidentFile(input){
   }
   function avail(itemId, wh, c){ return stock(itemId, wh).c[c] || 0; }
   function totalAvail(itemId, wh){ var s = stock(itemId, wh).c; return Object.keys(s).reduce(function(a, k){ return a + s[k]; }, 0); }
-  function avgCost(itemId){ var q = 0, v = 0; mvList().forEach(function(m){ if (m.item !== itemId) return; if (m.type === 'in'){ q += m.qty; v += m.qty * m.cost; } if (m.type === 'rev'){ q -= m.qty; v -= m.qty * m.cost; } }); return q > 0 ? v / q : 0; }
+  function invList(){ return Object.keys(D.inv).map(function(k){ return D.inv[k]; }); }
+  function lwh(inv, l){ return (l && l.wh) || (inv && inv.wh) || 'RIYADH'; }
+  /* متوسط سعر الفاتورة من الفواتير المعتمدة نفسها — فيتبع تعديل السعر مباشرة */
+  function avgCost(itemId){ var q = 0, v = 0; invList().forEach(function(i){ if (i.status !== 'معتمدة') return; (i.lines || []).forEach(function(l){ if (l.item === itemId){ q += l.qty; v += l.qty * l.price; } }); }); return q > 0 ? v / q : 0; }
   /* القطع الموجودة عند الموظفين الآن (العهد المستردّة فقط) */
   function units(){
     var U = {};
@@ -9427,18 +9434,69 @@ async function handleAccidentFile(input){
     });
     return mvs.length ? put('mv', mvs).then(function(){ return mvs; }) : Promise.resolve([]);
   }
+  /* ---------- الفاتورة ↔ المخزن: المطابقة ----------
+     المتوقَّع = بنود الفاتورة المعتمدة لكل (صنف، مخزن) · الفعلي = وارد − عكس من حركاتها.
+     أي حفظ/تعديل/حذف يكتب الفاتورة ثم يطابق؛ وإن انقطع الحفظ يظهر الفرق ويُطابَق بزر. */
+  function invNet(id, lines){
+    var inv = D.inv[id], d = {};
+    function k(i, w){ return i + '|' + w; }
+    (lines || []).forEach(function(l){ var x = k(l.item, lwh(inv, l)); d[x] = d[x] || { want: 0, have: 0, price: l.price }; d[x].want += l.qty; d[x].price = l.price; });
+    mvList().forEach(function(m){ if (m.inv !== id || (m.type !== 'in' && m.type !== 'rev')) return; var x = k(m.item, m.wh); d[x] = d[x] || { want: 0, have: 0, price: m.cost }; d[x].have += (m.type === 'in' ? 1 : -1) * m.qty; });
+    return d;
+  }
+  function invLinesNow(inv){ return inv && inv.status === 'معتمدة' ? (inv.lines || []) : []; }
+  function invMismatch(id){ var d = invNet(id, invLinesNow(D.inv[id])); return Object.keys(d).some(function(x){ return d[x].want !== d[x].have; }); }
+  /* هل يمكن أن تصبح بنود الفاتورة = lines ؟ (lines=[] للحذف) — يرجع نص الخطأ أو '' */
+  function invCheck(id, lines){
+    var inv = D.inv[id]; if (!inv) return 'الفاتورة غير موجودة';
+    var probe = { wh: inv.wh }, d = {};
+    lines.forEach(function(l){ var x = l.item + '|' + lwh(probe, l); d[x] = (d[x] || 0) + l.qty; });
+    mvList().forEach(function(m){ if (m.inv !== id || (m.type !== 'in' && m.type !== 'rev')) return; var x = m.item + '|' + m.wh; d[x] = (d[x] || 0) - (m.type === 'in' ? 1 : -1) * m.qty; });
+    for (var x in d) if (d[x] < 0) { var p = x.split('|'); if (avail(p[0], p[1], 100) < -d[x]) return 'لا يكفي رصيد «' + ((item(p[0]) || {}).name || '') + '» الجديد في مخزن ' + whName(p[1]) + ': جزء منه سُلّم لموظفين. استلمه أولاً أو عدّل الكمية.'; }
+    return '';
+  }
+  function syncInvoice(id){
+    var inv = D.inv[id]; if (!inv) return Promise.resolve();
+    var d = invNet(id, invLinesNow(inv)), mvs = [];
+    Object.keys(d).forEach(function(x){ var p = x.split('|'), q = d[x].want - d[x].have; if (!q) return;
+      mvs.push(mkMv({ type: q > 0 ? 'in' : 'rev', item: p[0], item_name: (item(p[0]) || {}).name || '', wh: p[1], qty: Math.abs(q), cond: 100, cost: Number(d[x].price) || 0,
+        ref: inv.no, inv: inv.id, src: 'وثيق', date: q > 0 ? (inv.date || today()) : today() })); });
+    return mvs.length ? put('mv', mvs) : Promise.resolve();
+  }
+  function cleanLines(inv, lines){ return lines.map(function(l){ return { item: l.item, qty: Number(l.qty), price: Number(l.price), wh: lwh(inv, l) }; }); }
   function saveInvoice(inv){
     inv.id = inv.id || uid('INV'); inv.status = 'معتمدة'; inv.at = nowIso(); inv.by = me();
-    var mvs = inv.lines.map(function(l){ var it = item(l.item) || {};
-      return mkMv({ type: 'in', item: l.item, item_name: it.name || '', wh: inv.wh, qty: l.qty, cond: 100, cost: l.price, ref: inv.no, inv: inv.id, src: 'وثيق' }); });
-    return put('inv', [inv]).then(function(){ return put('mv', mvs); }).then(function(){ return inv; });
+    inv.lines = cleanLines(inv, inv.lines); inv.wh = inv.wh || (inv.lines[0] && inv.lines[0].wh) || 'RIYADH';
+    return put('inv', [inv]).then(function(){ return syncInvoice(inv.id); }).then(function(){ return inv; });
   }
-  function reverseInvoice(id){
-    var inv = D.inv[id]; if (!inv || inv.status !== 'معتمدة') return Promise.reject(new Error('الفاتورة غير قابلة للعكس'));
-    for (var i = 0; i < inv.lines.length; i++) { var l = inv.lines[i]; if (avail(l.item, inv.wh, 100) < l.qty) return Promise.reject(new Error('لا يمكن العكس: جزء من الكمية سُلّم لموظفين')); }
-    var copy = JSON.parse(JSON.stringify(inv)); copy.status = 'معكوسة'; copy.reversed_at = nowIso(); copy.reversed_by = me();
-    var mvs = inv.lines.map(function(l){ return mkMv({ type: 'rev', item: l.item, item_name: (item(l.item) || {}).name || '', wh: inv.wh, qty: l.qty, cond: 100, cost: l.price, ref: inv.no, inv: inv.id, src: 'وثيق' }); });
-    return put('inv', [copy]).then(function(){ return put('mv', mvs); });
+  /* data: { no, supplier, date, vat, lines } */
+  function editInvoice(id, data, reason){
+    var inv = D.inv[id]; if (!inv || inv.status !== 'معتمدة') return Promise.reject(new Error('الفاتورة غير قابلة للتعديل'));
+    var lines = cleanLines(inv, data.lines), e = invCheck(id, lines); if (e) return Promise.reject(new Error(e));
+    var copy = JSON.parse(JSON.stringify(inv));
+    (copy.hist = copy.hist || []).push({ at: nowIso(), by: me(), reason: reason || '', was: { no: inv.no, supplier: inv.supplier, date: inv.date, vat: inv.vat, lines: inv.lines } });
+    copy.no = data.no; copy.supplier = data.supplier; copy.date = data.date; copy.vat = !!data.vat; copy.lines = lines; copy.wh = (lines[0] && lines[0].wh) || inv.wh;
+    return put('inv', [copy]).then(function(){ return syncInvoice(id); });
+  }
+  /* الحذف بتعميد: تُعكس كمياتها وتبقى الفاتورة كاملة في الأرشيف */
+  function deleteInvoice(id, reason){
+    var inv = D.inv[id]; if (!inv || inv.status !== 'معتمدة') return Promise.reject(new Error('الفاتورة غير قابلة للحذف'));
+    var e = invCheck(id, []); if (e) return Promise.reject(new Error(e));
+    var copy = JSON.parse(JSON.stringify(inv)); copy.status = 'محذوفة'; copy.deleted_at = nowIso(); copy.deleted_by = me(); copy.delete_reason = reason || '';
+    return put('inv', [copy]).then(function(){ return syncInvoice(id); });
+  }
+  function reverseInvoice(id){ return deleteInvoice(id, 'عكس'); }
+  /* إلغاء تسليم صنف «يُخصم عند التسليم»: يرجع للمخزن ويُلغى خصمه في الكرت المالي */
+  function useCancelled(mvId){ return mvList().some(function(x){ return x.type === 'cancel' && x.of === mvId; }); }
+  function cancelUse(mvId, reason){
+    var m = D.mv[mvId]; if (!m || m.type !== 'out' || m.kind !== 'use') return Promise.reject(new Error('الحركة غير قابلة للإلغاء'));
+    if (useCancelled(mvId)) return Promise.reject(new Error('أُلغي هذا التسليم من قبل'));
+    return put('mv', [mkMv({ type: 'cancel', of: mvId, item: m.item, item_name: m.item_name, wh: m.wh, qty: m.qty, cond: m.cond, price: m.price, iq: m.iq, emp_name: m.emp_name || '',
+      units: [], reason: reason || '', ref: 'إلغاء تسليم', src: 'وثيق', plate: m.plate || '' })]);
+  }
+  /* طلب تعديل/حذف من المالية — سجل في cust_mv بنوع req لا يدخل أي حساب */
+  function request(act, target, data, reason, label){
+    return put('mv', [mkMv({ type: 'req', act: act, target: target, data: data || null, reason: reason || '', label: label || '', status: 'pending', qty: 0 })]);
   }
   function saveItem(it){ it.id = it.id || uid('I'); it.updated_at = nowIso(); it.updated_by = me(); return put('items', [it]).then(function(){ return it; }); }
 
@@ -9471,6 +9529,8 @@ async function handleAccidentFile(input){
     mvList: mvList, itemsList: itemsList, item: item, stock: stock, avail: avail, totalAvail: totalAvail, avgCost: avgCost,
     units: units, holdings: holdings, deduct: deduct,
     handover: handover, receive: receive, edit: edit, saveInvoice: saveInvoice, reverseInvoice: reverseInvoice, saveItem: saveItem,
+    role: role, me: me, reqList: reqList, invList: invList, lwh: lwh, invMismatch: invMismatch, invCheck: invCheck, syncInvoice: syncInvoice,
+    editInvoice: editInvoice, deleteInvoice: deleteInvoice, cancelUse: cancelUse, useCancelled: useCancelled, request: request, nowIso: nowIso,
     uploadPhotos: uploadPhotos, today: today, uid: uid };
 })();
 
@@ -9499,6 +9559,7 @@ async function handleAccidentFile(input){
 .afcf-tag{display:inline-flex;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:600;background:#e7f3ec;color:#1d6b45}
 .afcf-tag.w{background:#fbf0de;color:#95570f}
 .afcf-fin{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#6b7674;padding:8px 2px 0}
+.afcf-step{font-weight:700;font-size:14px;margin:10px 0 2px;padding:8px 12px;background:#eef5f4;border-radius:10px;color:#0f5c55}
 .afcf-fin b{color:#16211f}.afcf-red{color:#a3372b!important}
 .afcf-step{display:inline-flex;border:1px solid #e6e1d6;border-radius:9px;overflow:hidden;background:#fff}
 .afcf-step button{border:0;background:#f8f6f1;width:26px;cursor:pointer}.afcf-step span{min-width:28px;text-align:center;font-weight:700}
@@ -9549,6 +9610,7 @@ async function handleAccidentFile(input){
     if (f === 'loading') return '<div class="afcf-fin">الكرت المالي: جارٍ التحميل…</div>';
     var hz = A.holdings(iq), hv = hz.reduce(function(a, u){ return a + u.price * u.cond / 100; }, 0);
     return '<div class="afcf-fin"><span>العهدة الحالية <b>' + (hz.length + (f.legacy || 0)) + '</b> قطعة · <b>' + F(hv + (f.legacyV || 0)) + '</b> ر.س</span><span>خصومات عهد غير مسوّاة في الكرت المالي <b class="afcf-red">' + F(f.due) + '</b></span>'
+      + ((f.legacyNames || []).length ? '<span>عهدة قديمة معه: <b>' + E(f.legacyNames.join('، ')) + '</b> — لا تُسلَّم له مرة ثانية</span>' : '')
       + (f.missing ? '<span class="afcf-red">الموظف غير موجود في وثيق — الخصم لن يظهر في كرته</span>' : '') + '</div>';
   }
   function loadFin(iq){
@@ -9556,7 +9618,7 @@ async function handleAccidentFile(input){
     A.api('GET', 'employees?select=data&deleted_at=is.null&iqama=eq.' + encodeURIComponent(iq)).then(function(r){
       var d = r && r[0] && r[0].data; var cs = (d && d.custody) || [];
       var lg = cs.filter(function(c){ return c && c.status === 'held' && !/^c[ud]:/.test(String(c.id || '')); });
-      C.fin[iq] = { missing: !d, legacy: lg.length, legacyV: lg.reduce(function(s, c){ return s + (Number(c.value) || 0); }, 0),
+      C.fin[iq] = { missing: !d, legacy: lg.length, legacyNames: lg.map(function(c){ return String(c.item || '').trim(); }).filter(Boolean), legacyV: lg.reduce(function(s, c){ return s + (Number(c.value) || 0); }, 0),
         due: cs.reduce(function(s, c){ return (!c || c.settled_period || c.status !== 'deducted') ? s : s + (Number(c.value) || 0); }, 0) };
       draw();
     }).catch(function(){ C.fin[iq] = { missing: false, legacy: 0, legacyV: 0, due: 0 }; draw(); });
@@ -9568,11 +9630,11 @@ async function handleAccidentFile(input){
   }
   function html(){
     if (!C.ready) return C.err ? '<div class="afcf-err">⚠️ تعذّر تحميل العهدة: ' + E(C.err) + '</div>' : '<div class="afcf-fin">جارٍ تحميل العهدة…</div>';
-    var h = '';
+    var h = '<div class="afcf-step">📦 العهدة — راجعها قبل التأكيد</div>';
     if (C.take) {
       var hf = A.holdings(C.take.iq).filter(function(u){ return inF(A.item(u.item)); });
       var ded = 0;
-      h += '<div class="afcf-sec"><div class="afcf-h"><span>📥 استلام العهدة من ' + E(C.take.name || C.take.iq) + '</span><small>أزل الاختيار عمّا يبقى معه</small></div>'
+      h += '<div class="afcf-sec"><div class="afcf-h"><span>📥 استلام العهدة من ' + E(C.take.name || C.take.iq) + '</span><small>أزل الاختيار عمّا يبقى معه · مخزن ' + E(A.whName(C.wh)) + '</small></div>'
         + (hf.map(function(u){ var it = A.item(u.item) || {}, r = C.ret[u.uid], d = r ? A.deduct(u.price, u.cond, r.to, r.lost) : 0; ded += d;
             return '<div class="afcf-row"><input type="checkbox" data-afr="' + E(u.uid) + '"' + (r ? ' checked' : '') + '><span>' + E(it.ic || '📦') + '</span><span class="nm">' + E(u.name) + '</span><span class="afcf-tag' + (u.cond < 100 ? ' w' : '') + '">' + A.condTxt(u.cond) + '</span>' + (r ? '' : '<span style="font-size:11.5px;color:#6b7674">تبقى معه</span>') + '</div>'
               + (r ? '<div class="afcf-x"><div class="afcf-chips">' + [100, 75, 50, 25, 0].map(function(c){ return '<button type="button" class="afcf-chip' + (!r.lost && r.to === c ? ' on' : '') + '" data-aft="' + E(u.uid) + ':' + c + '"' + (c > u.cond ? ' disabled' : '') + '>' + A.condTxt(c) + '</button>'; }).join('')
@@ -9584,10 +9646,17 @@ async function handleAccidentFile(input){
       var its = A.itemsList().filter(inF);
       h += '<div class="afcf-sec"><div class="afcf-h"><span>📤 تسليم العهدة إلى ' + E(C.give.name || C.give.iq) + '</span><small>مخزن ' + E(A.whName(C.wh)) + ' · مقترحة حسب نوع المركبة</small></div>'
         + (its.map(function(it){ var st = A.stock(it.id, C.wh).c, tot = A.CONDS.reduce(function(a, c){ return a + (st[c] || 0); }, 0), s = C.sel[it.id];
-            return '<div class="afcf-row' + (tot ? '' : ' dis') + '"><input type="checkbox" data-afs="' + E(it.id) + '"' + (s ? ' checked' : '') + (tot ? '' : ' disabled') + '><span>' + E(it.ic || '📦') + '</span><span class="nm">' + E(it.name) + '</span><span style="font-size:11.5px;color:#6b7674">' + (tot ? 'متوفر ' + tot : 'غير متوفر') + '</span></div>'
+            return '<div class="afcf-row' + (tot ? '' : ' dis') + '"><input type="checkbox" data-afs="' + E(it.id) + '"' + (s ? ' checked' : '') + (tot ? '' : ' disabled') + '><span>' + E(it.ic || '📦') + '</span><span class="nm">' + E(it.name) + '</span><span style="font-size:11.5px;color:#6b7674">سعر الموظف ' + F(it.emp) + '</span><span class="afcf-tag' + (tot ? '' : ' w') + '">' + (tot ? 'الباقي ' + tot : 'غير متوفر') + '</span></div>'
               + (s ? '<div class="afcf-x"><div class="afcf-chips">' + A.CONDS.map(function(c){ return '<button type="button" class="afcf-chip' + (s.cond === c ? ' on' : '') + '" data-afc="' + E(it.id) + ':' + c + '"' + ((st[c] || 0) ? '' : ' disabled') + '>' + A.condTxt(c) + '</button>'; }).join('') + '</div>'
                 + '<div class="afcf-step"><button type="button" data-afq="' + E(it.id) + ':-1">−</button><span>' + s.qty + '</span><button type="button" data-afq="' + E(it.id) + ':1">+</button></div>' + ph(s.files, 's:' + it.id) + '</div>' : ''); }).join('')
-          || '<div class="afcf-row" style="color:#6b7674">لا أصناف أسطول في المخزن بعد (تُضاف من وثيق ← العهد).</div>') + '</div>' + finLine(C.give.iq);
+          || '<div class="afcf-row" style="color:#6b7674">لا أصناف أسطول في المخزن بعد (تُضاف من وثيق ← العهد).</div>')
+        + (function(){
+            var v = veh(C.plate), sk = Object.keys(C.sel), val = 0, n = 0;
+            sk.forEach(function(k){ var it = A.item(k) || {}; n += C.sel[k].qty; val += (Number(it.emp) || 0) * C.sel[k].qty * C.sel[k].cond / 100; });
+            var miss = its.filter(function(it){ return kitFor(it, v) && !A.totalAvail(it.id, C.wh); });
+            return (miss.length ? '<div class="afcf-row afcf-red" style="font-size:12.5px">⚠️ مقترحة لهذه المركبة وغير متوفرة في مخزن ' + E(A.whName(C.wh)) + ': ' + miss.map(function(it){ return E(it.name); }).join('، ') + '</div>' : '')
+              + '<div class="afcf-row" style="background:#faf7f0"><span class="nm">' + (n ? 'سيُسلَّم ' + n + ' قطعة · قيمة العهدة على السائق' : '<span class="afcf-red">لم تُختر أي عهدة — ستُسلَّم المركبة بلا عهدة</span>') + '</span>' + (n ? '<b>' + F(val) + ' ر.س</b>' : '') + '</div>';
+          })() + '</div>' + finLine(C.give.iq);
     }
     var bad = invalid();
     if (bad && C.tried) h += '<div class="afcf-err">⚠️ ' + E(bad) + '</div>';
