@@ -134,10 +134,12 @@ data class RosterItem(
     val present: Boolean, val hours: Double?, val orders: Int,
     val short: Boolean, val absent: Boolean, val logged: Boolean, val warns: Int,
     val project: String = "", val plates: String? = null, val workDate: String? = null,
-    val result: String = "", val level: String = ""   // present | absent_vehicle | absent | nodata
+    val result: String = "", val level: String = "",  // present | absent_vehicle | absent | nodata
+    val lastText: String? = null, val lastDate: String? = null   // تفاصيل آخر دوام بتاريخه (v137)
 )
 
-data class RosterResult(val rows: List<RosterItem>, val projects: List<String>, val dates: Map<String, String>)
+data class RosterResult(val rows: List<RosterItem>, val projects: List<String>, val dates: Map<String, String>,
+    val stale: Set<String> = emptySet())   // مشاريع لم يُرفع لها دوام أمس
 
 object Api {
     private const val SB_URL = "https://coueubvyaokyycqpmirs.supabase.co"
@@ -409,9 +411,12 @@ object Api {
                 absent = level == "absent" || level == "absent_vehicle",
                 logged = r.optBoolean("logged", false), warns = r.optInt("warns", 0),
                 project = r.optString("project"), plates = r.optStringOrNull("plates"),
-                workDate = r.optStringOrNull("work_date"), result = r.optString("result"), level = level)
+                workDate = r.optStringOrNull("work_date"), result = r.optString("result"), level = level,
+                lastText = r.optStringOrNull("last_text"), lastDate = r.optStringOrNull("last_date"))
         }
-        return RosterResult(rows, projects, dates)
+        val sa = o.optJSONArray("stale_projects") ?: JSONArray()
+        val stale = (0 until sa.length()).map { sa.optString(it) }.toSet()
+        return RosterResult(rows, projects, dates, stale)
     }
 
     /** إصدار إنذار للمندوب (حتى ٣) — يُسجَّل في وثيق ويظهر للموظف */
