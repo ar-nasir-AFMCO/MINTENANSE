@@ -10945,7 +10945,9 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       .reduce(function(a, m){ return a + ((m.type === 'ret' || m.type === 'lost') && A.undone(m.id) ? 0 : m.type === 'ret' ? (m.deduct || 0) : m.type === 'lost' ? m.price * m.from / 100 : (m.type === 'out' && m.kind === 'use' && !A.useCancelled(m.id)) ? m.price * m.qty * m.cond / 100 : 0); }, 0);
     return '<div class="afc-kpis">'
       + '<div class="afc-kpi"><div class="v afc-num">' + F(sv) + ' <small>ر.س</small></div><div class="k">قيمة المخزن بسعر الفاتورة</div></div>'
-      + '<div class="afc-kpi"><div class="v afc-num">' + U.length + ' <small>قطعة</small></div><div class="k">عند الموظفين (مخزّنة) · ' + F(U.reduce(function(a, u){ return a + u.price * u.cond / 100; }, 0)) + ' ر.س</div></div>'
+      + (function(){ var lg = 0, lv = 0;
+          A.itemsList(true).forEach(function(it){ var L = it.leg || {}; Object.keys(L).forEach(function(n){ var a = LG.filter(function(x){ return x.name === n; })[0], c = W ? (a ? (a.w[W] || 0) : 0) : (Number(L[n]) || 0); lg += c; lv += c * (a && a.n ? a.v / a.n : 0); }); });
+          return '<div class="afc-kpi"><div class="v afc-num">' + (U.length + lg) + ' <small>قطعة</small></div><div class="k">عند الموظفين' + (lg ? ' (منها ' + lg + ' قديمة)' : '') + ' · ' + F(U.reduce(function(a, u){ return a + u.price * u.cond / 100; }, 0) + lv) + ' ر.س</div></div>'; })()
       + '<div class="afc-kpi"><div class="v afc-num ' + (low ? 'afc-red' : '') + '">' + low + '</div><div class="k">أصناف تحت حد التنبيه</div></div>'
       + '<div class="afc-kpi"><div class="v afc-num afc-red">' + F(ded) + ' <small>ر.س</small></div><div class="k">خصومات عهد هذا الشهر</div></div></div>';
   }
@@ -11039,13 +11041,16 @@ body.wx-card-open #wx4Pill{ display:none !important; }
         + '<td class="afc-num">' + F(A.avgCost(it.id)) + '</td><td class="afc-num"><b>' + F(it.emp) + '</b></td>'
         + '<td class="afc-num afc-green"><b>' + nw + '</b></td><td class="afc-num" style="color:#95570f"><b>' + used + '</b></td>'
         + '<td class="afc-num"><b>' + tot + '</b><div class="afc-barx' + (low ? ' low' : '') + '"><i style="width:' + Math.min(100, mn ? tot / (mn * 2) * 100 : 100) + '%"></i></div></td>'
-        + '<td class="afc-num">' + (function(){ var n = (it.kind === 'use' ? 0 : U.filter(function(u){ return u.item === it.id && (!W || u.wh === W); }).length), g = legHeld(it, W); return (n + g) ? ((n + g) + (g ? '<div class="afc-sm afc-muted">منها ' + g + ' قديمة</div>' : '')) : '—'; })() + '</td><td class="afc-num">' + (st.dmg || '—') + '</td>'
+        + (function(){ var n = (it.kind === 'use' ? 0 : U.filter(function(u){ return u.item === it.id && (!W || u.wh === W); }).length), g = legHeld(it, W);
+            return '<td class="afc-num">' + ((n + g) ? ((n + g) + (g ? '<div class="afc-sm afc-muted">منها ' + g + ' قديمة</div>' : '')) : '—') + '</td>'
+              + '<td class="afc-num" style="background:var(--surface-2,#faf7f0)"><b>' + (tot + n + g) + '</b></td>'; })()
+        + '<td class="afc-num">' + (st.dmg || '—') + '</td>'
         + '<td>' + (low ? '<span class="afc-tag afc-bad">أقل من ' + mn + '</span>' : '<span class="afc-tag afc-ok">متوفر</span>') + '</td>'
         + '<td style="white-space:nowrap">' + (A.totalAvail(it.id) > 0 ? '<button class="afc-mini" data-afcwx="' + E(it.id) + '" title="نقل بين المخازن">↔ نقل</button> ' : '') + (adm ? '<button class="afc-mini" data-afcedit="' + E(it.id) + '">تعديل</button>' : '') + '</td></tr>';
     }).join('');
-    return '<div class="afc-card"><div class="afc-ch"><div><h3>🏬 المخزن</h3><p>الكمية تُحسب من الفواتير والتسليم والاستلام، ولا تُكتب يدوياً.' + (S.wh ? ' — مخزن ' + E(A.whName(S.wh)) : '') + '</p></div></div>'
-      + '<div class="afc-tw"><table class="afc-tbl"><thead><tr><th>الصنف</th><th>التسليم من</th><th>سعر الفاتورة</th><th>سعر الموظف</th><th>جديد</th><th>مستعمل</th><th>الإجمالي</th><th>عند الموظفين</th><th>تالف</th><th>الحالة</th><th></th></tr></thead><tbody>'
-      + (rows || '<tr><td colspan="11" class="afc-empty">' + (A.itemsList(true).length ? 'لا نتائج' : 'لا أصناف بعد — ابدأ بـ «➕ صنف» ثم «🧾 فاتورة شراء».') + '</td></tr>') + '</tbody></table></div></div>';
+    return '<div class="afc-card"><div class="afc-ch"><div><h3>🏬 المخزن</h3><p>«في المخزن» من الفواتير ناقص ما سُلّم. «الإجمالي الكلي» = في المخزن + عند الموظفين (التسليمات والعهد القديمة المرحّلة).' + (S.wh ? ' — مخزن ' + E(A.whName(S.wh)) : '') + '</p></div></div>'
+      + '<div class="afc-tw"><table class="afc-tbl"><thead><tr><th>الصنف</th><th>التسليم من</th><th>سعر الفاتورة</th><th>سعر الموظف</th><th>جديد</th><th>مستعمل</th><th>في المخزن</th><th>عند الموظفين</th><th>الإجمالي الكلي</th><th>تالف</th><th>الحالة</th><th></th></tr></thead><tbody>'
+      + (rows || '<tr><td colspan="12" class="afc-empty">' + (A.itemsList(true).length ? 'لا نتائج' : 'لا أصناف بعد — ابدأ بـ «➕ صنف» ثم «🧾 فاتورة شراء».') + '</td></tr>') + '</tbody></table></div></div>';
   }
   function invTotal(i){ return (i.lines || []).reduce(function(a, l){ return a + l.qty * l.price; }, 0) * (i.vat ? 1.15 : 1); }
   function invWhs(i){ var o = []; (i.lines || []).forEach(function(l){ var w = A.lwh(i, l); if (o.indexOf(w) < 0) o.push(w); }); return o; }
@@ -11476,7 +11481,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       'المخزن': A.itemsList(true).filter(function(it){ return qm(it.name, it.cat); }).map(function(it){ var st = A.stock(it.id, W);
         return { 'الصنف': it.name, 'الفئة': it.cat || '', 'النوع': it.kind === 'use' ? 'يُخصم عند التسليم' : 'عهدة مستردّة', 'التسليم من': (BY[it.by] || BY.f)[0], 'سعر الفاتورة (متوسط)': r2(A.avgCost(it.id)), 'سعر الموظف': Number(it.emp) || 0,
           'جديد': st.c[100] || 0, 'مستعمل': Object.keys(st.c).filter(function(c){ return c !== '100'; }).reduce(function(a, c){ return a + st.c[c]; }, 0),
-          'عند الموظفين': A.units().filter(function(u){ return u.item === it.id && (!W || u.wh === W); }).length, 'عهد قديمة عند الموظفين': legHeld(it, W), 'تالف': st.dmg, 'حد التنبيه': Number(it.min) || 0 }; }),
+          'عند الموظفين': A.units().filter(function(u){ return u.item === it.id && (!W || u.wh === W); }).length, 'عهد قديمة عند الموظفين': legHeld(it, W), 'الإجمالي الكلي': Object.keys(st.c).reduce(function(a, c){ return a + st.c[c]; }, 0) + (it.kind === 'use' ? 0 : A.units().filter(function(u){ return u.item === it.id && (!W || u.wh === W); }).length) + legHeld(it, W), 'تالف': st.dmg, 'حد التنبيه': Number(it.min) || 0 }; }),
       'العهد لدى الموظفين': A.units().filter(function(u){ return (!W || u.wh === W) && qm(u.name, u.iq, (empBy(u.iq) || {}).name_ar); }).map(function(u){ var e = empBy(u.iq) || {};
         return { 'الإقامة': u.iq, 'الموظف': empName(e) || '', 'المشروع': e.project || '', 'المخزن': A.whName(u.wh), 'الصنف': u.name, 'الحالة %': u.cond, 'تاريخ التسليم': u.date, 'اللوحة': u.plate || '', 'القيمة بسعر الموظف': r2(u.price * u.cond / 100) }; }),
       'الفواتير': A.invList().reduce(function(a, i){ return a.concat((i.lines || []).filter(function(l){ return !W || A.lwh(i, l) === W; }).map(function(l){
