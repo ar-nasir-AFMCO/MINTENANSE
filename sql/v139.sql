@@ -55,7 +55,7 @@ begin
                 from day d join emp0 e on e.id = d.employee_id group by 1),
     emp as (
       select e.* from emp0 e
-       where e.status = 'active' or exists (select 1 from day d where d.employee_id = e.id and d.work_date = v_d)),
+       where e.status = 'active' or exists (select 1 from day d where d.employee_id = e.id and d.work_date between v_d - 1 and v_d)),
     veh as (
       select va.employee_id, string_agg(v.plate_no, ' / ' order by v.plate_no) plates
         from public.vehicle_assignments va join public.vehicles v on v.id = va.vehicle_id
