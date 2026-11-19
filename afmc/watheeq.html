@@ -10313,12 +10313,15 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     function decide(q, approve, btn){
       var r = q.ref || {}; var who = r.iqama || '';
       if (!r.request_id){ note('طلب قديم بلا معرّف — يُعالَج من تطبيق المشرف', 'amber'); return; }
-      var msg = approve ? ('اعتماد تحديث البيانات؟\n\n' + (r.label || '') + ': ' + (r.old || '—') + ' ← ' + (r.new || ''))
-                        : ('رفض طلب التحديث؟');
-      if (!confirm(msg)) return;
+      /* v141: المعتمِد يصحّح القيمة لو أخطأ المندوب — تُطبَّق في وثيق والأصل يبقى في الطلب */
+      var val = null;
+      if (approve) {
+        var v = prompt('اعتماد تحديث البيانات — ' + (r.label || '') + '\nالحالي: ' + (r.old || '—') + '\nالقيمة التي ستُعتمد (عدّلها لو أخطأ المندوب):', r.new || '');
+        if (v === null) return; v = v.trim(); if (v && v !== (r.new || '')) val = v;
+      } else if (!confirm('رفض طلب التحديث؟')) return;
       var nt = approve ? null : (prompt('سبب الرفض (اختياري):') || null);
       if (btn) btn.disabled = true;
-      rpc('sup_review_update', { p_request: r.request_id, p_approve: !!approve, p_note: nt })
+      rpc('sup_review_update', { p_request: r.request_id, p_approve: !!approve, p_note: nt, p_value: val })
         .then(function(){ note(approve ? ('✅ اعتُمد تحديث بيانات ' + who) : ('↩︎ رُفض طلب ' + who), approve ? 'green' : 'amber'); poll(); })
         .catch(function(err){ if (btn) btn.disabled = false; note('تعذّر: ' + (err && err.message || err), 'red'); poll(); });
     }
