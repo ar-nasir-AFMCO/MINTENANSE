@@ -9376,6 +9376,7 @@ async function handleAccidentFile(input){
       else if (m.type === 'out') add(m.cond, -m.qty);
       else if (m.type === 'ret') { if (m.cond > 0) add(m.cond, m.qty); else r.dmg += m.qty; }
       else if (m.type === 'cancel') add(m.cond, m.qty);
+      else if (m.type === 'open') add(m.cond, m.qty);   /* رصيد افتتاحي */
       else if (m.type === 'unret' && !m.lost) { if (m.cond > 0) add(m.cond, -m.qty); else r.dmg -= m.qty; }
     });
     return r;
@@ -9552,7 +9553,7 @@ async function handleAccidentFile(input){
     units: units, holdings: holdings, deduct: deduct,
     handover: handover, receive: receive, edit: edit, saveInvoice: saveInvoice, reverseInvoice: reverseInvoice, saveItem: saveItem,
     role: role, me: me, reqList: reqList, invList: invList, lwh: lwh, invMismatch: invMismatch, invCheck: invCheck, syncInvoice: syncInvoice,
-    undone: undone, undoReceive: undoReceive, transfer: transfer,
+    undone: undone, undoReceive: undoReceive, transfer: transfer, mkMv: mkMv, uid: uid,
     editInvoice: editInvoice, deleteInvoice: deleteInvoice, cancelUse: cancelUse, useCancelled: useCancelled, request: request, nowIso: nowIso,
     uploadPhotos: uploadPhotos, today: today, uid: uid };
 })();
