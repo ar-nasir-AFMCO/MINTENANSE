@@ -69,7 +69,7 @@ begin
              la.work_date as last_date, la.hours as last_hours, la.orders as last_orders,
              (la.work_date is not null and la.work_date = v_d) as present,
              (v_d = v_today and la.work_date is not null and la.work_date = v_d - 1) as pending,
-             (l.d is not null) as has_data,
+             (l.d is not null and l.d >= v_d - 14) as has_data,
              (lg.iqama is not null) as logged, coalesce(wr.n, 0) as warns
         from emp e
         left join lastd l on l.project_code = e.project_code
@@ -82,8 +82,8 @@ begin
       'projects', to_json(v_projects),
       'today', v_today, 'date', v_d, 'is_today', v_d = v_today,
       'dates', coalesce((select json_object_agg(project_code, d) from lastd), '{}'::json),
-      'stale_projects', coalesce((select json_agg(project_code) from lastd where d < v_d - 1), '[]'::json),
-      'no_day', coalesce((select json_agg(project_code) from lastd where not has_day), '[]'::json),
+      'stale_projects', coalesce((select json_agg(project_code) from lastd where d < v_d - 1 and d >= v_d - 14), '[]'::json),
+      'no_day', coalesce((select json_agg(project_code) from lastd where not has_day and d >= v_d - 14), '[]'::json),
       'pulled', json_build_object(
           'samurai', (select to_char(max(s.pulled_at)::timestamptz at time zone 'Asia/Riyadh', 'YYYY-MM-DD HH24:MI') from public.v_samurai_captain_days s where s.work_date::date = v_d),
           'keeta',   (select to_char(max(k.pulled_at)::timestamptz at time zone 'Asia/Riyadh', 'YYYY-MM-DD HH24:MI') from public.v_keeta_attendance_linked k where k.work_date::date = v_d)),
