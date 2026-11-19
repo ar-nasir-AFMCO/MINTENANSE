@@ -874,6 +874,9 @@ fun DataUpdateScreen(session: Session, onBack: () -> Unit) {
     var submitting by remember { mutableStateOf(false) }
     var done by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var projects by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
+    var projExpanded by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { try { projects = Api.projects(session.token) } catch (e: Exception) { } }
     BackHandler { onBack() }
 
     val fields = listOf(
@@ -886,6 +889,7 @@ fun DataUpdateScreen(session: Session, onBack: () -> Unit) {
     val title = when (lang) { Lang.EN -> "Update my data"; Lang.UR -> "میرا ڈیٹا اپ ڈیٹ"; else -> "تحديث بياناتي" }
     val tField = when (lang) { Lang.EN -> "Field to update"; Lang.UR -> "اپ ڈیٹ فیلڈ"; else -> "الحقل المراد تحديثه" }
     val tNew = when (lang) { Lang.EN -> "New value"; Lang.UR -> "نئی قدر"; else -> "القيمة الجديدة" }
+    val tPick = when (lang) { Lang.EN -> "Choose the project"; Lang.UR -> "پروجیکٹ منتخب کریں"; else -> "اختر المشروع" }
     val tSubmit = when (lang) { Lang.EN -> "Send request"; Lang.UR -> "درخواست بھیجیں"; else -> "إرسال الطلب" }
     val tHint = if (fieldKey == "platform_id")
         when (lang) { Lang.EN -> "Your project supervisor confirms it, then the manager approves and it is recorded in Watheeq."; Lang.UR -> "پہلے آپ کا سپروائزر تصدیق کرتا ہے، پھر مینیجر منظوری دیتا ہے اور یہ وثیق میں درج ہوتا ہے۔"; else -> "يؤكده مشرف مشروعك، ثم يعتمده المدير ويُسجَّل في وثيق." }
@@ -911,11 +915,19 @@ fun DataUpdateScreen(session: Session, onBack: () -> Unit) {
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                         modifier = Modifier.fillMaxWidth().menuAnchor())
                     ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        fields.forEach { f -> DropdownMenuItem(text = { Text(f.second) }, onClick = { fieldKey = f.first; expanded = false }) }
+                        fields.forEach { f -> DropdownMenuItem(text = { Text(f.second) }, onClick = { fieldKey = f.first; value = ""; expanded = false }) }
                     }
                 }
                 Spacer(Modifier.height(14.dp))
-                OutlinedTextField(value, { value = it }, label = { Text(tNew) }, singleLine = true,
+                if (fieldKey == "project_code") ExposedDropdownMenuBox(expanded = projExpanded, onExpandedChange = { projExpanded = !projExpanded }) {
+                    OutlinedTextField(value = projects.firstOrNull { it.first == value }?.second ?: "", onValueChange = {}, readOnly = true,
+                        label = { Text(tPick) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = projExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor())
+                    ExposedDropdownMenu(expanded = projExpanded, onDismissRequest = { projExpanded = false }) {
+                        projects.forEach { p -> DropdownMenuItem(text = { Text(p.second) }, onClick = { value = p.first; projExpanded = false }) }
+                    }
+                } else OutlinedTextField(value, { value = it }, label = { Text(tNew) }, singleLine = true,
                     keyboardOptions = if (fieldKey == "phone" || fieldKey == "bank_account" || fieldKey == "platform_id") KeyboardOptions(keyboardType = KeyboardType.Number) else KeyboardOptions.Default,
                     modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(10.dp))
