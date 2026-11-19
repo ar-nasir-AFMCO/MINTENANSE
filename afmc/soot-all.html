@@ -730,7 +730,7 @@ body{font-family:-apple-system,"Segoe UI",system-ui,"Noto Kufi Arabic","Tajawal"
       '<div class="sub">'+esc(x.name||'—')+' · 🆔 '+esc(x.iqama||'—')+(x.project?(' · 📁 '+esc(x.project)):'')+'</div>'+
       (line?('<div style="margin-top:6px">'+esc(line)+'</div>'):'')+rec+
       '<div class="sxact" style="justify-content:flex-start;margin-top:10px">'+
-        '<button class="sxbtn pri" data-kind="'+kind+'" data-id="'+esc(x.id)+'" data-act="yes" data-can="'+(can?1:0)+'">'+(can?'✓ اعتماد':'👍 أوصي بالموافقة')+'</button>'+
+        '<button class="sxbtn pri" data-kind="'+kind+'" data-id="'+esc(x.id)+'" data-act="yes" data-can="'+(can?1:0)+'" data-val="'+esc(x.new_value||'')+'">'+(can?'✓ اعتماد':'👍 أوصي بالموافقة')+'</button>'+
         '<button class="sxbtn" data-kind="'+kind+'" data-id="'+esc(x.id)+'" data-act="no" data-can="'+(can?1:0)+'">'+(can?'✕ رفض':'👎 لا أوصي')+'</button>'+
       '</div></div>';
   }
@@ -741,7 +741,7 @@ body{font-family:-apple-system,"Segoe UI",system-ui,"Noto Kufi Arabic","Tajawal"
       (x.stage==='manager'?('✓ أكّده '+esc(x.rec_by_name||'المشرف')+' — بانتظار اعتماد المدير'):'المرحلة ١: بانتظار تأكيد مشرف المشروع')+'</div>';
     var btns='';
     if(x.can_confirm) btns='<button class="sxbtn pri" data-kind="upd" data-id="'+esc(x.id)+'" data-act="yes" data-can="0">✓ أؤكد التغيير</button><button class="sxbtn" data-kind="upd" data-id="'+esc(x.id)+'" data-act="no" data-can="0">✕ رفض</button>';
-    else if(x.can_approve) btns='<button class="sxbtn pri" data-kind="upd" data-id="'+esc(x.id)+'" data-act="yes" data-can="1">✓ اعتماد وتطبيق</button><button class="sxbtn" data-kind="upd" data-id="'+esc(x.id)+'" data-act="no" data-can="1">✕ رفض</button>';
+    else if(x.can_approve) btns='<button class="sxbtn pri" data-kind="upd" data-id="'+esc(x.id)+'" data-act="yes" data-can="1" data-val="'+esc(x.new_value||'')+'">✓ اعتماد وتطبيق</button><button class="sxbtn" data-kind="upd" data-id="'+esc(x.id)+'" data-act="no" data-can="1">✕ رفض</button>';
     else if(x.can_reject) btns='<span class="sub">بانتظار تأكيد المشرف</span><button class="sxbtn" data-kind="upd" data-id="'+esc(x.id)+'" data-act="no" data-can="1">✕ رفض</button>';
     else btns='<span class="sub">بانتظار اعتماد المدير</span>';
     return '<div class="sxcard"><div class="t">'+esc(x.field_label||'رقم الآيدي')+'<span class="sub" style="float:left">'+esc(String(x.created_at||'').slice(0,10))+'</span></div>'+
@@ -753,6 +753,8 @@ body{font-family:-apple-system,"Segoe UI",system-ui,"Noto Kufi Arabic","Tajawal"
     var fn = kind==='adv' ? (can?'sup_review_advance':'sup_recommend_advance') : (can?'sup_review_update':'sup_recommend_update');
     var note = (!yes && can) ? (prompt('سبب الرفض (اختياري)')||null) : null;
     var args = can ? {p_request:id,p_approve:yes,p_note:note} : {p_request:id,p_ok:yes,p_note:null};
+    /* v141: المعتمِد يصحّح القيمة لو أخطأ المندوب — الأصل يبقى محفوظاً في الطلب */
+    if(kind==='upd' && can && yes){ var cur=btn.dataset.val||''; var v=prompt('القيمة التي ستُعتمد وتُطبَّق في وثيق.\nعدّلها هنا لو أخطأ المندوب (المشروع يُكتب برمزه مثل NINJA):',cur); if(v===null) return; v=v.trim(); if(v && v!==cur) args.p_value=v; }
     btn.disabled=true;
     sbRpc(fn,args).then(function(){ loadRequests(); }).catch(function(e){ alert(e.message); btn.disabled=false; });
   }
