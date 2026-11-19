@@ -512,9 +512,15 @@ fun RosterScreen(session: SupSession, onBack: () -> Unit) {
                         }
                     }
                     item {
-                        Text(if (date != null) "الحضور من دوام $date (آخر يوم مرفوع) · المركبة من التسليمات المفتوحة في الأسطول"
+                        Text(if (date != null) "الغائب = لم يُسجَّل له دوام خلال آخر ٢٤ ساعة (أمس أو اليوم) · آخر ملف دوام مرفوع $date · المركبة من التسليمات المفتوحة في الأسطول"
                              else "لا يوجد ملف دوام مرفوع لهذا المشروع — تظهر المركبات فقط",
                             fontSize = 11.sp, color = Gray, modifier = Modifier.padding(vertical = 2.dp))
+                    }
+                    if (curProj != null && res?.stale?.contains(curProj) == true) item {
+                        Surface(color = Color(0xFFFEF3C7), shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+                            Text("⚠ آخر ملف دوام مرفوع لهذا المشروع بتاريخ ${date ?: "—"} — لم يُرفع دوام أمس، فيظهر الجميع غائبين حتى يُرفع.",
+                                color = Color(0xFFB45309), fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(10.dp))
+                        }
                     }
                     item {
                         OutlinedTextField(q, { q = it }, placeholder = { Text("ابحث بالاسم / الإقامة / اللوحة") },
@@ -560,6 +566,11 @@ fun RosterCard(r: RosterItem, onWarn: () -> Unit) {
             Surface(color = bg, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
                 Text(r.result, color = fg, fontSize = 13.sp, fontWeight = FontWeight.Black,
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
+            }
+            // الغائب: تفاصيل آخر دوام بتاريخه
+            if (r.level != "present" && r.lastText != null) {
+                Spacer(Modifier.height(6.dp))
+                Text("🕒 " + r.lastText, fontSize = 12.sp, color = Color(0xFF475569), fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.height(8.dp))
             Row(Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
