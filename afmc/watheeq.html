@@ -10542,6 +10542,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       else if (m.type === 'out') add(m.cond, -m.qty);
       else if (m.type === 'ret') { if (m.cond > 0) add(m.cond, m.qty); else r.dmg += m.qty; }
       else if (m.type === 'cancel') add(m.cond, m.qty);
+      else if (m.type === 'open') add(m.cond, m.qty);   /* رصيد افتتاحي */
       else if (m.type === 'unret' && !m.lost) { if (m.cond > 0) add(m.cond, -m.qty); else r.dmg -= m.qty; }
     });
     return r;
@@ -10718,7 +10719,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     units: units, holdings: holdings, deduct: deduct,
     handover: handover, receive: receive, edit: edit, saveInvoice: saveInvoice, reverseInvoice: reverseInvoice, saveItem: saveItem,
     role: role, me: me, reqList: reqList, invList: invList, lwh: lwh, invMismatch: invMismatch, invCheck: invCheck, syncInvoice: syncInvoice,
-    undone: undone, undoReceive: undoReceive, transfer: transfer,
+    undone: undone, undoReceive: undoReceive, transfer: transfer, mkMv: mkMv, uid: uid,
     editInvoice: editInvoice, deleteInvoice: deleteInvoice, cancelUse: cancelUse, useCancelled: useCancelled, request: request, nowIso: nowIso,
     uploadPhotos: uploadPhotos, today: today, uid: uid };
 })();
@@ -10822,7 +10823,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
         }
         (m.units || []).forEach(function(u){
           var rec = { id: 'cu:' + u + '@' + m.id, item: m.item_name, value: r2(m.price * m.cond / 100), date_out: m.date, date_in: '', status: 'held',
-            note: A.condTxt(m.cond) + ' — ' + src(m), cust: { uid: u, item: m.item, wh: m.wh, cond: m.cond } };
+            note: m.legacy ? ('مرحّلة من العهد القديمة' + (m.legacy_item && m.legacy_item !== m.item_name ? ' «' + m.legacy_item + '»' : '') + (m.legacy_note ? ' · ' + m.legacy_note : '')) : (A.condTxt(m.cond) + ' — ' + src(m)), cust: { uid: u, item: m.item, wh: m.wh, cond: m.cond } };
           U[u] = { rec: rec, price: m.price }; put(m.iq, rec);
         });
       } else if (m.type === 'ret' || m.type === 'lost' || m.type === 'cancel') {
@@ -10864,6 +10865,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
   function materialize(){
     if (!A.D.loaded || !emps().length) return 0;
     var want = desired(), changed = 0; orphan = {};
+    changed += legHeal();
     Object.keys(want).forEach(function(iq){
       var e = empBy(iq); if (!e) { orphan[iq] = 1; return; }
       var list = Array.isArray(e.custody) ? e.custody : (e.custody = []);
@@ -10945,9 +10947,8 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       .reduce(function(a, m){ return a + ((m.type === 'ret' || m.type === 'lost') && A.undone(m.id) ? 0 : m.type === 'ret' ? (m.deduct || 0) : m.type === 'lost' ? m.price * m.from / 100 : (m.type === 'out' && m.kind === 'use' && !A.useCancelled(m.id)) ? m.price * m.qty * m.cond / 100 : 0); }, 0);
     return '<div class="afc-kpis">'
       + '<div class="afc-kpi"><div class="v afc-num">' + F(sv) + ' <small>ر.س</small></div><div class="k">قيمة المخزن بسعر الفاتورة</div></div>'
-      + (function(){ var lg = 0, lv = 0;
-          A.itemsList(true).forEach(function(it){ var L = it.leg || {}; Object.keys(L).forEach(function(n){ var a = LG.filter(function(x){ return x.name === n; })[0], c = W ? (a ? (a.w[W] || 0) : 0) : (Number(L[n]) || 0); lg += c; lv += c * (a && a.n ? a.v / a.n : 0); }); });
-          return '<div class="afc-kpi"><div class="v afc-num">' + (U.length + lg) + ' <small>قطعة</small></div><div class="k">عند الموظفين' + (lg ? ' (منها ' + lg + ' قديمة)' : '') + ' · ' + F(U.reduce(function(a, u){ return a + u.price * u.cond / 100; }, 0) + lv) + ' ر.س</div></div>'; })()
+      + (function(){ var lg = LG.reduce(function(a, x){ return a + ((W ? x.w[W] : x.n) || 0); }, 0);
+          return '<div class="afc-kpi"><div class="v afc-num">' + U.length + ' <small>قطعة</small></div><div class="k">عند الموظفين · ' + F(U.reduce(function(a, u){ return a + u.price * u.cond / 100; }, 0)) + ' ر.س' + (lg ? ' · و' + lg + ' عهدة قديمة لم تُرحَّل' : '') + '</div></div>'; })()
       + '<div class="afc-kpi"><div class="v afc-num ' + (low ? 'afc-red' : '') + '">' + low + '</div><div class="k">أصناف تحت حد التنبيه</div></div>'
       + '<div class="afc-kpi"><div class="v afc-num afc-red">' + F(ded) + ' <small>ر.س</small></div><div class="k">خصومات عهد هذا الشهر</div></div></div>';
   }
@@ -11041,14 +11042,14 @@ body.wx-card-open #wx4Pill{ display:none !important; }
         + '<td class="afc-num">' + F(A.avgCost(it.id)) + '</td><td class="afc-num"><b>' + F(it.emp) + '</b></td>'
         + '<td class="afc-num afc-green"><b>' + nw + '</b></td><td class="afc-num" style="color:#95570f"><b>' + used + '</b></td>'
         + '<td class="afc-num"><b>' + tot + '</b><div class="afc-barx' + (low ? ' low' : '') + '"><i style="width:' + Math.min(100, mn ? tot / (mn * 2) * 100 : 100) + '%"></i></div></td>'
-        + (function(){ var n = (it.kind === 'use' ? 0 : U.filter(function(u){ return u.item === it.id && (!W || u.wh === W); }).length), g = legHeld(it, W);
-            return '<td class="afc-num">' + ((n + g) ? ((n + g) + (g ? '<div class="afc-sm afc-muted">منها ' + g + ' قديمة</div>' : '')) : '—') + '</td>'
-              + '<td class="afc-num" style="background:var(--surface-2,#faf7f0)"><b>' + (tot + n + g) + '</b></td>'; })()
+        + (function(){ var n = U.filter(function(u){ return u.item === it.id && (!W || u.wh === W); }).length, g = legHeld(it, W);
+            return '<td class="afc-num">' + (n || '—') + (g ? '<div class="afc-sm afc-muted">＋' + g + ' قديمة لم تُرحَّل</div>' : '') + '</td>'
+              + '<td class="afc-num" style="background:var(--surface-2,#faf7f0)"><b>' + (tot + n) + '</b></td>'; })()
         + '<td class="afc-num">' + (st.dmg || '—') + '</td>'
         + '<td>' + (low ? '<span class="afc-tag afc-bad">أقل من ' + mn + '</span>' : '<span class="afc-tag afc-ok">متوفر</span>') + '</td>'
         + '<td style="white-space:nowrap">' + (A.totalAvail(it.id) > 0 ? '<button class="afc-mini" data-afcwx="' + E(it.id) + '" title="نقل بين المخازن">↔ نقل</button> ' : '') + (adm ? '<button class="afc-mini" data-afcedit="' + E(it.id) + '">تعديل</button>' : '') + '</td></tr>';
     }).join('');
-    return '<div class="afc-card"><div class="afc-ch"><div><h3>🏬 المخزن</h3><p>«في المخزن» من الفواتير ناقص ما سُلّم. «الإجمالي الكلي» = في المخزن + عند الموظفين (التسليمات والعهد القديمة المرحّلة).' + (S.wh ? ' — مخزن ' + E(A.whName(S.wh)) : '') + '</p></div></div>'
+    return '<div class="afc-card"><div class="afc-ch"><div><h3>🏬 المخزن</h3><p>«في المخزن» من الفواتير ناقص ما سُلّم. «الإجمالي الكلي» = في المخزن + عند الموظفين. العهد القديمة تُخصم من المخزن عند ترحيلها.' + (S.wh ? ' — مخزن ' + E(A.whName(S.wh)) : '') + '</p></div></div>'
       + '<div class="afc-tw"><table class="afc-tbl"><thead><tr><th>الصنف</th><th>التسليم من</th><th>سعر الفاتورة</th><th>سعر الموظف</th><th>جديد</th><th>مستعمل</th><th>في المخزن</th><th>عند الموظفين</th><th>الإجمالي الكلي</th><th>تالف</th><th>الحالة</th><th></th></tr></thead><tbody>'
       + (rows || '<tr><td colspan="12" class="afc-empty">' + (A.itemsList(true).length ? 'لا نتائج' : 'لا أصناف بعد — ابدأ بـ «➕ صنف» ثم «🧾 فاتورة شراء».') + '</td></tr>') + '</tbody></table></div></div>';
   }
@@ -11218,7 +11219,8 @@ body.wx-card-open #wx4Pill{ display:none !important; }
   function legCard(){
     if (!LG.length) return '';
     var mgr = isMgr(), un = LG.filter(function(a){ return !legLink(a.name); }).length;
-    return '<div class="afc-card"><div class="afc-ch"><div><h3>📋 حصر العهد القديمة المسلّمة</h3><p>' + LG.reduce(function(a, x){ return a + x.n; }, 0) + ' قطعة عند الموظفين من العهد القديمة، مجمّعة بالاسم. اربط كل اسم بصنف وعدّل العدد ليظهر في عمود «عند الموظفين». سجلات الموظفين نفسها لا تتغيّر.</p></div>'
+    return '<div class="afc-card"><div class="afc-ch"><div><h3>📋 حصر العهد القديمة المسلّمة</h3><p>' + LG.reduce(function(a, x){ return a + x.n; }, 0) + ' قطعة عند الموظفين من العهد القديمة، مجمّعة بالاسم. اربط كل اسم بصنف ثم «ترحيل السجلات»: تتحوّل سجلات الموظفين إلى عهد جديدة مرتبطة بالمخزن وتُخصم من رصيده، ولا يضيع منها شيء.</p></div>'
+      + (mgr && LG.some(function(a){ return legLink(a.name); }) ? '<button class="btn" id="afcLgMig">⇪ ترحيل السجلات للعهد الجديدة</button>' : '')
       + '<span class="afc-tag ' + (un ? 'afc-warn' : 'afc-ok') + '">' + (un ? un + ' اسم لم يُرحَّل' : 'رُحّل الكل') + '</span></div><div class="afc-tw" style="max-height:420px"><table class="afc-tbl"><thead><tr><th>الاسم في العهد القديمة</th><th>في السجلات</th><th>المخازن</th><th>القيمة</th><th>الصنف في المخزن</th><th>العدد المعتمد</th><th></th></tr></thead><tbody>'
       + LG.map(function(a, i){ var k = legLink(a.name);
           return '<tr><td><b>' + E(a.name) + '</b></td><td class="afc-num">' + a.n + '</td><td class="afc-sm">' + Object.keys(a.w).map(function(w){ return E(A.whName(w)) + ' ' + a.w[w]; }).join(' · ') + '</td><td class="afc-num">' + F(a.v) + '</td>'
@@ -11241,6 +11243,85 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     jobs.reduce(function(p, it){ return p.then(function(){ return A.saveItem(it); }); }, Promise.resolve())
       .then(function(){ render(); T(unlink ? 'فُكّ الربط' : '📋 رُحّل ' + n + ' × ' + a.name + ' إلى «عند الموظفين»'); }).catch(function(x){ T('⚠️ ' + x.message); });
   }
+  /* v140: ترحيل العهد القديمة — كل سجل قديم مربوط بصنف يصير حركة تسليم (out) بنفس القيمة والتاريخ ويخصم من المخزن؛
+     ما لا رصيد له يأخذ رصيدا افتتاحيا (open)؛ السجل القديم ينقل الى custody_migrated ولا يحذف؛ اعادة التشغيل آمنة. */
+  function legPlan(){
+    var done = {}, av = {}, P = { recs: [], opens: {}, byItem: {}, fix: [], noid: 0 };
+    A.mvList().forEach(function(m){ if (m.type === 'out' && m.legacy) done[nid(m.iq) + '|' + m.legacy] = m.id; });
+    function a(item, wh){ var k = item + '|' + wh; if (av[k] == null) av[k] = A.avail(item, wh, 100); return av[k]; }
+    var whs = Object.keys(A.WH_NAMES).concat(whList()).filter(function(v, i, x){ return x.indexOf(v) === i; });
+    emps().forEach(function(e){ (e && e.custody || []).forEach(function(c){
+      if (!c || /^c[ud]:/.test(String(c.id || '')) || c.status !== 'held') return;
+      if (!c.id) { P.noid++; return; }
+      var iq = nid(e.iqama), was = done[iq + '|' + c.id];
+      if (was) { P.fix.push({ e: e, c: c, mv: was }); return; }
+      var k = legLink(String(c.item || '').trim()); if (!k) return;
+      var it = k.it, wh0 = whOf(e), wh = wh0;
+      if (a(it.id, wh0) < 1) { var best = null; whs.forEach(function(w){ if (a(it.id, w) >= 1 && (!best || a(it.id, w) > a(it.id, best))) best = w; });
+        if (best) wh = best; else { P.opens[it.id + '|' + wh0] = (P.opens[it.id + '|' + wh0] || 0) + 1; av[it.id + '|' + wh0] = a(it.id, wh0) + 1; } }
+      av[it.id + '|' + wh]--;
+      P.recs.push({ e: e, c: c, it: it, wh: wh });
+      var b = P.byItem[it.id] = P.byItem[it.id] || { name: it.name, n: 0, open: 0, v: 0 }; b.n++; b.v += Number(c.value) || 0;
+    }); });
+    Object.keys(P.opens).forEach(function(k){ P.byItem[k.split('|')[0]].open += P.opens[k]; });
+    return P;
+  }
+  /* سجل قديم له حركة ترحيل ولم ينقل بعد (جهاز آخر): ينقل للمحفوظات فلا يحسب مرتين */
+  function legHeal(){
+    var done = null, n = 0;
+    A.mvList().forEach(function(m){ if (m.type === 'out' && m.legacy) (done = done || {})[nid(m.iq) + '|' + m.legacy] = m.id; });
+    if (!done) return 0;
+    emps().forEach(function(e){ var iq = nid(e && e.iqama); (e && e.custody || []).slice().forEach(function(c){
+      if (!c || !c.id || /^c[ud]:/.test(String(c.id)) || c.status !== 'held') return;
+      var mv = done[iq + '|' + c.id]; if (mv) { legArchive(e, c, mv); n++; } }); });
+    return n;
+  }
+  function legArchive(e, c, mvId){
+    var L = e.custody || [], i = L.indexOf(c); if (i < 0) return;
+    var x = JSON.parse(JSON.stringify(c)); x.migrated_at = A.nowIso(); x.migrated_by = A.me(); x.migrated_to = mvId;
+    (e.custody_migrated = e.custody_migrated || []).push(x); L.splice(i, 1);
+  }
+  function legMigrate(onStep){
+    var P = legPlan(), opens = [], outs = [];
+    Object.keys(P.opens).forEach(function(k){ var p = k.split('|');
+      opens.push(A.mkMv({ type: 'open', item: p[0], item_name: (A.item(p[0]) || {}).name || '', wh: p[1], qty: P.opens[k], cond: 100, ref: 'رصيد افتتاحي — عهدة قديمة', reason: 'ترحيل العهد القديمة', src: 'وثيق' })); });
+    P.recs.forEach(function(r){ var d = /^\d{4}-\d{2}-\d{2}$/.test(String(r.c.date_out || '')) ? r.c.date_out : A.today();
+      r.mv = A.mkMv({ type: 'out', item: r.it.id, item_name: r.it.name, kind: 'ret', wh: r.wh, qty: 1, cond: 100, price: Number(r.c.value) || 0, iq: nid(r.e.iqama), emp_name: empName(r.e),
+        units: [A.uid('U')], photos: [], ref: 'ترحيل عهدة قديمة', src: 'وثيق', date: d, legacy: r.c.id, legacy_item: String(r.c.item || ''), legacy_note: String(r.c.note || '') });
+      outs.push(r); });
+    var done = 0, chunks = []; for (var i = 0; i < outs.length; i += 100) chunks.push(outs.slice(i, i + 100));
+    function finish(err){
+      P.fix.forEach(function(f){ legArchive(f.e, f.c, f.mv); });
+      try { recomputeStats(); } catch(x){} try { persist(); } catch(x){}
+      materialize(); kickOld();
+      /* الاسماء التي لم يبق لها سجل قديم ترفع من ربط الصنف وتحفظ في legDone */
+      var left = {}; legAgg().forEach(function(a){ left[a.name] = 1; });
+      var jobs = A.itemsList(true).filter(function(it){ return it.leg && Object.keys(it.leg).some(function(n){ return !left[n]; }); }).map(function(it){
+        var o = JSON.parse(JSON.stringify(it)); o.legDone = o.legDone || {}; Object.keys(o.leg).forEach(function(n){ if (!left[n]) { o.legDone[n] = o.leg[n]; delete o.leg[n]; } }); return o; });
+      return jobs.reduce(function(p, it){ return p.then(function(){ return A.saveItem(it); }); }, Promise.resolve())
+        .then(function(){ if (err) throw err; return { moved: done, opens: opens.reduce(function(a, m){ return a + m.qty; }, 0), fixed: P.fix.length }; });
+    }
+    var p = opens.length ? A.put('mv', opens) : Promise.resolve();
+    chunks.forEach(function(ch){ p = p.then(function(){ return A.put('mv', ch.map(function(r){ return r.mv; })); })
+      .then(function(){ ch.forEach(function(r){ legArchive(r.e, r.c, r.mv.id); }); done += ch.length; if (onStep) onStep(done, outs.length); }); });
+    return p.then(function(){ return finish(null); }, function(err){ return finish(err); });
+  }
+  function legMigModal(){
+    var P = legPlan(), ids = Object.keys(P.byItem);
+    if (!P.recs.length && !P.fix.length) return T('لا سجلات قديمة مربوطة بأصناف — اربط الأسماء أولاً');
+    var m = modal('⇪ ترحيل العهد القديمة إلى العهد الجديدة',
+      '<div class="afc-note">كل سجل قديم «بعهدة الموظف» يصير عهدة جديدة عند الموظف نفسه بنفس القيمة والتاريخ، ويُخصم من رصيد المخزن. الصنف الذي لا رصيد له يُسجَّل له رصيد افتتاحي بقدر النقص. السجل القديم يُحفظ في ملف الموظف ولا يُحذف.</div>'
+      + '<table class="afc-tbl"><thead><tr><th>الصنف</th><th>سجلات تُرحَّل</th><th>تُخصم من المخزن</th><th>رصيد افتتاحي</th><th>القيمة</th></tr></thead><tbody>'
+      + ids.map(function(id){ var b = P.byItem[id]; return '<tr><td><b>' + E(b.name) + '</b></td><td class="afc-num">' + b.n + '</td><td class="afc-num">' + (b.n - b.open) + '</td><td class="afc-num">' + (b.open || '—') + '</td><td class="afc-num">' + F(b.v) + '</td></tr>'; }).join('')
+      + '</tbody></table>' + (P.fix.length ? '<div class="afc-sm afc-muted" style="margin-top:8px">و' + P.fix.length + ' سجل رُحّلت حركته من قبل ويُستكمل نقله.</div>' : '')
+      + (P.noid ? '<div class="afc-sm afc-muted">' + P.noid + ' سجل بلا معرّف لن يُرحَّل.</div>' : ''),
+      '<button class="btn ghost" id="afcMGX">إلغاء</button><button class="btn" id="afcMGS">ترحيل ' + (P.recs.length + P.fix.length) + ' سجل</button>');
+    m.querySelector('#afcMGX').onclick = closeM;
+    m.querySelector('#afcMGS').onclick = function(){ var b = this; b.disabled = true; b.textContent = 'جارٍ الترحيل…';
+      legMigrate(function(d, n){ b.textContent = 'جارٍ الترحيل… ' + d + ' / ' + n; })
+        .then(function(r){ closeM(); render(); T('✅ رُحّل ' + r.moved + ' سجل إلى العهد الجديدة' + (r.opens ? ' · رصيد افتتاحي ' + r.opens : '')); })
+        .catch(function(x){ closeM(); render(); T('⚠️ توقّف الترحيل: ' + (x && x.message || '') + ' — أعد المحاولة لاستكماله'); }); };
+  }
   /* حذف عهدة قديمة: تُنقل كاملة إلى أرشيف الموظف ولا تضيع */
   function legDelete(iq, id, why){
     var e = empBy(iq); if (!e) return Promise.reject(new Error('الموظف غير موجود'));
@@ -11262,10 +11343,10 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       + C.map(function(x){ return '<tr><td>📦 عهدة قديمة <b>' + E(x.c.item) + '</b> — ' + E(empName(x.e)) + '</td><td class="afc-num">' + E(x.c.date_out || '') + '</td><td class="afc-num">' + F(x.c.value) + '</td><td class="afc-sm">' + E(x.c.deleted_by || '') + '<div class="afc-muted afc-num">' + E(String(x.c.deleted_at || '').slice(0, 10)) + '</div></td><td class="afc-sm">' + E(x.c.delete_reason || '') + '</td></tr>'; }).join('')
       + '</tbody></table></div></div>';
   }
-  var MVL = { 'in': ['وارد فاتورة', 'afc-ok'], rev: ['عكس فاتورة', 'afc-mute'], out: ['تسليم', 'afc-info'], ret: ['استلام', 'afc-gold'], lost: ['فقد', 'afc-bad'], cancel: ['إلغاء تسليم', 'afc-mute'], adj: ['تصحيح حالة', 'afc-warn'], xfer: ['نقل عهدة', 'afc-info'], unret: ['إلغاء استلام', 'afc-mute'], wx: ['نقل بين المخازن', 'afc-info'] };
+  var MVL = { 'in': ['وارد فاتورة', 'afc-ok'], rev: ['عكس فاتورة', 'afc-mute'], out: ['تسليم', 'afc-info'], ret: ['استلام', 'afc-gold'], lost: ['فقد', 'afc-bad'], cancel: ['إلغاء تسليم', 'afc-mute'], adj: ['تصحيح حالة', 'afc-warn'], xfer: ['نقل عهدة', 'afc-info'], unret: ['إلغاء استلام', 'afc-mute'], wx: ['نقل بين المخازن', 'afc-info'], open: ['رصيد افتتاحي', 'afc-ok'] };
   function movesCard(){
     var W = S.wh || null;
-    var F2 = { all: function(){ return true; }, stock: function(m){ return m.type === 'in' || m.type === 'rev' || m.type === 'wx'; }, cust: function(m){ return m.type === 'out' || m.type === 'ret' || m.type === 'lost'; }, edit: function(m){ return m.type === 'adj' || m.type === 'xfer' || m.type === 'cancel' || m.type === 'unret'; } };
+    var F2 = { all: function(){ return true; }, stock: function(m){ return m.type === 'in' || m.type === 'rev' || m.type === 'wx' || m.type === 'open'; }, cust: function(m){ return m.type === 'out' || m.type === 'ret' || m.type === 'lost'; }, edit: function(m){ return m.type === 'adj' || m.type === 'xfer' || m.type === 'cancel' || m.type === 'unret'; } };
     var ms = A.mvList().slice().reverse().filter(function(m){ return (!W || m.wh === W || m.to_wh === W) && F2[S.mvf](m) && qm(m.item_name, m.emp_name, m.iq, m.to_name, m.ref, m.reason, m.plate); }).slice(0, 200);
     var orph = Object.keys(orphan).length;
     return '<div class="afc-card"><div class="afc-ch"><div><h3>🔁 سجل الحركات</h3><p>كل تغيير له سطر ومصدره. تعديل وحذف التسليم والاستلام من زر السطر، ويبقى أثره هنا.' + (orph ? ' <span class="afc-tag afc-warn">' + orph + ' إقامة ليست في وثيق</span>' : '') + '</p></div>'
@@ -11324,6 +11405,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     on('[data-afcmvd]', 'click', function(b){ var m = A.D.mv[b.getAttribute('data-afcmvd')]; if (!m) return;
       whyModal('🗑️ حذف تسليم: ' + m.qty + ' × ' + m.item_name + ' — ' + (m.emp_name || m.iq), m.kind === 'use' ? 'ترجع الكمية للمخزن ويُلغى خصمها من الكرت المالي.' : 'ترجع القطع التي ما زالت عند الموظف للمخزن بحالتها، بلا خصم.', true,
         function(why){ return act('mv_cancel', m.id, null, why, 'تسليم ' + m.qty + ' × ' + m.item_name + ' — ' + (m.emp_name || m.iq)); }); });
+    if ((x = document.getElementById('afcLgMig'))) x.onclick = function(){ if (isMgr()) legMigModal(); };
     on('[data-afclgs]', 'click', function(b){ legSave(+b.getAttribute('data-afclgs'), false); });
     on('[data-afclgx]', 'click', function(b){ legSave(+b.getAttribute('data-afclgx'), true); });
     on('[data-afcedit]', 'click', function(b){ itemModal(b.getAttribute('data-afcedit')); });
@@ -11476,12 +11558,12 @@ body.wx-card-open #wx4Pill{ display:none !important; }
 
   /* ---------- تصدير Excel ---------- */
   function exportXlsx(){
-    var W = S.wh || null, MT = { 'in': 'وارد فاتورة', rev: 'عكس فاتورة', out: 'تسليم', ret: 'استلام', lost: 'فقد', cancel: 'إلغاء تسليم', adj: 'تصحيح حالة', xfer: 'نقل عهدة', unret: 'إلغاء استلام', wx: 'نقل بين المخازن' };
+    var W = S.wh || null, MT = { 'in': 'وارد فاتورة', rev: 'عكس فاتورة', out: 'تسليم', ret: 'استلام', lost: 'فقد', cancel: 'إلغاء تسليم', adj: 'تصحيح حالة', xfer: 'نقل عهدة', unret: 'إلغاء استلام', wx: 'نقل بين المخازن', open: 'رصيد افتتاحي' };
     var sh = {
       'المخزن': A.itemsList(true).filter(function(it){ return qm(it.name, it.cat); }).map(function(it){ var st = A.stock(it.id, W);
         return { 'الصنف': it.name, 'الفئة': it.cat || '', 'النوع': it.kind === 'use' ? 'يُخصم عند التسليم' : 'عهدة مستردّة', 'التسليم من': (BY[it.by] || BY.f)[0], 'سعر الفاتورة (متوسط)': r2(A.avgCost(it.id)), 'سعر الموظف': Number(it.emp) || 0,
           'جديد': st.c[100] || 0, 'مستعمل': Object.keys(st.c).filter(function(c){ return c !== '100'; }).reduce(function(a, c){ return a + st.c[c]; }, 0),
-          'عند الموظفين': A.units().filter(function(u){ return u.item === it.id && (!W || u.wh === W); }).length, 'عهد قديمة عند الموظفين': legHeld(it, W), 'الإجمالي الكلي': Object.keys(st.c).reduce(function(a, c){ return a + st.c[c]; }, 0) + (it.kind === 'use' ? 0 : A.units().filter(function(u){ return u.item === it.id && (!W || u.wh === W); }).length) + legHeld(it, W), 'تالف': st.dmg, 'حد التنبيه': Number(it.min) || 0 }; }),
+          'عند الموظفين': A.units().filter(function(u){ return u.item === it.id && (!W || u.wh === W); }).length, 'عهد قديمة عند الموظفين': legHeld(it, W), 'الإجمالي الكلي': Object.keys(st.c).reduce(function(a, c){ return a + st.c[c]; }, 0) + A.units().filter(function(u){ return u.item === it.id && (!W || u.wh === W); }).length, 'تالف': st.dmg, 'حد التنبيه': Number(it.min) || 0 }; }),
       'العهد لدى الموظفين': A.units().filter(function(u){ return (!W || u.wh === W) && qm(u.name, u.iq, (empBy(u.iq) || {}).name_ar); }).map(function(u){ var e = empBy(u.iq) || {};
         return { 'الإقامة': u.iq, 'الموظف': empName(e) || '', 'المشروع': e.project || '', 'المخزن': A.whName(u.wh), 'الصنف': u.name, 'الحالة %': u.cond, 'تاريخ التسليم': u.date, 'اللوحة': u.plate || '', 'القيمة بسعر الموظف': r2(u.price * u.cond / 100) }; }),
       'الفواتير': A.invList().reduce(function(a, i){ return a.concat((i.lines || []).filter(function(l){ return !W || A.lwh(i, l) === W; }).map(function(l){
