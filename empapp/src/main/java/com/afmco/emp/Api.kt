@@ -194,6 +194,12 @@ object Api {
         rpc("emp_request_update", JSONObject().put("p_token", token).put("p_field", field).put("p_new_value", newValue))
     }
 
+    /** قائمة المشاريع — يختار منها الموظف عند طلب تغيير المشروع */
+    suspend fun projects(token: String): List<Pair<String, String>> {
+        val arr = JSONArray(rpc("emp_projects", JSONObject().put("p_token", token)))
+        return (0 until arr.length()).map { val o = arr.getJSONObject(it); o.optString("code") to o.optString("name", o.optString("code")) }
+    }
+
     /** طلب سلفة (حد أعلى 300 ريال) */
     suspend fun requestAdvance(token: String, amount: Double, reason: String?) {
         rpc("emp_request_advance", JSONObject().put("p_token", token).put("p_amount", amount).put("p_reason", reason ?: JSONObject.NULL))
