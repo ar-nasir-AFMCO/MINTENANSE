@@ -139,7 +139,9 @@ data class RosterItem(
 )
 
 data class RosterResult(val rows: List<RosterItem>, val projects: List<String>, val dates: Map<String, String>,
-    val stale: Set<String> = emptySet())   // مشاريع لم يُرفع لها دوام أمس
+    val stale: Set<String> = emptySet(),   // مشاريع لم يُرفع لها دوام أمس
+    val date: String? = null, val today: String? = null,   // اليوم المعروض واليوم الجاري (v139)
+    val noDay: Set<String> = emptySet(), val pulled: String? = null)   // مشاريع بلا دوام في اليوم المعروض · وقت آخر سحب مباشر
 
 object Api {
     private const val SB_URL = "https://coueubvyaokyycqpmirs.supabase.co"
@@ -392,8 +394,8 @@ object Api {
     } catch (_: Exception) { null }
 
     /** روستر المناديب حسب مشاريع المستخدم: حضور آخر يوم (attendance_daily) × المركبة المسلّمة */
-    suspend fun roster(token: String, project: String? = null): RosterResult {
-        val o = JSONObject(rpc(token, "soot_roster", JSONObject().put("p_project", project ?: JSONObject.NULL)))
+    suspend fun roster(token: String, project: String? = null, date: String? = null): RosterResult {
+        val o = JSONObject(rpc(token, "soot_roster", JSONObject().put("p_project", project ?: JSONObject.NULL).put("p_date", date ?: JSONObject.NULL)))
         val pa = o.optJSONArray("projects") ?: JSONArray()
         val projects = (0 until pa.length()).map { pa.optString(it) }
         val dj = o.optJSONObject("dates") ?: JSONObject()
@@ -416,7 +418,11 @@ object Api {
         }
         val sa = o.optJSONArray("stale_projects") ?: JSONArray()
         val stale = (0 until sa.length()).map { sa.optString(it) }.toSet()
-        return RosterResult(rows, projects, dates, stale)
+        val nd = o.optJSONArray("no_day") ?: JSONArray()
+        val noDay = (0 until nd.length()).map { nd.optString(it) }.toSet()
+        val pj = o.optJSONObject("pulled")
+        val pulled = listOfNotNull(pj?.optStringOrNull("samurai"), pj?.optStringOrNull("keeta")).maxOrNull()
+        return RosterResult(rows, projects, dates, stale, o.optStringOrNull("date"), o.optStringOrNull("today"), noDay, pulled)
     }
 
     /** إصدار إنذار للمندوب (حتى ٣) — يُسجَّل في وثيق ويظهر للموظف */
