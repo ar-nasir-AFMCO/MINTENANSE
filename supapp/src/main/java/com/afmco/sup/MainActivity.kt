@@ -442,6 +442,26 @@ fun HomeScreen(session: SupSession, onOpen: (Complaint) -> Unit, onUpdates: () -
 
 private fun sootAr(n: Any): String = n.toString().map { "٠١٢٣٤٥٦٧٨٩".getOrNull(it - '0') ?: it }.joinToString("")
 
+/** فلتر التاريخ في الروستر: يوم سابق/لاحق بصيغة yyyy-MM-dd (null عند الخطأ = اليوم) */
+private fun rosterShiftDay(ymd: String, delta: Int): String? = try {
+    val f = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+    val c = java.util.Calendar.getInstance(); c.time = f.parse(ymd)!!
+    c.add(java.util.Calendar.DAY_OF_MONTH, delta); f.format(c.time)
+} catch (e: Exception) { null }
+
+/** اختيار يوم من التقويم (لا يتجاوز اليوم). اختيار اليوم الجاري يرجّع null = العرض المباشر */
+private fun rosterPickDay(context: Context, current: String, today: String?, onPick: (String?) -> Unit) {
+    val f = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+    val c = java.util.Calendar.getInstance()
+    try { c.time = f.parse(current)!! } catch (e: Exception) { }
+    val dlg = android.app.DatePickerDialog(context, { _, y, m, d ->
+        val s = String.format(java.util.Locale.US, "%04d-%02d-%02d", y, m + 1, d)
+        onPick(if (s == today) null else s)
+    }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH))
+    dlg.datePicker.maxDate = System.currentTimeMillis()
+    dlg.show()
+}
+
 /** صوت — المناديب على رأس العمل: حسب مشروع المشرف فقط · الحضور × المركبة المسلّمة · إنذارات · رسالة موجّهة */
 @Composable
 fun RosterScreen(session: SupSession, onBack: () -> Unit) {
@@ -454,12 +474,15 @@ fun RosterScreen(session: SupSession, onBack: () -> Unit) {
     var proj by remember { mutableStateOf<String?>(null) }
     var levelFilter by remember { mutableStateOf<String?>(null) }
     var q by remember { mutableStateOf("") }
+    var day by remember { mutableStateOf<String?>(null) }   // null = اليوم (مباشر)
+    val context = LocalContext.current
     BackHandler { onBack() }
 
-    LaunchedEffect(refresh) {
+    LaunchedEffect(refresh, day) {
         loading = true; error = null
-        try { res = Api.roster(session.token) } catch (e: Exception) { error = e.message } finally { loading = false }
+        try { res = Api.roster(session.token, null, day) } catch (e: Exception) { error = e.message } finally { loading = false }
     }
+    val isTodayView = day == null || day == res?.today
 
     val all = res?.rows ?: emptyList()
     // المشاريع اللي فيها مناديب فعلًا (مشاريع المشرف فقط — من الخادم)
@@ -476,6 +499,7 @@ fun RosterScreen(session: SupSession, onBack: () -> Unit) {
     val nAbsVeh = inProj.count { it.level == "absent_vehicle" }
     val nAbs = inProj.count { it.level == "absent" }
     val nNoData = inProj.count { it.level == "nodata" }
+    val nPending = inProj.count { it.level == "pending" }
     val date = curProj?.let { res?.dates?.get(it) }
 
     Scaffold(containerColor = Bg, topBar = {
@@ -492,6 +516,18 @@ fun RosterScreen(session: SupSession, onBack: () -> Unit) {
                 all.isEmpty() -> Text("لا يوجد مناديب في مشاريعك. تأكد من إسناد المشروع لحسابك في المنصة.",
                     Modifier.align(Alignment.Center).padding(24.dp), color = Gray, textAlign = TextAlign.Center)
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    // فلتر التاريخ: اليوم (مباشر) أو أي يوم سابق
+                    item {
+                        val shownDay = res?.date ?: day ?: ""
+                        Row(Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChipItem("◀ اليوم السابق", false) { day = rosterShiftDay(shownDay, -1); levelFilter = null }
+                            FilterChipItem("📅 " + shownDay + (if (isTodayView) " · اليوم (مباشر)" else ""), true) {
+                                rosterPickDay(context, shownDay, res?.today) { picked -> day = picked; levelFilter = null }
+                            }
+                            if (!isTodayView) FilterChipItem("اليوم ▶", false) { day = null; levelFilter = null }
+                        }
+                    }
                     if (projs.size > 1) item {
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             items(projs) { p ->
@@ -506,19 +542,22 @@ fun RosterScreen(session: SupSession, onBack: () -> Unit) {
                             Kpi("غائب بدون مركبة", nAbs, Amber, levelFilter == "absent", Modifier.weight(1f)) { levelFilter = if (levelFilter == "absent") null else "absent" }
                         }
                     }
-                    if (nNoData > 0) item {
+                    if (nPending > 0 || nNoData > 0) item {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Kpi("لا يوجد دوام مسجّل", nNoData, Gray, levelFilter == "nodata", Modifier.weight(1f)) { levelFilter = if (levelFilter == "nodata") null else "nodata" }
+                            if (nPending > 0) Kpi("لم يبدأ دوام اليوم بعد", nPending, Color(0xFF2563EB), levelFilter == "pending", Modifier.weight(1f)) { levelFilter = if (levelFilter == "pending") null else "pending" }
+                            if (nNoData > 0) Kpi("لا يوجد دوام مسجّل", nNoData, Gray, levelFilter == "nodata", Modifier.weight(1f)) { levelFilter = if (levelFilter == "nodata") null else "nodata" }
                         }
                     }
                     item {
-                        Text(if (date != null) "الغائب = لم يُسجَّل له دوام خلال آخر ٢٤ ساعة (أمس أو اليوم) · آخر ملف دوام مرفوع $date · المركبة من التسليمات المفتوحة في الأسطول"
-                             else "لا يوجد ملف دوام مرفوع لهذا المشروع — تظهر المركبات فقط",
+                        Text(if (date == null) "لا يوجد دوام مسجّل لهذا المشروع — تظهر المركبات فقط"
+                             else if (isTodayView) "مباشر: من داوم اليوم يظهر مداوماً فور وصول بياناته، ويكتمل اليوم عند منتصف الليل · الغائب = لا دوام أمس ولا اليوم" +
+                                 (res?.pulled?.let { " · آخر سحب مباشر $it" } ?: "") + " · آخر دوام مسجّل $date"
+                             else "دوام يوم ${res?.date ?: ""} · المركبة من التسليمات المفتوحة في الأسطول",
                             fontSize = 11.sp, color = Gray, modifier = Modifier.padding(vertical = 2.dp))
                     }
-                    if (curProj != null && res?.stale?.contains(curProj) == true) item {
+                    if (curProj != null && (res?.noDay?.contains(curProj) == true || (isTodayView && res?.stale?.contains(curProj) == true))) item {
                         Surface(color = Color(0xFFFEF3C7), shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
-                            Text("⚠ آخر ملف دوام مرفوع لهذا المشروع بتاريخ ${date ?: "—"} — لم يُرفع دوام أمس، فيظهر الجميع غائبين حتى يُرفع.",
+                            Text(if (isTodayView) "⚠ لم يصل دوام اليوم لهذا المشروع بعد — آخر دوام مسجّل بتاريخ ${date ?: "—"}." else "⚠ لا يوجد دوام مسجّل لهذا المشروع في يوم ${res?.date ?: ""}.",
                                 color = Color(0xFFB45309), fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(10.dp))
                         }
                     }
@@ -544,6 +583,7 @@ fun RosterCard(r: RosterItem, onWarn: () -> Unit) {
         "present" -> Color(0xFFDCFCE7) to Color(0xFF15803D)
         "absent_vehicle" -> Color(0xFFFEE2E2) to Color(0xFFB91C1C)
         "absent" -> Color(0xFFFEF3C7) to Color(0xFFB45309)
+        "pending" -> Color(0xFFDBEAFE) to Color(0xFF1D4ED8)
         else -> Color(0xFFEEF2F0) to Color(0xFF64748B)
     }
     Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp),
