@@ -1341,7 +1341,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261121190000";
+  var BUILD = "20261121210000";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -2531,19 +2531,25 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         window.postMessage({ afmcKm:'req', id:id, action:action, payload:payload || {} }, window.location.origin);
       });
     }
+    function saveKind(kind, days, data){
+      var ch = Promise.resolve(), n = 0;
+      days.forEach(function(d){ var rows = data && data[d]; if (!rows) return;
+        ch = ch.then(function(){ return rows.length ? rpc('keemart_upsert', { p_kind:kind, p_rows: rows }) : null; })
+               .then(function(){ n += rows.length; return rpc('keemart_sync_done', { p_kind:kind, p_day:d, p_rows:rows.length }); }); });
+      return ch.then(function(){ return n; });
+    }
     function tick(force){
       if (busy || !sess || !there()) return Promise.resolve(null);
-      busy = true;
+      busy = true; var note = [];
       return rpc('keemart_sync_plan', { p_force: force === true }).then(function(p){
-        var days = (p && p.days) || []; if (!days.length) return null;
-        return ext('pull', { days: days }).then(function(data){
-          var n = 0, ch = Promise.resolve();
-          days.forEach(function(d){ var rows = (data && data[d]) || []; if (!rows.length) return;
-            ch = ch.then(function(){ return rpc('keemart_upsert', { p_kind:'attendance', p_rows: rows }); }).then(function(){ n += rows.length; }); });
-          return ch.then(function(){ return rpc('keemart_sync_mark', { p_ok:true, p_note: days.length + ' days / ' + n + ' rows' }); }).then(function(){ return n; });
-        }).catch(function(e){
-          return rpc('keemart_sync_mark', { p_ok:false, p_note: String((e && e.message) || e).slice(0, 250) }).then(function(){ return null; }, function(){ return null; });
-        });
+        var days = (p && p.days) || [], bd = (p && p.board_days) || [], ch = Promise.resolve();
+        if (!days.length && !bd.length) return null;
+        var bad = function(tag){ return function(e){ note.push(tag + ' ERR ' + String((e && e.message) || e).slice(0, 90)); }; };
+        if (days.length) ch = ch.then(function(){ return ext('pull', { days: days }); })
+          .then(function(data){ return saveKind('attendance', days, data); }).then(function(n){ note.push('att ' + n); }, bad('att'));
+        if (bd.length) ch = ch.then(function(){ return ext('board', { today: p.today, days: bd }); })
+          .then(function(r){ return saveKind('board', bd, r && r.days); }).then(function(n){ note.push('board ' + n); }, bad('board'));
+        return ch.then(function(){ var s = note.join(' | '); return rpc('keemart_sync_mark', { p_ok: s.indexOf('ERR') < 0, p_note: s }).then(function(){ return s; }); });
       }).catch(function(){ return null; }).then(function(r){ busy = false; return r; });
     }
     window.__kmSync = tick;
