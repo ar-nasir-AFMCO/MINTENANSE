@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "AFMCO Keemart Bridge",
+  "version": "1.0.0",
+  "description": "يسحب تقرير دوام كيمارت من بوابة كيمارت (بجلستك) إلى منصة AFMCO تلقائياً",
+  "permissions": ["scripting", "tabs"],
+  "host_permissions": ["https://courier-keemart.mykeeta.com/*", "https://ar-nasir-afmco.github.io/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    { "matches": ["https://ar-nasir-afmco.github.io/MINTENANSE/afmc/*"], "js": ["platform.js"], "run_at": "document_start" }
+  ]
+}
