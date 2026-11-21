@@ -1341,7 +1341,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261121220000";
+  var BUILD = "20261121230000";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -2531,6 +2531,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         window.postMessage({ afmcKm:'req', id:id, action:action, payload:payload || {} }, window.location.origin);
       });
     }
+    function kmOld(){ var v = String(document.documentElement.getAttribute('data-afmc-km') || '0').split('.'), a = +v[0] || 0, b = +v[1] || 0; return a < 1 || (a === 1 && b < 2); }
     function saveKind(kind, days, data){
       var ch = Promise.resolve(), n = 0;
       days.forEach(function(d){ var rows = data && data[d]; if (!rows) return;
@@ -2547,7 +2548,8 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
         var bad = function(tag){ return function(e){ note.push(tag + ' ERR ' + String((e && e.message) || e).slice(0, 90)); }; };
         if (days.length) ch = ch.then(function(){ return ext('pull', { days: days }); })
           .then(function(data){ return saveKind('attendance', days, data); }).then(function(n){ note.push('att ' + n); }, bad('att'));
-        if (bd.length) ch = ch.then(function(){ return ext('board', { today: p.today, days: bd }); })
+        if (bd.length && kmOld()) note.push('board ERR extension older than 1.2.0 - update it');
+        else if (bd.length) ch = ch.then(function(){ return ext('board', { today: p.today, days: bd }); })
           .then(function(r){ var er = r && r.errors ? Object.keys(r.errors) : [];
             return saveKind('board', bd, r && r.days).then(function(n){ note.push('board ' + n + ' (' + ((r && r.mode) || '-') + ')' + (er.length ? ' ERR ' + er[0] + ': ' + String(r.errors[er[0]]).slice(0, 60) : '')); }); }).then(null, bad('board'));
         return ch.then(function(){ var s = note.join(' | '); return rpc('keemart_sync_mark', { p_ok: s.indexOf('ERR') < 0, p_note: s }).then(function(){ return s; }); });
