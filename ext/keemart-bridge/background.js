@@ -122,7 +122,7 @@ async function kmBoardInPage(today, days) {
     for (var i = 0; i < days.length; i++) {
       var day = days[i]; if (day === today) continue;
       try {
-        var p = day.split('-'), want = (+p[2]) + ' ' + MON[+p[1] - 1] + ' ' + p[0], key = p.join(''), n0 = cap.length;
+        var p = day.split('-'), want = p[2] + ' ' + MON[+p[1] - 1] + ' ' + p[0], key = p.join(''), n0 = cap.length;
         var q = 'td.ant-picker-cell-in-view[title="' + day + '"]', cell = function () { var a = document.querySelectorAll(q); return a.length ? a[0] : null; };
         if (!(ins()[0].value === want && ins()[1].value === want)) {
           var x = ins()[0];
