@@ -60,20 +60,32 @@ async function board(p) {
   if (!ok(today)) throw new Error('تاريخ اليوم ناقص');
   var days = (p.days || []).filter(function (d, i, a) { return ok(d) && d <= today && a.indexOf(d) === i; }).sort().reverse().slice(0, 12);
   if (!days.length) return { days: {}, errors: {} };
-  var tab = await chrome.tabs.create({ url: BOARD, active: false }), res;
-  try {
+  days = days.slice(0, 6);
+  var tab = await chrome.tabs.create({ url: BOARD + '#afmc_bg', active: false }), out, mode = 'tab';
+  var run = async function (firstWait) {
     tab = await waitLoaded(tab.id);
     if (String(tab.url || '').indexOf(PORTAL + 'jimu/') !== 0) throw new Error('سجّل الدخول في بوابة كيمارت ثم أعد المحاولة');
-    res = await chrome.scripting.executeScript({ target: { tabId: tab.id }, world: 'MAIN', func: kmBoardInPage, args: [today, days] });
+    var res = await chrome.scripting.executeScript({ target: { tabId: tab.id }, world: 'MAIN', func: kmBoardInPage, args: [today, days, firstWait] });
+    return res && res[0] && res[0].result;
+  };
+  try {
+    out = await run(40);
+    if (out && out.noFirst) {            /* الصفحة لم تحمّل شيئاً وهي مخفية: تُعاد في نافذة صغيرة ظاهرة بلا تركيز */
+      mode = 'window';
+      await chrome.windows.create({ tabId: tab.id, focused: false, width: 1100, height: 820 });
+      await chrome.tabs.reload(tab.id); await sleep(1500);
+      out = await run(60);
+    }
   } finally { try { await chrome.tabs.remove(tab.id); } catch (e) {} }
-  var out = res && res[0] && res[0].result;
   if (!out) throw new Error('لوحة الأداء لم تُرجع بيانات');
   if (out.error) throw new Error(out.error);
+  if (out.noFirst) throw new Error('لوحة الأداء لم تحمّل بيانات اليوم (' + (out.vis || '') + ')');
+  out.mode = mode;
   return out;
 }
 
 /* يعمل داخل صفحة لوحة الأداء: يقرأ ما التقطه board-hook.js من ردود الصفحة نفسها، ويختار التاريخ من تقويم الصفحة. */
-async function kmBoardInPage(today, days) {
+async function kmBoardInPage(today, days, firstWait) {
   try {
     var cap = window.__afmcKmCap; if (!cap) return { error: 'لوحة الأداء: الالتقاط غير مفعّل — أعد تحميل الإضافة' };
     var wait = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
@@ -113,10 +125,11 @@ async function kmBoardInPage(today, days) {
       });
     };
     var out = { days: {}, errors: {} };
-    for (var w0 = 0; w0 < 60 && ins().length < 2; w0++) await wait(500);          /* الصفحة تبني نفسها */
-    if (ins().length < 2) return { error: 'لوحة الأداء لم تفتح — تأكد أنك مسجّل الدخول في بوابة كيمارت' };
+    for (var w0 = 0; w0 < 40 && ins().length < 2; w0++) await wait(500);          /* الصفحة تبني نفسها */
+    if (ins().length < 2) return { noFirst: true, vis: 'no picker' };
     /* اليوم: الصفحة تفتح عليه تلقائياً — يُؤخذ من ردّها الأول */
-    var tKey = today.split('-').join(''), first = await settle(tKey, 0, 60);
+    var tKey = today.split('-').join(''), first = await settle(tKey, 0, (firstWait || 40) * 2);
+    if (!first) return { noFirst: true, vis: document.visibilityState };
     if (days.indexOf(today) >= 0) { if (first) out.days[today] = map(today, first); else out.errors[today] = 'لم يصل ردّ اليوم'; }
     /* الأيام الأقدم: تنازلياً، باختيار اليوم مرتين من تقويم الصفحة (بداية ثم نهاية) */
     for (var i = 0; i < days.length; i++) {
