@@ -131,7 +131,9 @@ async function kmBoardInPage(today, days) {
           for (var s = 0; s < 3 && !td; s++) { var pv = document.querySelector('.ant-picker-header-prev-btn'); if (!pv) break; pv.click(); await wait(300); td = cell(); }
           if (!td) { out.errors[day] = 'اليوم غير ظاهر في التقويم'; break; }
           if (/disabled/.test(td.className)) { out.errors[day] = 'اليوم غير متاح في اللوحة'; continue; }
-          td.click(); await wait(700); td = cell(); if (td) td.click(); await wait(700);
+          td.click(); await wait(700); td = cell();
+          for (s = 0; s < 3 && !td; s++) { pv = document.querySelector('.ant-picker-header-prev-btn'); if (!pv) break; pv.click(); await wait(300); td = cell(); }
+          if (td) td.click(); await wait(700);
           if (!(ins()[0].value === want && ins()[1].value === want)) { out.errors[day] = 'تعذّر ضبط التاريخ (' + ins()[0].value + ' → ' + ins()[1].value + ')'; break; }
         }
         var rows = await settle(key, n0, 50);
