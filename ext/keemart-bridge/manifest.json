@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AFMCO Keemart Bridge",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "يسحب تقرير الدوام ولوحة الأداء من بوابة كيمارت (بجلستك) إلى منصة AFMCO تلقائياً",
   "permissions": ["scripting", "tabs"],
   "host_permissions": ["https://courier-keemart.mykeeta.com/*", "https://ar-nasir-afmco.github.io/*"],
