@@ -947,6 +947,12 @@ function vBridge(){
 }
 
 /* ═══ حداثة البيانات: آخر يوم أداء وآخر يوم دوام مقابل اليوم — تنبيه أحمر لو متأخرة ═══ */
+/* v142: حالة السحب التلقائي (اضافة AFMCO Keemart Bridge) */
+function kmAutoNote(){
+  var on=false; try{ on=!!window.top.document.documentElement.getAttribute('data-afmc-km'); }catch(e){}
+  return on ? 'تقرير الدوام يسحب تلقائيا كل 20 دقيقة (اضافة AFMCO Keemart Bridge) ما دامت المنصة مفتوحة وبوابة كيمارت مسجلة الدخول. لوحة الاداء ما زالت تسحب يدويا.'
+            : 'السحب التلقائي متوقف في هذا المتصفح: ثبت اضافة AFMCO Keemart Bridge وسجل الدخول في بوابة كيمارت — بعدها يسحب تقرير الدوام كل 20 دقيقة.';
+}
 function kmFreshness(){
   var D=window.DAILY_ALL||[], lastBoard=null, lastAtt=null;
   D.forEach(function(d){
@@ -960,15 +966,15 @@ function kmFreshness(){
   if(rc) rc.textContent = R ? (R.from+' → '+R.to+' · '+R.n.toLocaleString('ar-EG')+' يوماً') : 'لا بيانات';
   function ago(x){ return x>=999?'لا يوجد':(x<=0?'اليوم':x===1?'أمس':('قبل '+x.toLocaleString('ar-EG')+' يوم')); }
   if(chip){
-    chip.className='chip'+(worst>1?' bad':'');
+    chip.className='chip'+(la>1?' bad':'');
     chip.innerHTML='<span class="dot"></span> آخر أداء: '+(lastBoard||'—')+' ('+ago(lb)+') · آخر دوام: '+(lastAtt||'—')+' ('+ago(la)+')';
   }
   if(bn){
     if(worst>1){
-      bn.className='banner stale';
+      bn.className='banner'+(la>1?' stale':'');
       bn.innerHTML='⚠️ البيانات متأخرة — '+(lb>1?('لوحة الأداء آخر يوم '+(lastBoard||'—')+' ('+ago(lb)+')'):'')+(lb>1&&la>1?' · ':'')+
         (la>1?('تقرير الدوام (الساعات والدخول والخروج) آخر يوم '+(lastAtt||'—')+' ('+ago(la)+')'):'')+
-        '. السحب ما يصير تلقائياً من القاعدة: افتح بوابة كيمارت وشغّل الجسر لسحب الأيام الناقصة.';
+        '. '+kmAutoNote();
     } else {
       bn.className='banner';
       bn.textContent='البيانات محدّثة — آخر أداء '+lastBoard+' · آخر دوام '+lastAtt+'. الصفحة تتحدّث من القاعدة تلقائياً كل ٥ دقائق.';
