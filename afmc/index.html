@@ -1341,7 +1341,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261119200000";
+  var BUILD = "20261121190000";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -2514,6 +2514,42 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
     if (e.source !== window || !e.data || e.data.afmcExt !== 'res') return;
     var f = EXT_W[e.data.id]; if (!f) return; delete EXT_W[e.data.id]; f(e.data.res);
   });
+  /* v142: سحب دوام كيمارت تلقائيا — اضافة AFMCO Keemart Bridge.
+     كل 20 دقيقة: القاعدة تحدد الايام المطلوبة (اليوم دائما + ما لم يكتمل)، الاضافة تسحبها من بوابة كيمارت
+     بجلسة المستخدم، وهذه الصفحة تحفظها بـ keemart_upsert — نفس مسار الدوام والرواتب. */
+  (function kmAutoSync(){
+    var busy = false, N = 0, W = {};
+    function there(){ return !!document.documentElement.getAttribute('data-afmc-km'); }
+    window.addEventListener('message', function(e){
+      var m = e.data; if (e.source !== window || !m || m.afmcKm !== 'res') return;
+      var f = W[m.id]; if (!f) return; delete W[m.id]; f(m);
+    });
+    function ext(action, payload){
+      return new Promise(function(res, rej){
+        var id = 'k' + (++N), t = setTimeout(function(){ delete W[id]; rej(new Error('no reply from extension')); }, 240000);
+        W[id] = function(m){ clearTimeout(t); m.ok ? res(m.result) : rej(new Error(m.error || 'pull failed')); };
+        window.postMessage({ afmcKm:'req', id:id, action:action, payload:payload || {} }, window.location.origin);
+      });
+    }
+    function tick(force){
+      if (busy || !sess || !there()) return Promise.resolve(null);
+      busy = true;
+      return rpc('keemart_sync_plan', { p_force: force === true }).then(function(p){
+        var days = (p && p.days) || []; if (!days.length) return null;
+        return ext('pull', { days: days }).then(function(data){
+          var n = 0, ch = Promise.resolve();
+          days.forEach(function(d){ var rows = (data && data[d]) || []; if (!rows.length) return;
+            ch = ch.then(function(){ return rpc('keemart_upsert', { p_kind:'attendance', p_rows: rows }); }).then(function(){ n += rows.length; }); });
+          return ch.then(function(){ return rpc('keemart_sync_mark', { p_ok:true, p_note: days.length + ' days / ' + n + ' rows' }); }).then(function(){ return n; });
+        }).catch(function(e){
+          return rpc('keemart_sync_mark', { p_ok:false, p_note: String((e && e.message) || e).slice(0, 250) }).then(function(){ return null; }, function(){ return null; });
+        });
+      }).catch(function(){ return null; }).then(function(r){ busy = false; return r; });
+    }
+    window.__kmSync = tick;
+    setTimeout(tick, 25000); setInterval(tick, 20 * 60 * 1000);
+  })();
+
   function smPull(){
     var b = $('sPull'), old = b.textContent;
     if (!extThere()) { smHow(); return; }
