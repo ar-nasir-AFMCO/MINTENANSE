@@ -69,12 +69,12 @@ async function board(p) {
     return res && res[0] && res[0].result;
   };
   try {
-    out = await run(40);
+    out = await run(35);
     if (out && out.noFirst) {            /* الصفحة لم تحمّل شيئاً وهي مخفية: تُعاد في نافذة صغيرة ظاهرة بلا تركيز */
       mode = 'window';
       await chrome.windows.create({ tabId: tab.id, focused: false, width: 1100, height: 820 });
       await chrome.tabs.reload(tab.id); await sleep(1500);
-      out = await run(60);
+      out = await run(50);
     }
   } finally { try { await chrome.tabs.remove(tab.id); } catch (e) {} }
   if (!out) throw new Error('لوحة الأداء لم تُرجع بيانات');
@@ -92,12 +92,13 @@ async function kmBoardInPage(today, days, firstWait) {
     var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     var ins = function () { return Array.prototype.slice.call(document.querySelectorAll('.ant-picker-range input')); };
     var match = function (key) { return function (c) { try { var b = JSON.parse(c.b).customParams; return b.dateType === 'day' && b.referenceDatekey[0] === key && b.referenceDatekey[1] === key; } catch (e) { return false; } }; };
-    var settle = async function (key, n0, tries) {       /* آخر ردّ لليوم بعد أن تهدأ الصفحة */
-      var last = null, quiet = 0;
-      for (var k = 0; k < tries; k++) {
-        await wait(500);
+    var t0 = Date.now();
+    var settle = async function (key, n0, maxMs) {       /* آخر ردّ لليوم بعد أن تهدأ الصفحة 3 ثوان — بالوقت الفعلي لا بعدد المحاولات */
+      var end = Date.now() + maxMs, last = null, since = 0;
+      while (Date.now() < end) {
+        await wait(400);
         var c = cap.slice(n0).filter(match(key)), cu = c.length ? c[c.length - 1] : null;
-        if (cu && cu === last) { if (++quiet >= 6) break; } else { quiet = 0; last = cu; }
+        if (cu !== last) { last = cu; since = Date.now(); } else if (cu && Date.now() - since >= 3000) break;
       }
       if (!last) return null;
       var r = JSON.parse(last.r); if (r.code !== 0) throw new Error('code ' + r.code);
@@ -125,15 +126,16 @@ async function kmBoardInPage(today, days, firstWait) {
       });
     };
     var out = { days: {}, errors: {} };
-    for (var w0 = 0; w0 < 40 && ins().length < 2; w0++) await wait(500);          /* الصفحة تبني نفسها */
+    for (var endIns = Date.now() + 20000; ins().length < 2 && Date.now() < endIns;) await wait(400);          /* الصفحة تبني نفسها */
     if (ins().length < 2) return { noFirst: true, vis: 'no picker' };
     /* اليوم: الصفحة تفتح عليه تلقائياً — يُؤخذ من ردّها الأول */
-    var tKey = today.split('-').join(''), first = await settle(tKey, 0, (firstWait || 40) * 2);
+    var tKey = today.split('-').join(''), first = await settle(tKey, 0, (firstWait || 35) * 1000);
     if (!first) return { noFirst: true, vis: document.visibilityState };
     if (days.indexOf(today) >= 0) { if (first) out.days[today] = map(today, first); else out.errors[today] = 'لم يصل ردّ اليوم'; }
     /* الأيام الأقدم: تنازلياً، باختيار اليوم مرتين من تقويم الصفحة (بداية ثم نهاية) */
     for (var i = 0; i < days.length; i++) {
       var day = days[i]; if (day === today) continue;
+      if (Date.now() - t0 > 150000) { out.errors[day] = 'time budget'; break; }
       try {
         var p = day.split('-'), want = p[2] + ' ' + MON[+p[1] - 1] + ' ' + p[0], key = p.join(''), n0 = cap.length;
         var q = 'td.ant-picker-cell-in-view[title="' + day + '"]', cell = function () { var a = document.querySelectorAll(q); return a.length ? a[0] : null; };
@@ -149,7 +151,7 @@ async function kmBoardInPage(today, days, firstWait) {
           if (td) td.click(); await wait(700);
           if (!(ins()[0].value === want && ins()[1].value === want)) { out.errors[day] = 'تعذّر ضبط التاريخ (' + ins()[0].value + ' → ' + ins()[1].value + ')'; break; }
         }
-        var rows = await settle(key, n0, 50);
+        var rows = await settle(key, n0, 25000);
         if (!rows) { var all = cap.filter(match(key)); rows = all.length ? ((JSON.parse(all[all.length - 1].r).data || {}).body || []) : null; }
         if (rows) out.days[day] = map(day, rows); else out.errors[day] = 'لم يصل ردّ';
       } catch (e) { out.errors[day] = String((e && e.message) || e); }
