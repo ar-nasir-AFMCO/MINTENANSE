@@ -950,7 +950,7 @@ function vBridge(){
 /* v142: حالة السحب التلقائي (اضافة AFMCO Keemart Bridge) */
 function kmAutoNote(){
   var on=false; try{ on=!!window.top.document.documentElement.getAttribute('data-afmc-km'); }catch(e){}
-  return on ? 'تقرير الدوام يسحب تلقائيا كل 20 دقيقة (اضافة AFMCO Keemart Bridge) ما دامت المنصة مفتوحة وبوابة كيمارت مسجلة الدخول. لوحة الاداء ما زالت تسحب يدويا.'
+  return on ? 'السحب تلقائي (اضافة AFMCO Keemart Bridge): تقرير الدوام كل 20 دقيقة ولوحة الاداء كل ساعة، ما دامت المنصة مفتوحة وبوابة كيمارت مسجلة الدخول.'
             : 'السحب التلقائي متوقف في هذا المتصفح: ثبت اضافة AFMCO Keemart Bridge وسجل الدخول في بوابة كيمارت — بعدها يسحب تقرير الدوام كل 20 دقيقة.';
 }
 function kmFreshness(){
