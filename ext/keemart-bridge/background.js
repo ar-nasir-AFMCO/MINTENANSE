@@ -1,9 +1,11 @@
 /* AFMCO Keemart Bridge — الخلفية.
    action 'status' → نسخة الإضافة وهل بوابة كيمارت مفتوحة.
+   action 'board' {today, days} → لوحة الأداء: يفتح صفحة اللوحة في تبويب خلفي، يلتقط اليوم، ثم يختار الأيام الأقدم من التقويم.
    action 'pull' {days:['YYYY-MM-DD',…]} → يسحب تقرير الدوام (Attendance Statistics) لكل يوم
    من داخل صفحة بوابة كيمارت نفسها (بجلسة المستخدم) ويعيد صفوفاً جاهزة لـ keemart_upsert('attendance'). */
 var PORTAL = 'https://courier-keemart.mykeeta.com/';
 var PAGE = PORTAL + 'courier/capacityManager/attendanceReport.html';
+var BOARD = PORTAL + 'jimu/data/osg-partner-delivery?region=SA&locale=en&supplier_id_list[0]=59&from=courier-keemart';
 
 chrome.runtime.onMessage.addListener(function (msg, sender, send) {
   handle(msg || {}).then(function (r) { send({ ok: true, result: r }); },
@@ -17,6 +19,7 @@ async function handle(msg) {
     return { version: chrome.runtime.getManifest().version, portalOpen: t.length > 0 };
   }
   if (msg.action === 'pull') return pull((msg.payload && msg.payload.days) || []);
+  if (msg.action === 'board') return board(msg.payload || {});
   throw new Error('أمر غير معروف');
 }
 
@@ -50,6 +53,96 @@ async function pull(days) {
   if (out.error) throw new Error(out.error);      /* تبقى الصفحة مفتوحة لو احتاجت تسجيل دخول */
   if (mine) { try { await chrome.tabs.remove(tab.id); } catch (e) {} }
   return out.days;
+}
+
+async function board(p) {
+  var today = String(p.today || ''), ok = function (d) { return /^\d{4}-\d{2}-\d{2}$/.test(d); };
+  if (!ok(today)) throw new Error('تاريخ اليوم ناقص');
+  var days = (p.days || []).filter(function (d, i, a) { return ok(d) && d <= today && a.indexOf(d) === i; }).sort().reverse().slice(0, 12);
+  if (!days.length) return { days: {}, errors: {} };
+  var tab = await chrome.tabs.create({ url: BOARD, active: false }), res;
+  try {
+    tab = await waitLoaded(tab.id);
+    if (String(tab.url || '').indexOf(PORTAL + 'jimu/') !== 0) throw new Error('سجّل الدخول في بوابة كيمارت ثم أعد المحاولة');
+    res = await chrome.scripting.executeScript({ target: { tabId: tab.id }, world: 'MAIN', func: kmBoardInPage, args: [today, days] });
+  } finally { try { await chrome.tabs.remove(tab.id); } catch (e) {} }
+  var out = res && res[0] && res[0].result;
+  if (!out) throw new Error('لوحة الأداء لم تُرجع بيانات');
+  if (out.error) throw new Error(out.error);
+  return out;
+}
+
+/* يعمل داخل صفحة لوحة الأداء: يقرأ ما التقطه board-hook.js من ردود الصفحة نفسها، ويختار التاريخ من تقويم الصفحة. */
+async function kmBoardInPage(today, days) {
+  try {
+    var cap = window.__afmcKmCap; if (!cap) return { error: 'لوحة الأداء: الالتقاط غير مفعّل — أعد تحميل الإضافة' };
+    var wait = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+    var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    var ins = function () { return Array.prototype.slice.call(document.querySelectorAll('.ant-picker-range input')); };
+    var match = function (key) { return function (c) { try { var b = JSON.parse(c.b).customParams; return b.dateType === 'day' && b.referenceDatekey[0] === key && b.referenceDatekey[1] === key; } catch (e) { return false; } }; };
+    var settle = async function (key, n0, tries) {       /* آخر ردّ لليوم بعد أن تهدأ الصفحة */
+      var last = null, quiet = 0;
+      for (var k = 0; k < tries; k++) {
+        await wait(500);
+        var c = cap.slice(n0).filter(match(key)), cu = c.length ? c[c.length - 1] : null;
+        if (cu && cu === last) { if (++quiet >= 6) break; } else { quiet = 0; last = cu; }
+      }
+      if (!last) return null;
+      var r = JSON.parse(last.r); if (r.code !== 0) throw new Error('code ' + r.code);
+      return (r.data && r.data.body) || [];
+    };
+    var num = function (v) { if (v == null || v === '' || v === 'null' || v === '--') return null; var n = Number(v); return isFinite(n) ? n : null; };
+    var pct = function (v) { var n = num(v); return n == null ? null : Math.round(n * 10000) / 100; };
+    var r2 = function (v) { var n = num(v); return n == null ? null : Math.round(n * 100) / 100; };
+    var map = function (day, rows) {
+      var best = {};
+      rows.forEach(function (x) { var k = String(x.rider_id || ''); if (!k) return;
+        if (!best[k] || (num(x.transport_end_order_num) || 0) > (num(best[k].transport_end_order_num) || 0)) best[k] = x; });
+      return Object.keys(best).map(function (k) {
+        var x = best[k], c = /^([A-Za-z][A-Za-z ]*?)\d/.exec(String(x.poi_name || ''));
+        return { work_date: day, captain_id: k, captain_name: x.rider_name || null, branch: x.poi_name || null, city: c ? c[1].trim() : null,
+          orders_pushed: num(x.transport_push_order_num), orders_delivered: num(x.transport_end_order_num),
+          late_orders: num(x.transport_supplier_timeout_order_num), major_late: num(x.transport_supplier_serious_timeout_order_num),
+          ont_rate: pct(x.transport_supplier_ontime_ratio), major_rate: pct(x.transport_supplier_serious_timeout_ratio),
+          pre_marked: num(x.transport_supplier_illegal_point_finish_num),
+          neg_orders: num(x.transport_supplier_delivery_bad_comment_order_num), pos_orders: num(x.transport_supplier_delivery_good_comment_order_num),
+          r15: pct(x.fast_15min_delivery_order_ratio), r20: pct(x.fast_20min_delivery_order_ratio), r30: pct(x.fast_30min_delivery_order_ratio),
+          d_pickup: r2(x.order_avg_rider_take_interval), d_transit: r2(x.order_avg_rider_transport_interval),
+          d_return: r2(x.avg_rider_trip_rider_back_interval), d_deliver: r2(x.order_avg_push_trans_package_interval),
+          valid_order_min: r2(x.online_delivery_total_interval) };
+      });
+    };
+    var out = { days: {}, errors: {} };
+    for (var w0 = 0; w0 < 60 && ins().length < 2; w0++) await wait(500);          /* الصفحة تبني نفسها */
+    if (ins().length < 2) return { error: 'لوحة الأداء لم تفتح — تأكد أنك مسجّل الدخول في بوابة كيمارت' };
+    /* اليوم: الصفحة تفتح عليه تلقائياً — يُؤخذ من ردّها الأول */
+    var tKey = today.split('-').join(''), first = await settle(tKey, 0, 60);
+    if (days.indexOf(today) >= 0) { if (first) out.days[today] = map(today, first); else out.errors[today] = 'لم يصل ردّ اليوم'; }
+    /* الأيام الأقدم: تنازلياً، باختيار اليوم مرتين من تقويم الصفحة (بداية ثم نهاية) */
+    for (var i = 0; i < days.length; i++) {
+      var day = days[i]; if (day === today) continue;
+      try {
+        var p = day.split('-'), want = (+p[2]) + ' ' + MON[+p[1] - 1] + ' ' + p[0], key = p.join(''), n0 = cap.length;
+        var q = 'td.ant-picker-cell-in-view[title="' + day + '"]', cell = function () { var a = document.querySelectorAll(q); return a.length ? a[0] : null; };
+        if (!(ins()[0].value === want && ins()[1].value === want)) {
+          var x = ins()[0];
+          x.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); x.focus(); x.click(); await wait(700);
+          var td = cell();
+          for (var s = 0; s < 3 && !td; s++) { var pv = document.querySelector('.ant-picker-header-prev-btn'); if (!pv) break; pv.click(); await wait(300); td = cell(); }
+          if (!td) { out.errors[day] = 'اليوم غير ظاهر في التقويم'; break; }
+          if (/disabled/.test(td.className)) { out.errors[day] = 'اليوم غير متاح في اللوحة'; continue; }
+          td.click(); await wait(700); td = cell(); if (td) td.click(); await wait(700);
+          if (!(ins()[0].value === want && ins()[1].value === want)) { out.errors[day] = 'تعذّر ضبط التاريخ (' + ins()[0].value + ' → ' + ins()[1].value + ')'; break; }
+        }
+        var rows = await settle(key, n0, 50);
+        if (!rows) { var all = cap.filter(match(key)); rows = all.length ? ((JSON.parse(all[all.length - 1].r).data || {}).body || []) : null; }
+        if (rows) out.days[day] = map(day, rows); else out.errors[day] = 'لم يصل ردّ';
+      } catch (e) { out.errors[day] = String((e && e.message) || e); }
+    }
+    return out;
+  } catch (e) {
+    return { error: 'لوحة الأداء: ' + ((e && e.message) || e) };
+  }
 }
 
 /* يُنفَّذ داخل صفحة بوابة كيمارت (عالم الصفحة) — نفس نداءات صفحة «Attendance Statistics». */
