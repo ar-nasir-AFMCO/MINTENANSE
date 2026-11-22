@@ -968,14 +968,24 @@ fun AdvanceScreen(session: Session, onBack: () -> Unit) {
     val tAmount = when (lang) { Lang.EN -> "Amount (max 300 SAR)"; Lang.UR -> "رقم (زیادہ سے زیادہ 300 ریال)"; else -> "المبلغ (الحد الأعلى 300 ريال)" }
     val tReason = when (lang) { Lang.EN -> "Reason (optional)"; Lang.UR -> "وجہ (اختیاری)"; else -> "السبب (اختياري)" }
     val tSubmit = when (lang) { Lang.EN -> "Request advance"; Lang.UR -> "ایڈوانس کی درخواست"; else -> "إرسال طلب السلفة" }
-    val tHint = when (lang) { Lang.EN -> "Your supervisor reviews and approves the advance."; Lang.UR -> "آپ کا سپروائزر ایڈوانس کی منظوری دیتا ہے۔"; else -> "يراجع المشرف الطلب ويعتمده." }
+    val tHint = when (lang) { Lang.EN -> "Your supervisor reviews and approves the advance."; Lang.UR -> "آپ کا سپروائزر ایڈوانس کی منظوری دیتا ہے۔"; else -> "يراجع المشرف الطلب ويعتمده، ثم تُصرف من المالية." }
     val tMine = when (lang) { Lang.EN -> "My advances"; Lang.UR -> "میرے ایڈوانس"; else -> "سلفي" }
-    fun stLabel(s: String) = when (s) {
-        "approved" -> when (lang) { Lang.EN -> "Approved"; Lang.UR -> "منظور"; else -> "معتمدة" }
+    // v144: المعتمدة تبقى «بانتظار الصرف» حتى يسجل صرفها من وثيق
+    fun stLabel(a: Advance) = when (a.status) {
+        "approved" -> when {
+            a.deducted != null -> when (lang) { Lang.EN -> "Deducted from salary"; Lang.UR -> "تنخواہ سے کٹوتی ہو گئی"; else -> "خُصمت من الراتب" }
+            a.pay == "paid" -> when (lang) { Lang.EN -> "Paid"; Lang.UR -> "ادا ہو گیا"; else -> "تم الصرف" }
+            a.pay == "void" -> when (lang) { Lang.EN -> "Cancelled"; Lang.UR -> "منسوخ"; else -> "ملغاة" }
+            else -> when (lang) { Lang.EN -> "Approved · awaiting payment"; Lang.UR -> "منظور · ادائیگی کا انتظار"; else -> "معتمدة · بانتظار الصرف" }
+        }
         "rejected" -> when (lang) { Lang.EN -> "Rejected"; Lang.UR -> "مسترد"; else -> "مرفوضة" }
         else -> when (lang) { Lang.EN -> "Pending"; Lang.UR -> "زیر التواء"; else -> "قيد المراجعة" }
     }
-    fun stColor(s: String) = when (s) { "approved" -> Green; "rejected" -> Red; else -> Amber }
+    fun stColor(a: Advance) = when (a.status) {
+        "approved" -> if (a.pay == "paid") Green else if (a.pay == "void") Red else Amber
+        "rejected" -> Red
+        else -> Amber
+    }
 
     Scaffold(containerColor = Bg, topBar = { TopBar(title, onBack = onBack) }) { pad ->
         LazyColumn(Modifier.padding(pad).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1021,7 +1031,7 @@ fun AdvanceScreen(session: Session, onBack: () -> Unit) {
                                 if (!a.note.isNullOrBlank()) Text(a.note, fontSize = 11.5.sp, color = Gray)
                                 a.createdAt?.let { Text(it.take(10), fontSize = 11.sp, color = Gray) }
                             }
-                            StatusBadge(stLabel(a.status), stColor(a.status))
+                            StatusBadge(stLabel(a), stColor(a))
                         }
                     }
                 }
