@@ -3772,6 +3772,7 @@ boot();
       +'<span class="wf-badge-st wf-st-settled">مسوّاة: '+counts.settled+'</span></div>'
       +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'
       +'<button class="wf-prim" id="wfAdvExport">⬇ تصدير المعمدة والجديدة</button>'
+      +'<button class="wf-prim" id="wfAdvHasr">💸 حصر السلف (معلّقة / مصروفة)</button>'
       +'<label class="wf-amber" style="cursor:pointer">⬆ رفع ملف تأكيد الصرف (إكسل)<input type="file" id="wfAdvConfirm" accept=".xlsx,.xls,.csv" style="display:none"></label>'
       +'</div>'
       +'<table class="wf-tbl"><thead><tr><th>الموظف</th><th>المشروع</th><th>المبلغ</th><th>التاريخ</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody id="wfAdvBody">'
@@ -3783,6 +3784,7 @@ boot();
       +'<div style="font-size:12px;color:#6b7674;margin-top:10px">التسوية النهائية للسلف تتم تلقائيًا عند رفع ملف استخراج رواتب المشروع.</div>';
     var ui=wfOverlay('🧾 السلف والتعميد', body, 760);
     ui.body.querySelector('#wfAdvExport').onclick=function(){ window.exportAdvances(); };
+    ui.body.querySelector('#wfAdvHasr').onclick=function(){ ui.close(); if(window.wxAdvList) window.wxAdvList(); };
     ui.body.querySelectorAll('[data-aa]').forEach(function(b){
       b.addEventListener('click',function(){
         var r=rows[parseInt(b.getAttribute('data-aa'),10)]; if(!r) return;
@@ -3837,7 +3839,7 @@ boot();
           (f.advances||[]).forEach(function(a){
             var st=a.status||'new';
             if((st==='new'||st==='approved') && Math.abs((Number(a.amount)||0)-amt)<0.5){
-              a.status='disbursed'; a.disbursed_at=new Date().toISOString(); a.disbursed_by=wfUser(); matched++;
+              a.status='disbursed'; a.disbursed_at=new Date().toISOString(); a.disbursed_by=wfUser(); a.paid_at=a.disbursed_at; a.paid_on=a.disbursed_at.slice(0,10); matched++;
             }
           });
         });
@@ -4254,7 +4256,7 @@ boot();
     var totalNet=ps.reduce(function(s,p){ return s+N(p.net); },0);
     var avg=totalNet/ps.length;
     var openAdv=0;
-    (((e.finance||{}).advances)||[]).forEach(function(a){ if((a.status||'new')!=='settled') openAdv+=N(a.amount); });
+    (((e.finance||{}).advances)||[]).forEach(function(a){ if(window.wxAdvDue ? window.wxAdvDue(a) : (a.status||'new')!=='settled') openAdv+=N(a.amount); });
     var span=(ykeys.length>1) ? (ykeys[ykeys.length-1]+' — '+ykeys[0]) : ykeys[0];
 
     /* KPIs */
@@ -5941,7 +5943,7 @@ boot();
   window.wx5AddAdv=function(idx){
     if(!isAdmin()){ T('إضافة السلف متاحة للموظف الاداري فقط'); return; }
     var e=state.employees[idx]; if(!e) return;
-    var d=new Date(); var nx=new Date(d.getFullYear(), d.getMonth()+1, 1);
+    var d=new Date(); var nx=new Date(d.getFullYear(), d.getMonth(), 1);   /* v144: نفس الشهر — لا ترحيل */
     var nper=nx.getFullYear()+'-'+('0'+(nx.getMonth()+1)).slice(-2);
     openWx5('➕ سلفة لـ '+E(e.name_ar||e.iqama),
       '<div class="wf-grid">'
@@ -5954,7 +5956,7 @@ boot();
       +'<div class="wf-field full"><label>السبب / ملاحظة</label><input id="wx5a-note" placeholder="اختياري"></div>'
       +'</div>'
       +'<div class="wx5-hint">💡 يمكن صرف السلفة في أي وقت حتى لو لم يُستحق راتب بعد ولا يوجد كرت مالي — '
-      +'تُسجَّل كسلفة قائمة وتبقى محفوظة حتى تُخصم من راتب الشهر المحدّد.</div>',
+      +'المصروفة تُخصم من أول راتب يُعمّد بعد صرفها (نفس الشهر مثل العهدة — لا ترحيل)، والمعتمدة غير المصروفة تبقى معلّقة ولا تُخصم حتى يسجل صرفها.</div>',
       '<button class="btn ghost" onclick="closeWx5()">إلغاء</button><button class="btn" onclick="wx5SaveAdv('+idx+')">💾 حفظ السلفة</button>');
   };
   window.wx5SaveAdv=function(idx){
@@ -5964,12 +5966,13 @@ boot();
     if(!e.finance) e.finance=newFinance(e);
     e.finance.advances=e.finance.advances||[];
     e.finance.advances.push({ amount:amt, date:g('wx5a-date')||today(), note:g('wx5a-note'),
-                              status:g('wx5a-st')||'disbursed', outside:true, deduct_period:g('wx5a-per') });
+                              status:g('wx5a-st')||'disbursed', outside:true, deduct_period:g('wx5a-per'),
+                              paid_at:((g('wx5a-st')||'disbursed')==='disbursed'?new Date().toISOString():undefined) });
     save(); closeWx5();
     try{ renderDash(); }catch(err){}
     try{ if(state.current!=null) openModal(state.current,'fin'); }catch(err){}
     refresh();
-    T('💸 تمت إضافة السلفة — ستُخصم من راتب '+(g('wx5a-per')||'الشهر القادم'));
+    T((g('wx5a-st')||'disbursed')==='disbursed' ? '💸 تمت إضافة السلفة — تُخصم من أول راتب يُعمّد' : '💸 تمت إضافة السلفة — معلّقة حتى يسجل صرفها');
   };
   window.wx5SetAdv=function(idx, ai, st){
     if(!isAdmin()){ T('التعديل متاح للموظف الاداري فقط'); return; }
@@ -5998,26 +6001,26 @@ boot();
     var e=state.employees[idx]; if(!e) return '';
     var adm=isAdmin();
     var advs=((e.finance||{}).advances)||[];
-    var open=advs.filter(function(a){ return (a.status||'new')!=='settled'; });
+    var open=advs.filter(function(a){ return window.wxAdvDue ? window.wxAdvDue(a) : (a.status||'new')!=='settled'; });
     var openSum=open.reduce(function(s,a){ return s+N(a.amount); },0);
     var due=dueOf(e), pend=pendingOf(e);
     var net=N((e.finance||{}).net);
 
     /* صندوق السلف */
     var advHTML='<div class="wx5-box"><div class="hd">💸 السلف'
-      +(openSum?(' <span class="chip warn">قائمة: '+F(openSum)+' ريال</span>'):'')
+      +(openSum?(' <span class="chip warn">قائمة: '+F(openSum)+' ريال</span>'):'')+(window.wxAdvHead?window.wxAdvHead(e):'')
       +(adm?'<button class="btn sm" onclick="wx5AddAdv('+idx+')">➕ سلفة (خارج فترة الرواتب)</button>':'')+'</div>'
       +(advs.length ? advs.map(function(a,ai){
           var st=a.status||'new';
           return '<div class="wx5-row"><span class="amt">'+F(a.amount)+' ريال</span>'
             +'<span class="chip '+(st==='settled'?'ok':(st==='new'?'warn':'line'))+'">'+(ADVST[st]||st)+'</span>'
-            +(a.outside?'<span class="chip sand">خارج فترة الرواتب</span>':'')
+            +((a.outside&&!a.sa_id)?'<span class="chip sand">خارج فترة الرواتب</span>':'')+(window.wxAdvRow?window.wxAdvRow(a,idx,ai):'')
             +(a.settled_period?('<span class="chip ok">خُصمت من راتب '+E(a.settled_period)+'</span>'):'')
             +'<span style="color:var(--muted)">'+E(a.note||'')+(a.date?' · '+E(a.date):'')
             +(a.deduct_period?(' · تُخصم من '+E(a.deduct_period)):'')+'</span>'
             +(adm?('<span class="sp">'
-              +(st!=='settled'?'<button class="wx5-mini ok" onclick="wx5SetAdv('+idx+','+ai+',\'settled\')">✅ تسوية</button>':'')
-              +'<button class="wx5-mini bad" onclick="wx5DelAdv('+idx+','+ai+')">🗑️</button></span>'):'')
+              +((st!=='settled'&&!(window.wxAdvWaiting&&window.wxAdvWaiting(a)))?'<button class="wx5-mini ok" onclick="wx5SetAdv('+idx+','+ai+',\'settled\')">✅ تسوية</button>':'')
+              +(a.sa_id?'':'<button class="wx5-mini bad" onclick="wx5DelAdv('+idx+','+ai+')">🗑️</button>')+'</span>'):'')
             +'</div>';
         }).join('')
         : '<div class="wx5-none">لا توجد سلف مسجّلة.</div>')
@@ -6411,7 +6414,7 @@ boot();
   /* ---------- السلف والعهد (لحساب الصافي للصرف) ---------- */
   function openAdv(e){
     return (((e.finance||{}).advances)||[]).reduce(function(s,a){
-      return ((a.status||'new')!=='settled' && !a.settled_period) ? s+N(a.amount) : s; },0);
+      return (window.wxAdvDue ? window.wxAdvDue(a) : ((a.status||'new')!=='settled' && !a.settled_period)) ? s+N(a.amount) : s; },0);
   }
   function custodyDue(e){
     var stopped=(e.employment_status==='stopped' || String(e.status_label||'').indexOf('متوقف')>=0);
@@ -6729,7 +6732,7 @@ boot();
           if(!dup){ old.period=op; old._archived=true; old.archived_at=at; e.finance_periods.push(old); rep.arch++; }
         }
       }
-      var adv = oAdv ? ((((e.finance||{}).advances)||[]).slice()) : [];
+      var adv = oAdv ? ((((e.finance||{}).advances)||[]).slice()) : (((e.finance||{}).advances)||[]).filter(function(a){ return a&&a.sa_id; });   /* v144: سلف صوت تبقى للمتابعة */
       var advSum=r2(openAdv(e)), cusSum=r2(custodyDue(e));
 
       var cc=c.calc;
@@ -6812,7 +6815,7 @@ boot();
     (state.employees||[]).forEach(function(e){
       if(!e.finance || e.finance.period!==per) return;
       (((e.finance||{}).advances)||[]).forEach(function(a){
-        if((a.status||'new')!=='settled' && !a.settled_period){ a.status='settled'; a.settled_period=per; a.settled_at=nowISO(); n++; }
+        if(window.wxAdvDue ? window.wxAdvDue(a,e) : ((a.status||'new')!=='settled' && !a.settled_period)){ a.status='settled'; a.settled_period=per; a.settled_at=nowISO(); n++; }
       });
       (e.custody||[]).forEach(function(c){
         if(c.settled_period) return;
@@ -8016,7 +8019,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
 
   function openAdv(e){
     return (((e.finance||{}).advances)||[]).reduce(function(s,a){
-      return ((a.status||'new')!=='settled' && !a.settled_period) ? s+N(a.amount) : s; },0);
+      return (window.wxAdvDue ? window.wxAdvDue(a) : ((a.status||'new')!=='settled' && !a.settled_period)) ? s+N(a.amount) : s; },0);
   }
   function custodyDue(e){
     var stopped=(e.employment_status==='stopped' || String(e.status_label||'').indexOf('متوقف')>=0);
@@ -11614,6 +11617,217 @@ body.wx-card-open #wx4Pill{ display:none !important; }
   setInterval(function(){ if (!S.busy && !document.hidden && emps().length) A.load(true).catch(function(){}); }, 90000);
   (function(){ var o = window.go; if (typeof o === 'function' && !o.__wx13) { var w = function(v){ var r = o.apply(this, arguments); if (v === 'wx5_custody') { tick(); A.load().then(render, render); } return r; }; w.__wx13 = true; w.__wx5 = o.__wx5; window.go = w; } })();
   window.wx13 = { materialize: materialize, render: render, openFor: openFor, S: S };
+})();
+</script>
+
+<script id="wx14-js">
+/* === wx14 — السلف (v144): سلفة «صوت» المعتمدة تبقى معلقة حتى تصرف من وثيق · حصر السلف · الخصم بعد الصرف فقط ===
+   - السلفة المعتمدة في صوت تضاف لكرت الموظف المالي بحالة «معتمدة — لم تصرف» ولا تخصم ولا تسوى.
+   - «تم الصرف» يسجل الصرف هنا وفي صوت، وبعدها تخصم من اول راتب يعمد (مثل العهدة — لا ترحل).
+   - لا يضيع شيء: الملغاة تبقى محفوظة في صوت وتظهر في الحصر ويمكن ارجاعها. */
+(function(){
+  'use strict';
+  var A = window.AFC; if (!A || typeof state === 'undefined') return;
+  function N(v){ return Number(v) || 0; }
+  function E(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return '&#' + c.charCodeAt(0) + ';'; }); }
+  function F(n){ return N(n).toLocaleString('en-US', { maximumFractionDigits: 2 }); }
+  function T(m){ try { toast(m); } catch(e){} }
+  function nid(x){ return String(x == null ? '' : x).replace(/[^0-9A-Za-z]/g, ''); }
+  function role(){ return (window.WF_ACCESS || {}).role || ''; }
+  /* الكرت المالي يحفظه في القاعدة المدير والمالية فقط — فهم من يسجل الصرف */
+  function canPay(){ var r = role(); return r === 'admin' || r === 'manager' || r === 'finance'; }
+  function advs(e){ return ((e && e.finance) || {}).advances || []; }
+  function nowISO(){ return new Date().toISOString(); }
+
+  /* تخصم من الراتب: المصروفة فقط (والقديمة بلا حالة). المعلقة لا تخصم ولا تسوى.
+     مع e (عند التسوية): ما صرف بعد تعميد المسير لا يسوى معه — يخصم من المسير التالي. */
+  window.wxAdvDue = function(a, e){
+    if (!a || a.settled_period || a.status === 'settled' || a.status === 'void') return false;
+    if (!(a.status === undefined || a.status === 'disbursed')) return false;
+    if (e && a.paid_at && e.finance && e.finance.approved_at && String(a.paid_at) > String(e.finance.approved_at)) return false;
+    return true;
+  };
+  function waiting(a){ return !!a && !a.settled_period && (a.status === 'approved' || a.status === 'new'); }
+  window.wxAdvWaiting = waiting;
+
+  /* شارات وازرار صف السلفة في الكرت المالي */
+  window.wxAdvRow = function(a, idx, ai){
+    if (!a) return '';
+    var h = a.src === 'soot' ? '<span class="chip line">صوت الموظف</span>' : '';
+    if (waiting(a)) {
+      h += '<span class="chip warn">معلّقة — لم تُصرف · لا تُخصم</span>';
+      if (canPay() && a.status === 'approved') h += a.sa_id
+        ? '<button class="wx5-mini ok" onclick="wxAdvPay(\'' + E(a.sa_id) + '\',\'pay\')">💵 تم الصرف</button><button class="wx5-mini bad" onclick="wxAdvPay(\'' + E(a.sa_id) + '\',\'void\')">إلغاء</button>'
+        : '<button class="wx5-mini ok" onclick="wxAdvPaidLocal(' + idx + ',' + ai + ')">💵 تم الصرف</button>';
+    } else if (window.wxAdvDue(a)) {
+      h += '<span class="chip sand">تُخصم من أول راتب يُعمّد' + (a.paid_on ? ' · صُرفت ' + E(a.paid_on) : '') + '</span>';
+    }
+    return h;
+  };
+  window.wxAdvHead = function(e){
+    var w = advs(e).filter(waiting), s = w.reduce(function(t, a){ return t + N(a.amount); }, 0);
+    return w.length ? ' <span class="chip line">معلّقة لم تُصرف: ' + F(s) + ' ريال</span>' : '';
+  };
+  window.wxAdvPaidLocal = function(idx, ai){
+    var e = (state.employees || [])[idx], a = advs(e)[ai]; if (!a || !waiting(a) || !canPay()) return;
+    if (!confirm('تأكيد أن السلفة صُرفت للموظف؟ بعدها تُخصم من أول راتب يُعمّد.')) return;
+    a.status = 'disbursed'; a.paid_on = A.today(); a.paid_at = nowISO(); a.deduct_period = a.paid_on.slice(0, 7);
+    save(); redraw(); T('💵 سُجّل الصرف');
+  };
+  function save(){ try { recomputeStats(); } catch(x){} try { persist(); } catch(x){} }
+
+  /* ---------- مطابقة سلف صوت المعتمدة مع كرت الموظف ---------- */
+  function findEmp(iq){ var k = nid(iq), L = state.employees || []; if (!k) return null; for (var i = 0; i < L.length; i++) if (nid(L[i].iqama) === k) return L[i]; return null; }
+  function setPaid(a, r){
+    a.status = 'disbursed'; a.paid_on = r.paid_on || A.today(); a.paid_at = r.paid_at || nowISO(); a.paid_by = r.paid_by_name || '';
+    a.paid_srv = true; a.deduct_period = String(a.paid_on).slice(0, 7);
+  }
+  /* يرجع true اذا تغير الكرت. push: ما يجب ابلاغ صوت به (صرف ثبت من ملف التاكيد / خصم تم في المسير). */
+  function apply(e, r, push){
+    var L = advs(e), a = null, at = -1, i;
+    for (i = 0; i < L.length; i++) if (L[i] && L[i].sa_id === r.id) { a = L[i]; at = i; }
+    if (!a) {
+      if (r.pay_status === 'void' || r.deducted_period) return false;      /* ملغاة او خصمت وانتهت — لا تعاد */
+      if (!e.finance) e.finance = { base: 0, days: '', bonus: 0, advance: 0, accident: 0, deduction: 0, net: 0,
+                                    iban: e.iban || '', account: e.name_ar || '', name: e.name_ar || '', source: 'إدخال يدوي', advances: [] };
+      L = e.finance.advances = e.finance.advances || [];
+      a = { amount: N(r.amount), date: String(r.approved_at || '').slice(0, 10), note: 'صوت الموظف' + (r.reason ? ' — ' + r.reason : ''),
+            status: 'approved', src: 'soot', sa_id: r.id, outside: true, approved_by: r.approved_by || '' };
+      L.push(a); if (r.pay_status === 'paid') setPaid(a, r);
+      return true;
+    }
+    if (a.settled_period || a.status === 'settled') {
+      if (r.pay_status === 'paid' && !r.deducted_period) push.push({ id: r.id, act: 'deduct', note: a.settled_period || String(a.settled_at || A.today()).slice(0, 7) });
+      return false;
+    }
+    if (r.pay_status === 'void') { L.splice(at, 1); return true; }          /* تبقى محفوظة في صوت بحالة ملغاة */
+    if (r.pay_status === 'paid') { if (a.status !== 'disbursed' || !a.paid_srv) { setPaid(a, r); return true; } return false; }
+    /* pending في صوت */
+    if (a.status === 'disbursed') {
+      if (a.paid_srv) { a.status = 'approved'; delete a.paid_on; delete a.paid_at; delete a.paid_by; delete a.paid_srv; delete a.deduct_period; return true; }
+      push.push({ id: r.id, act: 'pay', date: a.paid_on || String(a.disbursed_at || '').slice(0, 10) || A.today() });   /* ثبت صرفها من ملف تاكيد الصرف */
+      return false;
+    }
+    if (a.status !== 'approved') { a.status = 'approved'; return true; }
+    return false;
+  }
+  var chain = Promise.resolve(), lastErr = '', lastRows = [];
+  function runSync(depth){
+    if (!canPay() || !(state.employees || []).length) return Promise.resolve(0);
+    return A.api('POST', 'rpc/soot_advances_approved', {}).then(function(rows){
+      var n = 0, push = [];
+      lastRows = rows || []; lastErr = '';
+      lastRows.forEach(function(r){ var e = findEmp(r.iqama); if (e && apply(e, r, push)) n++; });
+      if (n) save();
+      try { tile(); } catch(x){}
+      if (!push.length || depth) return n;
+      var p = Promise.resolve();
+      push.forEach(function(q){ p = p.then(function(){
+        return A.api('POST', 'rpc/soot_advance_pay', { p_id: q.id, p_action: q.act, p_date: q.date || null, p_note: q.note || null }).catch(function(){});
+      }); });
+      return p.then(function(){ return runSync(1); }).then(function(m){ return n + m; });
+    }).catch(function(x){ lastErr = (x && x.message) || 'تعذّر الاتصال'; return 0; });
+  }
+  function sync(){ chain = chain.then(function(){ return runSync(0); }); return chain; }
+  window.wxAdvPay = function(id, act){
+    if (!canPay()) return T('تسجيل صرف السلف للمالية والإدارة');
+    var msg = act === 'pay' ? 'تأكيد أن السلفة صُرفت للموظف؟ بعدها تُخصم من أول راتب يُعمّد.'
+            : act === 'void' ? 'إلغاء هذه السلفة؟ لا تُخصم، وتبقى محفوظة بحالة «ملغاة» ويمكن إرجاعها.'
+            : 'إرجاع السلفة معلّقة (لم تُصرف)؟ لا تُخصم حتى يُسجّل صرفها.';
+    if (!confirm(msg)) return;
+    A.api('POST', 'rpc/soot_advance_pay', { p_id: id, p_action: act, p_date: A.today() })
+      .then(function(){ return sync(); })
+      .then(function(){ redraw(); T(act === 'pay' ? '💵 سُجّل الصرف — تُخصم من أول راتب يُعمّد' : act === 'void' ? 'أُلغيت السلفة' : 'رجعت السلفة معلّقة'); })
+      .catch(function(x){ T('⚠️ ' + ((x && x.message) || 'تعذّر الحفظ')); });
+  };
+
+  /* ---------- الحصر ---------- */
+  function rowsAll(){
+    var out = [];
+    (state.employees || []).forEach(function(e){ advs(e).forEach(function(a){ if (a && (waiting(a) || window.wxAdvDue(a))) out.push({ e: e, a: a }); }); });
+    return out;
+  }
+  function voids(){
+    return lastRows.filter(function(r){ return r.pay_status === 'void'; }).map(function(r){
+      return { e: findEmp(r.iqama) || { iqama: r.iqama }, a: { amount: r.amount, date: String(r.approved_at || '').slice(0, 10), note: (r.reason || '') + (r.pay_note ? ' · ' + r.pay_note : ''), sa_id: r.id }, v: 1 };
+    });
+  }
+  function sum(L){ return L.reduce(function(s, x){ return s + N(x.a.amount); }, 0); }
+  function scrim(){
+    var s = document.getElementById('wx14Scrim');
+    if (!s) { s = document.createElement('div'); s.className = 'wf-scrim'; s.id = 'wx14Scrim';
+      s.innerHTML = '<div class="wf-modal" id="wx14Modal" style="max-width:940px"></div>'; document.body.appendChild(s);
+      s.addEventListener('click', function(ev){ if (ev.target === s) s.classList.remove('on'); }); }
+    return s;
+  }
+  function btn(id, act, cls, txt){ return '<button class="wx5-mini ' + cls + '" onclick="wxAdvPay(\'' + E(id) + '\',\'' + act + '\')">' + txt + '</button>'; }
+  function tbl(L, kind){
+    if (!L.length) return '<p style="color:var(--muted);font-size:13px;margin:6px 0 14px">لا يوجد.</p>';
+    return '<div class="wx3-tblwrap" style="margin-bottom:14px"><table class="wx3-tbl"><thead><tr><th>الموظف</th><th>الإقامة</th><th>المشروع</th><th>المبلغ</th><th>'
+      + (kind === 'paid' ? 'صُرفت' : 'اعتُمدت') + '</th><th>المصدر / السبب</th><th></th></tr></thead><tbody>'
+      + L.map(function(x){ var a = x.a, e = x.e, act = '';
+          if (canPay()) {
+            if (kind === 'wait') act = a.status !== 'approved' ? '<span style="color:var(--muted)">بانتظار التعميد</span>' : a.sa_id ? btn(a.sa_id, 'pay', 'ok', '💵 تم الصرف') + btn(a.sa_id, 'void', 'bad', 'إلغاء')
+              : '<button class="wx5-mini ok" onclick="wxAdvPaidLocal(' + (state.employees || []).indexOf(e) + ',' + advs(e).indexOf(a) + ')">💵 تم الصرف</button>';
+            else if (kind === 'paid') act = (a.sa_id && a.paid_srv) ? btn(a.sa_id, 'reopen', '', '↩ تراجع عن الصرف') : '';
+            else act = btn(a.sa_id, 'reopen', '', '↩ إرجاعها معلّقة');
+          }
+          return '<tr><td>' + E(e.name_ar || e.name_en || '—') + '</td><td>' + E(e.iqama || '') + '</td><td>' + E(e.project || '') + '</td><td><b>' + F(a.amount)
+            + '</b></td><td>' + E((kind === 'paid' ? (a.paid_on || a.date) : a.date) || '') + '</td><td style="color:var(--muted)">' + E(a.note || '') + '</td><td style="white-space:nowrap">' + act + '</td></tr>'; }).join('')
+      + '</tbody></table></div>';
+  }
+  function listHTML(){
+    var R = rowsAll(), W = R.filter(function(x){ return waiting(x.a); }), D = R.filter(function(x){ return window.wxAdvDue(x.a); }), V = voids();
+    return '<div class="wx3-kpis"><div class="wx3-kpi"><div class="k">معلّقة — معتمدة لم تُصرف</div><div class="v">' + F(sum(W)) + ' <small>ريال</small></div><div class="k">' + W.length + ' سلفة · لا تُخصم</div></div>'
+      + '<div class="wx3-kpi"><div class="k">مصروفة لم تُخصم بعد</div><div class="v">' + F(sum(D)) + ' <small>ريال</small></div><div class="k">' + D.length + ' سلفة · تُخصم من أول راتب يُعمّد</div></div></div>'
+      + (lastErr ? '<div class="wx5-hint">⚠️ تعذّر تحديث سلف «صوت» الآن: ' + E(lastErr) + '</div>' : '')
+      + '<div style="font-weight:700;margin:10px 0 6px">⏳ معلّقة — بانتظار الصرف</div>' + tbl(W, 'wait')
+      + '<div style="font-weight:700;margin:10px 0 6px">💵 مصروفة — تُخصم من أول راتب يُعمّد (لا تُرحّل)</div>' + tbl(D, 'paid')
+      + (V.length ? '<div style="font-weight:700;margin:10px 0 6px">🚫 ملغاة (محفوظة)</div>' + tbl(V, 'void') : '');
+  }
+  function close(){ var s = document.getElementById('wx14Scrim'); if (s) s.classList.remove('on'); }
+  function paint(){
+    var m = document.getElementById('wx14Modal'); if (!m) return;
+    m.innerHTML = '<div class="wf-head"><div class="nm">💸 حصر السلف</div><div class="x" id="wx14X">✕</div></div>'
+      + '<div class="wf-body">' + listHTML() + '</div>'
+      + '<div class="wf-foot"><button class="btn ghost" onclick="wxAdvExport()">⬇️ تصدير الحصر</button><button class="btn" id="wx14Ok">تم</button></div>';
+    m.querySelector('#wx14X').onclick = close; m.querySelector('#wx14Ok').onclick = close;
+  }
+  function isOpen(){ var s = document.getElementById('wx14Scrim'); return !!s && s.classList.contains('on'); }
+  window.wxAdvList = function(){ scrim(); paint(); document.getElementById('wx14Scrim').classList.add('on'); sync().then(function(){ if (isOpen()) paint(); }); };
+  window.wxAdvExport = function(){
+    var R = rowsAll().concat(voids()), head = ['الاسم', 'رقم الإقامة', 'المشروع', 'المبلغ', 'الحالة', 'تاريخ الاعتماد', 'تاريخ الصرف', 'المصدر / السبب'];
+    if (!R.length) return T('لا توجد سلف');
+    var body = R.map(function(x){ var a = x.a, e = x.e; return [e.name_ar || e.name_en || '', e.iqama || '', e.project || '', N(a.amount),
+      x.v ? 'ملغاة' : waiting(a) ? 'معلّقة — لم تُصرف' : 'مصروفة — لم تُخصم', a.date || '', a.paid_on || '', a.note || '']; });
+    var csv = '\ufeff' + [head].concat(body).map(function(r){ return r.map(function(c){ return '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"'; }).join(','); }).join('\n');
+    var b = new Blob([csv], { type: 'text/csv;charset=utf-8' }), l = document.createElement('a');
+    l.href = URL.createObjectURL(b); l.download = 'حصر-السلف-' + A.today() + '.csv'; document.body.appendChild(l); l.click(); l.remove();
+  };
+  function redraw(){
+    try { tile(); } catch(x){}
+    if (isOpen()) paint();
+    try { var sc = document.getElementById('scrim'); if (state.current != null && sc && sc.classList.contains('on')) openModal(state.current, 'fin'); } catch(x){}
+  }
+
+  /* ---------- بلاطة «سلف معلقة» في الملخص المالي ---------- */
+  function tile(){
+    var g = document.getElementById('finGrid'); if (!g || !g.children.length) return;
+    var W = rowsAll().filter(function(x){ return waiting(x.a); }), t = document.getElementById('wx14Tile');
+    if (!t) { t = document.createElement('div'); t.id = 'wx14Tile'; t.className = 'f adv'; t.style.cursor = 'pointer'; t.title = 'حصر السلف';
+      t.onclick = function(){ window.wxAdvList(); }; g.appendChild(t); }
+    var html = '<div class="v">' + F(sum(W)) + '</div><div class="k">سلف معلّقة لم تُصرف (' + W.length + ') · حصر ↗</div>';
+    if (t.innerHTML !== html) t.innerHTML = html;
+  }
+  function watch(){
+    var g = document.getElementById('finGrid'); if (!g || g.__wx14) return; g.__wx14 = true;
+    new MutationObserver(function(){ if (!document.getElementById('wx14Tile')) { try { tile(); } catch(x){} } }).observe(g, { childList: true });
+    try { tile(); } catch(x){}
+  }
+  watch();
+  setTimeout(function(){ watch(); sync(); }, 9000);
+  setInterval(function(){ if (document.visibilityState !== 'hidden') sync(); }, 5 * 60 * 1000);
+  window.wx14 = { sync: sync, apply: apply, rowsAll: rowsAll };
 })();
 </script>
 
