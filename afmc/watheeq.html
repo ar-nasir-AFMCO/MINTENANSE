@@ -11836,7 +11836,8 @@ body.wx-card-open #wx4Pill{ display:none !important; }
 /* === wx15 — التلفيات والحوادث (v145): من مركبات الاسطول الى الكرت المالي للموظف ===
    - المبلغ على السائق = التكلفة × نسبة الخطأ كما في الاسطول (الحادث بلا نسبة = 100%، والتلف 100%).
    - تخصم بحسب التاريخ: ما تاريخه ضمن شهر المسير او قبله يخصم معه، وما بعده ينتظر مسير شهره.
-   - ما سجل قبل الربط بتاريخ اقدم من نوفمبر 2026 ينتظر القرار ولا يخصم تلقائيا. لا يحذف شيء. */
+   - ما سجل قبل الربط بتاريخ اقدم من نوفمبر 2026 ينتظر القرار ولا يخصم تلقائيا. لا يحذف شيء.
+   - v146: تقسيط الخصم على اكثر من شهر — كل قسط يخصم مع مسير شهره. */
 (function(){
   'use strict';
   var A = window.AFC; if (!A || typeof state === 'undefined') return;
@@ -11858,19 +11859,44 @@ body.wx-card-open #wx4Pill{ display:none !important; }
   }
   function kindAr(k){ return k === 'accident' ? 'حادث' : 'تلف'; }
   function save(){ try { recomputeStats(); } catch(x){} try { persist(); } catch(x){} }
+  /* ---- التقسيط: x.parts = [{ per, amount, st: due|settled, settled_period }] ---- */
+  function r2(n){ return Math.round(N(n) * 100) / 100; }
+  function addM(per, i){ var y = +per.slice(0, 4), m = +per.slice(5, 7) - 1 + i; y += Math.floor(m / 12); m = ((m % 12) + 12) % 12; return y + '-' + ('0' + (m + 1)).slice(-2); }
+  function parts(x){ return (x && x.parts && x.parts.length) ? x.parts : null; }
+  function paid(x){ var Q = parts(x); return Q ? r2(Q.reduce(function(s, p){ return p.st === 'settled' ? s + N(p.amount) : s; }, 0)) : 0; }
+  function rem(x){ return (x.st === 'settled') ? 0 : r2(N(x.amount) - paid(x)); }
+  function split(total, n, start, keep){
+    var out = (keep || []).slice(), base = Math.floor(total / n * 100) / 100, i;
+    for (i = 0; i < n; i++) out.push({ per: addM(start, i), amount: i === n - 1 ? r2(total - base * (n - 1)) : base, st: 'due' });
+    return out;
+  }
+  function replan(x){   /* تغير المبلغ في الاسطول: يعاد توزيع المتبقي على الاقساط غير المخصومة */
+    var U = (parts(x) || []).filter(function(p){ return p.st !== 'settled'; }); if (!U.length) return;
+    var left = Math.max(0, r2(N(x.amount) - paid(x))), base = Math.floor(left / U.length * 100) / 100;
+    U.forEach(function(p, i){ p.amount = i === U.length - 1 ? r2(left - base * (U.length - 1)) : base; });
+  }
+  function psig(Q){ return (Q || []).map(function(p){ return p.per + ':' + N(p.amount) + ':' + (p.st || 'due') + ':' + (p.settled_period || ''); }).join('|'); }
 
   /* المستحق خصمه مع مسير شهر per: ما تاريخه ضمن الشهر او قبله ولم يخصم */
   window.wxIncDue = function(e, per){
     var P = refPer(per);
-    return incs(e).reduce(function(s, x){ return (x && x.st === 'due' && mon(x) <= P) ? s + N(x.amount) : s; }, 0);
+    return r2(incs(e).reduce(function(s, x){
+      if (!x || x.st !== 'due') return s;
+      var Q = parts(x);
+      if (!Q) return mon(x) <= P ? s + N(x.amount) : s;
+      return s + Q.reduce(function(t, p){ return (p.st !== 'settled' && p.per <= P) ? t + N(p.amount) : t; }, 0);
+    }, 0));
   };
   /* عند «تسوية» المسير: ما اضيف بعد تعميد المسير لم يخصم معه فيبقى للمسير التالي */
   window.wxIncSettle = function(e, per){
     var n = 0, ap = String((e.finance || {}).approved_at || '');
     incs(e).forEach(function(x){
-      if (!x || x.st !== 'due' || mon(x) > per) return;
+      if (!x || x.st !== 'due') return;
       if (ap && x.added_at && String(x.added_at) > ap) return;
-      x.st = 'settled'; x.settled_period = per; x.settled_at = nowISO(); n++;
+      var Q = parts(x);
+      if (!Q) { if (mon(x) > per) return; x.st = 'settled'; x.settled_period = per; x.settled_at = nowISO(); n++; return; }
+      Q.forEach(function(p){ if (p.st !== 'settled' && p.per <= per) { p.st = 'settled'; p.settled_period = per; n++; } });
+      if (Q.every(function(p){ return p.st === 'settled'; })) { x.st = 'settled'; x.settled_period = per; x.settled_at = nowISO(); }
     });
     return n;
   };
@@ -11887,6 +11913,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
         if (!(N(r.amount) > 0) && !r.st) return;
         x = { key: r.key, kind: r.kind, plate: r.plate, date: r.date || '', cost: N(r.cost), pct: N(r.pct), amount: N(r.amount), desc: r.desc || '', added_at: nowISO() };
         if (r.st) { x.st = r.st; x.settled_period = r.period || ''; x.note = r.note || ''; }
+        else if (r.plan && r.plan.length) { x.st = 'due'; x.parts = r.plan; }
         else x.st = (String(r.date || '') < CUT && String(r.created || '').slice(0, 10) < ROLL) ? 'hold' : 'due';
         if (!e.incidents) e.incidents = L = [];
         L.push(x); ch = true; return;
@@ -11898,7 +11925,13 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       }
       if (r.st) { x.st = r.st; x.settled_period = r.period || ''; x.note = r.note || ''; ch = true; return; }
       var v = { kind: r.kind, plate: r.plate, date: r.date || '', cost: N(r.cost), pct: N(r.pct), amount: N(r.amount), desc: r.desc || '' };
+      var was = x.amount;
       FLD.forEach(function(k){ if (x[k] !== v[k]) { x[k] = v[k]; ch = true; } });
+      var Q = parts(x);
+      if (Q) {
+        if (was !== x.amount) replan(x);
+        if (psig(Q) !== psig(r.plan)) push.push({ key: x.key, st: 'plan', period: '', amount: N(x.amount), note: '', plan: Q });
+      } else if (r.plan && r.plan.length) { x.parts = r.plan; if (x.st === 'hold') x.st = 'due'; ch = true; }
     });
     /* حذف من الاسطول قبل خصمه: يزال من الكرت. المخصوم والمعفى يبقى محفوظا. */
     var keep = L.filter(function(x){ return x && (seen[x.key] || x.st === 'settled' || x.st === 'waived'); });
@@ -11922,7 +11955,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       if (!push.length || depth) return n;
       var p = Promise.resolve();
       push.forEach(function(q){ p = p.then(function(){
-        return A.api('POST', 'rpc/fleet_incident_mark', { p_key: q.key, p_status: q.st, p_period: q.period || null, p_amount: q.amount, p_note: q.note || null }).catch(function(){});
+        return A.api('POST', 'rpc/fleet_incident_mark', { p_key: q.key, p_status: q.st, p_period: q.period || null, p_amount: q.amount, p_note: q.note || null, p_plan: q.plan || null }).catch(function(){});
       }); });
       return p.then(function(){ return n; });
     }).catch(function(x){ lastErr = (x && x.message) || 'تعذّر الاتصال'; return 0; });
@@ -11951,8 +11984,65 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       .then(done).catch(function(err){ T('تعذّر الحفظ: ' + ((err && err.message) || '')); });
   };
 
+  /* ---------- تقسيط الخصم على اكثر من شهر ---------- */
+  var cur = null;
+  function pscrim(){
+    var s = document.getElementById('wx15Plan');
+    if (!s) { s = document.createElement('div'); s.className = 'wf-scrim'; s.id = 'wx15Plan';
+      s.innerHTML = '<div class="wf-modal" id="wx15PlanM" style="max-width:520px"></div>'; document.body.appendChild(s);
+      s.addEventListener('click', function(ev){ if (ev.target === s) s.classList.remove('on'); }); }
+    return s;
+  }
+  function pclose(){ var s = document.getElementById('wx15Plan'); if (s) s.classList.remove('on'); }
+  function pprev(){
+    var x = cur && cur.x, box = document.getElementById('wx15pv'); if (!x || !box) return null;
+    var n = Math.floor(N((document.getElementById('wx15pn') || {}).value)), st = (document.getElementById('wx15ps') || {}).value || '';
+    if (!(n >= 1 && n <= 36) || !isPer(st)) { box.innerHTML = '<span style="color:var(--bad)">عدد الأشهر من 1 إلى 36، وحدّد شهر البداية.</span>'; return null; }
+    var keep = (parts(x) || []).filter(function(p){ return p.st === 'settled'; }), Q = split(rem(x), n, st, keep);
+    box.innerHTML = Q.map(function(p){ return '<span class="chip ' + (p.st === 'settled' ? 'ok' : 'line') + '" style="margin:2px">' + E(p.per) + ' · ' + F(p.amount) + (p.st === 'settled' ? ' ✓' : '') + '</span>'; }).join('');
+    return Q;
+  }
+  window.wxIncPlanPrev = pprev;
+  window.wxIncPlan = function(iq, key){
+    if (!canPay()) return T('تقسيط الخصم للمالية والإدارة');
+    var e = findEmp(iq), x = incs(e).filter(function(y){ return y && y.key === key; })[0]; if (!x || (x.st !== 'due' && x.st !== 'hold')) return;
+    cur = { e: e, x: x };
+    var U = (parts(x) || []).filter(function(p){ return p.st !== 'settled'; }), now = A.today().slice(0, 7);
+    var st = U.length ? U[0].per : (mon(x) > now ? mon(x) : now);
+    pscrim();
+    document.getElementById('wx15PlanM').innerHTML = '<div class="wf-head"><div class="nm">تقسيط الخصم — ' + E(e.name_ar || e.name_en || '') + '</div><div class="x" id="wx15PX">✕</div></div>'
+      + '<div class="wf-body"><div style="color:var(--muted);font-size:13px;margin-bottom:10px">' + kindAr(x.kind) + ' · ' + E(x.plate || '') + ' · ' + E(x.date || '')
+      + ' — المتبقي للخصم: <b>' + F(rem(x)) + '</b> ريال' + (paid(x) ? ' (خُصم ' + F(paid(x)) + ')' : '') + '</div>'
+      + '<div class="wf-grid"><div class="wf-field"><label>عدد الأشهر</label><input id="wx15pn" type="number" min="1" max="36" value="' + (U.length || 2) + '" oninput="wxIncPlanPrev()"></div>'
+      + '<div class="wf-field"><label>يبدأ من راتب شهر</label><input id="wx15ps" type="month" value="' + E(st) + '" oninput="wxIncPlanPrev()"></div></div>'
+      + '<div style="font-weight:600;font-size:13px;margin:10px 0 4px">الأقساط</div><div id="wx15pv"></div>'
+      + '<div class="wx5-hint">كل قسط يُخصم مع مسير شهره. شهر واحد = تأجيل الخصم كاملاً إلى ذلك الشهر.</div></div>'
+      + '<div class="wf-foot">' + (parts(x) ? '<button class="btn ghost" id="wx15PC">إلغاء التقسيط</button>' : '') + '<button class="btn ghost" id="wx15PN">رجوع</button><button class="btn" id="wx15PS">حفظ التقسيط</button></div>';
+    var M = document.getElementById('wx15PlanM');
+    M.querySelector('#wx15PX').onclick = pclose; M.querySelector('#wx15PN').onclick = pclose;
+    M.querySelector('#wx15PS').onclick = function(){ var Q = pprev(); if (Q) putPlan(Q); };
+    if (M.querySelector('#wx15PC')) M.querySelector('#wx15PC').onclick = function(){ putPlan(null); };
+    document.getElementById('wx15Plan').classList.add('on'); pprev();
+  };
+  function putPlan(Q){
+    var x = cur.x, keep = (parts(x) || []).filter(function(p){ return p.st === 'settled'; });
+    /* الغاء التقسيط: المتبقي يرجع دفعة واحدة (وما خصم يبقى مسجلا) */
+    if (!Q && keep.length) Q = split(rem(x), 1, A.today().slice(0, 7), keep);
+    A.api('POST', 'rpc/fleet_incident_mark', { p_key: x.key, p_status: Q ? 'plan' : 'open', p_period: null, p_amount: N(x.amount), p_note: null, p_plan: Q || null })
+      .then(function(){
+        if (Q) x.parts = Q; else delete x.parts;
+        x.st = 'due'; x.added_at = nowISO();
+        save(); pclose(); redraw(); T(Q && Q.length - keep.length > 1 ? 'تم التقسيط على ' + (Q.length - keep.length) + ' أشهر' : Q ? 'تم تحديد شهر الخصم' : 'أُلغي التقسيط');
+      }).catch(function(err){ T('تعذّر الحفظ: ' + ((err && err.message) || '')); });
+  }
+
   /* ---------- العرض ---------- */
   function chip(x){
+    var Q = parts(x);
+    if (x.st === 'due' && Q) {
+      var U = Q.filter(function(p){ return p.st !== 'settled'; });
+      return '<span class="chip warn">تقسيط ' + (Q.length - U.length) + '/' + Q.length + (U.length ? ' · القادم ' + F(U[0].amount) + ' من راتب ' + E(U[0].per) : '') + '</span>';
+    }
     if (x.st === 'due') return '<span class="chip warn">تُخصم من راتب ' + E(mon(x) || '—') + '</span>';
     if (x.st === 'hold') return '<span class="chip sand">سابقة — تحتاج قرار · لا تُخصم</span>';
     if (x.st === 'waived') return '<span class="chip line">معفاة</span>';
@@ -11961,8 +12051,9 @@ body.wx-card-open #wx4Pill{ display:none !important; }
   function acts(e, x){
     if (!canPay()) return '';
     var b = function(a, cls, t){ return '<button class="wx5-mini ' + cls + '" onclick="wxIncAct(\'' + E(nid(e.iqama)) + '\',\'' + E(x.key) + '\',\'' + a + '\')">' + t + '</button>'; };
-    if (x.st === 'hold') return b('due', 'ok', 'تُخصم') + b('prev', '', 'خُصمت سابقاً') + b('waive', 'bad', 'إعفاء');
-    if (x.st === 'due') return b('waive', 'bad', 'إعفاء');
+    var pl = '<button class="wx5-mini" onclick="wxIncPlan(\'' + E(nid(e.iqama)) + '\',\'' + E(x.key) + '\')">' + (parts(x) ? 'تعديل التقسيط' : 'تقسيط') + '</button>';
+    if (x.st === 'hold') return b('due', 'ok', 'تُخصم') + pl + b('prev', '', 'خُصمت سابقاً') + b('waive', 'bad', 'إعفاء');
+    if (x.st === 'due') return pl + b('waive', 'bad', 'إعفاء');
     if (x.st === 'waived' || x.manual) return b('reopen', '', '↩ إرجاع');
     return '';
   }
@@ -11971,12 +12062,13 @@ body.wx-card-open #wx4Pill{ display:none !important; }
   window.wxIncBox = function(e, idx){
     var L = incs(e).slice().sort(function(a, b){ return String(b.date).localeCompare(String(a.date)); });
     if (!L.length) return '';
-    var due = L.filter(function(x){ return x.st === 'due'; }).reduce(function(s, x){ return s + N(x.amount); }, 0);
+    var due = L.filter(function(x){ return x.st === 'due'; }).reduce(function(s, x){ return s + rem(x); }, 0);
     return '<div class="wx5-box"><div class="hd">🚗 التلفيات والحوادث (من الأسطول)'
       + (due ? ' <span class="chip warn">تُخصم: ' + F(due) + ' ريال</span>' : '') + '</div>'
       + L.map(function(x){
           return '<div class="wx5-row"><span class="amt">' + F(x.amount) + ' ريال</span><span class="chip line">' + kindAr(x.kind) + ' · ' + E(x.plate || '') + '</span>' + chip(x)
-            + '<span style="color:var(--muted)">' + E(x.date || '') + ' · ' + calc(x) + (x.desc ? ' · ' + E(x.desc) : '') + '</span>'
+            + '<span style="color:var(--muted)">' + E(x.date || '') + ' · ' + calc(x) + (x.desc ? ' · ' + E(x.desc) : '')
+            + (parts(x) ? ' · الأقساط: ' + parts(x).map(function(p){ return E(p.per) + ' ' + F(p.amount) + (p.st === 'settled' ? ' ✓' : ''); }).join(' ، ') : '') + '</span>'
             + '<span class="sp">' + acts(e, x) + '</span></div>'; }).join('')
       + '</div>';
   };
@@ -11987,7 +12079,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     (state.employees || []).forEach(function(e){ incs(e).forEach(function(x){ if (x) out.push({ e: e, x: x }); }); });
     return out.sort(function(a, b){ return String(b.x.date).localeCompare(String(a.x.date)); });
   }
-  function sum(L){ return L.reduce(function(s, r){ return s + N(r.x.amount); }, 0); }
+  function sum(L){ return L.reduce(function(s, r){ return s + (r.x.st === 'due' ? rem(r.x) : N(r.x.amount)); }, 0); }
   function tbl(L){
     if (!L.length) return '<p style="color:var(--muted);font-size:13px;margin:6px 0 14px">لا يوجد.</p>';
     return '<div class="wx3-tblwrap" style="margin-bottom:14px"><table class="wx3-tbl"><thead><tr><th>الموظف</th><th>الإقامة</th><th>النوع</th><th>اللوحة</th><th>التاريخ</th><th>التكلفة</th><th>النسبة</th><th>على السائق</th><th>الحالة</th><th></th></tr></thead><tbody>'
@@ -12026,8 +12118,9 @@ body.wx-card-open #wx4Pill{ display:none !important; }
   window.wxIncExport = function(){
     var R = rowsAll(); if (!R.length) return T('لا توجد سجلات');
     var st = { due: 'تُخصم', hold: 'سابقة — تحتاج قرار', settled: 'مخصومة', waived: 'معفاة' };
-    var rows = [['الاسم', 'رقم الإقامة', 'المشروع', 'النوع', 'اللوحة', 'التاريخ', 'التكلفة', 'النسبة %', 'على السائق', 'الحالة', 'شهر الخصم', 'الوصف']].concat(R.map(function(r){ var x = r.x, e = r.e;
-      return [e.name_ar || e.name_en || '', e.iqama || '', e.project || '', kindAr(x.kind), x.plate || '', x.date || '', N(x.cost), N(x.pct), N(x.amount), st[x.st] || '', x.st === 'settled' ? (x.settled_period || '') : x.st === 'due' ? mon(x) : '', x.desc || '']; }));
+    var rows = [['الاسم', 'رقم الإقامة', 'المشروع', 'النوع', 'اللوحة', 'التاريخ', 'التكلفة', 'النسبة %', 'على السائق', 'الحالة', 'شهر الخصم', 'الأقساط', 'المخصوم', 'المتبقي', 'الوصف']].concat(R.map(function(r){ var x = r.x, e = r.e;
+      return [e.name_ar || e.name_en || '', e.iqama || '', e.project || '', kindAr(x.kind), x.plate || '', x.date || '', N(x.cost), N(x.pct), N(x.amount), st[x.st] || '', x.st === 'settled' ? (x.settled_period || '') : x.st === 'due' ? (parts(x) ? parts(x).map(function(p){ return p.per; }).join(' ') : mon(x)) : '',
+        parts(x) ? parts(x).length : '', x.st === 'settled' ? N(x.amount) : paid(x), (x.st === 'due' || x.st === 'hold') ? rem(x) : 0, x.desc || '']; }));
     var csv = String.fromCharCode(65279) + rows.map(function(r){ return r.map(function(c){ return '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"'; }).join(','); }).join(String.fromCharCode(10));
     var b = new Blob([csv], { type: 'text/csv;charset=utf-8' }), l = document.createElement('a');
     l.href = URL.createObjectURL(b); l.download = 'التلفيات-والحوادث-' + A.today() + '.csv'; document.body.appendChild(l); l.click(); l.remove();
