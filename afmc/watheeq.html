@@ -11999,7 +11999,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     var n = Math.floor(N((document.getElementById('wx15pn') || {}).value)), st = (document.getElementById('wx15ps') || {}).value || '';
     if (!(n >= 1 && n <= 36) || !isPer(st)) { box.innerHTML = '<span style="color:var(--bad)">عدد الأشهر من 1 إلى 36، وحدّد شهر البداية.</span>'; return null; }
     var keep = (parts(x) || []).filter(function(p){ return p.st === 'settled'; }), Q = split(rem(x), n, st, keep);
-    box.innerHTML = Q.map(function(p){ return '<span class="chip ' + (p.st === 'settled' ? 'ok' : 'line') + '" style="margin:2px">' + E(p.per) + ' · ' + F(p.amount) + (p.st === 'settled' ? ' ✓' : '') + '</span>'; }).join('');
+    box.innerHTML = Q.map(function(p){ return '<span class="chip ' + (p.st === 'settled' ? 'ok' : 'line') + '" dir="ltr" style="margin:2px">' + E(p.per) + ' : ' + F(p.amount) + (p.st === 'settled' ? ' ✓' : '') + '</span>'; }).join(' ');
     return Q;
   }
   window.wxIncPlanPrev = pprev;
@@ -12068,7 +12068,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       + L.map(function(x){
           return '<div class="wx5-row"><span class="amt">' + F(x.amount) + ' ريال</span><span class="chip line">' + kindAr(x.kind) + ' · ' + E(x.plate || '') + '</span>' + chip(x)
             + '<span style="color:var(--muted)">' + E(x.date || '') + ' · ' + calc(x) + (x.desc ? ' · ' + E(x.desc) : '')
-            + (parts(x) ? ' · الأقساط: ' + parts(x).map(function(p){ return E(p.per) + ' ' + F(p.amount) + (p.st === 'settled' ? ' ✓' : ''); }).join(' ، ') : '') + '</span>'
+            + (parts(x) ? ' · الأقساط: ' + parts(x).map(function(p){ return '<span dir="ltr">' + E(p.per) + ' : ' + F(p.amount) + (p.st === 'settled' ? ' ✓' : '') + '</span>'; }).join(' ، ') : '') + '</span>'
             + '<span class="sp">' + acts(e, x) + '</span></div>'; }).join('')
       + '</div>';
   };
