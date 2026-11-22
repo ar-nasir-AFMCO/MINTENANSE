@@ -11838,7 +11838,8 @@ body.wx-card-open #wx4Pill{ display:none !important; }
    - تخصم بحسب التاريخ: ما تاريخه ضمن شهر المسير او قبله يخصم معه، وما بعده ينتظر مسير شهره.
    - ما سجل قبل الربط بتاريخ اقدم من نوفمبر 2026 ينتظر القرار ولا يخصم تلقائيا. لا يحذف شيء.
    - v146: تقسيط الخصم على اكثر من شهر — كل قسط يخصم مع مسير شهره.
-   - v147: تخفيض نسبة الخصم — قرار مالي يسجل مع سببه، ونسبة الاسطول تبقى ظاهرة. */
+   - v147: تخفيض نسبة الخصم — قرار مالي يسجل مع سببه، ونسبة الاسطول تبقى ظاهرة.
+   - v148: السجل بلا تكلفة يظهر «بانتظار التكلفة» بدل ان يختفي، والتحديث من الاسطول عند فتح وثيق والكرت والحصر. */
 (function(){
   'use strict';
   var A = window.AFC; if (!A || typeof state === 'undefined') return;
@@ -11909,6 +11910,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
 
   /* ---------- مطابقة سجلات الاسطول مع كرت الموظف ---------- */
   var FLD = ['kind', 'plate', 'date', 'cost', 'pct', 'amount', 'desc'];
+  function first(r){ return (String(r.date || '') < CUT && String(r.created || '').slice(0, 10) < ROLL) ? 'hold' : 'due'; }
   function reconcile(e, R, push){
     var L = incs(e), ch = false, seen = {};
     R.forEach(function(r){
@@ -11916,13 +11918,13 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       var x = null, i;
       for (i = 0; i < L.length; i++) if (L[i] && L[i].key === r.key) x = L[i];
       if (!x) {
-        if (!(N(r.amount) > 0) && !r.st) return;
+        if (!(N(r.amount) > 0) && !r.st && N(r.cost) > 0) return;      /* نسبة الخطأ صفر: لا شيء على السائق */
         var f0 = eff(r);
         x = { key: r.key, kind: r.kind, plate: r.plate, date: r.date || '', cost: N(r.cost), pct: f0.pct, amount: f0.amount, fpct: f0.fpct, desc: r.desc || '', added_at: nowISO() };
         if (f0.adj != null) x.adj = { pct: f0.adj, note: f0.note };
         if (r.st) { x.st = r.st; x.settled_period = r.period || ''; x.note = r.note || ''; }
         else if (r.plan && r.plan.length) { x.st = 'due'; x.parts = r.plan; }
-        else x.st = (String(r.date || '') < CUT && String(r.created || '').slice(0, 10) < ROLL) ? 'hold' : 'due';
+        else x.st = !(N(r.cost) > 0) ? 'wait' : first(r);
         if (!e.incidents) e.incidents = L = [];
         L.push(x); ch = true; return;
       }
@@ -11940,6 +11942,9 @@ body.wx-card-open #wx4Pill{ display:none !important; }
         ch = true;
       }
       FLD.forEach(function(k){ if (x[k] !== v[k]) { x[k] = v[k]; ch = true; } });
+      /* بلا تكلفة: ينتظر ادخالها في الاسطول ولا يخصم ولا يسوى بصفر */
+      if (x.st === 'wait' && N(x.cost) > 0) { x.st = first(r); x.added_at = nowISO(); ch = true; }
+      else if ((x.st === 'due' || x.st === 'hold') && !parts(x) && !(N(x.cost) > 0)) { x.st = 'wait'; ch = true; }
       var Q = parts(x);
       if (Q) {
         if (was !== x.amount) replan(x);
@@ -11974,6 +11979,9 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     }).catch(function(x){ lastErr = (x && x.message) || 'تعذّر الاتصال'; return 0; });
   }
   function sync(){ chain = chain.then(function(){ return runSync(0); }); return chain; }
+  /* تحديث فوري (بحد ادنى 20 ثانية بين المرات): عند الرجوع لوثيق وفتح الكرت المالي */
+  var last = 0;
+  function kick(){ var t = Date.now(); if (t - last < 20000) return; last = t; sync().then(function(n){ if (n) redraw(); }); }
 
   /* ---------- قرارات المالية: خصم السابق / خصم سابقا / اعفاء / ارجاع ---------- */
   function findEmp(iq){ var k = nid(iq), L = state.employees || []; for (var i = 0; i < L.length; i++) if (k && nid(L[i].iqama) === k) return L[i]; return null; }
@@ -12105,6 +12113,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       return '<span class="chip warn">تقسيط ' + (Q.length - U.length) + '/' + Q.length + (U.length ? ' · القادم ' + F(U[0].amount) + ' من راتب ' + E(U[0].per) : '') + '</span>';
     }
     if (x.st === 'due') return '<span class="chip warn">تُخصم من راتب ' + E(mon(x) || '—') + '</span>';
+    if (x.st === 'wait') return '<span class="chip line">بانتظار التكلفة — تُدخل في الأسطول</span>';
     if (x.st === 'hold') return '<span class="chip sand">سابقة — تحتاج قرار · لا تُخصم</span>';
     if (x.st === 'waived') return '<span class="chip line">معفاة</span>';
     return '<span class="chip ok">خُصمت' + (x.manual ? ' سابقاً' : ' من راتب ' + E(x.settled_period || '')) + '</span>';
@@ -12119,10 +12128,12 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     if (x.st === 'waived' || x.manual) return b('reopen', '', '↩ إرجاع');
     return '';
   }
-  function calc(x){ return F(x.cost) + ' × ' + F(x.pct) + '% = <b>' + F(x.amount) + '</b> ريال' + (x.adj ? ' (خُفّضت من ' + F(fpc(x)) + '%' + (x.adj.note ? ' — ' + E(x.adj.note) : '') + ')' : ''); }
+  function calc(x){ if (x.st === 'wait') return 'التكلفة لم تُدخل بعد';
+    return F(x.cost) + ' × ' + F(x.pct) + '% = <b>' + F(x.amount) + '</b> ريال' + (x.adj ? ' (خُفّضت من ' + F(fpc(x)) + '%' + (x.adj.note ? ' — ' + E(x.adj.note) : '') + ')' : ''); }
   /* صندوق في الكرت المالي للموظف */
   window.wxIncBox = function(e, idx){
     var L = incs(e).slice().sort(function(a, b){ return String(b.date).localeCompare(String(a.date)); });
+    setTimeout(kick, 0);
     if (!L.length) return '';
     var due = L.filter(function(x){ return x.st === 'due'; }).reduce(function(s, x){ return s + rem(x); }, 0);
     return '<div class="wx5-box"><div class="hd">🚗 التلفيات والحوادث (من الأسطول)'
@@ -12152,12 +12163,13 @@ body.wx-card-open #wx4Pill{ display:none !important; }
   }
   function listHTML(){
     var R = rowsAll(), D = R.filter(function(r){ return r.x.st === 'due'; }), H = R.filter(function(r){ return r.x.st === 'hold'; }),
-        Z = R.filter(function(r){ return r.x.st === 'settled' || r.x.st === 'waived'; });
+        Z = R.filter(function(r){ return r.x.st === 'settled' || r.x.st === 'waived'; }), W = R.filter(function(r){ return r.x.st === 'wait'; });
     var k = function(t, L, s){ return '<div class="wx3-kpi"><div class="k">' + t + '</div><div class="v">' + F(sum(L)) + ' <small>ريال</small></div><div class="k">' + L.length + ' · ' + s + '</div></div>'; };
     return '<div class="wx3-kpis">' + k('تُخصم بحسب التاريخ', D, 'من راتب شهر الحادث/التلف') + k('سابقة — تحتاج قرارك', H, 'لا تُخصم تلقائياً') + k('مخصومة / معفاة', Z, 'محفوظة') + '</div>'
       + (lastErr ? '<div class="wx5-hint">تعذّر التحديث من الأسطول الآن: ' + E(lastErr) + '</div>' : '')
       + '<div style="font-weight:700;margin:10px 0 6px">⏳ تُخصم — بحسب تاريخها</div>' + tbl(D)
       + '<div style="font-weight:700;margin:10px 0 6px">🗂 سابقة (قبل الربط) — تحتاج قرار</div>' + tbl(H)
+      + (W.length ? '<div style="font-weight:700;margin:10px 0 6px">بلا تكلفة — بانتظار إدخالها في الأسطول (' + W.length + ')</div>' + tbl(W) : '')
       + '<div style="font-weight:700;margin:10px 0 6px">✅ مخصومة / معفاة</div>' + tbl(Z);
   }
   function scrim(){
@@ -12173,13 +12185,14 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     var m = document.getElementById('wx15Modal'); if (!m) return;
     m.innerHTML = '<div class="wf-head"><div class="nm">🚗 التلفيات والحوادث — من الأسطول</div><div class="x" id="wx15X">✕</div></div>'
       + '<div class="wf-body">' + listHTML() + '</div>'
-      + '<div class="wf-foot"><button class="btn ghost" onclick="wxIncExport()">تصدير</button><button class="btn" id="wx15Ok">تم</button></div>';
+      + '<div class="wf-foot"><button class="btn ghost" id="wx15Rf">تحديث من الأسطول</button><button class="btn ghost" onclick="wxIncExport()">تصدير</button><button class="btn" id="wx15Ok">تم</button></div>';
     m.querySelector('#wx15X').onclick = close; m.querySelector('#wx15Ok').onclick = close;
+    m.querySelector('#wx15Rf').onclick = function(){ this.disabled = true; sync().then(function(){ if (isOpen()) paint(); T(lastErr ? 'تعذّر التحديث' : 'تم التحديث من الأسطول'); }); };
   }
   window.wxIncList = function(){ scrim(); paint(); document.getElementById('wx15Scrim').classList.add('on'); sync().then(function(){ if (isOpen()) paint(); }); };
   window.wxIncExport = function(){
     var R = rowsAll(); if (!R.length) return T('لا توجد سجلات');
-    var st = { due: 'تُخصم', hold: 'سابقة — تحتاج قرار', settled: 'مخصومة', waived: 'معفاة' };
+    var st = { due: 'تُخصم', hold: 'سابقة — تحتاج قرار', settled: 'مخصومة', waived: 'معفاة', wait: 'بانتظار التكلفة' };
     var rows = [['الاسم', 'رقم الإقامة', 'المشروع', 'النوع', 'اللوحة', 'التاريخ', 'التكلفة', 'نسبة الأسطول %', 'النسبة %', 'سبب التخفيض', 'على السائق', 'الحالة', 'شهر الخصم', 'الأقساط', 'المخصوم', 'المتبقي', 'الوصف']].concat(R.map(function(r){ var x = r.x, e = r.e;
       return [e.name_ar || e.name_en || '', e.iqama || '', e.project || '', kindAr(x.kind), x.plate || '', x.date || '', N(x.cost), fpc(x), N(x.pct), (x.adj && x.adj.note) || '', N(x.amount), st[x.st] || '', x.st === 'settled' ? (x.settled_period || '') : x.st === 'due' ? (parts(x) ? parts(x).map(function(p){ return p.per; }).join(' ') : mon(x)) : '',
         parts(x) ? parts(x).length : '', x.st === 'settled' ? N(x.amount) : paid(x), (x.st === 'due' || x.st === 'hold') ? rem(x) : 0, x.desc || '']; }));
@@ -12196,10 +12209,10 @@ body.wx-card-open #wx4Pill{ display:none !important; }
   /* ---------- بلاطة في الملخص المالي ---------- */
   function tile(){
     var g = document.getElementById('finGrid'); if (!g || !g.children.length) return;
-    var R = rowsAll(), D = R.filter(function(r){ return r.x.st === 'due'; }), H = R.filter(function(r){ return r.x.st === 'hold'; }), t = document.getElementById('wx15Tile');
+    var R = rowsAll(), D = R.filter(function(r){ return r.x.st === 'due'; }), H = R.filter(function(r){ return r.x.st === 'hold'; }), W = R.filter(function(r){ return r.x.st === 'wait'; }), t = document.getElementById('wx15Tile');
     if (!t) { t = document.createElement('div'); t.id = 'wx15Tile'; t.className = 'f acc'; t.style.cursor = 'pointer'; t.title = 'التلفيات والحوادث';
       t.onclick = function(){ window.wxIncList(); }; g.appendChild(t); }
-    var html = '<div class="v">' + F(sum(D)) + '</div><div class="k">تلفيات وحوادث تُخصم (' + D.length + ')' + (H.length ? ' · تحتاج قرار (' + H.length + ')' : '') + ' · حصر ↗</div>';
+    var html = '<div class="v">' + F(sum(D)) + '</div><div class="k">تلفيات وحوادث تُخصم (' + D.length + ')' + (H.length ? ' · تحتاج قرار (' + H.length + ')' : '') + (W.length ? ' · بلا تكلفة (' + W.length + ')' : '') + ' · حصر ↗</div>';
     if (t.innerHTML !== html) t.innerHTML = html;
   }
   function watch(){
@@ -12208,8 +12221,10 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     try { tile(); } catch(x){}
   }
   watch();
-  setTimeout(function(){ watch(); sync(); }, 11000);
-  setInterval(function(){ if (document.visibilityState !== 'hidden') sync(); }, 5 * 60 * 1000);
+  setTimeout(function(){ watch(); kick(); }, 11000);
+  setInterval(function(){ if (document.visibilityState !== 'hidden') kick(); }, 2 * 60 * 1000);
+  window.addEventListener('focus', kick);
+  document.addEventListener('visibilitychange', function(){ if (document.visibilityState !== 'hidden') kick(); });
   window.wx15 = { sync: sync, reconcile: reconcile, rowsAll: rowsAll };
 })();
 </script>
