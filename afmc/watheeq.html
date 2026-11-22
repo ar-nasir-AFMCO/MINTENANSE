@@ -11837,7 +11837,8 @@ body.wx-card-open #wx4Pill{ display:none !important; }
    - المبلغ على السائق = التكلفة × نسبة الخطأ كما في الاسطول (الحادث بلا نسبة = 100%، والتلف 100%).
    - تخصم بحسب التاريخ: ما تاريخه ضمن شهر المسير او قبله يخصم معه، وما بعده ينتظر مسير شهره.
    - ما سجل قبل الربط بتاريخ اقدم من نوفمبر 2026 ينتظر القرار ولا يخصم تلقائيا. لا يحذف شيء.
-   - v146: تقسيط الخصم على اكثر من شهر — كل قسط يخصم مع مسير شهره. */
+   - v146: تقسيط الخصم على اكثر من شهر — كل قسط يخصم مع مسير شهره.
+   - v147: تخفيض نسبة الخصم — قرار مالي يسجل مع سببه، ونسبة الاسطول تبقى ظاهرة. */
 (function(){
   'use strict';
   var A = window.AFC; if (!A || typeof state === 'undefined') return;
@@ -11875,6 +11876,11 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     var left = Math.max(0, r2(N(x.amount) - paid(x))), base = Math.floor(left / U.length * 100) / 100;
     U.forEach(function(p, i){ p.amount = i === U.length - 1 ? r2(left - base * (U.length - 1)) : base; });
   }
+  /* النسبة السارية: نسبة الاسطول ما لم تخفضها المالية (adj_pct) */
+  function eff(r){
+    var fp = N(r.pct), a = (r.adj_pct == null || r.adj_pct === '') ? null : Math.min(N(r.adj_pct), fp);
+    return { fpct: fp, adj: a, note: r.adj_note || '', pct: a == null ? fp : a, amount: a == null ? N(r.amount) : r2(N(r.cost) * a / 100) };
+  }
   function psig(Q){ return (Q || []).map(function(p){ return p.per + ':' + N(p.amount) + ':' + (p.st || 'due') + ':' + (p.settled_period || ''); }).join('|'); }
 
   /* المستحق خصمه مع مسير شهر per: ما تاريخه ضمن الشهر او قبله ولم يخصم */
@@ -11911,7 +11917,9 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       for (i = 0; i < L.length; i++) if (L[i] && L[i].key === r.key) x = L[i];
       if (!x) {
         if (!(N(r.amount) > 0) && !r.st) return;
-        x = { key: r.key, kind: r.kind, plate: r.plate, date: r.date || '', cost: N(r.cost), pct: N(r.pct), amount: N(r.amount), desc: r.desc || '', added_at: nowISO() };
+        var f0 = eff(r);
+        x = { key: r.key, kind: r.kind, plate: r.plate, date: r.date || '', cost: N(r.cost), pct: f0.pct, amount: f0.amount, fpct: f0.fpct, desc: r.desc || '', added_at: nowISO() };
+        if (f0.adj != null) x.adj = { pct: f0.adj, note: f0.note };
         if (r.st) { x.st = r.st; x.settled_period = r.period || ''; x.note = r.note || ''; }
         else if (r.plan && r.plan.length) { x.st = 'due'; x.parts = r.plan; }
         else x.st = (String(r.date || '') < CUT && String(r.created || '').slice(0, 10) < ROLL) ? 'hold' : 'due';
@@ -11924,8 +11932,13 @@ body.wx-card-open #wx4Pill{ display:none !important; }
         return;
       }
       if (r.st) { x.st = r.st; x.settled_period = r.period || ''; x.note = r.note || ''; ch = true; return; }
-      var v = { kind: r.kind, plate: r.plate, date: r.date || '', cost: N(r.cost), pct: N(r.pct), amount: N(r.amount), desc: r.desc || '' };
+      var f = eff(r), v = { kind: r.kind, plate: r.plate, date: r.date || '', cost: N(r.cost), pct: f.pct, amount: f.amount, desc: r.desc || '' };
       var was = x.amount;
+      if (x.fpct !== f.fpct) { x.fpct = f.fpct; ch = true; }
+      if ((x.adj ? x.adj.pct : null) !== f.adj || (x.adj ? x.adj.note || '' : '') !== (f.adj == null ? '' : f.note)) {
+        if (f.adj == null) delete x.adj; else x.adj = { pct: f.adj, note: f.note };
+        ch = true;
+      }
       FLD.forEach(function(k){ if (x[k] !== v[k]) { x[k] = v[k]; ch = true; } });
       var Q = parts(x);
       if (Q) {
@@ -12036,6 +12049,54 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       }).catch(function(err){ T('تعذّر الحفظ: ' + ((err && err.message) || '')); });
   }
 
+  /* ---------- تخفيض نسبة الخصم ---------- */
+  function fpc(x){ return x.fpct == null ? N(x.pct) : N(x.fpct); }
+  function qprev(){
+    var x = cur && cur.x, box = document.getElementById('wx15qv'); if (!x || !box) return null;
+    var raw = (document.getElementById('wx15qp') || {}).value, p = N(raw), top = fpc(x);
+    if (raw === '' || !(p >= 0 && p <= top)) { box.innerHTML = '<span style="color:var(--bad)">النسبة من 0 إلى ' + F(top) + '% (نسبة الأسطول).</span>'; return null; }
+    var amt = r2(N(x.cost) * p / 100);
+    if (amt < paid(x)) { box.innerHTML = '<span style="color:var(--bad)">خُصم من هذا السجل ' + F(paid(x)) + ' ريال — لا يمكن النزول تحته.</span>'; return null; }
+    box.innerHTML = '<span dir="ltr">' + F(x.cost) + ' × ' + F(p) + '% = <b>' + F(amt) + '</b></span> ريال على السائق' + (p < top ? ' — تخفيض ' + F(r2(N(x.cost) * top / 100 - amt)) + ' ريال' : '');
+    return { pct: p, amount: amt };
+  }
+  window.wxIncPctPrev = qprev;
+  window.wxIncPct = function(iq, key){
+    if (!canPay()) return T('تخفيض نسبة الخصم للمالية والإدارة');
+    var e = findEmp(iq), x = incs(e).filter(function(y){ return y && y.key === key; })[0]; if (!x || (x.st !== 'due' && x.st !== 'hold')) return;
+    cur = { e: e, x: x };
+    pscrim();
+    document.getElementById('wx15PlanM').innerHTML = '<div class="wf-head"><div class="nm">تخفيض نسبة الخصم — ' + E(e.name_ar || e.name_en || '') + '</div><div class="x" id="wx15QX">✕</div></div>'
+      + '<div class="wf-body"><div style="color:var(--muted);font-size:13px;margin-bottom:10px">' + kindAr(x.kind) + ' · ' + E(x.plate || '') + ' · ' + E(x.date || '')
+      + ' — التكلفة <b>' + F(x.cost) + '</b> ريال · نسبة الأسطول <b>' + F(fpc(x)) + '%</b></div>'
+      + '<div class="wf-grid"><div class="wf-field"><label>النسبة على السائق %</label><input id="wx15qp" type="number" min="0" max="' + fpc(x) + '" step="1" value="' + N(x.pct) + '" oninput="wxIncPctPrev()"></div>'
+      + '<div class="wf-field"><label>السبب</label><input id="wx15qn" placeholder="مثال: قرار الإدارة" value="' + E((x.adj && x.adj.note) || '') + '"></div></div>'
+      + '<div style="margin-top:10px" id="wx15qv"></div>'
+      + '<div class="wx5-hint">التخفيض قرار مالي يُسجّل مع سببه. نسبة الأسطول لا تتغيّر، والباقي تتحمّله الشركة.</div></div>'
+      + '<div class="wf-foot">' + (x.adj ? '<button class="btn ghost" id="wx15QR">إرجاع نسبة الأسطول</button>' : '') + '<button class="btn ghost" id="wx15QN">رجوع</button><button class="btn" id="wx15QS">حفظ</button></div>';
+    var M = document.getElementById('wx15PlanM');
+    M.querySelector('#wx15QX').onclick = pclose; M.querySelector('#wx15QN').onclick = pclose;
+    M.querySelector('#wx15QS').onclick = function(){
+      var q = qprev(); if (!q) return;
+      var note = ((document.getElementById('wx15qn') || {}).value || '').trim();
+      if (q.pct < fpc(x) && !note) return T('اكتب سبب التخفيض');
+      putPct(q.pct >= fpc(x) ? null : q.pct, note);
+    };
+    if (M.querySelector('#wx15QR')) M.querySelector('#wx15QR').onclick = function(){ putPct(null, ''); };
+    document.getElementById('wx15Plan').classList.add('on'); qprev();
+  };
+  function putPct(p, note){
+    var x = cur.x;
+    A.api('POST', 'rpc/fleet_incident_adjust', { p_key: x.key, p_pct: p, p_note: note || null })
+      .then(function(){
+        if (x.fpct == null) x.fpct = N(x.pct);
+        if (p == null) { delete x.adj; x.pct = x.fpct; } else { x.adj = { pct: p, note: note || '' }; x.pct = p; }
+        x.amount = r2(N(x.cost) * N(x.pct) / 100);
+        if (parts(x)) replan(x);
+        save(); pclose(); redraw(); sync(); T(p == null ? 'رجعت نسبة الأسطول' : 'خُفّضت النسبة إلى ' + F(p) + '%');
+      }).catch(function(err){ T('تعذّر الحفظ: ' + ((err && err.message) || '')); });
+  }
+
   /* ---------- العرض ---------- */
   function chip(x){
     var Q = parts(x);
@@ -12052,12 +12113,13 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     if (!canPay()) return '';
     var b = function(a, cls, t){ return '<button class="wx5-mini ' + cls + '" onclick="wxIncAct(\'' + E(nid(e.iqama)) + '\',\'' + E(x.key) + '\',\'' + a + '\')">' + t + '</button>'; };
     var pl = '<button class="wx5-mini" onclick="wxIncPlan(\'' + E(nid(e.iqama)) + '\',\'' + E(x.key) + '\')">' + (parts(x) ? 'تعديل التقسيط' : 'تقسيط') + '</button>';
-    if (x.st === 'hold') return b('due', 'ok', 'تُخصم') + pl + b('prev', '', 'خُصمت سابقاً') + b('waive', 'bad', 'إعفاء');
-    if (x.st === 'due') return pl + b('waive', 'bad', 'إعفاء');
+    var pc = '<button class="wx5-mini" onclick="wxIncPct(\'' + E(nid(e.iqama)) + '\',\'' + E(x.key) + '\')">تخفيض النسبة</button>';
+    if (x.st === 'hold') return b('due', 'ok', 'تُخصم') + pl + pc + b('prev', '', 'خُصمت سابقاً') + b('waive', 'bad', 'إعفاء');
+    if (x.st === 'due') return pl + pc + b('waive', 'bad', 'إعفاء');
     if (x.st === 'waived' || x.manual) return b('reopen', '', '↩ إرجاع');
     return '';
   }
-  function calc(x){ return F(x.cost) + ' × ' + F(x.pct) + '% = <b>' + F(x.amount) + '</b> ريال'; }
+  function calc(x){ return F(x.cost) + ' × ' + F(x.pct) + '% = <b>' + F(x.amount) + '</b> ريال' + (x.adj ? ' (خُفّضت من ' + F(fpc(x)) + '%' + (x.adj.note ? ' — ' + E(x.adj.note) : '') + ')' : ''); }
   /* صندوق في الكرت المالي للموظف */
   window.wxIncBox = function(e, idx){
     var L = incs(e).slice().sort(function(a, b){ return String(b.date).localeCompare(String(a.date)); });
@@ -12085,7 +12147,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     return '<div class="wx3-tblwrap" style="margin-bottom:14px"><table class="wx3-tbl"><thead><tr><th>الموظف</th><th>الإقامة</th><th>النوع</th><th>اللوحة</th><th>التاريخ</th><th>التكلفة</th><th>النسبة</th><th>على السائق</th><th>الحالة</th><th></th></tr></thead><tbody>'
       + L.map(function(r){ var x = r.x, e = r.e;
           return '<tr><td>' + E(e.name_ar || e.name_en || '—') + '</td><td>' + E(e.iqama || '') + '</td><td>' + kindAr(x.kind) + '</td><td>' + E(x.plate || '') + '</td><td>' + E(x.date || '')
-            + '</td><td>' + F(x.cost) + '</td><td>' + F(x.pct) + '%</td><td><b>' + F(x.amount) + '</b></td><td>' + chip(x) + '</td><td style="white-space:nowrap">' + acts(e, x) + '</td></tr>'; }).join('')
+            + '</td><td>' + F(x.cost) + '</td><td>' + F(x.pct) + '%' + (x.adj ? ' <small style="color:var(--muted)">(من ' + F(fpc(x)) + '%)</small>' : '') + '</td><td><b>' + F(x.amount) + '</b></td><td>' + chip(x) + '</td><td style="white-space:nowrap">' + acts(e, x) + '</td></tr>'; }).join('')
       + '</tbody></table></div>';
   }
   function listHTML(){
@@ -12118,8 +12180,8 @@ body.wx-card-open #wx4Pill{ display:none !important; }
   window.wxIncExport = function(){
     var R = rowsAll(); if (!R.length) return T('لا توجد سجلات');
     var st = { due: 'تُخصم', hold: 'سابقة — تحتاج قرار', settled: 'مخصومة', waived: 'معفاة' };
-    var rows = [['الاسم', 'رقم الإقامة', 'المشروع', 'النوع', 'اللوحة', 'التاريخ', 'التكلفة', 'النسبة %', 'على السائق', 'الحالة', 'شهر الخصم', 'الأقساط', 'المخصوم', 'المتبقي', 'الوصف']].concat(R.map(function(r){ var x = r.x, e = r.e;
-      return [e.name_ar || e.name_en || '', e.iqama || '', e.project || '', kindAr(x.kind), x.plate || '', x.date || '', N(x.cost), N(x.pct), N(x.amount), st[x.st] || '', x.st === 'settled' ? (x.settled_period || '') : x.st === 'due' ? (parts(x) ? parts(x).map(function(p){ return p.per; }).join(' ') : mon(x)) : '',
+    var rows = [['الاسم', 'رقم الإقامة', 'المشروع', 'النوع', 'اللوحة', 'التاريخ', 'التكلفة', 'نسبة الأسطول %', 'النسبة %', 'سبب التخفيض', 'على السائق', 'الحالة', 'شهر الخصم', 'الأقساط', 'المخصوم', 'المتبقي', 'الوصف']].concat(R.map(function(r){ var x = r.x, e = r.e;
+      return [e.name_ar || e.name_en || '', e.iqama || '', e.project || '', kindAr(x.kind), x.plate || '', x.date || '', N(x.cost), fpc(x), N(x.pct), (x.adj && x.adj.note) || '', N(x.amount), st[x.st] || '', x.st === 'settled' ? (x.settled_period || '') : x.st === 'due' ? (parts(x) ? parts(x).map(function(p){ return p.per; }).join(' ') : mon(x)) : '',
         parts(x) ? parts(x).length : '', x.st === 'settled' ? N(x.amount) : paid(x), (x.st === 'due' || x.st === 'hold') ? rem(x) : 0, x.desc || '']; }));
     var csv = String.fromCharCode(65279) + rows.map(function(r){ return r.map(function(c){ return '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"'; }).join(','); }).join(String.fromCharCode(10));
     var b = new Blob([csv], { type: 'text/csv;charset=utf-8' }), l = document.createElement('a');
