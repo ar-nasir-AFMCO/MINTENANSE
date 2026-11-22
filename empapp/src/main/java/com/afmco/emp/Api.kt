@@ -79,7 +79,8 @@ data class MyVehicle(val plate: String, val project: String?, val make: String?,
     val label: String get() = plate + listOfNotNull(make, model).joinToString(" ").let { if (it.isNotBlank()) " · $it" else "" }
 }
 
-data class Advance(val id: String, val amount: Double, val reason: String?, val status: String, val note: String?, val createdAt: String?)
+data class Advance(val id: String, val amount: Double, val reason: String?, val status: String, val note: String?, val createdAt: String?,
+                   val pay: String? = null, val deducted: String? = null)
 
 data class Housing(val building: String?, val room: String?, val city: String?, val label: String) {
     companion object {
@@ -211,7 +212,8 @@ object Api {
         return (0 until arr.length()).map {
             val o = arr.getJSONObject(it)
             Advance(o.optString("id"), o.optDouble("amount", 0.0), o.optStringOrNull("reason"),
-                o.optString("status"), o.optStringOrNull("note"), o.optStringOrNull("created_at"))
+                o.optString("status"), o.optStringOrNull("note"), o.optStringOrNull("created_at"),
+                o.optStringOrNull("pay"), o.optStringOrNull("deducted"))
         }
     }
 
