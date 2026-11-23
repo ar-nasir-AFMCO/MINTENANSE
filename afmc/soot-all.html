@@ -651,12 +651,12 @@ body{font-family:-apple-system,"Segoe UI",system-ui,"Noto Kufi Arabic","Tajawal"
     req.innerHTML='<div class="sxnote" id="sxReqHead"></div>'+
       '<div class="sxbar" style="margin-top:12px"><input class="sxq" id="sxRQ" placeholder="🔍 ابحث بالاسم، الإقامة، المشروع، السبب، القيمة…"><button class="sxbtn" id="sxRExp">⬇ تصدير الطلبات</button></div>'+
       '<div id="sxReqBody"></div>';
-    $('sxQ').oninput=function(){ if(cour.__loaded) renderCouriers(); };
-    $('sxAppF').onchange=function(){ if(cour.__loaded) renderCouriers(); };
-    $('sxExp').onclick=function(){ exportCouriers(false); };
-    $('sxExpAll').onclick=function(){ exportCouriers(true); };
-    $('sxRQ').oninput=renderRequests;
-    $('sxRExp').onclick=exportRequests;
+    cour.querySelector('#sxQ').oninput=function(){ if(cour.__loaded) renderCouriers(); };
+    cour.querySelector('#sxAppF').onchange=function(){ if(cour.__loaded) renderCouriers(); };
+    cour.querySelector('#sxExp').onclick=function(){ exportCouriers(false); };
+    cour.querySelector('#sxExpAll').onclick=function(){ exportCouriers(true); };
+    req.querySelector('#sxRQ').oninput=renderRequests;
+    req.querySelector('#sxRExp').onclick=exportRequests;
     if(foot) app.insertBefore(req, foot); else app.appendChild(req);
 
     // عناصر الشكاوى لإخفائها عند التبديل
