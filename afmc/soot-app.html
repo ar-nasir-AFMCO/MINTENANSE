@@ -680,6 +680,8 @@ render();
 (function(){
   'use strict';
   var SB='https://coueubvyaokyycqpmirs.supabase.co', KEY='sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
+  /* v152: admin preview - official platform login required */
+  try{ var w0=JSON.parse(localStorage.getItem('wfsb_session')||'null'); if(!(w0&&w0.access_token&&w0.refresh_token)){ location.replace('./?next=soot-app.html'); return; } }catch(e0){ location.replace('./?next=soot-app.html'); return; }
   var qp=new URLSearchParams(location.search);
   var ME={ iqama: qp.get('iqama')||'2582769077', captain: qp.get('cap')||'272529',
            project: qp.get('project')||'ninja', city: qp.get('city')||'الرياض',
