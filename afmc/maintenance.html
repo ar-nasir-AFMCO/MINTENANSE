@@ -803,6 +803,7 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
     setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 2000);
   }
   window.addEventListener('message', function(e){
+    if (e.origin !== location.origin) return;   /* v159: same-origin frames only */
     var d = e.data; if (d && d.afmc === 'tab' && d.tab) setTab(d.tab);      /* نداء من المنصّة */
   });
   $('trkQ').oninput = function(){ trkF.q = this.value; trkRender(); };
