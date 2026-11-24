@@ -777,7 +777,7 @@ fun ComplaintForm(session: Session, dept: Department, cat: Category, onDone: () 
                     val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: throw RuntimeException(L.photoReadFail)
                     val type = context.contentResolver.getType(uri) ?: ""
                     val ext = if (type.contains("png")) "png" else "jpg"
-                    photos = photos + Api.uploadPhoto(bytes, ext)
+                    photos = photos + Api.uploadPhoto(session.token, bytes, ext)
                 } catch (e: Exception) { error = e.message ?: L.photoUploadFail } finally { uploading = false }
             }
         }
