@@ -1234,9 +1234,18 @@ fun DetailScreen(session: SupSession, c: Complaint, onChanged: () -> Unit, onBac
             }
             if (awaiting && status != "done") item {
                 Surface(color = Gold.copy(alpha = .14f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
-                    Text("⏳ طلبتَ الإغلاق — بانتظار تأكيد الموظف لإغلاق الشكوى نهائيًا.",
+                    Text("⏳ طلبتَ الإغلاق — بانتظار تأكيد الموظف. إن لم يؤكد خلال 3 أيام تُغلق تلقائيًا.",
                         color = Color(0xFF9A6B10), fontSize = 12.5.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(12.dp))
                 }
+            }
+            if (status == "done") item {
+                OutlinedButton(onClick = {
+                    busy = true
+                    scope.launch {
+                        try { Api.reopen(session.token, c.id); awaiting = false; status = "prog"; toast = "أُعيد فتح الشكوى"; onChanged(); refreshKey++ }
+                        catch (e: Exception) { toast = e.message } finally { busy = false }
+                    }
+                }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("↩ إعادة فتح الشكوى") }
             }
             if (status != "done" && !awaiting) item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
