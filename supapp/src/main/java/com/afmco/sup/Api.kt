@@ -342,6 +342,13 @@ object Api {
     /** حالة حضور المشرف الحالية */
     suspend fun myStatus(token: String): JSONObject = JSONObject(rpc(token, "sup_my_status", JSONObject()))
 
+    /** v156: the supervisor issues the employee login PIN (6 random digits); returns the PIN to show once */
+    suspend fun issuePin(token: String, iqama: String): String {
+        val pin = (100000 + java.security.SecureRandom().nextInt(900000)).toString()
+        rpc(token, "emp_set_pin", JSONObject().put("p_iqama", iqama).put("p_pin", pin))
+        return pin
+    }
+
     /** تسجيل حضور (مع الموقع) */
     suspend fun checkIn(token: String, lat: Double, lng: Double): JSONObject =
         JSONObject(rpc(token, "sup_checkin", JSONObject().put("p_lat", lat).put("p_lng", lng)))
