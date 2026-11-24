@@ -240,6 +240,11 @@ object Api {
         rpc(token, "sup_resolve", JSONObject().put("p_complaint", id).put("p_note", note))
     }
 
+    /** إعادة فتح شكوى مغلقة (v150) */
+    suspend fun reopen(token: String, id: String) {
+        rpc(token, "sup_reopen", JSONObject().put("p_complaint", id).put("p_note", JSONObject.NULL))
+    }
+
     /** إرفاق صورة على بلاغ قائم (مشرف/قسم) */
     suspend fun addPhoto(token: String, id: String, url: String) {
         rpc(token, "sup_add_photo", JSONObject().put("p_complaint", id).put("p_url", url))
