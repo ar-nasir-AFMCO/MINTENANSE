@@ -428,10 +428,10 @@ fun HomeScreen(session: Session, reload: Int, onOpen: (Complaint) -> Unit, onNew
     }
     // صوت: تسجيل الدخول + جلب الإنذارات والرسائل الموجّهة، وتحديثها دوريًا
     LaunchedEffect(Unit) {
-        Api.touchLogin(session.iqama, session.projectCode, session.name)
+        Api.touchLogin(session.token)
         while (true) {
-            try { warnings = Api.myWarnings(session.iqama) } catch (_: Exception) {}
-            try { broadcasts = Api.myBroadcasts(session.iqama, session.projectCode) } catch (_: Exception) {}
+            try { warnings = Api.myWarnings(session.token) } catch (_: Exception) {}
+            try { broadcasts = Api.myBroadcasts(session.token) } catch (_: Exception) {}
             delay(60_000L)
         }
     }
@@ -456,7 +456,7 @@ fun HomeScreen(session: Session, reload: Int, onOpen: (Complaint) -> Unit, onNew
                                 Api.ackBroadcast(session.token, m.id)
                                 Urgent.clear(context, m.id)
                                 urgent = urgent.filter { it.id != m.id }
-                                try { broadcasts = Api.myBroadcasts(session.iqama, session.projectCode) } catch (_: Exception) {}
+                                try { broadcasts = Api.myBroadcasts(session.token) } catch (_: Exception) {}
                                 true
                             } catch (_: Exception) { false }
                         }
