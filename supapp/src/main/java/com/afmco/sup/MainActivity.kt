@@ -1071,7 +1071,7 @@ fun DetailScreen(session: SupSession, c: Complaint, onChanged: () -> Unit, onBac
                     val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: throw RuntimeException("تعذّر قراءة الصورة")
                     val type = context.contentResolver.getType(uri) ?: ""
                     val ext = if (type.contains("png")) "png" else "jpg"
-                    val url = Api.uploadPhoto(bytes, ext)
+                    val url = Api.uploadPhoto(session.token, bytes, ext)
                     Api.addPhoto(session.token, c.id, url)
                     addedPhotos = addedPhotos + url; toast = "تمت إضافة الصورة"; onChanged(); refreshKey++
                 } catch (e: Exception) { toast = e.message ?: "تعذّر رفع الصورة" } finally { uploading = false }
