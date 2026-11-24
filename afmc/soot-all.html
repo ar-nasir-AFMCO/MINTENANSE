@@ -231,7 +231,6 @@ body{font-family:-apple-system,"Segoe UI",system-ui,"Noto Kufi Arabic","Tajawal"
 
   // ── الجلسة ──
   function readStored(){
-    try{ var s=JSON.parse(localStorage.getItem('soot_all_session')||'null'); if(s&&s.access_token&&s.expires_at>Date.now()+30000) return s.access_token; }catch(e){}
     try{ var w=JSON.parse(localStorage.getItem('wfsb_session')||'null'); if(w&&w.access_token&&(!w.expires_at||w.expires_at>Date.now()+30000)) return w.access_token; }catch(e){}
     return null;
   }
@@ -241,18 +240,28 @@ body{font-family:-apple-system,"Segoe UI",system-ui,"Noto Kufi Arabic","Tajawal"
     if(method!=='GET'){ h['Prefer']='return=representation'; }
     return fetch(SB+'/rest/v1/'+path,{method:method,headers:h,body:body?JSON.stringify(body):undefined})
       .then(function(r){ return r.text().then(function(t){ var j=null; try{j=t?JSON.parse(t):null;}catch(e){}
-        if(r.status===401){ TOKEN=null; localStorage.removeItem('soot_all_session'); showLogin(''); throw new Error('انتهت الجلسة'); }
+        if(r.status===401){ TOKEN=null; showLogin(''); throw new Error('انتهت الجلسة'); }
         if(!r.ok) throw new Error((j&&j.message)||('خطأ '+r.status)); return j; }); });
   }
   function doLogin(email, pass){
     return fetch(SB+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pass})})
       .then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error_description||j.msg||'بيانات الدخول غير صحيحة'); return j; }); })
       .then(function(j){ TOKEN=j.access_token;
-        try{ localStorage.setItem('soot_all_session', JSON.stringify({access_token:j.access_token, expires_at:Date.now()+(j.expires_in||3600)*1000})); }catch(e){}
+        try{ localStorage.setItem('wfsb_session', JSON.stringify({access_token:j.access_token, refresh_token:j.refresh_token, expires_at:Date.now()+(j.expires_in||3600)*1000, user_id:j.user&&j.user.id, email:j.user&&j.user.email})); }catch(e){}
         return j; });
   }
 
-  function showLogin(msg){ $('loader').style.display='none'; $('app').style.display='none'; $('login').style.display='flex'; $('lErr').textContent=msg||''; }
+  /* v152: unified login - one shared session (wfsb_session); a standalone page goes to the official platform login and comes back */
+  function ssoGo(){ try{ if(window.top!==window) return false; var n=+(sessionStorage.getItem('sso_go')||0), t=+(sessionStorage.getItem('sso_go_t')||0); if(Date.now()-t>60000) n=0; if(n>=2) return false; sessionStorage.setItem('sso_go',String(n+1)); sessionStorage.setItem('sso_go_t',String(Date.now())); location.replace('./?next=soot-all.html'); return true; }catch(e){ return false; } }
+  var ssoBusy=false;
+  try{ localStorage.removeItem('soot_all_session'); }catch(e){}
+  setInterval(function(){ try{ var w=JSON.parse(localStorage.getItem('wfsb_session')||'null'); if(!w||!w.access_token) return;
+    if(TOKEN && w.access_token!==TOKEN && w.expires_at>Date.now()+30000) TOKEN=w.access_token;
+    if(window.top===window && w.refresh_token && w.expires_at<Date.now()+300000 && !ssoBusy){ ssoBusy=true;
+      fetch(SB+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:w.refresh_token})})
+        .then(function(r){ return r.json().then(function(j){ if(!r.ok||!j.access_token) return; TOKEN=j.access_token; localStorage.setItem('wfsb_session', JSON.stringify({access_token:j.access_token, refresh_token:j.refresh_token, expires_at:Date.now()+(j.expires_in||3600)*1000, user_id:j.user&&j.user.id, email:j.user&&j.user.email})); }); })
+        .catch(function(){}).then(function(){ ssoBusy=false; }); } }catch(e){} }, 30000);
+  function showLogin(msg){ if(ssoGo()) return; $('loader').style.display='none'; $('app').style.display='none'; $('login').style.display='flex'; $('lErr').textContent=msg||''; }
   function showApp(){ $('login').style.display='none'; $('loader').style.display='none'; $('app').style.display='block'; }
 
   // ── التحميل ──
@@ -532,7 +541,7 @@ body{font-family:-apple-system,"Segoe UI",system-ui,"Noto Kufi Arabic","Tajawal"
   $('fProj').onchange=function(e){ fProj=e.target.value; renderList(); };
   $('fSt').onchange=function(e){ fSt=e.target.value; renderList(); };
   $('refreshBtn').onclick=function(){ refresh(); };
-  $('logoutBtn').onclick=function(){ TOKEN=null; try{localStorage.removeItem('soot_all_session');}catch(e){} showLogin(''); };
+  $('logoutBtn').onclick=function(){ TOKEN=null; try{localStorage.removeItem('wfsb_session');}catch(e){} showLogin(''); };
   $('lBtn').onclick=function(){ var em=$('lEmail').value.trim(), ps=$('lPass').value;
     if(!em||!ps){ $('lErr').textContent='أدخل البريد وكلمة المرور'; return; }
     $('lErr').textContent='جارٍ الدخول…';
@@ -618,8 +627,7 @@ body{font-family:-apple-system,"Segoe UI",system-ui,"Noto Kufi Arabic","Tajawal"
 (function(){
   'use strict';
   var SB='https://coueubvyaokyycqpmirs.supabase.co', KEY='sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
-  function tok(){ try{var s=JSON.parse(localStorage.getItem('soot_all_session')||'null');if(s&&s.access_token&&s.expires_at>Date.now()+20000)return s.access_token;}catch(e){}
-    try{var w=JSON.parse(localStorage.getItem('wfsb_session')||'null');if(w&&w.access_token&&(!w.expires_at||w.expires_at>Date.now()+20000))return w.access_token;}catch(e){} return null; }
+  function tok(){ try{var w=JSON.parse(localStorage.getItem('wfsb_session')||'null');if(w&&w.access_token&&(!w.expires_at||w.expires_at>Date.now()+20000))return w.access_token;}catch(e){} return null; }
   function H(json){var h={apikey:KEY,Authorization:'Bearer '+tok()};if(json)h['Content-Type']='application/json';return h;}
   function sbGet(path){return fetch(SB+'/rest/v1/'+path,{headers:H(false)}).then(function(r){if(r.status===404||r.status===400)return [];if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).catch(function(){return [];});}
   function sbRpc(fn,a){return fetch(SB+'/rest/v1/rpc/'+fn,{method:'POST',headers:H(true),body:JSON.stringify(a||{})}).then(function(r){return r.text().then(function(t){var j=null;try{j=t?JSON.parse(t):null;}catch(e){j=t;}if(!r.ok)throw new Error((j&&j.message)||('HTTP '+r.status+' '+String(t).slice(0,120)));return j;});});}
