@@ -178,6 +178,11 @@ object Api {
             .put("p_approve", approve).put("p_note", note))
     }
 
+    /** إعادة فتح شكوى مغلقة — يحق لصاحب الشكوى (v150) */
+    suspend fun reopen(token: String, id: String, note: String) {
+        rpc("emp_reopen", JSONObject().put("p_token", token).put("p_complaint", id).put("p_note", note))
+    }
+
     /** مركبات الموظف النشطة للاختيار بدل الإدخال اليدوي */
     suspend fun myVehicles(token: String): List<MyVehicle> {
         val arr = JSONArray(rpc("emp_my_vehicles", JSONObject().put("p_token", token)))
