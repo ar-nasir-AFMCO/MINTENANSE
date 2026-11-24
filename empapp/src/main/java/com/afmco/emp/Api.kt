@@ -223,15 +223,14 @@ object Api {
     }
 
     /** إنذارات المندوب الفعّالة (صوت) — حتى ٣ */
-    suspend fun myWarnings(iqama: String): List<Warning> {
-        val arr = JSONArray(rpc("soot_warn_for", JSONObject().put("p_iqama", iqama)))
+    suspend fun myWarnings(token: String): List<Warning> {
+        val arr = JSONArray(rpc("emp_my_warnings", JSONObject().put("p_token", token)).ifBlank { "[]" })
         return (0 until arr.length()).map { Warning.from(arr.getJSONObject(it)) }
     }
 
     /** الرسائل الموجّهة لهذا المندوب (صوت) حسب مشروعه/إقامته */
-    suspend fun myBroadcasts(iqama: String, project: String?): List<Broadcast> {
-        val a = JSONObject().put("p_iqama", iqama).put("p_project", project ?: JSONObject.NULL)
-        val arr = JSONArray(rpc("soot_broadcasts_for", a))
+    suspend fun myBroadcasts(token: String): List<Broadcast> {
+        val arr = JSONArray(rpc("emp_my_broadcasts", JSONObject().put("p_token", token)).ifBlank { "[]" })
         return (0 until arr.length()).map { Broadcast.from(arr.getJSONObject(it)) }
     }
 
@@ -250,11 +249,9 @@ object Api {
     }
 
     /** تسجيل فتح/دخول التطبيق (صوت) — لمقارنة المسجّلين بالمربوطين */
-    suspend fun touchLogin(iqama: String, project: String?, name: String?) {
+    suspend fun touchLogin(token: String) {
         try {
-            rpc("soot_app_login_touch", JSONObject()
-                .put("p_iqama", iqama).put("p_project", project ?: JSONObject.NULL)
-                .put("p_name", name ?: JSONObject.NULL).put("p_app", "employee").put("p_device", "android"))
+            rpc("emp_touch", JSONObject().put("p_token", token).put("p_device", "android"))
         } catch (_: Exception) {}
     }
 
