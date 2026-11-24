@@ -256,8 +256,8 @@ object Api {
     }
 
     /** رفع صورة إلى تخزين Supabase (bucket عام) وإرجاع الرابط العام */
-    suspend fun uploadPhoto(bytes: ByteArray, ext: String): String = withContext(Dispatchers.IO) {
-        val name = "c_" + System.currentTimeMillis() + "_" + (0..9999).random() + "." + ext
+    suspend fun uploadPhoto(token: String, bytes: ByteArray, ext: String): String = withContext(Dispatchers.IO) {
+        val name = rpc("upload_ticket", JSONObject().put("p_token", token).put("p_ext", ext)).trim().trim('"')
         val mt = ("image/" + if (ext == "png") "png" else "jpeg").toMediaType()
         val req = Request.Builder().url("$SB_URL/storage/v1/object/complaints/$name")
             .addHeader("apikey", SB_KEY).addHeader("Content-Type", mt.toString())
