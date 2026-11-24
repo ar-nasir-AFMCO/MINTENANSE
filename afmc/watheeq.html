@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl" data-theme="petrol">
 <head>
+<script>/* v154: unified login - a page opened on its own without a session goes to the official platform login and comes back */(function(){try{if(window.top!==window)return;var w=JSON.parse(localStorage.getItem('wfsb_session')||'null');if(w&&w.access_token&&w.refresh_token)return;var n=+(sessionStorage.getItem('sso_go')||0),t=+(sessionStorage.getItem('sso_go_t')||0);if(Date.now()-t>60000)n=0;if(n>=2)return;sessionStorage.setItem('sso_go',String(n+1));sessionStorage.setItem('sso_go_t',String(Date.now()));location.replace('./?next='+location.pathname.split('/').pop());}catch(e){}})();</script>
 <script id="wf-cloud">window.WF_CLOUD_APP="watheeq";
 /* ═══════════════════════════════════════════════════════════════════════
    wf-cloud — النسخة السحابية لأنظمة AFMC (تُحقن في <head> قبل أي كود)
