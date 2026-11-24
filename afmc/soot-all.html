@@ -223,6 +223,8 @@ body{font-family:-apple-system,"Segoe UI",system-ui,"Noto Kufi Arabic","Tajawal"
   var stCls=function(s){return {open:'open',prog:'prog',esc:'esc',done:'done'}[s]||'open';};
   var stLbl=function(s){return {open:'جديدة',prog:'قيد المعالجة',esc:'مُصعّدة',done:'منجزة'}[s]||s;};
   function pendingOf(d){ return d.resolved_at && d.status!=='done'; }
+  /* v150: تغلق تلقائيا بعد 3 ايام من «تم الحل» اذا لم يؤكد الموظف */
+  function autoIn(d){ var h=Math.ceil((new Date(d.resolved_at).getTime()+3*864e5-Date.now())/36e5); return h<=0?'تُغلق تلقائياً خلال ساعة':h<24?('تُغلق تلقائياً بعد '+h+' ساعة'):('تُغلق تلقائياً بعد '+Math.ceil(h/24)+' يوم'); }
 
   function fmt(ts){ if(!ts) return ''; try{ return new Date(ts).toLocaleString('ar-EG',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''+ts; } }
   function initials(n){ n=(n||'').trim(); return n?n[0]:'؟'; }
@@ -421,7 +423,8 @@ body{font-family:-apple-system,"Segoe UI",system-ui,"Noto Kufi Arabic","Tajawal"
       '</div>'+
       '<div class="pacts">'+
         (d.status!=='done'&&!pend?'<button class="btn gold" data-act="esc">⬆ تصعيد</button><button class="btn ghost" data-act="resolve">✓ تم الحل</button>':'')+
-        (d.status!=='done'&&pend?'<div class="chip" style="flex:1;justify-content:center;padding:10px">⏳ بانتظار تأكيد الموظف لإغلاق الشكوى</div>':'')+
+        (d.status!=='done'&&pend?'<div class="chip" style="flex:1;justify-content:center;padding:10px">⏳ بانتظار تأكيد الموظف لإغلاق الشكوى — '+autoIn(d)+'</div>':'')+
+        (d.status==='done'?'<button class="btn ghost" data-act="reopen">↩ إعادة فتح الشكوى</button>':'')+
         (isAdmin?'<button class="btn del" data-act="delete">🗑 حذف الشكوى</button>':'')+
       '</div>'+
       (d.status!=='done'?'<div class="reply"><input id="rin" placeholder="اكتب ردّك للموظف…"><button class="s" data-act="reply">➤</button></div>':'');
@@ -474,6 +477,7 @@ body{font-family:-apple-system,"Segoe UI",system-ui,"Noto Kufi Arabic","Tajawal"
     if(kind==='reply'){ var i=$('rin'); if(!i||!i.value.trim()) return; p=api('POST','rpc/sup_reply',{p_complaint:d.id,p_body:i.value.trim()}); }
     else if(kind==='esc'){ p=api('POST','rpc/sup_escalate',{p_complaint:d.id,p_note:'تصعيد للإدارة'}); }
     else if(kind==='resolve'){ p=api('POST','rpc/sup_resolve',{p_complaint:d.id,p_note:'تم الحل'}); }
+    else if(kind==='reopen'){ var why=prompt('سبب إعادة فتح الشكوى (اختياري):',''); if(why===null) return; p=api('POST','rpc/sup_reopen',{p_complaint:d.id,p_note:why.trim()||null}); }
     else return;
     p.then(function(){ return refresh(); }).then(function(){ openDetail(d.id); })
      .catch(function(e){ alert(e.message||'تعذّر تنفيذ العملية'); });
