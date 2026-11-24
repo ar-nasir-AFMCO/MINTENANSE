@@ -1076,6 +1076,7 @@ fun DetailScreen(session: Session, c: Complaint, onChanged: () -> Unit, onBack: 
                     Column(Modifier.padding(16.dp)) {
                         Text(L.supResolved, fontWeight = FontWeight.Bold, color = Color(0xFF9A6B10), fontSize = 14.sp)
                         Text(L.confirmFinal, color = Gray, fontSize = 12.sp)
+                        Text(when (LocalLang.current) { Lang.EN -> "No reply within 3 days closes it automatically. You can reopen it later."; Lang.UR -> "3 دن میں جواب نہ دینے پر شکایت خود بخود بند ہو جائے گی، بعد میں دوبارہ کھولی جا سکتی ہے۔"; else -> "إن لم تردّ خلال 3 أيام تُغلق الشكوى تلقائياً، ويمكنك إعادة فتحها لاحقاً." }, color = Gray, fontSize = 11.sp)
                         Spacer(Modifier.height(12.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Button(onClick = {
@@ -1087,6 +1088,21 @@ fun DetailScreen(session: Session, c: Complaint, onChanged: () -> Unit, onBack: 
                                 scope.launch { try { Api.confirmClose(session.token, c.id, false, L.notResolvedNote); toast = L.reopened; onChanged(); onBack() } catch (e: Exception) { toast = e.message; busy = false } }
                             }, enabled = !busy, modifier = Modifier.weight(1f)) { Text(L.notResolved) }
                         }
+                        if (toast != null) { Spacer(Modifier.height(8.dp)); Text(toast!!, color = GreenD, fontSize = 12.sp) }
+                    }
+                }
+            }
+            // v150: الشكوى المغلقة يمكن لصاحبها إعادة فتحها
+            if (c.status == "done") item {
+                val lg = LocalLang.current
+                Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(when (lg) { Lang.EN -> "This complaint is closed. Not solved? You can reopen it."; Lang.UR -> "شکایت بند ہے۔ مسئلہ حل نہیں ہوا تو آپ اسے دوبارہ کھول سکتے ہیں۔"; else -> "الشكوى مغلقة. إن لم تُحل المشكلة يمكنك إعادة فتحها." }, color = Gray, fontSize = 12.sp)
+                        Spacer(Modifier.height(10.dp))
+                        OutlinedButton(onClick = {
+                            busy = true
+                            scope.launch { try { Api.reopen(session.token, c.id, L.notResolvedNote); toast = L.reopened; onChanged(); onBack() } catch (e: Exception) { toast = e.message; busy = false } }
+                        }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(when (lg) { Lang.EN -> "↩ Reopen complaint"; Lang.UR -> "↩ شکایت دوبارہ کھولیں"; else -> "↩ إعادة فتح الشكوى" }) }
                         if (toast != null) { Spacer(Modifier.height(8.dp)); Text(toast!!, color = GreenD, fontSize = 12.sp) }
                     }
                 }
