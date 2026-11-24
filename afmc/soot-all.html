@@ -752,11 +752,18 @@ body{font-family:-apple-system,"Segoe UI",system-ui,"Noto Kufi Arabic","Tajawal"
       return '<tr><td class="nm">'+esc(r.name)+(r.captain_id?'<div class="sub">كابتن '+esc(r.captain_id)+'</div>':'')+'</td><td class="sub" style="direction:ltr">'+esc(r.iqama)+'</td>'+
         '<td>'+st+'</td><td>'+veh+'</td><td>'+hrs+'</td>'+
         '<td>'+AR(r.orders||0)+'</td><td>'+app+'</td><td>'+w+'</td>'+
-        '<td><button class="sxbtn" data-warn="'+esc(r.iqama)+'" data-cid="'+esc(r.captain_id||'')+'" data-nm="'+esc(r.name)+'" data-pr="'+esc(r.project)+'">⚠ إنذار</button></td></tr>';
+        '<td><button class="sxbtn" data-pin="'+esc(r.iqama)+'" style="margin-inline-end:6px">&#128273; رمز</button><button class="sxbtn" data-warn="'+esc(r.iqama)+'" data-cid="'+esc(r.captain_id||'')+'" data-nm="'+esc(r.name)+'" data-pr="'+esc(r.project)+'">⚠ إنذار</button></td></tr>';
     }).join('') || '<tr><td colspan="9" style="padding:20px;text-align:center;color:#8a97a0">'+((q||af||LEVEL)?'لا توجد نتائج مطابقة للبحث.':'لا يوجد مناديب في مشاريعك.')+'</td></tr>';
     var d=RES&&RES.dates&&CUR_PROJ?RES.dates[CUR_PROJ]:null;
     $('sxNote').innerHTML='المعروض <b>'+AR(shown.length)+'</b> من '+AR(rows.length)+' · يظهر لكل مستخدم مناديب مشاريعه فقط. الحضور من ملف الدوام'+(d?(' — آخر يوم مرفوع <b>'+esc(d)+'</b>'):' (لا يوجد ملف دوام لهذا المشروع)')+'، والمركبة من التسليمات المفتوحة في الأسطول.';
     $('sxTable').querySelectorAll('[data-warn]').forEach(function(b){ b.onclick=function(){ openWarn(b.dataset.warn, b.dataset.cid, b.dataset.nm, b.dataset.pr); }; });
+    /* v155: the supervisor issues the employee login PIN (first login no longer sets it); two clicks, the PIN is shown once */
+    $('sxTable').querySelectorAll('[data-pin]').forEach(function(b){ b.onclick=function(){
+      if(b.dataset.busy) return;
+      if(!b.dataset.arm){ b.dataset.arm='1'; b.dataset.lbl=b.innerHTML; b.innerHTML='تأكيد اصدار رمز جديد؟'; setTimeout(function(){ if(b.dataset.arm&&!b.dataset.busy){ delete b.dataset.arm; b.innerHTML=b.dataset.lbl; } },5000); return; }
+      b.dataset.busy='1'; var a=new Uint32Array(1); crypto.getRandomValues(a); var pin=String(100000+(a[0]%900000));
+      sbRpc('emp_set_pin',{p_iqama:b.dataset.pin,p_pin:pin}).then(function(){ var s=document.createElement('span'); s.className='sxpill sxp-ok'; s.style.direction='ltr'; s.style.marginInlineEnd='6px'; s.textContent='PIN '+pin; b.parentNode.replaceChild(s,b); })
+        .catch(function(e){ delete b.dataset.busy; delete b.dataset.arm; b.innerHTML=b.dataset.lbl; b.title=String(e&&e.message||e); b.style.borderColor='#c0392b'; }); }; });
   }
   function kpiF(v,l,cls,lv){return '<div class="sxk '+(cls||'')+(LEVEL===lv?' sel':'')+'" data-lv="'+lv+'"><div class="v">'+AR(v)+'</div><div class="l">'+l+'</div></div>';}
 
