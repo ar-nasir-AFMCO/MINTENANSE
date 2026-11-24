@@ -686,7 +686,7 @@ render();
   var ME={ iqama: qp.get('iqama')||'2582769077', captain: qp.get('cap')||'272529',
            project: qp.get('project')||'ninja', city: qp.get('city')||'الرياض',
            vehicle: qp.get('vehicle')||'bike', branch: qp.get('branch')||'', name: qp.get('name')||'أحمد' };
-  function H(){ return {apikey:KEY,'Content-Type':'application/json'}; }
+  function H(){ var h={apikey:KEY,'Content-Type':'application/json'}; try{ var w=JSON.parse(localStorage.getItem('wfsb_session')||'null'); if(w&&w.access_token&&w.expires_at>Date.now()+20000) h.Authorization='Bearer '+w.access_token; }catch(e){} return h; }   /* v160: the preview reads with the signed-in session */
   function rpc(fn,a){ return fetch(SB+'/rest/v1/rpc/'+fn,{method:'POST',headers:H(),body:JSON.stringify(a||{})})
     .then(function(r){ if(!r.ok) return null; return r.json().catch(function(){return null;}); }).catch(function(){return null;}); }
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
