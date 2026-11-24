@@ -1341,7 +1341,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261124183000";
+  var BUILD = "20261124200000";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -1588,6 +1588,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
   }
   /* رسائل من الأنظمة المدمجة: «طلبات الصيانة» في الأسطول تفتح قسم الصيانة */
   window.addEventListener('message', function(e){
+    if (e.origin !== location.origin) return;   /* v159: same-origin frames only */
     var d = e.data; if (!d || d.afmc !== 'openSys' || !d.sys) return;
     var ok = SYSTEMS.some(function(x){ return x.id === d.sys && allowed(x); });
     if (!ok) { toast('لا تملك صلاحية هذا القسم'); return; }
