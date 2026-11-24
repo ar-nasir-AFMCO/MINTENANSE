@@ -470,6 +470,7 @@ fun RosterScreen(session: SupSession, onBack: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     var refresh by remember { mutableStateOf(0) }
     var warnTarget by remember { mutableStateOf<RosterItem?>(null) }
+    var pinTarget by remember { mutableStateOf<RosterItem?>(null) }
     var showBroadcast by remember { mutableStateOf(false) }
     var proj by remember { mutableStateOf<String?>(null) }
     var levelFilter by remember { mutableStateOf<String?>(null) }
@@ -566,7 +567,7 @@ fun RosterScreen(session: SupSession, onBack: () -> Unit) {
                             singleLine = true, modifier = Modifier.fillMaxWidth())
                     }
                     if (shown.isEmpty()) item { Text("لا نتائج.", color = Gray, modifier = Modifier.padding(20.dp)) }
-                    items(shown) { r -> RosterCard(r) { warnTarget = r } }
+                    items(shown) { r -> RosterCard(r, onPin = { pinTarget = r }) { warnTarget = r } }
                     item { Spacer(Modifier.height(20.dp)) }
                 }
             }
@@ -574,11 +575,12 @@ fun RosterScreen(session: SupSession, onBack: () -> Unit) {
     }
 
     warnTarget?.let { r -> WarnDialog(session, r, onClose = { warnTarget = null }, onDone = { warnTarget = null; refresh++ }) }
+    pinTarget?.let { r -> PinDialog(session, r) { pinTarget = null } }
     if (showBroadcast) BroadcastDialog(session, onClose = { showBroadcast = false })
 }
 
 @Composable
-fun RosterCard(r: RosterItem, onWarn: () -> Unit) {
+fun RosterCard(r: RosterItem, onPin: () -> Unit = {}, onWarn: () -> Unit) {
     val (bg, fg) = when (r.level) {
         "present" -> Color(0xFFDCFCE7) to Color(0xFF15803D)
         "absent_vehicle" -> Color(0xFFFEE2E2) to Color(0xFFB91C1C)
@@ -626,6 +628,11 @@ fun RosterCard(r: RosterItem, onWarn: () -> Unit) {
                 if (r.logged) RosterPill("صوت ✓", Color(0xFFDCFCE7), Color(0xFF15803D))
                 else RosterPill("صوت ✗", Color(0xFFEEF2F0), Color(0xFF94A3B8))
                 Spacer(Modifier.width(10.dp))
+                OutlinedButton(onClick = onPin, shape = RoundedCornerShape(9.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)) {
+                    Text("رمز", color = Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.width(6.dp))
                 OutlinedButton(onClick = onWarn, shape = RoundedCornerShape(9.dp),
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)) {
                     Text("⚠ إنذار", color = Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -633,6 +640,42 @@ fun RosterCard(r: RosterItem, onWarn: () -> Unit) {
             }
         }
     }
+}
+
+/** v156: the supervisor issues the employee login PIN; the PIN is shown once */
+@Composable
+fun PinDialog(session: SupSession, r: RosterItem, onClose: () -> Unit) {
+    var busy by remember { mutableStateOf(false) }
+    var pin by remember { mutableStateOf<String?>(null) }
+    var err by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    AlertDialog(
+        onDismissRequest = { if (!busy) onClose() },
+        title = { Text("رمز دخول الموظف", fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                Text("${r.name} · ${r.iqama}", fontSize = 12.sp, color = Gray)
+                Spacer(Modifier.height(10.dp))
+                if (pin != null) {
+                    Text(pin!!, fontSize = 34.sp, fontWeight = FontWeight.Bold, color = Green)
+                    Spacer(Modifier.height(6.dp))
+                    Text("سلم الرمز للموظف الان. لن يظهر مرة اخرى.", fontSize = 12.sp, color = Gray)
+                } else {
+                    Text("سيصدر رمز جديد من 6 ارقام ويلغى الرمز القديم ان وجد.", fontSize = 13.sp)
+                }
+                if (err != null) { Spacer(Modifier.height(8.dp)); Text(err!!, color = Red, fontSize = 12.5.sp) }
+            }
+        },
+        confirmButton = {
+            if (pin == null) TextButton(enabled = !busy, onClick = {
+                busy = true; err = null
+                scope.launch {
+                    try { pin = Api.issuePin(session.token, r.iqama) } catch (e: Exception) { err = e.message ?: "error" } finally { busy = false }
+                }
+            }) { Text(if (busy) "..." else "اصدار الرمز", fontWeight = FontWeight.Bold) }
+        },
+        dismissButton = { TextButton(enabled = !busy, onClick = onClose) { Text(if (pin != null) "تم" else "الغاء", color = Gray) } }
+    )
 }
 
 @Composable
