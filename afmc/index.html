@@ -1341,7 +1341,7 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
 <script>
 (function(){
   'use strict';
-  var BUILD = "20261124140000";
+  var BUILD = "20261124160000";
   var SB_URL = 'https://coueubvyaokyycqpmirs.supabase.co';
   var SB_KEY = 'sb_publishable_OmxwJmaYvjGhC5S-VcjwHQ_atz1gleF';
   var SKEY = 'wfsb_session';
@@ -1477,6 +1477,8 @@ select.role{padding:7px 9px;border:1px solid var(--line);border-radius:9px;backg
       if (!w) { signOut(); return; }
       if (!w.approved) { signOut(); gateMsg('warn', 'حسابك (' + esc(w.email) + ') بانتظار موافقة المدير.'); return; }
       me = w;
+      var nx = null; try { nx = new URLSearchParams(location.search).get('next'); } catch(e){}
+      if (nx && /^[a-z0-9-]+\.html$/.test(nx) && window.top === window) { location.replace(nx); return; }   /* v152: unified login - back to the page that asked for sign-in */
       $('gate').classList.add('hide'); $('app').classList.remove('hide');
       $('meName').textContent = me.name || me.email; $('meRole').textContent = (me.label || ROLE_AR[me.role] || me.role) + (me.all_projects ? ' · كل المشاريع' : ' · ' + ((me.projects || []).join('، ') || 'بلا مشاريع'));
       $('meAv').textContent = (me.name || me.email || '؟').trim().charAt(0).toUpperCase();
