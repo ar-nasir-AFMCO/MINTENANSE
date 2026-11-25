@@ -966,9 +966,11 @@ fun AdvanceScreen(session: Session, onBack: () -> Unit) {
     var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var advances by remember { mutableStateOf<List<Advance>>(emptyList()) }
+    var deductions by remember { mutableStateOf<List<Deduction>>(emptyList()) }
     var reload by remember { mutableStateOf(0) }
     BackHandler { onBack() }
     LaunchedEffect(reload) { try { advances = Api.myAdvances(session.token) } catch (_: Exception) {} }
+    LaunchedEffect(reload) { try { deductions = Api.myDeductions(session.token) } catch (_: Exception) {} }
 
     val title = when (lang) { Lang.EN -> "Salary advance"; Lang.UR -> "ایڈوانس"; else -> "طلب سلفة" }
     val tAmount = when (lang) { Lang.EN -> "Amount (max 300 SAR)"; Lang.UR -> "رقم (زیادہ سے زیادہ 300 ریال)"; else -> "المبلغ (الحد الأعلى 300 ريال)" }
@@ -1041,6 +1043,51 @@ fun AdvanceScreen(session: Session, onBack: () -> Unit) {
                         }
                     }
                 }
+            }
+            if (deductions.isNotEmpty()) {
+                item { Text(if (lang == Lang.AR) "الخصميات الإدارية" else "Administrative deductions", fontWeight = FontWeight.Bold, color = GreenD, fontSize = 14.sp) }
+                items(deductions) { d -> DeductionCard(session, d) { reload++ } }
+            }
+        }
+    }
+}
+
+/** v164: one administrative deduction - shown after approval; the employee may object within 3 days */
+@Composable
+fun DeductionCard(session: Session, d: Deduction, onChanged: () -> Unit) {
+    val ar = LocalLang.current == Lang.AR
+    var text by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var err by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val qty = if (d.qty % 1.0 == 0.0) d.qty.toInt().toString() else d.qty.toString()
+    val what = if (d.kind == "days") (if (ar) "$qty يوم" else "$qty day(s)") else (if (ar) "$qty ريال" else "$qty SAR")
+    val st = when (d.state) {
+        "approved" -> if (ar) "معتمد - يمكنك الاعتراض" else "Approved - you may object"
+        "objected" -> if (ar) "اعتراضك قيد المراجعة" else "Objection under review"
+        "final" -> if (ar) "نهائي" else "Final"
+        "cancelled" -> if (ar) "ملغى" else "Cancelled"
+        else -> d.state
+    }
+    Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(12.dp)) {
+        Column(Modifier.fillMaxWidth().padding(14.dp)) {
+            Text(what, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Red)
+            if (!d.reason.isNullOrBlank()) Text(d.reason, fontSize = 12.sp, color = Gray)
+            Text(listOfNotNull(d.date?.take(10), st).joinToString(" · "), fontSize = 11.5.sp, color = Gray)
+            if (!d.objection.isNullOrBlank()) Text((if (ar) "اعتراضك: " else "Your objection: ") + d.objection, fontSize = 11.5.sp, color = Gray)
+            if (!d.decisionNote.isNullOrBlank()) Text((if (ar) "قرار المدير: " else "Manager decision: ") + d.decisionNote, fontSize = 11.5.sp, color = Gray)
+            if (d.canObject) {
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(text, { text = it }, label = { Text(if (ar) "سبب الاعتراض" else "Reason for objection") }, modifier = Modifier.fillMaxWidth())
+                d.objectUntil?.let { Text((if (ar) "آخر موعد للاعتراض: " else "Object before: ") + it.take(10), fontSize = 11.sp, color = Gray) }
+                if (err != null) Text(err!!, color = Red, fontSize = 12.sp)
+                Spacer(Modifier.height(6.dp))
+                Button(enabled = !busy && text.isNotBlank(), onClick = {
+                    busy = true; err = null
+                    scope.launch {
+                        try { Api.objectDeduction(session.token, d.id, text.trim()); onChanged() } catch (e: Exception) { err = e.message ?: "error" } finally { busy = false }
+                    }
+                }) { Text(if (ar) "إرسال الاعتراض" else "Send objection") }
             }
         }
     }
