@@ -752,11 +752,21 @@ body{font-family:-apple-system,"Segoe UI",system-ui,"Noto Kufi Arabic","Tajawal"
       return '<tr><td class="nm">'+esc(r.name)+(r.captain_id?'<div class="sub">كابتن '+esc(r.captain_id)+'</div>':'')+'</td><td class="sub" style="direction:ltr">'+esc(r.iqama)+'</td>'+
         '<td>'+st+'</td><td>'+veh+'</td><td>'+hrs+'</td>'+
         '<td>'+AR(r.orders||0)+'</td><td>'+app+'</td><td>'+w+'</td>'+
-        '<td><button class="sxbtn" data-pin="'+esc(r.iqama)+'" style="margin-inline-end:6px">&#128273; رمز</button><button class="sxbtn" data-warn="'+esc(r.iqama)+'" data-cid="'+esc(r.captain_id||'')+'" data-nm="'+esc(r.name)+'" data-pr="'+esc(r.project)+'">⚠ إنذار</button></td></tr>';
+        '<td><button class="sxbtn" data-ded="'+esc(r.iqama)+'" style="margin-inline-end:6px">خصم</button><button class="sxbtn" data-pin="'+esc(r.iqama)+'" style="margin-inline-end:6px">&#128273; رمز</button><button class="sxbtn" data-warn="'+esc(r.iqama)+'" data-cid="'+esc(r.captain_id||'')+'" data-nm="'+esc(r.name)+'" data-pr="'+esc(r.project)+'">⚠ إنذار</button></td></tr>';
     }).join('') || '<tr><td colspan="9" style="padding:20px;text-align:center;color:#8a97a0">'+((q||af||LEVEL)?'لا توجد نتائج مطابقة للبحث.':'لا يوجد مناديب في مشاريعك.')+'</td></tr>';
     var d=RES&&RES.dates&&CUR_PROJ?RES.dates[CUR_PROJ]:null;
     $('sxNote').innerHTML='المعروض <b>'+AR(shown.length)+'</b> من '+AR(rows.length)+' · يظهر لكل مستخدم مناديب مشاريعه فقط. الحضور من ملف الدوام'+(d?(' — آخر يوم مرفوع <b>'+esc(d)+'</b>'):' (لا يوجد ملف دوام لهذا المشروع)')+'، والمركبة من التسليمات المفتوحة في الأسطول.';
     $('sxTable').querySelectorAll('[data-warn]').forEach(function(b){ b.onclick=function(){ openWarn(b.dataset.warn, b.dataset.cid, b.dataset.nm, b.dataset.pr); }; });
+    /* v166: raise an administrative deduction (amount or days) for the manager to approve */
+    $('sxTable').querySelectorAll('[data-ded]').forEach(function(b){ b.onclick=function(){
+      var tr=b.closest('tr'), nx=tr&&tr.nextElementSibling; if(nx&&nx.className==='sxded'){ nx.remove(); return; }
+      var row=document.createElement('tr'); row.className='sxded'; var td=document.createElement('td'); td.colSpan=tr.children.length; td.style.background='#f6f9fb';
+      td.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><b>خصم إداري</b><select class="dk"><option value="amount">مبلغ</option><option value="days">أيام</option></select><input class="dq" type="number" min="0" step="0.5" placeholder="القيمة" style="width:90px"><input class="dd" type="date"><input class="dw" placeholder="سبب الخصم" style="flex:1;min-width:160px"><button class="sxbtn ds">رفع للتعميد</button><span class="dm" style="font-size:12px"></span></div>';
+      row.appendChild(td); tr.parentNode.insertBefore(row, tr.nextSibling);
+      td.querySelector('.ds').onclick=function(){ var m=td.querySelector('.dm'); m.style.color=''; m.textContent='...';
+        sbRpc('ded_raise',{p_iqama:b.dataset.ded,p_kind:td.querySelector('.dk').value,p_qty:+td.querySelector('.dq').value||0,p_reason:td.querySelector('.dw').value.trim(),p_date:td.querySelector('.dd').value||null})
+          .then(function(){ m.style.color='#1e8e5a'; m.textContent='رُفع للمدير للتعميد'; td.querySelector('.ds').disabled=true; })
+          .catch(function(e){ m.style.color='#c0392b'; m.textContent=String(e&&e.message||e); }); }; }; });
     /* v155: the supervisor issues the employee login PIN (first login no longer sets it); two clicks, the PIN is shown once */
     $('sxTable').querySelectorAll('[data-pin]').forEach(function(b){ b.onclick=function(){
       if(b.dataset.busy) return;
