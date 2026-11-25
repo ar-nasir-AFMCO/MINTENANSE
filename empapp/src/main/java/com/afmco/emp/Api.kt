@@ -214,7 +214,7 @@ object Api {
     }
 
     /** سلف الموظف وحالتها */
-    /** v164: administrative deductions - visible after the manager approves; the employee may object within 3 days */
+    /** v164: administrative deductions - visible after the manager approves; the employee may object within three days */
     suspend fun myDeductions(token: String): List<Deduction> {
         val arr = JSONArray(rpc("emp_my_deductions", JSONObject().put("p_token", token)).ifBlank { "[]" })
         return (0 until arr.length()).map {
