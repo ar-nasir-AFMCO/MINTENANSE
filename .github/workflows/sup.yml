@@ -47,11 +47,16 @@ jobs:
           name: soot-supervisor-apk
           path: soot-supervisor.apk
       - name: Publish release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: sup-latest
-          name: "صوت — تطبيق المشرف (APK)"
-          body: "تطبيق المشرف الأصلي (Kotlin/Compose) — دخول بحساب المنصة، مربوط بقاعدة وثيق، تحديث ذاتي. نسخة تجريبية."
-          files: |
-            soot-supervisor.apk
-            sup-version.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload sup-latest soot-supervisor.apk sup-version.json --clobber --repo "${{ github.repository }}"
+      # previous publish step (softprops/action-gh-release) kept for reference - the same step failed for the employee app on 2026-11-25:
+      # - name: Publish release
+      # uses: softprops/action-gh-release@v2
+      # with:
+      # tag_name: sup-latest
+      # name: "صوت — تطبيق المشرف (APK)"
+      # body: "تطبيق المشرف الأصلي (Kotlin/Compose) — دخول بحساب المنصة، مربوط بقاعدة وثيق، تحديث ذاتي. نسخة تجريبية."
+      # files: |
+      # soot-supervisor.apk
+      # sup-version.json
