@@ -196,8 +196,8 @@ object Api {
     }
 
     /** طلب تحديث بيانات الموظف (يعتمده المشرف) — الحقل: phone | project_code | bank_account */
-    suspend fun requestUpdate(token: String, field: String, newValue: String) {
-        rpc("emp_request_update", JSONObject().put("p_token", token).put("p_field", field).put("p_new_value", newValue))
+    suspend fun requestUpdate(token: String, field: String, newValue: String, holder: String? = null) {
+        rpc("emp_request_update", JSONObject().put("p_token", token).put("p_field", field).put("p_new_value", newValue).put("p_holder", if (holder.isNullOrBlank()) JSONObject.NULL else holder))
     }
 
     /** قائمة المشاريع — يختار منها الموظف عند طلب تغيير المشروع */
