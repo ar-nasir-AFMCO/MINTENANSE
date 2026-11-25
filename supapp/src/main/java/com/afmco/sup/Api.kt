@@ -342,6 +342,11 @@ object Api {
     /** حالة حضور المشرف الحالية */
     suspend fun myStatus(token: String): JSONObject = JSONObject(rpc(token, "sup_my_status", JSONObject()))
 
+    /** v166: raise an administrative deduction (amount or days) for the manager to approve */
+    suspend fun raiseDeduction(token: String, iqama: String, kind: String, qty: Double, reason: String) {
+        rpc(token, "ded_raise", JSONObject().put("p_iqama", iqama).put("p_kind", kind).put("p_qty", qty).put("p_reason", reason))
+    }
+
     /** v156: the supervisor issues the employee login PIN (6 random digits); returns the PIN to show once */
     suspend fun issuePin(token: String, iqama: String): String {
         val pin = (100000 + java.security.SecureRandom().nextInt(900000)).toString()
