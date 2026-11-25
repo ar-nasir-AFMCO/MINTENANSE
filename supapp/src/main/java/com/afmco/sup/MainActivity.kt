@@ -471,6 +471,7 @@ fun RosterScreen(session: SupSession, onBack: () -> Unit) {
     var refresh by remember { mutableStateOf(0) }
     var warnTarget by remember { mutableStateOf<RosterItem?>(null) }
     var pinTarget by remember { mutableStateOf<RosterItem?>(null) }
+    var dedTarget by remember { mutableStateOf<RosterItem?>(null) }
     var showBroadcast by remember { mutableStateOf(false) }
     var proj by remember { mutableStateOf<String?>(null) }
     var levelFilter by remember { mutableStateOf<String?>(null) }
@@ -567,7 +568,7 @@ fun RosterScreen(session: SupSession, onBack: () -> Unit) {
                             singleLine = true, modifier = Modifier.fillMaxWidth())
                     }
                     if (shown.isEmpty()) item { Text("لا نتائج.", color = Gray, modifier = Modifier.padding(20.dp)) }
-                    items(shown) { r -> RosterCard(r, onPin = { pinTarget = r }) { warnTarget = r } }
+                    items(shown) { r -> RosterCard(r, onPin = { pinTarget = r }, onDed = { dedTarget = r }) { warnTarget = r } }
                     item { Spacer(Modifier.height(20.dp)) }
                 }
             }
@@ -576,11 +577,12 @@ fun RosterScreen(session: SupSession, onBack: () -> Unit) {
 
     warnTarget?.let { r -> WarnDialog(session, r, onClose = { warnTarget = null }, onDone = { warnTarget = null; refresh++ }) }
     pinTarget?.let { r -> PinDialog(session, r) { pinTarget = null } }
+    dedTarget?.let { r -> DedDialog(session, r) { dedTarget = null } }
     if (showBroadcast) BroadcastDialog(session, onClose = { showBroadcast = false })
 }
 
 @Composable
-fun RosterCard(r: RosterItem, onPin: () -> Unit = {}, onWarn: () -> Unit) {
+fun RosterCard(r: RosterItem, onPin: () -> Unit = {}, onDed: () -> Unit = {}, onWarn: () -> Unit) {
     val (bg, fg) = when (r.level) {
         "present" -> Color(0xFFDCFCE7) to Color(0xFF15803D)
         "absent_vehicle" -> Color(0xFFFEE2E2) to Color(0xFFB91C1C)
@@ -628,6 +630,11 @@ fun RosterCard(r: RosterItem, onPin: () -> Unit = {}, onWarn: () -> Unit) {
                 if (r.logged) RosterPill("صوت ✓", Color(0xFFDCFCE7), Color(0xFF15803D))
                 else RosterPill("صوت ✗", Color(0xFFEEF2F0), Color(0xFF94A3B8))
                 Spacer(Modifier.width(10.dp))
+                OutlinedButton(onClick = onDed, shape = RoundedCornerShape(9.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)) {
+                    Text("خصم", color = Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.width(6.dp))
                 OutlinedButton(onClick = onPin, shape = RoundedCornerShape(9.dp),
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)) {
                     Text("رمز", color = Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -640,6 +647,52 @@ fun RosterCard(r: RosterItem, onPin: () -> Unit = {}, onWarn: () -> Unit) {
             }
         }
     }
+}
+
+/** v166: raise an administrative deduction (amount or days); the manager approves it */
+@Composable
+fun DedDialog(session: SupSession, r: RosterItem, onClose: () -> Unit) {
+    var days by remember { mutableStateOf(false) }
+    var qty by remember { mutableStateOf("") }
+    var why by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var done by remember { mutableStateOf(false) }
+    var err by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    AlertDialog(
+        onDismissRequest = { if (!busy) onClose() },
+        title = { Text("خصم إداري", fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                Text(r.name + " · " + r.iqama, fontSize = 12.sp, color = Gray)
+                Spacer(Modifier.height(10.dp))
+                if (done) {
+                    Text("رُفع الخصم للمدير للتعميد.", fontSize = 14.sp, color = Green)
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = { days = false }) { Text("مبلغ", fontWeight = if (!days) FontWeight.Bold else FontWeight.Normal, color = if (!days) Green else Gray) }
+                        TextButton(onClick = { days = true }) { Text("أيام", fontWeight = if (days) FontWeight.Bold else FontWeight.Normal, color = if (days) Green else Gray) }
+                    }
+                    OutlinedTextField(qty, { qty = it }, label = { Text(if (days) "عدد الأيام" else "المبلغ بالريال") }, singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(why, { why = it }, label = { Text("سبب الخصم") }, modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(6.dp))
+                    Text("لا يمكن تعديل الخصم بعد رفعه. التعميد للمدير فقط.", fontSize = 11.5.sp, color = Gray)
+                }
+                if (err != null) { Spacer(Modifier.height(8.dp)); Text(err!!, color = Red, fontSize = 12.5.sp) }
+            }
+        },
+        confirmButton = {
+            if (!done) TextButton(enabled = !busy && why.isNotBlank() && (qty.toDoubleOrNull() ?: 0.0) > 0.0, onClick = {
+                busy = true; err = null
+                scope.launch {
+                    try { Api.raiseDeduction(session.token, r.iqama, if (days) "days" else "amount", qty.toDouble(), why.trim()); done = true } catch (e: Exception) { err = e.message ?: "error" } finally { busy = false }
+                }
+            }) { Text(if (busy) "..." else "رفع للتعميد", fontWeight = FontWeight.Bold) }
+        },
+        dismissButton = { TextButton(enabled = !busy, onClick = onClose) { Text(if (done) "تم" else "إلغاء", color = Gray) } }
+    )
 }
 
 /** v156: the supervisor issues the employee login PIN; the PIN is shown once */
