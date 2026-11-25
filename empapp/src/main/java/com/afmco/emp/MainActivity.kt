@@ -871,6 +871,7 @@ fun DataUpdateScreen(session: Session, onBack: () -> Unit) {
     var fieldKey by remember { mutableStateOf("phone") }
     var expanded by remember { mutableStateOf(false) }
     var value by remember { mutableStateOf("") }
+    var holder by remember { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
     var done by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -930,6 +931,11 @@ fun DataUpdateScreen(session: Session, onBack: () -> Unit) {
                 } else OutlinedTextField(value, { value = it }, label = { Text(tNew) }, singleLine = true,
                     keyboardOptions = if (fieldKey == "phone" || fieldKey == "bank_account" || fieldKey == "platform_id") KeyboardOptions(keyboardType = KeyboardType.Number) else KeyboardOptions.Default,
                     modifier = Modifier.fillMaxWidth())
+                if (fieldKey == "bank_account") {
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedTextField(holder, { holder = it }, label = { Text(if (lang == Lang.AR) "اسم صاحب الحساب" else "Account holder name") }, singleLine = true,
+                        modifier = Modifier.fillMaxWidth())
+                }
                 Spacer(Modifier.height(10.dp))
                 Surface(color = Color(0xFFF1F5F9), shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
                     Text("ℹ  $tHint", fontSize = 11.5.sp, color = Gray, modifier = Modifier.padding(11.dp))
@@ -939,7 +945,7 @@ fun DataUpdateScreen(session: Session, onBack: () -> Unit) {
                 Button(onClick = {
                     error = null; submitting = true
                     scope.launch {
-                        try { Api.requestUpdate(session.token, fieldKey, value.trim()); done = true }
+                        try { Api.requestUpdate(session.token, fieldKey, value.trim(), if (fieldKey == "bank_account") holder.trim() else null); done = true }
                         catch (e: Exception) { error = e.message ?: "تعذّر الإرسال"; submitting = false }
                     }
                 }, enabled = value.isNotBlank() && !submitting, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp)) {
