@@ -11785,7 +11785,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
       + (lastErr ? '<div class="wx5-hint">⚠️ تعذّر تحديث سلف «صوت» الآن: ' + E(lastErr) + '</div>' : '')
       + '<div style="font-weight:700;margin:10px 0 6px">⏳ معلّقة — بانتظار الصرف</div>' + tbl(W, 'wait')
       + '<div style="font-weight:700;margin:10px 0 6px">💵 مصروفة — تُخصم من أول راتب يُعمّد (لا تُرحّل)</div>' + tbl(D, 'paid')
-      + (V.length ? '<div style="font-weight:700;margin:10px 0 6px">🚫 ملغاة (محفوظة)</div>' + tbl(V, 'void') : '');
+      + (V.length ? '<div style="font-weight:700;margin:10px 0 6px">🚫 ملغاة (محفوظة)</div>' + tbl(V, 'void') : '') + (window.wxDedHTML ? window.wxDedHTML() : '');
   }
   function close(){ var s = document.getElementById('wx14Scrim'); if (s) s.classList.remove('on'); }
   function paint(){
@@ -11796,6 +11796,50 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     m.querySelector('#wx14X').onclick = close; m.querySelector('#wx14Ok').onclick = close;
   }
   function isOpen(){ var s = document.getElementById('wx14Scrim'); return !!s && s.classList.contains('on'); }
+  /* v163: administrative deductions (amount or days) inside the advances tab. Any staff raises; only the manager decides. */
+  var DED = { rows: [], at: 0, err: '' };
+  function dedLoad(force){ if (!force && Date.now() - DED.at < 20000) return; DED.at = Date.now();
+    A.api('POST', 'rpc/ded_list', {}).then(function(r){ DED.rows = (r && r.rows) || []; DED.err = ''; paint(); }).catch(function(e){ DED.err = String((e && e.message) || e); paint(); }); }
+  function dedMgr(){ var r = role(); return r === 'admin' || r === 'manager'; }
+  function dedDay(iq){ var e = (state.employees || []).filter(function(x){ return String(x.iqama) === String(iq); })[0], f = (e && e.finance) || {}; return (+(f.monthly_salary || f.salary) || 0) / 30; }
+  function dedVal(d){ return d.kind === 'days' ? d.qty * dedDay(d.iqama) : +d.qty; }
+  var DST = { pending: 'بانتظار التعميد', approved: 'معمّد - في مهلة الاعتراض', objected: 'اعتراض بانتظار المدير', final: 'نهائي', rejected: 'مرفوض', cancelled: 'ملغى (محفوظ)' };
+  function dedBtn(id, a, t, c){ return '<button class="wx5-mini ' + c + '" data-ded="' + a + '" data-id="' + E(id) + '">' + t + '</button> '; }
+  function dedGet(i){ var x = document.getElementById(i); return x ? String(x.value || '').trim() : ''; }
+  window.wxDedHTML = function(){ dedLoad();
+    var h = '<div style="font-weight:700;margin:18px 0 6px;border-top:1px solid var(--line,#ddd);padding-top:12px">الخصميات الإدارية</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px">'
+      + '<input id="dedIq" placeholder="رقم الإقامة" style="width:130px"><select id="dedKind"><option value="amount">مبلغ</option><option value="days">أيام</option></select>'
+      + '<input id="dedQty" type="number" min="0" step="0.5" placeholder="القيمة" style="width:90px"><input id="dedDate" type="date" value="' + A.today() + '">'
+      + '<input id="dedWhy" placeholder="سبب الخصم" style="flex:1;min-width:160px"><button class="btn" data-ded="raise">رفع للتعميد</button></div>'
+      + '<div class="wx5-hint">من يرفع الخصم لا يعدّله بعد الرفع. التعميد والتخفيض والإلغاء للمدير فقط. يوم الخصم = الراتب ÷ 30.</div>'
+      + (dedMgr() ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0"><input id="dedNote" placeholder="سبب القرار (مطلوب للرفض والتخفيض والإلغاء)" style="flex:1;min-width:220px"><input id="dedNew" type="number" min="0" step="0.5" placeholder="القيمة بعد التخفيض" style="width:150px"></div>' : '')
+      + (DED.err ? '<div class="wx5-hint">' + E(DED.err) + '</div>' : '');
+    if (!DED.rows.length) return h + '<div class="wx5-hint">لا توجد خصميات مرفوعة.</div>';
+    return h + '<div class="wx3-tblwrap"><table class="wx3-tbl"><thead><tr><th>الموظف</th><th>الخصم</th><th>السبب</th><th>الحالة</th><th>رفعه</th><th></th></tr></thead><tbody>'
+      + DED.rows.map(function(d){ var act = '', v = dedVal(d);
+          if (dedMgr() && !d.settled_period){
+            if (d.state === 'pending') act = dedBtn(d.id, 'approve', 'تعميد', 'ok') + dedBtn(d.id, 'reduce', 'تخفيض', '') + dedBtn(d.id, 'reject', 'رفض', 'bad');
+            else if (d.state === 'objected') act = dedBtn(d.id, 'keep', 'رفض الاعتراض', 'ok') + dedBtn(d.id, 'reduce', 'تخفيض', '') + dedBtn(d.id, 'cancel', 'إلغاء', 'bad');
+            else if (d.state === 'approved' || d.state === 'final') act = dedBtn(d.id, 'reduce', 'تخفيض', '') + dedBtn(d.id, 'cancel', 'إلغاء', 'bad');
+          }
+          return '<tr><td>' + E(d.name || '') + '<div style="font-size:11px;color:var(--muted)">' + E(d.iqama) + ' · ' + E(d.project || '') + '</div></td>'
+            + '<td><b>' + (d.kind === 'days' ? E(d.qty) + ' يوم' + (v ? ' = ' + F(v) : '') : F(d.qty)) + '</b>' + (d.orig_qty ? '<div style="font-size:11px;color:var(--muted)">كان ' + E(d.orig_qty) + '</div>' : '') + '</td>'
+            + '<td>' + E(d.reason || '') + (d.objection ? '<div style="font-size:11px;color:var(--muted)">اعتراض الموظف: ' + E(d.objection) + '</div>' : '') + (d.decision_note ? '<div style="font-size:11px;color:var(--muted)">قرار المدير: ' + E(d.decision_note) + '</div>' : '') + '</td>'
+            + '<td>' + (DST[d.state] || E(d.state)) + '<div style="font-size:11px;color:var(--muted)">' + E(d.date || '') + '</div></td><td>' + E(d.raised_by_name || '') + '</td><td style="white-space:nowrap">' + act + '</td></tr>'; }).join('')
+      + '</tbody></table></div><div style="margin-top:8px"><button class="btn ghost" data-ded="export">⬇️ تصدير الخصميات</button></div>';
+  };
+  function dedAct(id, a){ A.api('POST', 'rpc/ded_decide', { p_id: id, p_action: a, p_note: dedGet('dedNote') || null, p_qty: +dedGet('dedNew') || null })
+      .then(function(){ T('تم'); dedLoad(true); }).catch(function(e){ T(String((e && e.message) || e)); }); }
+  function dedRaise(){ A.api('POST', 'rpc/ded_raise', { p_iqama: dedGet('dedIq'), p_kind: dedGet('dedKind') || 'amount', p_qty: +dedGet('dedQty') || 0, p_reason: dedGet('dedWhy'), p_date: dedGet('dedDate') || null })
+      .then(function(){ T('رُفع للتعميد'); dedLoad(true); }).catch(function(e){ T(String((e && e.message) || e)); }); }
+  function dedExport(){ if (!DED.rows.length) return T('لا توجد خصميات');
+    var rows = [['الاسم', 'رقم الإقامة', 'المشروع', 'النوع', 'الكمية', 'القيمة بالريال', 'السبب', 'الحالة', 'تاريخ المخالفة', 'رفعه', 'اعتراض الموظف', 'قرار المدير']].concat(DED.rows.map(function(d){
+      return [d.name || '', d.iqama || '', d.project || '', d.kind === 'days' ? 'أيام' : 'مبلغ', d.qty, Math.round(dedVal(d) * 100) / 100, d.reason || '', DST[d.state] || d.state, d.date || '', d.raised_by_name || '', d.objection || '', d.decision_note || '']; }));
+    var csv = String.fromCharCode(65279) + rows.map(function(r){ return r.map(function(c){ return '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"'; }).join(','); }).join(String.fromCharCode(10));
+    var l = document.createElement('a'); l.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); l.download = 'حصر-الخصميات-' + A.today() + '.csv'; document.body.appendChild(l); l.click(); l.remove(); }
+  if (!window.__dedWired){ window.__dedWired = true; document.addEventListener('click', function(ev){ var b = ev.target && ev.target.closest ? ev.target.closest('[data-ded]') : null; if (!b) return;
+    var a = b.getAttribute('data-ded'); if (a === 'raise') dedRaise(); else if (a === 'export') dedExport(); else dedAct(b.getAttribute('data-id'), a); }); }
   window.wxAdvList = function(){ scrim(); paint(); document.getElementById('wx14Scrim').classList.add('on'); sync().then(function(){ if (isOpen()) paint(); }); };
   /* v162: advances - requests in the same month and earlier advances per row; the export adds the IBAN and the account holder name */
   function advMonthCount(e, a){ var m = String(a.date || '').slice(0, 7); if (!m) return 0; return advs(e).filter(function(b){ return b.status !== 'void' && String(b.date || '').slice(0, 7) === m; }).length; }
