@@ -657,6 +657,8 @@ fun DedDialog(session: SupSession, r: RosterItem, onClose: () -> Unit) {
     var why by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var done by remember { mutableStateOf(false) }
+    var rows by remember { mutableStateOf<List<Api.DedRow>>(emptyList()) }
+    LaunchedEffect(done) { try { rows = Api.deductions(session.token).filter { it.iqama == r.iqama } } catch (_: Exception) {} }
     var err by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     AlertDialog(
@@ -666,6 +668,15 @@ fun DedDialog(session: SupSession, r: RosterItem, onClose: () -> Unit) {
             Column {
                 Text(r.name + " · " + r.iqama, fontSize = 12.sp, color = Gray)
                 Spacer(Modifier.height(10.dp))
+                if (rows.isNotEmpty()) {
+                    Text("خصميات هذا الموظف:", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    rows.take(6).forEach { d ->
+                        val q = if (d.qty % 1.0 == 0.0) d.qty.toInt().toString() else d.qty.toString()
+                        val stt = when (d.state) { "pending" -> "بانتظار التعميد"; "approved" -> "معمّد"; "objected" -> "عليه اعتراض"; "final" -> "نهائي"; "rejected" -> "مرفوض"; "cancelled" -> "ملغى"; else -> d.state }
+                        Text((if (d.kind == "days") q + " يوم" else q + " ريال") + " · " + stt + " · " + (d.date ?: ""), fontSize = 11.5.sp, color = Gray)
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
                 if (done) {
                     Text("رُفع الخصم للمدير للتعميد.", fontSize = 14.sp, color = Green)
                 } else {
