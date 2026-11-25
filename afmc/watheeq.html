@@ -11775,7 +11775,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
             else act = btn(a.sa_id, 'reopen', '', '↩ إرجاعها معلّقة');
           }
           return '<tr><td>' + E(e.name_ar || e.name_en || '—') + '</td><td>' + E(e.iqama || '') + '</td><td>' + E(e.project || '') + '</td><td><b>' + F(a.amount)
-            + '</b></td><td>' + E((kind === 'paid' ? (a.paid_on || a.date) : a.date) || '') + '</td><td style="color:var(--muted)">' + E(a.note || '') + '</td><td style="white-space:nowrap">' + act + '</td></tr>'; }).join('')
+            + '</b>' + advStat(e, a) + '</td><td>' + E((kind === 'paid' ? (a.paid_on || a.date) : a.date) || '') + '</td><td style="color:var(--muted)">' + E(a.note || '') + '</td><td style="white-space:nowrap">' + act + '</td></tr>'; }).join('')
       + '</tbody></table></div>';
   }
   function listHTML(){
@@ -11797,11 +11797,19 @@ body.wx-card-open #wx4Pill{ display:none !important; }
   }
   function isOpen(){ var s = document.getElementById('wx14Scrim'); return !!s && s.classList.contains('on'); }
   window.wxAdvList = function(){ scrim(); paint(); document.getElementById('wx14Scrim').classList.add('on'); sync().then(function(){ if (isOpen()) paint(); }); };
+  /* v162: advances - requests in the same month and earlier advances per row; the export adds the IBAN and the account holder name */
+  function advMonthCount(e, a){ var m = String(a.date || '').slice(0, 7); if (!m) return 0; return advs(e).filter(function(b){ return b.status !== 'void' && String(b.date || '').slice(0, 7) === m; }).length; }
+  function advPrevTotal(e, a){ var L = advs(e), i = L.indexOf(a), d = String(a.date || ''); return L.reduce(function(s, b, j){ var bd = String(b.date || ''); return (b !== a && b.status !== 'void' && (bd < d || (bd === d && j < i))) ? s + (+b.amount || 0) : s; }, 0); }
+  function advStat(e, a){ return '<div style="font-size:11px;color:var(--muted);font-weight:400">' + 'سلف الشهر: ' + advMonthCount(e, a) + ' · سلف سابقة: ' + F(advPrevTotal(e, a)) + '</div>'; }
   window.wxAdvExport = function(){
+    A.api('GET', 'employee_pay?select=iban_holder,employees(iqama)&iban_holder=not.is.null').then(function(rows){ var H = {}; (rows || []).forEach(function(r){ if (r && r.employees && r.iban_holder) H[String(r.employees.iqama)] = r.iban_holder; }); wxAdvExportRun(H); }).catch(function(){ wxAdvExportRun({}); });
+  };
+  function wxAdvExportRun(H){
     var R = rowsAll().concat(voids()), head = ['الاسم', 'رقم الإقامة', 'المشروع', 'المبلغ', 'الحالة', 'تاريخ الاعتماد', 'تاريخ الصرف', 'المصدر / السبب'];
     if (!R.length) return T('لا توجد سلف');
     var body = R.map(function(x){ var a = x.a, e = x.e; return [e.name_ar || e.name_en || '', e.iqama || '', e.project || '', N(a.amount),
-      x.v ? 'ملغاة' : waiting(a) ? 'معلّقة — لم تُصرف' : 'مصروفة — لم تُخصم', a.date || '', a.paid_on || '', a.note || '']; });
+      x.v ? 'ملغاة' : waiting(a) ? 'معلّقة — لم تُصرف' : 'مصروفة — لم تُخصم', a.date || '', a.paid_on || '', a.note || '', advMonthCount(e, a), N(advPrevTotal(e, a)), e.iban || '', H[String(e.iqama)] || e.name_ar || e.name_en || '']; });
+    head = head.concat(['سلف الشهر', 'السلف السابقة', 'رقم الحساب (الايبان)', 'اسم صاحب الحساب']);
     var csv = '\ufeff' + [head].concat(body).map(function(r){ return r.map(function(c){ return '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"'; }).join(','); }).join('\n');
     var b = new Blob([csv], { type: 'text/csv;charset=utf-8' }), l = document.createElement('a');
     l.href = URL.createObjectURL(b); l.download = 'حصر-السلف-' + A.today() + '.csv'; document.body.appendChild(l); l.click(); l.remove();
