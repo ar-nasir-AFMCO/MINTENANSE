@@ -6048,7 +6048,7 @@ boot();
               +'تُخصم تلقائياً من راتبه'+(adm?'، واضغط «⛔ خصم» لتثبيتها نهائياً.':'.')+'</div>') : '')
       +'</div>';
 
-    return '<div class="wx5-fin" id="wx5Fin">'+advHTML+cHTML+(window.wxIncBox?window.wxIncBox(e,idx):'')+'</div>';
+    return '<div class="wx5-fin" id="wx5Fin">'+advHTML+cHTML+(window.wxIncBox?window.wxIncBox(e,idx):'')+(window.wxDedBox?window.wxDedBox(e,idx):'')+'</div>';
   }
   function injectFin(){
     var pane=document.getElementById('pane-fin');
@@ -11799,7 +11799,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
   /* v163: administrative deductions (amount or days) inside the advances tab. Any staff raises; only the manager decides. */
   var DED = { rows: [], at: 0, err: '' };
   function dedLoad(force){ if (!force && Date.now() - DED.at < 20000) return; DED.at = Date.now();
-    A.api('POST', 'rpc/ded_list', {}).then(function(r){ DED.rows = (r && r.rows) || []; DED.err = ''; paint(); }).catch(function(e){ DED.err = String((e && e.message) || e); paint(); }); }
+    A.api('POST', 'rpc/ded_list', {}).then(function(r){ DED.rows = (r && r.rows) || []; DED.err = ''; paint(); dedCardFill(); }).catch(function(e){ DED.err = String((e && e.message) || e); paint(); }); }
   function dedMgr(){ var r = role(); return r === 'admin' || r === 'manager'; }
   function dedDay(iq){ var e = (state.employees || []).filter(function(x){ return String(x.iqama) === String(iq); })[0], f = (e && e.finance) || {}; return (+(f.monthly_salary || f.salary) || 0) / 30; }
   function dedVal(d){ return d.kind === 'days' ? d.qty * dedDay(d.iqama) : +d.qty; }
@@ -11826,6 +11826,22 @@ body.wx-card-open #wx4Pill{ display:none !important; }
     if (L.length) setTimeout(function(){ dedLoad(true); }, 4000);
     return L.length; };
   setTimeout(function(){ try { dedLoad(); } catch (e) {} }, 5000);
+  /* v167: the employee's administrative deductions inside his financial card */
+  function dedCardInner(iq){ var L = DED.rows.filter(function(d){ return String(d.iqama) === String(iq); });
+    if (!L.length) return '<div class="wx5-hint">لا توجد خصميات إدارية على هذا الموظف.</div>';
+    return (dedMgr() ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0"><input id="dedNoteC" placeholder="سبب القرار (للرفض والتخفيض والإلغاء)" style="flex:1;min-width:200px"><input id="dedNewC" type="number" min="0" step="0.5" placeholder="القيمة بعد التخفيض" style="width:150px"></div>' : '')
+      + '<div class="wx3-tblwrap"><table class="wx3-tbl"><thead><tr><th>الخصم</th><th>السبب</th><th>الحالة</th><th>خُصم من راتب</th><th></th></tr></thead><tbody>'
+      + L.map(function(d){ var act = '', v = dedVal(d);
+          if (dedMgr() && !d.settled_period){
+            if (d.state === 'pending') act = dedBtn(d.id, 'approve', 'تعميد', 'ok') + dedBtn(d.id, 'reject', 'رفض', 'bad');
+            else if (d.state === 'objected') act = dedBtn(d.id, 'keep', 'رفض الاعتراض', 'ok') + dedBtn(d.id, 'reduce', 'تخفيض', '') + dedBtn(d.id, 'cancel', 'إلغاء', 'bad');
+            else if (d.state === 'approved' || d.state === 'final') act = dedBtn(d.id, 'reduce', 'تخفيض', '') + dedBtn(d.id, 'cancel', 'إلغاء', 'bad');
+          }
+          return '<tr><td><b>' + (d.kind === 'days' ? E(d.qty) + ' يوم' + (v ? ' = ' + F(v) : '') : F(d.qty)) + '</b><div style="font-size:11px;color:var(--muted)">' + E(d.date || '') + '</div></td><td>' + E(d.reason || '') + (d.objection ? '<div style="font-size:11px;color:var(--muted)">اعتراض الموظف: ' + E(d.objection) + '</div>' : '') + (d.decision_note ? '<div style="font-size:11px;color:var(--muted)">قرار المدير: ' + E(d.decision_note) + '</div>' : '') + '</td><td>' + (DST[d.state] || E(d.state)) + '</td><td>' + E(d.settled_period || '—') + '</td><td style="white-space:nowrap">' + act + '</td></tr>'; }).join('')
+      + '</tbody></table></div>'; }
+  function dedCardFill(){ var h = document.getElementById('wxDedCard'); if (h) h.innerHTML = dedCardInner(h.getAttribute('data-iq')); }
+  window.wxDedBox = function(e){ dedLoad(); var iq = String((e && e.iqama) || '');
+    return '<div style="margin-top:14px"><div style="font-weight:700;margin-bottom:6px">الخصميات الإدارية</div><div id="wxDedCard" data-iq="' + E(iq) + '">' + dedCardInner(iq) + '</div></div>'; };
   window.wxDedHTML = function(){ dedLoad();
     var h = '<div style="font-weight:700;margin:18px 0 6px;border-top:1px solid var(--line,#ddd);padding-top:12px">الخصميات الإدارية</div>'
       + '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px">'
@@ -11849,7 +11865,7 @@ body.wx-card-open #wx4Pill{ display:none !important; }
             + '<td>' + (DST[d.state] || E(d.state)) + '<div style="font-size:11px;color:var(--muted)">' + E(d.date || '') + '</div></td><td>' + E(d.raised_by_name || '') + '</td><td style="white-space:nowrap">' + act + '</td></tr>'; }).join('')
       + '</tbody></table></div><div style="margin-top:8px"><button class="btn ghost" data-ded="export">⬇️ تصدير الخصميات</button></div>';
   };
-  function dedAct(id, a){ A.api('POST', 'rpc/ded_decide', { p_id: id, p_action: a, p_note: dedGet('dedNote') || null, p_qty: +dedGet('dedNew') || null })
+  function dedAct(id, a){ A.api('POST', 'rpc/ded_decide', { p_id: id, p_action: a, p_note: dedGet('dedNote') || dedGet('dedNoteC') || null, p_qty: +(dedGet('dedNew') || dedGet('dedNewC')) || null })
       .then(function(){ T('تم'); dedLoad(true); }).catch(function(e){ T(String((e && e.message) || e)); }); }
   function dedRaise(){ A.api('POST', 'rpc/ded_raise', { p_iqama: dedGet('dedIq'), p_kind: dedGet('dedKind') || 'amount', p_qty: +dedGet('dedQty') || 0, p_reason: dedGet('dedWhy'), p_date: dedGet('dedDate') || null })
       .then(function(){ T('رُفع للتعميد'); dedLoad(true); }).catch(function(e){ T(String((e && e.message) || e)); }); }
