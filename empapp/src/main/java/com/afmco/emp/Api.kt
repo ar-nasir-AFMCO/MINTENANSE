@@ -79,6 +79,8 @@ data class MyVehicle(val plate: String, val project: String?, val make: String?,
     val label: String get() = plate + listOfNotNull(make, model).joinToString(" ").let { if (it.isNotBlank()) " · $it" else "" }
 }
 
+data class Deduction(val id: String, val kind: String, val qty: Double, val reason: String?, val date: String?, val state: String,
+                     val canObject: Boolean, val objectUntil: String?, val objection: String?, val decisionNote: String?)
 data class Advance(val id: String, val amount: Double, val reason: String?, val status: String, val note: String?, val createdAt: String?,
                    val pay: String? = null, val deducted: String? = null)
 
@@ -212,6 +214,19 @@ object Api {
     }
 
     /** سلف الموظف وحالتها */
+    /** v164: administrative deductions - visible after the manager approves; the employee may object within 3 days */
+    suspend fun myDeductions(token: String): List<Deduction> {
+        val arr = JSONArray(rpc("emp_my_deductions", JSONObject().put("p_token", token)).ifBlank { "[]" })
+        return (0 until arr.length()).map {
+            val o = arr.getJSONObject(it)
+            Deduction(o.optString("id"), o.optString("kind"), o.optDouble("qty", 0.0), o.optStringOrNull("reason"), o.optStringOrNull("date"),
+                o.optString("state"), o.optBoolean("can_object", false), o.optStringOrNull("object_until"), o.optStringOrNull("objection"), o.optStringOrNull("decision_note"))
+        }
+    }
+    suspend fun objectDeduction(token: String, id: String, text: String) {
+        rpc("emp_deduction_object", JSONObject().put("p_token", token).put("p_id", id).put("p_text", text))
+    }
+
     suspend fun myAdvances(token: String): List<Advance> {
         val arr = JSONArray(rpc("emp_my_advances", JSONObject().put("p_token", token)))
         return (0 until arr.length()).map {
