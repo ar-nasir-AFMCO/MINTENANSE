@@ -342,6 +342,18 @@ object Api {
     /** حالة حضور المشرف الحالية */
     suspend fun myStatus(token: String): JSONObject = JSONObject(rpc(token, "sup_my_status", JSONObject()))
 
+    data class DedRow(val iqama: String, val kind: String, val qty: Double, val reason: String?, val date: String?, val state: String)
+
+    /** v167: deductions raised within the supervisor projects, to show their status */
+    suspend fun deductions(token: String): List<DedRow> {
+        val arr = JSONObject(rpc(token, "ded_list", JSONObject())).optJSONArray("rows") ?: return emptyList()
+        return (0 until arr.length()).map {
+            val x = arr.getJSONObject(it)
+            DedRow(x.optString("iqama"), x.optString("kind"), x.optDouble("qty", 0.0), if (x.isNull("reason")) null else x.optString("reason"),
+                if (x.isNull("date")) null else x.optString("date"), x.optString("state"))
+        }
+    }
+
     /** v166: raise an administrative deduction (amount or days) for the manager to approve */
     suspend fun raiseDeduction(token: String, iqama: String, kind: String, qty: Double, reason: String) {
         rpc(token, "ded_raise", JSONObject().put("p_iqama", iqama).put("p_kind", kind).put("p_qty", qty).put("p_reason", reason))
